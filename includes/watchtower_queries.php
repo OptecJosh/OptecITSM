@@ -127,31 +127,26 @@ function getWatchtowerData($conn) {
     // -- Service Status --
 
     $ssDegradedStmt = $conn->query(
-        "SELECT ss.id, ss.name,
-            COALESCE(
-                (SELECT sis.impact_level
-                 FROM status_incident_services sis
-                 JOIN status_incidents si ON sis.incident_id = si.id
-                 WHERE sis.service_id = ss.id AND si.status != 'Resolved'
-                 ORDER BY CASE sis.impact_level
-                     WHEN 'Major Outage' THEN 1 WHEN 'Partial Outage' THEN 2
-                     WHEN 'Degraded' THEN 3 WHEN 'Maintenance' THEN 4
-                     ELSE 5 END ASC
-                 LIMIT 1),
-                'Operational'
-            ) AS current_status
+        "SELECT ss.id, ss.name, worst.current_status, worst.severity_order
          FROM status_services ss
+         JOIN (
+            SELECT sis.service_id, il.name AS current_status, il.severity_order
+            FROM status_incident_services sis
+            JOIN status_incidents si ON sis.incident_id = si.id
+            JOIN service_impact_levels il ON il.id = sis.impact_level_id
+            LEFT JOIN service_incident_statuses sst ON sst.id = si.status_id
+            WHERE (sst.is_resolved = 0 OR sst.id IS NULL)
+              AND il.name <> 'Operational'
+         ) worst ON worst.service_id = ss.id
          WHERE ss.is_active = 1
-         HAVING current_status != 'Operational'
-         ORDER BY CASE current_status
-             WHEN 'Major Outage' THEN 1 WHEN 'Partial Outage' THEN 2
-             WHEN 'Degraded' THEN 3 WHEN 'Maintenance' THEN 4
-             ELSE 5 END ASC"
+         ORDER BY worst.severity_order ASC, ss.display_order, ss.name"
     );
     $ssDegraded = $ssDegradedStmt->fetchAll(PDO::FETCH_ASSOC);
 
     $ssActiveIncidents = (int)$conn->query(
-        "SELECT COUNT(*) FROM status_incidents WHERE status != 'Resolved'"
+        "SELECT COUNT(*) FROM status_incidents si
+         LEFT JOIN service_incident_statuses sst ON sst.id = si.status_id
+         WHERE (sst.is_resolved = 0 OR sst.id IS NULL)"
     )->fetchColumn();
 
     $serviceStatus = [

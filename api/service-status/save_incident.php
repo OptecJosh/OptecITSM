@@ -27,57 +27,63 @@ try {
         throw new Exception('Title is required');
     }
 
-    $validStatuses = ['3rd Party', 'Identified', 'Investigating', 'Monitoring', 'Resolved'];
-    if (!in_array($status, $validStatuses)) {
-        throw new Exception('Invalid status');
-    }
-
-    $validImpacts = ['Major Outage', 'Partial Outage', 'Degraded', 'Maintenance', 'Operational', 'No Disruption'];
-
     $conn = connectToDatabase();
 
+    // Resolve incoming status name -> (id, is_resolved)
+    $stsStmt = $conn->prepare("SELECT id, is_resolved FROM service_incident_statuses WHERE name = ? AND is_active = 1 LIMIT 1");
+    $stsStmt->execute([$status]);
+    $stsRow = $stsStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$stsRow) {
+        throw new Exception('Invalid status: ' . $status);
+    }
+    $statusId   = (int)$stsRow['id'];
+    $isResolved = (bool)$stsRow['is_resolved'];
+
     if ($id) {
-        // Get current status to detect resolution
-        $curStmt = $conn->prepare("SELECT status FROM status_incidents WHERE id = ?");
+        // Get current resolved-state to drive resolved_datetime transitions
+        $curStmt = $conn->prepare(
+            "SELECT s.is_resolved
+             FROM status_incidents i
+             LEFT JOIN service_incident_statuses s ON s.id = i.status_id
+             WHERE i.id = ?"
+        );
         $curStmt->execute([$id]);
-        $current = $curStmt->fetch(PDO::FETCH_ASSOC);
+        $wasResolved = (bool)($curStmt->fetchColumn() ?: 0);
 
-        $resolvedDatetime = null;
-        if ($status === 'Resolved' && (!$current || $current['status'] !== 'Resolved')) {
-            $resolvedDatetime = 'UTC_TIMESTAMP()';
-        }
-
-        if ($status === 'Resolved') {
-            $sql = "UPDATE status_incidents SET title = ?, status = ?, comment = ?, updated_datetime = UTC_TIMESTAMP(), resolved_datetime = COALESCE(resolved_datetime, UTC_TIMESTAMP()) WHERE id = ?";
-            $conn->prepare($sql)->execute([$title, $status, $comment, $id]);
+        if ($isResolved) {
+            $sql = "UPDATE status_incidents SET title = ?, status_id = ?, comment = ?, updated_datetime = UTC_TIMESTAMP(), resolved_datetime = COALESCE(resolved_datetime, UTC_TIMESTAMP()) WHERE id = ?";
+            $conn->prepare($sql)->execute([$title, $statusId, $comment, $id]);
         } else {
-            $sql = "UPDATE status_incidents SET title = ?, status = ?, comment = ?, updated_datetime = UTC_TIMESTAMP(), resolved_datetime = NULL WHERE id = ?";
-            $conn->prepare($sql)->execute([$title, $status, $comment, $id]);
+            $sql = "UPDATE status_incidents SET title = ?, status_id = ?, comment = ?, updated_datetime = UTC_TIMESTAMP(), resolved_datetime = NULL WHERE id = ?";
+            $conn->prepare($sql)->execute([$title, $statusId, $comment, $id]);
         }
     } else {
         // Insert new incident
-        if ($status === 'Resolved') {
-            $sql = "INSERT INTO status_incidents (title, status, comment, created_by_id, resolved_datetime)
+        if ($isResolved) {
+            $sql = "INSERT INTO status_incidents (title, status_id, comment, created_by_id, resolved_datetime)
                     VALUES (?, ?, ?, ?, UTC_TIMESTAMP())";
         } else {
-            $sql = "INSERT INTO status_incidents (title, status, comment, created_by_id)
+            $sql = "INSERT INTO status_incidents (title, status_id, comment, created_by_id)
                     VALUES (?, ?, ?, ?)";
         }
         $stmt = $conn->prepare($sql);
-        $stmt->execute([$title, $status, $comment, $_SESSION['analyst_id']]);
+        $stmt->execute([$title, $statusId, $comment, $_SESSION['analyst_id']]);
         $id = $conn->lastInsertId();
     }
 
-    // Re-insert affected services
+    // Re-insert affected services. Resolve impact_level name -> id per row.
     $conn->prepare("DELETE FROM status_incident_services WHERE incident_id = ?")->execute([$id]);
 
     if (!empty($services)) {
-        $insStmt = $conn->prepare("INSERT INTO status_incident_services (incident_id, service_id, impact_level) VALUES (?, ?, ?)");
+        $impactLookup = $conn->prepare("SELECT id FROM service_impact_levels WHERE name = ? AND is_active = 1 LIMIT 1");
+        $insStmt = $conn->prepare("INSERT INTO status_incident_services (incident_id, service_id, impact_level_id) VALUES (?, ?, ?)");
         foreach ($services as $svc) {
             $svcId = (int)($svc['service_id'] ?? 0);
-            $impact = $svc['impact_level'] ?? 'Operational';
-            if ($svcId > 0 && in_array($impact, $validImpacts)) {
-                $insStmt->execute([$id, $svcId, $impact]);
+            $impactName = $svc['impact_level'] ?? 'Operational';
+            $impactLookup->execute([$impactName]);
+            $impactId = $impactLookup->fetchColumn();
+            if ($svcId > 0 && $impactId) {
+                $insStmt->execute([$id, $svcId, (int)$impactId]);
             }
         }
     }

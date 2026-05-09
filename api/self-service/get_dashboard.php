@@ -52,23 +52,18 @@ try {
     $ticketStmt->execute([$userId]);
     $recentTickets = $ticketStmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Service status - active services with worst current impact
+    // Service status - active services with worst current impact (severity_order from lookup)
     $svcStmt = $conn->prepare(
         "SELECT ss.id, ss.name,
             COALESCE(
-                (SELECT sis.impact_level
+                (SELECT il.name
                  FROM status_incident_services sis
                  JOIN status_incidents si ON sis.incident_id = si.id
+                 JOIN service_impact_levels il ON il.id = sis.impact_level_id
+                 LEFT JOIN service_incident_statuses sst ON sst.id = si.status_id
                  WHERE sis.service_id = ss.id
-                   AND si.status != 'Resolved'
-                 ORDER BY
-                     CASE sis.impact_level
-                         WHEN 'Major Outage' THEN 1
-                         WHEN 'Partial Outage' THEN 2
-                         WHEN 'Degraded' THEN 3
-                         WHEN 'Maintenance' THEN 4
-                         WHEN 'Operational' THEN 5
-                     END ASC
+                   AND (sst.is_resolved = 0 OR sst.id IS NULL)
+                 ORDER BY il.severity_order ASC
                  LIMIT 1),
                 'Operational'
             ) AS current_status

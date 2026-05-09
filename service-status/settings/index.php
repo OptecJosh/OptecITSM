@@ -81,7 +81,9 @@ $path_prefix = '../../';
 
     <div class="container">
         <div class="tabs">
-            <button class="tab active" data-tab="services">Services</button>
+            <button class="tab active" data-tab="services" onclick="switchTab('services')">Services</button>
+            <button class="tab" data-tab="statuses" onclick="switchTab('statuses')">Statuses</button>
+            <button class="tab" data-tab="impacts" onclick="switchTab('impacts')">Impact Levels</button>
         </div>
 
         <div class="tab-content active" id="services-tab">
@@ -103,6 +105,91 @@ $path_prefix = '../../';
                     <tr><td colspan="5" style="text-align: center; padding: 20px; color: #999;">Loading...</td></tr>
                 </tbody>
             </table>
+        </div>
+
+        <!-- Statuses Tab -->
+        <div class="tab-content" id="statuses-tab">
+            <div class="section-header">
+                <h2>Incident Statuses</h2>
+                <button class="add-btn" onclick="openLookupModal('status')">Add</button>
+            </div>
+            <p style="color: #666; margin-bottom: 16px;">Workflow states for service incidents. Statuses flagged as <em>Resolved</em> close the incident — auto-stamping <code>resolved_datetime</code> and removing the incident from the active dashboard. Exactly one status is the default for new incidents.</p>
+            <table>
+                <thead><tr><th>Name</th><th>Colour</th><th>Resolved</th><th>Default</th><th>Order</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody id="statuses-list"><tr><td colspan="7" style="text-align:center;padding:20px;color:#999;">Loading...</td></tr></tbody>
+            </table>
+        </div>
+
+        <!-- Impact Levels Tab -->
+        <div class="tab-content" id="impacts-tab">
+            <div class="section-header">
+                <h2>Impact Levels</h2>
+                <button class="add-btn" onclick="openLookupModal('impact')">Add</button>
+            </div>
+            <p style="color: #666; margin-bottom: 16px;">Severity bands shown as the badge on each service card. <strong>Severity order</strong> drives the "worst current impact" ordering on the dashboard — lower = worse (1 = Major Outage, 5 = Operational). Two rows can share an order.</p>
+            <table>
+                <thead><tr><th>Name</th><th>Colour</th><th>Severity</th><th>Default</th><th>Order</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody id="impacts-list"><tr><td colspan="7" style="text-align:center;padding:20px;color:#999;">Loading...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Lookup edit modal (Statuses + Impact Levels share this) -->
+    <div class="modal" id="lookupModal">
+        <div class="modal-content" style="max-width: 480px;">
+            <div class="modal-header" id="lookupModalTitle">Add Item</div>
+            <form id="lookupForm">
+                <input type="hidden" id="lookupItemKind">
+                <input type="hidden" id="lookupItemId">
+
+                <div class="form-group">
+                    <label for="lookupItemName">Name</label>
+                    <input type="text" id="lookupItemName" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="lookupItemColour">Colour</label>
+                    <input type="color" id="lookupItemColour" value="#10b981" style="width: 60px; height: 32px; padding: 2px;">
+                </div>
+
+                <div class="form-group" id="lookupItemResolvedGroup" style="display: none;">
+                    <label class="toggle-label">
+                        <span class="toggle-switch"><input type="checkbox" id="lookupItemResolved"><span class="toggle-slider"></span></span>
+                        Counts as resolved
+                    </label>
+                    <small style="display:block; color:#666; margin-top:4px;">Incidents in this status auto-stamp <code>resolved_datetime</code> and drop off the active dashboard.</small>
+                </div>
+
+                <div class="form-group" id="lookupItemSeverityGroup" style="display: none;">
+                    <label for="lookupItemSeverityOrder">Severity Order</label>
+                    <input type="number" id="lookupItemSeverityOrder" value="99" min="1">
+                    <small style="display:block; color:#666; margin-top:4px;">1 = worst (Major Outage). Higher = less severe.</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="toggle-label">
+                        <span class="toggle-switch"><input type="checkbox" id="lookupItemDefault"><span class="toggle-slider"></span></span>
+                        Default
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label for="lookupItemOrder">Display Order</label>
+                    <input type="number" id="lookupItemOrder" value="0">
+                </div>
+
+                <div class="form-group">
+                    <label class="toggle-label">
+                        <span class="toggle-switch"><input type="checkbox" id="lookupItemActive" checked><span class="toggle-slider"></span></span>
+                        Active
+                    </label>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeLookupModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -145,7 +232,19 @@ $path_prefix = '../../';
         const API_BASE = '../../api/service-status/';
         let allServices = [];
 
-        document.addEventListener('DOMContentLoaded', loadServices);
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            const btn = document.querySelector('.tab[data-tab="' + tab + '"]');
+            if (btn) btn.classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(tab + '-tab').classList.add('active');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadServices();
+            loadLookup('status');
+            loadLookup('impact');
+        });
 
         async function loadServices() {
             try {
@@ -281,6 +380,149 @@ $path_prefix = '../../';
         // Close modal on outside click
         document.getElementById('editModal').addEventListener('click', function(e) {
             if (e.target === this) closeModal();
+        });
+
+        // ============================================================
+        // Lookup tabs (Statuses + Impact Levels)
+        // ============================================================
+
+        const LOOKUP_KINDS = {
+            'status': { get: 'get_incident_statuses.php', save: 'save_incident_status.php', del: 'delete_incident_status.php', listKey: 'statuses',      tableId: 'statuses-list', colspan: 7, hasResolved: true,  hasSeverity: false, label: 'Status'       },
+            'impact': { get: 'get_impact_levels.php',     save: 'save_impact_level.php',    del: 'delete_impact_level.php',    listKey: 'impact_levels', tableId: 'impacts-list',  colspan: 7, hasResolved: false, hasSeverity: true,  label: 'Impact Level' }
+        };
+
+        const lookupCache = { status: [], impact: [] };
+
+        async function loadLookup(kind) {
+            const cfg = LOOKUP_KINDS[kind];
+            try {
+                const res = await fetch(API_BASE + cfg.get);
+                const data = await res.json();
+                if (data.success) {
+                    lookupCache[kind] = data[cfg.listKey] || [];
+                    renderLookup(kind);
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function renderLookup(kind) {
+            const cfg = LOOKUP_KINDS[kind];
+            const rows = lookupCache[kind];
+            const tbody = document.getElementById(cfg.tableId);
+            if (!rows || rows.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="${cfg.colspan}" style="text-align:center;padding:20px;color:#999;">No items found</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = rows.map(r => {
+                const safeName = escapeHtml(r.name).replace(/'/g, "\\'");
+                const swatch = r.colour
+                    ? `<span style="display:inline-block;width:18px;height:18px;border-radius:3px;background:${escapeHtml(r.colour)};vertical-align:middle;border:1px solid #ddd;margin-right:6px;"></span><code style="font-size:12px;">${escapeHtml(r.colour)}</code>`
+                    : '<span style="color:#999;">—</span>';
+                const flagCol = cfg.hasResolved
+                    ? `<td>${r.is_resolved ? '<span class="status-badge active">Yes</span>' : '<span style="color:#999;">No</span>'}</td>`
+                    : `<td>${r.severity_order}</td>`;
+                return `
+                <tr>
+                    <td><strong>${escapeHtml(r.name)}</strong></td>
+                    <td>${swatch}</td>
+                    ${flagCol}
+                    <td>${r.is_default ? '<span class="status-badge active">Yes</span>' : '<span style="color:#999;">No</span>'}</td>
+                    <td>${r.display_order}</td>
+                    <td><span class="status-badge ${r.is_active ? 'active' : 'inactive'}">${r.is_active ? 'Active' : 'Inactive'}</span></td>
+                    <td>
+                        <button class="action-btn" onclick="editLookup('${kind}', ${r.id})" title="Edit">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        </button>
+                        <button class="action-btn delete" onclick="deleteLookup('${kind}', ${r.id}, '${safeName}')" title="Delete">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function openLookupModal(kind) {
+            const cfg = LOOKUP_KINDS[kind];
+            document.getElementById('lookupModalTitle').textContent = `Add ${cfg.label}`;
+            document.getElementById('lookupItemKind').value = kind;
+            document.getElementById('lookupItemId').value = '';
+            document.getElementById('lookupItemName').value = '';
+            document.getElementById('lookupItemColour').value = '#10b981';
+            document.getElementById('lookupItemResolved').checked = false;
+            document.getElementById('lookupItemDefault').checked = false;
+            document.getElementById('lookupItemSeverityOrder').value = '99';
+            document.getElementById('lookupItemOrder').value = '0';
+            document.getElementById('lookupItemActive').checked = true;
+            document.getElementById('lookupItemResolvedGroup').style.display = cfg.hasResolved ? '' : 'none';
+            document.getElementById('lookupItemSeverityGroup').style.display = cfg.hasSeverity ? '' : 'none';
+            document.getElementById('lookupModal').classList.add('active');
+        }
+
+        function editLookup(kind, id) {
+            const cfg = LOOKUP_KINDS[kind];
+            const item = (lookupCache[kind] || []).find(r => r.id == id);
+            if (!item) return;
+            document.getElementById('lookupModalTitle').textContent = `Edit ${cfg.label}`;
+            document.getElementById('lookupItemKind').value = kind;
+            document.getElementById('lookupItemId').value = item.id;
+            document.getElementById('lookupItemName').value = item.name;
+            document.getElementById('lookupItemColour').value = item.colour || '#10b981';
+            document.getElementById('lookupItemResolved').checked = !!item.is_resolved;
+            document.getElementById('lookupItemDefault').checked = !!item.is_default;
+            document.getElementById('lookupItemSeverityOrder').value = item.severity_order ?? 99;
+            document.getElementById('lookupItemOrder').value = item.display_order;
+            document.getElementById('lookupItemActive').checked = !!item.is_active;
+            document.getElementById('lookupItemResolvedGroup').style.display = cfg.hasResolved ? '' : 'none';
+            document.getElementById('lookupItemSeverityGroup').style.display = cfg.hasSeverity ? '' : 'none';
+            document.getElementById('lookupModal').classList.add('active');
+        }
+
+        function closeLookupModal() {
+            document.getElementById('lookupModal').classList.remove('active');
+        }
+
+        async function deleteLookup(kind, id, name) {
+            if (!confirm(`Delete "${name}"?`)) return;
+            const cfg = LOOKUP_KINDS[kind];
+            try {
+                const res = await fetch(API_BASE + cfg.del, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({id: id})
+                });
+                const data = await res.json();
+                if (data.success) loadLookup(kind);
+                else alert(data.error || 'Failed to delete');
+            } catch (e) { alert('Failed to delete'); }
+        }
+
+        document.getElementById('lookupForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const kind = document.getElementById('lookupItemKind').value;
+            const cfg = LOOKUP_KINDS[kind];
+            const payload = {
+                id: document.getElementById('lookupItemId').value || null,
+                name: document.getElementById('lookupItemName').value,
+                colour: document.getElementById('lookupItemColour').value,
+                is_default: document.getElementById('lookupItemDefault').checked ? 1 : 0,
+                display_order: parseInt(document.getElementById('lookupItemOrder').value || '0', 10),
+                is_active: document.getElementById('lookupItemActive').checked ? 1 : 0
+            };
+            if (cfg.hasResolved) payload.is_resolved = document.getElementById('lookupItemResolved').checked ? 1 : 0;
+            if (cfg.hasSeverity) payload.severity_order = parseInt(document.getElementById('lookupItemSeverityOrder').value || '99', 10);
+
+            try {
+                const res = await fetch(API_BASE + cfg.save, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) { closeLookupModal(); loadLookup(kind); }
+                else alert(data.error || 'Failed to save');
+            } catch (e) { alert('Failed to save'); }
+        });
+
+        document.getElementById('lookupModal').addEventListener('click', function(e) {
+            if (e.target === this) closeLookupModal();
         });
     </script>
 </body>

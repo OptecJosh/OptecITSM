@@ -18,18 +18,21 @@ try {
     $conn = connectToDatabase();
     $filter = $_GET['filter'] ?? '';
 
-    $sql = "SELECT i.id, i.title, i.status, i.comment, i.created_by_id,
+    $sql = "SELECT i.id, i.title,
+                   sis.name AS status, sis.is_resolved AS status_is_resolved, sis.colour AS status_colour,
+                   i.comment, i.created_by_id,
                    a.full_name AS created_by_name,
                    i.created_datetime, i.updated_datetime, i.resolved_datetime
             FROM status_incidents i
+            LEFT JOIN service_incident_statuses sis ON sis.id = i.status_id
             LEFT JOIN analysts a ON i.created_by_id = a.id";
 
     if ($filter === 'active') {
-        $sql .= " WHERE i.status != 'Resolved'";
+        $sql .= " WHERE (sis.is_resolved = 0 OR sis.id IS NULL)";
     }
 
     $sql .= " ORDER BY
-                CASE WHEN i.status != 'Resolved' THEN 0 ELSE 1 END,
+                CASE WHEN (sis.is_resolved = 0 OR sis.id IS NULL) THEN 0 ELSE 1 END,
                 i.updated_datetime DESC";
 
     $stmt = $conn->prepare($sql);
@@ -37,9 +40,11 @@ try {
     $incidents = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Get affected services for each incident
-    $svcStmt = $conn->prepare("SELECT sis.service_id, ss.name AS service_name, sis.impact_level
+    $svcStmt = $conn->prepare("SELECT sis.service_id, ss.name AS service_name,
+                                       il.name AS impact_level, il.colour AS impact_colour, il.severity_order
                                 FROM status_incident_services sis
                                 JOIN status_services ss ON sis.service_id = ss.id
+                                LEFT JOIN service_impact_levels il ON il.id = sis.impact_level_id
                                 WHERE sis.incident_id = ?
                                 ORDER BY ss.display_order, ss.name");
 

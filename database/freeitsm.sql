@@ -1986,24 +1986,72 @@ CREATE TABLE IF NOT EXISTS `status_services` (
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `service_incident_statuses` (
+    `id`                INT NOT NULL AUTO_INCREMENT,
+    `name`              VARCHAR(50) NOT NULL,
+    `is_resolved`       TINYINT(1) NOT NULL DEFAULT 0,
+    `colour`            VARCHAR(20) NULL,
+    `is_default`        TINYINT(1) NOT NULL DEFAULT 0,
+    `display_order`     INT NOT NULL DEFAULT 0,
+    `is_active`         TINYINT(1) NOT NULL DEFAULT 1,
+    `created_datetime`  DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_service_incident_statuses_name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO `service_incident_statuses` (`name`, `is_resolved`, `colour`, `is_default`, `display_order`) VALUES
+    ('Investigating', 0, '#dc2626', 1, 10),
+    ('Identified',    0, '#f59e0b', 0, 20),
+    ('Monitoring',    0, '#0891b2', 0, 30),
+    ('3rd Party',     0, '#9333ea', 0, 40),
+    ('Resolved',      1, '#16a34a', 0, 50);
+
+-- Service impact levels: severity_order drives "worst current impact" ordering
+-- (replaces the hardcoded CASE statement that used to live in get_dashboard.php).
+-- 1 = worst, 5 = best — matches the existing CASE convention.
+CREATE TABLE IF NOT EXISTS `service_impact_levels` (
+    `id`                INT NOT NULL AUTO_INCREMENT,
+    `name`              VARCHAR(50) NOT NULL,
+    `colour`            VARCHAR(20) NULL,
+    `is_default`        TINYINT(1) NOT NULL DEFAULT 0,
+    `severity_order`    INT NOT NULL DEFAULT 99,
+    `display_order`     INT NOT NULL DEFAULT 0,
+    `is_active`         TINYINT(1) NOT NULL DEFAULT 1,
+    `created_datetime`  DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_service_impact_levels_name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO `service_impact_levels` (`name`, `colour`, `is_default`, `severity_order`, `display_order`) VALUES
+    ('Major Outage',   '#dc2626', 0, 1, 10),
+    ('Partial Outage', '#f59e0b', 0, 2, 20),
+    ('Degraded',       '#eab308', 0, 3, 30),
+    ('Maintenance',    '#0891b2', 0, 4, 40),
+    ('Operational',    '#16a34a', 1, 5, 50),
+    ('No Disruption',  '#9ca3af', 0, 6, 60);
+
 CREATE TABLE IF NOT EXISTS `status_incidents` (
     `id`                    INT NOT NULL AUTO_INCREMENT,
     `title`                 VARCHAR(255) NOT NULL,
-    `status`                VARCHAR(30) NOT NULL DEFAULT 'Investigating',
+    `status_id`             INT NULL,
     `comment`               LONGTEXT NULL,
     `created_by_id`         INT NULL,
     `created_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
     `resolved_datetime`     DATETIME NULL,
-    PRIMARY KEY (`id`)
+    PRIMARY KEY (`id`),
+    KEY `ix_status_incidents_status_id` (`status_id`),
+    CONSTRAINT `fk_status_incidents_status` FOREIGN KEY (`status_id`) REFERENCES `service_incident_statuses` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `status_incident_services` (
     `id`                INT NOT NULL AUTO_INCREMENT,
     `incident_id`       INT NOT NULL,
     `service_id`        INT NOT NULL,
-    `impact_level`      VARCHAR(30) NOT NULL DEFAULT 'Operational',
-    PRIMARY KEY (`id`)
+    `impact_level_id`   INT NULL,
+    PRIMARY KEY (`id`),
+    KEY `ix_sis_impact_level_id` (`impact_level_id`),
+    CONSTRAINT `fk_sis_impact_level` FOREIGN KEY (`impact_level_id`) REFERENCES `service_impact_levels` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;

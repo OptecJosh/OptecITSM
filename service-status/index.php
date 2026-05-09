@@ -296,13 +296,7 @@ $path_prefix = '../';
                 </div>
                 <div class="form-group">
                     <label for="incidentStatus">Status</label>
-                    <select id="incidentStatus">
-                        <option value="Investigating">Investigating</option>
-                        <option value="Identified">Identified</option>
-                        <option value="3rd Party">3rd Party</option>
-                        <option value="Monitoring">Monitoring</option>
-                        <option value="Resolved">Resolved</option>
-                    </select>
+                    <select id="incidentStatus"></select>
                 </div>
                 <div class="form-group">
                     <label for="incidentComment">Comment</label>
@@ -326,38 +320,32 @@ $path_prefix = '../';
         const API_BASE = '../api/service-status/';
         let allServices = [];
         let dashboardData = { services: [], incidents: [] };
+        // Loaded from new lookup endpoints — drives dropdowns and badge colours
+        let incidentStatuses = [];   // [{id, name, colour, is_resolved, is_default}]
+        let impactLevels = [];       // [{id, name, colour, severity_order, is_default}]
 
-        const IMPACT_LEVELS = [
-            'Major Outage', 'Partial Outage', 'Degraded', 'Maintenance', 'Operational', 'No Disruption'
-        ];
-
-        const IMPACT_CSS = {
-            'Major Outage': 'impact-major-outage',
-            'Partial Outage': 'impact-partial-outage',
-            'Degraded': 'impact-degraded',
-            'Maintenance': 'impact-maintenance',
-            'Operational': 'impact-operational',
-            'No Disruption': 'impact-no-disruption'
-        };
-
-        const STATUS_CSS = {
-            '3rd Party': 'incident-status-3rd-party',
-            'Identified': 'incident-status-identified',
-            'Investigating': 'incident-status-investigating',
-            'Monitoring': 'incident-status-monitoring',
-            'Resolved': 'incident-status-resolved'
-        };
+        const statusByName = (name) => incidentStatuses.find(s => s.name === name);
+        const impactByName = (name) => impactLevels.find(l => l.name === name);
 
         document.addEventListener('DOMContentLoaded', loadDashboard);
 
         async function loadDashboard() {
             try {
-                // Load services list for dropdowns
-                const svcResp = await fetch(API_BASE + 'get_services.php');
-                const svcData = await svcResp.json();
-                if (svcData.success) {
-                    allServices = svcData.services.filter(s => s.is_active);
-                }
+                // Load lookup tables (for dropdowns + badge colours)
+                const [stsResp, ilResp, svcResp] = await Promise.all([
+                    fetch(API_BASE + 'get_incident_statuses.php').then(r => r.json()),
+                    fetch(API_BASE + 'get_impact_levels.php').then(r => r.json()),
+                    fetch(API_BASE + 'get_services.php').then(r => r.json())
+                ]);
+                if (stsResp.success) incidentStatuses = stsResp.statuses.filter(s => s.is_active);
+                if (ilResp.success)  impactLevels    = ilResp.impact_levels.filter(l => l.is_active);
+                if (svcResp.success) allServices     = svcResp.services.filter(s => s.is_active);
+
+                // Populate the incident-status dropdown
+                const stsSelect = document.getElementById('incidentStatus');
+                stsSelect.innerHTML = incidentStatuses.map(s =>
+                    `<option value="${escapeHtml(s.name)}">${escapeHtml(s.name)}</option>`
+                ).join('');
 
                 // Load dashboard data
                 const resp = await fetch(API_BASE + 'get_dashboard.php');
@@ -381,13 +369,16 @@ $path_prefix = '../';
                 return;
             }
 
-            grid.innerHTML = services.map(svc => `
+            grid.innerHTML = services.map(svc => {
+                const il = impactByName(svc.current_status);
+                const style = il && il.colour ? `style="background:${il.colour}; color:#fff;"` : '';
+                return `
                 <div class="service-card">
                     <div class="service-name">${escapeHtml(svc.name)}</div>
                     <div class="service-desc">${escapeHtml(svc.description || '')}</div>
-                    <span class="impact-badge ${IMPACT_CSS[svc.current_status] || 'impact-operational'}">${escapeHtml(svc.current_status)}</span>
-                </div>
-            `).join('');
+                    <span class="impact-badge" ${style}>${escapeHtml(svc.current_status)}</span>
+                </div>`;
+            }).join('');
         }
 
         function renderIncidents(incidents) {
@@ -405,11 +396,14 @@ $path_prefix = '../';
             empty.style.display = 'none';
 
             tbody.innerHTML = incidents.map(inc => {
-                const isResolved = inc.status === 'Resolved';
-                const statusCss = STATUS_CSS[inc.status] || '';
-                const svcs = (inc.services || []).map(s =>
-                    `<span class="incident-svc-tag ${IMPACT_CSS[s.impact_level] || ''}">${escapeHtml(s.service_name)}</span>`
-                ).join('');
+                const sts = statusByName(inc.status);
+                const isResolved = !!(sts && sts.is_resolved);
+                const statusStyle = sts && sts.colour ? `style="background:${sts.colour}; color:#fff;"` : '';
+                const svcs = (inc.services || []).map(s => {
+                    const il = impactByName(s.impact_level);
+                    const tagStyle = il && il.colour ? `style="background:${il.colour}; color:#fff;"` : '';
+                    return `<span class="incident-svc-tag" ${tagStyle}>${escapeHtml(s.service_name)}</span>`;
+                }).join('');
 
                 const date = inc.updated_datetime || inc.created_datetime;
                 const dateStr = date ? formatDate(date) : '';
@@ -417,7 +411,7 @@ $path_prefix = '../';
                 return `
                     <tr class="${isResolved ? 'resolved' : ''}">
                         <td><span class="incident-title" onclick="editIncident(${inc.id})">${escapeHtml(inc.title)}</span></td>
-                        <td><span class="incident-status ${statusCss}">${escapeHtml(inc.status)}</span></td>
+                        <td><span class="incident-status" ${statusStyle}>${escapeHtml(inc.status)}</span></td>
                         <td><div class="incident-services-list">${svcs || '<span style="color:#999">None</span>'}</div></td>
                         <td><span class="incident-date">${dateStr}</span></td>
                     </tr>
@@ -441,7 +435,8 @@ $path_prefix = '../';
             document.getElementById('incidentModalTitle').textContent = 'New Incident';
             document.getElementById('incidentId').value = '';
             document.getElementById('incidentTitle').value = '';
-            document.getElementById('incidentStatus').value = 'Investigating';
+            const defaultSts = incidentStatuses.find(s => s.is_default) || incidentStatuses[0];
+            document.getElementById('incidentStatus').value = defaultSts ? defaultSts.name : '';
             document.getElementById('incidentComment').value = '';
             document.getElementById('affectedServices').innerHTML = '';
             document.getElementById('deleteIncidentBtn').style.display = 'none';
@@ -481,8 +476,11 @@ $path_prefix = '../';
                 `<option value="${s.id}" ${s.id == serviceId ? 'selected' : ''}>${escapeHtml(s.name)}</option>`
             ).join('');
 
-            const impactOptions = IMPACT_LEVELS.map(level =>
-                `<option value="${level}" ${level === (impactLevel || 'Degraded') ? 'selected' : ''}>${level}</option>`
+            // Default impact for a freshly added row: 'Degraded' if available, else the configured default
+            const defaultImpact = impactLevel
+                || (impactByName('Degraded') ? 'Degraded' : (impactLevels.find(l => l.is_default)?.name || (impactLevels[0]?.name || '')));
+            const impactOptions = impactLevels.map(level =>
+                `<option value="${escapeHtml(level.name)}" ${level.name === defaultImpact ? 'selected' : ''}>${escapeHtml(level.name)}</option>`
             ).join('');
 
             row.innerHTML = `

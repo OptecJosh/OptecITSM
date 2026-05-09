@@ -1471,10 +1471,32 @@ $schema = [
         'created_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
     ],
 
+    'service_incident_statuses' => [
+        'id'                => 'INT NOT NULL AUTO_INCREMENT',
+        'name'              => 'VARCHAR(50) NOT NULL',
+        'is_resolved'       => 'TINYINT(1) NOT NULL DEFAULT 0',
+        'colour'            => 'VARCHAR(20) NULL',
+        'is_default'        => 'TINYINT(1) NOT NULL DEFAULT 0',
+        'display_order'     => 'INT NOT NULL DEFAULT 0',
+        'is_active'         => 'TINYINT(1) NOT NULL DEFAULT 1',
+        'created_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
+    'service_impact_levels' => [
+        'id'                => 'INT NOT NULL AUTO_INCREMENT',
+        'name'              => 'VARCHAR(50) NOT NULL',
+        'colour'            => 'VARCHAR(20) NULL',
+        'is_default'        => 'TINYINT(1) NOT NULL DEFAULT 0',
+        'severity_order'    => 'INT NOT NULL DEFAULT 99',
+        'display_order'     => 'INT NOT NULL DEFAULT 0',
+        'is_active'         => 'TINYINT(1) NOT NULL DEFAULT 1',
+        'created_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
     'status_incidents' => [
         'id'                    => 'INT NOT NULL AUTO_INCREMENT',
         'title'                 => 'VARCHAR(255) NOT NULL',
-        'status'                => 'VARCHAR(30) NOT NULL DEFAULT \'Investigating\'',
+        'status_id'             => 'INT NULL',
         'comment'               => 'LONGTEXT NULL',
         'created_by_id'         => 'INT NULL',
         'created_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
@@ -1486,7 +1508,7 @@ $schema = [
         'id'                => 'INT NOT NULL AUTO_INCREMENT',
         'incident_id'       => 'INT NOT NULL',
         'service_id'        => 'INT NOT NULL',
-        'impact_level'      => 'VARCHAR(30) NOT NULL DEFAULT \'Operational\'',
+        'impact_level_id'   => 'INT NULL',
     ],
 ];
 
@@ -2125,6 +2147,108 @@ try {
     // Drop legacy task columns
     foreach ([['tasks', 'status',   'status_id'],
               ['tasks', 'priority', 'priority_id']] as [$tbl, $oldCol, $newCol]) {
+        if (!$tableExists($tbl) || !$colExists($tbl, $oldCol)) continue;
+        $orphan = (int) $conn->query("SELECT COUNT(*) FROM `$tbl` WHERE `$newCol` IS NULL")->fetchColumn();
+        if ($orphan === 0) {
+            try {
+                $conn->exec("ALTER TABLE `$tbl` DROP COLUMN `$oldCol`");
+                $results[] = ['table' => $tbl, 'status' => 'updated', 'details' => ["Dropped legacy $oldCol column"]];
+            } catch (Exception $e) {}
+        } else {
+            $results[] = ['table' => $tbl, 'status' => 'pending', 'details' => ["Cannot drop $oldCol yet — $orphan row(s) still missing $newCol"]];
+        }
+    }
+
+    // ----------------------------------------------------------------------
+    // Service Status: incident-status and impact-level lookups
+    // ----------------------------------------------------------------------
+
+    if ($tableExists('service_incident_statuses')) {
+        $cnt = (int) $conn->query("SELECT COUNT(*) FROM service_incident_statuses")->fetchColumn();
+        if ($cnt === 0) {
+            $conn->exec("INSERT INTO service_incident_statuses (name, is_resolved, colour, is_default, display_order) VALUES
+                ('Investigating', 0, '#dc2626', 1, 10),
+                ('Identified',    0, '#f59e0b', 0, 20),
+                ('Monitoring',    0, '#0891b2', 0, 30),
+                ('3rd Party',     0, '#9333ea', 0, 40),
+                ('Resolved',      1, '#16a34a', 0, 50)");
+            $results[] = ['table' => 'service_incident_statuses', 'status' => 'seeded', 'details' => ['Inserted 5 default incident statuses']];
+        }
+    }
+
+    if ($tableExists('service_impact_levels')) {
+        $cnt = (int) $conn->query("SELECT COUNT(*) FROM service_impact_levels")->fetchColumn();
+        if ($cnt === 0) {
+            $conn->exec("INSERT INTO service_impact_levels (name, colour, is_default, severity_order, display_order) VALUES
+                ('Major Outage',   '#dc2626', 0, 1, 10),
+                ('Partial Outage', '#f59e0b', 0, 2, 20),
+                ('Degraded',       '#eab308', 0, 3, 30),
+                ('Maintenance',    '#0891b2', 0, 4, 40),
+                ('Operational',    '#16a34a', 1, 5, 50),
+                ('No Disruption',  '#9ca3af', 0, 6, 60)");
+            $results[] = ['table' => 'service_impact_levels', 'status' => 'seeded', 'details' => ['Inserted 6 default impact levels']];
+        }
+    }
+
+    // Backfill status_incidents.status_id from legacy status string
+    if ($tableExists('status_incidents') && $colExists('status_incidents', 'status') && $colExists('status_incidents', 'status_id') && $tableExists('service_incident_statuses')) {
+        $conn->exec("INSERT IGNORE INTO service_incident_statuses (name, display_order)
+                     SELECT DISTINCT i.status, 999
+                     FROM status_incidents i
+                     LEFT JOIN service_incident_statuses s ON LOWER(s.name) = LOWER(i.status)
+                     WHERE i.status IS NOT NULL AND i.status <> '' AND s.id IS NULL");
+
+        $upd = $conn->exec("UPDATE status_incidents i
+                            JOIN service_incident_statuses s ON LOWER(s.name) = LOWER(i.status)
+                            SET i.status_id = s.id
+                            WHERE i.status_id IS NULL AND i.status IS NOT NULL");
+        if ($upd > 0) {
+            $results[] = ['table' => 'status_incidents', 'status' => 'migrated', 'details' => ["Backfilled status_id for $upd incident(s)"]];
+        }
+        $conn->exec("UPDATE status_incidents SET status_id = (SELECT id FROM service_incident_statuses WHERE is_default = 1 LIMIT 1) WHERE status_id IS NULL");
+    }
+
+    // Backfill status_incident_services.impact_level_id from legacy impact_level string
+    if ($tableExists('status_incident_services') && $colExists('status_incident_services', 'impact_level') && $colExists('status_incident_services', 'impact_level_id') && $tableExists('service_impact_levels')) {
+        $conn->exec("INSERT IGNORE INTO service_impact_levels (name, severity_order, display_order)
+                     SELECT DISTINCT sis.impact_level, 99, 999
+                     FROM status_incident_services sis
+                     LEFT JOIN service_impact_levels l ON LOWER(l.name) = LOWER(sis.impact_level)
+                     WHERE sis.impact_level IS NOT NULL AND sis.impact_level <> '' AND l.id IS NULL");
+
+        $upd = $conn->exec("UPDATE status_incident_services sis
+                            JOIN service_impact_levels l ON LOWER(l.name) = LOWER(sis.impact_level)
+                            SET sis.impact_level_id = l.id
+                            WHERE sis.impact_level_id IS NULL AND sis.impact_level IS NOT NULL");
+        if ($upd > 0) {
+            $results[] = ['table' => 'status_incident_services', 'status' => 'migrated', 'details' => ["Backfilled impact_level_id for $upd row(s)"]];
+        }
+        $conn->exec("UPDATE status_incident_services SET impact_level_id = (SELECT id FROM service_impact_levels WHERE is_default = 1 LIMIT 1) WHERE impact_level_id IS NULL");
+    }
+
+    // FKs and indexes
+    foreach ([
+        ['status_incidents',          'fk_status_incidents_status', "ALTER TABLE status_incidents ADD CONSTRAINT fk_status_incidents_status FOREIGN KEY (status_id) REFERENCES service_incident_statuses (id)"],
+        ['status_incident_services',  'fk_sis_impact_level',        "ALTER TABLE status_incident_services ADD CONSTRAINT fk_sis_impact_level FOREIGN KEY (impact_level_id) REFERENCES service_impact_levels (id)"],
+    ] as [$tbl, $name, $sql]) {
+        if ($tableExists($tbl) && !$fkExists($tbl, $name)) {
+            try { $conn->exec($sql); } catch (Exception $e) {}
+        }
+    }
+    foreach ([
+        ['status_incidents',          'ix_status_incidents_status_id', 'status_id'],
+        ['status_incident_services',  'ix_sis_impact_level_id',         'impact_level_id'],
+    ] as [$tbl, $name, $col]) {
+        if ($tableExists($tbl) && !$idxExists($tbl, $name)) {
+            try { $conn->exec("ALTER TABLE `$tbl` ADD KEY `$name` (`$col`)"); } catch (Exception $e) {}
+        }
+    }
+
+    // Drop legacy columns once everything's backfilled
+    foreach ([
+        ['status_incidents',         'status',       'status_id'],
+        ['status_incident_services', 'impact_level', 'impact_level_id'],
+    ] as [$tbl, $oldCol, $newCol]) {
         if (!$tableExists($tbl) || !$colExists($tbl, $oldCol)) continue;
         $orphan = (int) $conn->query("SELECT COUNT(*) FROM `$tbl` WHERE `$newCol` IS NULL")->fetchColumn();
         if ($orphan === 0) {

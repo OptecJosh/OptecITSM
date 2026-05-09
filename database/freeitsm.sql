@@ -743,13 +743,90 @@ CREATE TABLE IF NOT EXISTS `intune_app_sync_job_assets` (
 -- Change Management
 -- ----------------------------------------------------------
 
+CREATE TABLE IF NOT EXISTS `change_types` (
+    `id`                INT NOT NULL AUTO_INCREMENT,
+    `name`              VARCHAR(50) NOT NULL,
+    `colour`            VARCHAR(20) NULL,
+    `is_default`        TINYINT(1) NOT NULL DEFAULT 0,
+    `display_order`     INT NOT NULL DEFAULT 0,
+    `is_active`         TINYINT(1) NOT NULL DEFAULT 1,
+    `created_datetime`  DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_change_types_name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO `change_types` (`name`, `colour`, `is_default`, `display_order`) VALUES
+    ('Standard',  '#16a34a', 0, 10),
+    ('Normal',    '#2563eb', 1, 20),
+    ('Emergency', '#dc2626', 0, 30);
+
+CREATE TABLE IF NOT EXISTS `change_statuses` (
+    `id`                INT NOT NULL AUTO_INCREMENT,
+    `name`              VARCHAR(50) NOT NULL,
+    `is_closed`         TINYINT(1) NOT NULL DEFAULT 0,
+    `colour`            VARCHAR(20) NULL,
+    `is_default`        TINYINT(1) NOT NULL DEFAULT 0,
+    `display_order`     INT NOT NULL DEFAULT 0,
+    `is_active`         TINYINT(1) NOT NULL DEFAULT 1,
+    `created_datetime`  DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_change_statuses_name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO `change_statuses` (`name`, `is_closed`, `colour`, `is_default`, `display_order`) VALUES
+    ('Draft',            0, '#9e9e9e', 1, 10),
+    ('Submitted',        0, '#2563eb', 0, 20),
+    ('Pending Approval', 0, '#e65100', 0, 30),
+    ('Approved',         0, '#2e7d32', 0, 40),
+    ('Rejected',         1, '#c62828', 0, 50),
+    ('Scheduled',        0, '#9333ea', 0, 60),
+    ('In Progress',      0, '#1565c0', 0, 70),
+    ('Completed',        1, '#1b5e20', 0, 80),
+    ('Failed',           1, '#c62828', 0, 90),
+    ('Cancelled',        1, '#bdbdbd', 0, 100);
+
+CREATE TABLE IF NOT EXISTS `change_priorities` (
+    `id`                INT NOT NULL AUTO_INCREMENT,
+    `name`              VARCHAR(50) NOT NULL,
+    `colour`            VARCHAR(20) NULL,
+    `is_default`        TINYINT(1) NOT NULL DEFAULT 0,
+    `display_order`     INT NOT NULL DEFAULT 0,
+    `is_active`         TINYINT(1) NOT NULL DEFAULT 1,
+    `created_datetime`  DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_change_priorities_name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO `change_priorities` (`name`, `colour`, `is_default`, `display_order`) VALUES
+    ('Low',      '#16a34a', 0, 10),
+    ('Medium',   '#2563eb', 1, 20),
+    ('High',     '#f59e0b', 0, 30),
+    ('Critical', '#dc2626', 0, 40);
+
+CREATE TABLE IF NOT EXISTS `change_impacts` (
+    `id`                INT NOT NULL AUTO_INCREMENT,
+    `name`              VARCHAR(50) NOT NULL,
+    `colour`            VARCHAR(20) NULL,
+    `is_default`        TINYINT(1) NOT NULL DEFAULT 0,
+    `display_order`     INT NOT NULL DEFAULT 0,
+    `is_active`         TINYINT(1) NOT NULL DEFAULT 1,
+    `created_datetime`  DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_change_impacts_name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO `change_impacts` (`name`, `colour`, `is_default`, `display_order`) VALUES
+    ('Low',    '#16a34a', 0, 10),
+    ('Medium', '#2563eb', 1, 20),
+    ('High',   '#f59e0b', 0, 30);
+
 CREATE TABLE IF NOT EXISTS `changes` (
     `id`                            INT NOT NULL AUTO_INCREMENT,
     `title`                         VARCHAR(255) NOT NULL,
-    `change_type`                   VARCHAR(20) NOT NULL DEFAULT 'Normal',
-    `status`                        VARCHAR(30) NOT NULL DEFAULT 'Draft',
-    `priority`                      VARCHAR(20) NOT NULL DEFAULT 'Medium',
-    `impact`                        VARCHAR(20) NOT NULL DEFAULT 'Medium',
+    `change_type_id`                INT NULL,
+    `status_id`                     INT NULL,
+    `priority_id`                   INT NULL,
+    `impact_id`                     INT NULL,
     `category`                      VARCHAR(100) NULL,
     `requester_id`                  INT NULL,
     `assigned_to_id`                INT NULL,
@@ -782,10 +859,18 @@ CREATE TABLE IF NOT EXISTS `changes` (
     `created_datetime`              DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `modified_datetime`             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
+    KEY `ix_changes_status_id` (`status_id`),
+    KEY `ix_changes_priority_id` (`priority_id`),
+    KEY `ix_changes_change_type_id` (`change_type_id`),
+    KEY `ix_changes_impact_id` (`impact_id`),
     CONSTRAINT `fk_changes_requester` FOREIGN KEY (`requester_id`) REFERENCES `analysts` (`id`),
     CONSTRAINT `fk_changes_assigned_to` FOREIGN KEY (`assigned_to_id`) REFERENCES `analysts` (`id`),
     CONSTRAINT `fk_changes_approver` FOREIGN KEY (`approver_id`) REFERENCES `analysts` (`id`),
-    CONSTRAINT `fk_changes_created_by` FOREIGN KEY (`created_by_id`) REFERENCES `analysts` (`id`)
+    CONSTRAINT `fk_changes_created_by` FOREIGN KEY (`created_by_id`) REFERENCES `analysts` (`id`),
+    CONSTRAINT `fk_changes_status` FOREIGN KEY (`status_id`) REFERENCES `change_statuses` (`id`),
+    CONSTRAINT `fk_changes_priority` FOREIGN KEY (`priority_id`) REFERENCES `change_priorities` (`id`),
+    CONSTRAINT `fk_changes_change_type` FOREIGN KEY (`change_type_id`) REFERENCES `change_types` (`id`),
+    CONSTRAINT `fk_changes_impact` FOREIGN KEY (`impact_id`) REFERENCES `change_impacts` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `change_attachments` (
@@ -892,9 +977,9 @@ CREATE TABLE IF NOT EXISTS `change_templates` (
     `id`                        INT NOT NULL AUTO_INCREMENT,
     `name`                      VARCHAR(200) NOT NULL,
     `description`               VARCHAR(500) NULL,
-    `change_type`               VARCHAR(20) NULL DEFAULT 'Normal',
-    `priority`                  VARCHAR(20) NULL DEFAULT 'Medium',
-    `impact`                    VARCHAR(20) NULL DEFAULT 'Medium',
+    `change_type_id`            INT NULL,
+    `priority_id`               INT NULL,
+    `impact_id`                 INT NULL,
     `category_id`               INT NULL,
     `risk_likelihood`           TINYINT NULL,
     `risk_impact_score`         TINYINT NULL,
@@ -909,7 +994,10 @@ CREATE TABLE IF NOT EXISTS `change_templates` (
     `created_datetime`          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     CONSTRAINT `fk_template_category` FOREIGN KEY (`category_id`) REFERENCES `change_categories` (`id`) ON DELETE SET NULL,
-    CONSTRAINT `fk_template_created_by` FOREIGN KEY (`created_by_id`) REFERENCES `analysts` (`id`)
+    CONSTRAINT `fk_template_created_by` FOREIGN KEY (`created_by_id`) REFERENCES `analysts` (`id`),
+    CONSTRAINT `fk_template_change_type` FOREIGN KEY (`change_type_id`) REFERENCES `change_types` (`id`),
+    CONSTRAINT `fk_template_priority` FOREIGN KEY (`priority_id`) REFERENCES `change_priorities` (`id`),
+    CONSTRAINT `fk_template_impact` FOREIGN KEY (`impact_id`) REFERENCES `change_impacts` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `change_notifications` (

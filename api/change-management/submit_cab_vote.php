@@ -70,9 +70,21 @@ try {
     $statusChanged = false;
     $newStatus = null;
 
-    $changeStmt = $conn->prepare("SELECT cab_approval_type, status FROM changes WHERE id = ?");
+    $changeStmt = $conn->prepare(
+        "SELECT c.cab_approval_type, cs.name AS status
+         FROM changes c
+         LEFT JOIN change_statuses cs ON cs.id = c.status_id
+         WHERE c.id = ?"
+    );
     $changeStmt->execute([$changeId]);
     $changeRow = $changeStmt->fetch(PDO::FETCH_ASSOC);
+
+    // Helper: status name -> id
+    $statusIdFor = function($name) use ($conn) {
+        $s = $conn->prepare("SELECT id FROM change_statuses WHERE name = ? LIMIT 1");
+        $s->execute([$name]);
+        return $s->fetchColumn() ?: null;
+    };
 
     if ($changeRow && $changeRow['status'] === 'Pending Approval') {
         $approvalType = $changeRow['cab_approval_type'] ?: 'all';
@@ -88,8 +100,9 @@ try {
 
         // Check for rejection first (applies to both approval types)
         if ($rejected > 0) {
-            $updateSql = "UPDATE changes SET status = 'Draft', modified_datetime = UTC_TIMESTAMP() WHERE id = ?";
-            $conn->prepare($updateSql)->execute([$changeId]);
+            $draftId = $statusIdFor('Draft');
+            $updateSql = "UPDATE changes SET status_id = ?, modified_datetime = UTC_TIMESTAMP() WHERE id = ?";
+            $conn->prepare($updateSql)->execute([$draftId, $changeId]);
 
             $statusAudit = "INSERT INTO change_audit (change_id, analyst_id, action_type, field_name, old_value, new_value, created_datetime)
                             VALUES (?, ?, 'status_change', 'Status', 'Pending Approval', 'Draft', UTC_TIMESTAMP())";
@@ -109,8 +122,9 @@ try {
             }
 
             if ($thresholdMet) {
-                $updateSql = "UPDATE changes SET status = 'Approved', approval_datetime = UTC_TIMESTAMP(), modified_datetime = UTC_TIMESTAMP() WHERE id = ?";
-                $conn->prepare($updateSql)->execute([$changeId]);
+                $approvedId = $statusIdFor('Approved');
+                $updateSql = "UPDATE changes SET status_id = ?, approval_datetime = UTC_TIMESTAMP(), modified_datetime = UTC_TIMESTAMP() WHERE id = ?";
+                $conn->prepare($updateSql)->execute([$approvedId, $changeId]);
 
                 $statusAudit = "INSERT INTO change_audit (change_id, analyst_id, action_type, field_name, old_value, new_value, created_datetime)
                                 VALUES (?, ?, 'status_change', 'Status', 'Pending Approval', 'Approved', UTC_TIMESTAMP())";

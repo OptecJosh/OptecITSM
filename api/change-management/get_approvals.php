@@ -21,15 +21,20 @@ try {
     $conn = connectToDatabase();
 
     // Base query for Pending Approval changes
+    $changeJoins = "LEFT JOIN change_types      ct ON ct.id = c.change_type_id
+                    LEFT JOIN change_statuses   cs ON cs.id = c.status_id
+                    LEFT JOIN change_priorities cp ON cp.id = c.priority_id
+                    LEFT JOIN change_impacts    ci ON ci.id = c.impact_id";
+
     if ($filter === 'cab') {
         // CAB filter: changes where current user is a CAB member with pending vote
         $sql = "SELECT
                     c.id,
                     c.title,
-                    c.change_type,
-                    c.status,
-                    c.priority,
-                    c.impact,
+                    ct.name AS change_type,
+                    cs.name AS status,
+                    cp.name AS priority,
+                    ci.name AS impact,
                     c.cab_required,
                     c.work_start_datetime,
                     c.created_datetime,
@@ -38,20 +43,21 @@ try {
                     approver.full_name as approver_name
                 FROM changes c
                 INNER JOIN change_cab_members m ON m.change_id = c.id AND m.analyst_id = ? AND m.vote IS NULL
+                {$changeJoins}
                 LEFT JOIN analysts assigned ON c.assigned_to_id = assigned.id
                 LEFT JOIN analysts requester ON c.requester_id = requester.id
                 LEFT JOIN analysts approver ON c.approver_id = approver.id
-                WHERE c.status = 'Pending Approval'
+                WHERE cs.name = 'Pending Approval'
                 ORDER BY c.created_datetime DESC";
         $params = [$analystId];
     } else {
         $sql = "SELECT
                     c.id,
                     c.title,
-                    c.change_type,
-                    c.status,
-                    c.priority,
-                    c.impact,
+                    ct.name AS change_type,
+                    cs.name AS status,
+                    cp.name AS priority,
+                    ci.name AS impact,
                     c.cab_required,
                     c.work_start_datetime,
                     c.created_datetime,
@@ -59,10 +65,11 @@ try {
                     requester.full_name as requester_name,
                     approver.full_name as approver_name
                 FROM changes c
+                {$changeJoins}
                 LEFT JOIN analysts assigned ON c.assigned_to_id = assigned.id
                 LEFT JOIN analysts requester ON c.requester_id = requester.id
                 LEFT JOIN analysts approver ON c.approver_id = approver.id
-                WHERE c.status = 'Pending Approval'";
+                WHERE cs.name = 'Pending Approval'";
 
         $params = [];
 
@@ -98,9 +105,11 @@ try {
     // Get counts for all filters
     $countSql = "SELECT
                     COUNT(*) as cnt_all,
-                    SUM(CASE WHEN requester_id = ? THEN 1 ELSE 0 END) as cnt_requested,
-                    SUM(CASE WHEN approver_id = ? THEN 1 ELSE 0 END) as cnt_assigned
-                 FROM changes WHERE status = 'Pending Approval'";
+                    SUM(CASE WHEN c.requester_id = ? THEN 1 ELSE 0 END) as cnt_requested,
+                    SUM(CASE WHEN c.approver_id = ? THEN 1 ELSE 0 END) as cnt_assigned
+                 FROM changes c
+                 LEFT JOIN change_statuses cs ON cs.id = c.status_id
+                 WHERE cs.name = 'Pending Approval'";
     $countStmt = $conn->prepare($countSql);
     $countStmt->execute([$analystId, $analystId]);
     $countRow = $countStmt->fetch(PDO::FETCH_ASSOC);
@@ -108,7 +117,8 @@ try {
     // CAB count: changes where current user is a CAB member with pending vote
     $cabCountSql = "SELECT COUNT(*) FROM change_cab_members m
                     INNER JOIN changes c ON c.id = m.change_id
-                    WHERE m.analyst_id = ? AND m.vote IS NULL AND c.status = 'Pending Approval'";
+                    LEFT JOIN change_statuses cs ON cs.id = c.status_id
+                    WHERE m.analyst_id = ? AND m.vote IS NULL AND cs.name = 'Pending Approval'";
     $cabCountStmt = $conn->prepare($cabCountSql);
     $cabCountStmt->execute([$analystId]);
     $cabCount = (int)$cabCountStmt->fetchColumn();

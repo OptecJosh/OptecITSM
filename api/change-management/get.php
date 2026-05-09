@@ -25,12 +25,21 @@ try {
 
     $sql = "SELECT
                 c.*,
+                ct.name AS change_type,
+                cs.name AS status,
+                cs.is_closed AS status_is_closed,
+                cp.name AS priority,
+                ci.name AS impact,
                 requester.full_name as requester_name,
                 assigned.full_name as assigned_to_name,
                 approver.full_name as approver_name,
                 creator.full_name as created_by_name,
                 cat.name as category_name
             FROM changes c
+            LEFT JOIN change_types      ct ON ct.id = c.change_type_id
+            LEFT JOIN change_statuses   cs ON cs.id = c.status_id
+            LEFT JOIN change_priorities cp ON cp.id = c.priority_id
+            LEFT JOIN change_impacts    ci ON ci.id = c.impact_id
             LEFT JOIN analysts requester ON c.requester_id = requester.id
             LEFT JOIN analysts assigned ON c.assigned_to_id = assigned.id
             LEFT JOIN analysts approver ON c.approver_id = approver.id

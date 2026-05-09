@@ -23,25 +23,22 @@ if (!$startDate || !$endDate) {
     exit;
 }
 
-// Status to color mapping
-$statusColors = [
-    'Draft'            => '#9e9e9e',
-    'Pending Approval' => '#e65100',
-    'Approved'         => '#2e7d32',
-    'In Progress'      => '#1565c0',
-    'Completed'        => '#1b5e20',
-    'Failed'           => '#c62828',
-    'Cancelled'        => '#bdbdbd'
-];
-
 try {
     $conn = connectToDatabase();
 
-    $sql = "SELECT c.id, c.title, c.change_type, c.status, c.priority, c.impact,
+    $sql = "SELECT c.id, c.title,
+                   ct.name AS change_type,
+                   cs.name AS status, cs.colour AS status_colour,
+                   cp.name AS priority,
+                   ci.name AS impact,
                    c.work_start_datetime, c.work_end_datetime,
                    c.outage_start_datetime, c.outage_end_datetime,
                    a.full_name as assigned_to_name
             FROM changes c
+            LEFT JOIN change_types      ct ON ct.id = c.change_type_id
+            LEFT JOIN change_statuses   cs ON cs.id = c.status_id
+            LEFT JOIN change_priorities cp ON cp.id = c.priority_id
+            LEFT JOIN change_impacts    ci ON ci.id = c.impact_id
             LEFT JOIN analysts a ON c.assigned_to_id = a.id
             WHERE c.work_start_datetime IS NOT NULL
               AND (
@@ -55,7 +52,7 @@ try {
     // Filter by statuses if specified
     if ($statuses && count($statuses) > 0) {
         $placeholders = implode(',', array_fill(0, count($statuses), '?'));
-        $sql .= " AND c.status IN ($placeholders)";
+        $sql .= " AND cs.name IN ($placeholders)";
         $params = array_merge($params, $statuses);
     }
 
@@ -80,7 +77,7 @@ try {
             'outage_start_datetime' => $change['outage_start_datetime'],
             'outage_end_datetime'   => $change['outage_end_datetime'],
             'assigned_to_name'      => $change['assigned_to_name'],
-            'status_color'          => $statusColors[$change['status']] ?? '#9e9e9e'
+            'status_color'          => $change['status_colour'] ?: '#9e9e9e'
         ];
     }
 

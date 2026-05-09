@@ -106,13 +106,31 @@ if (!in_array($cabApprovalType, ['all', 'majority'])) $cabApprovalType = 'all';
 try {
     $conn = connectToDatabase();
 
+    // Resolve incoming lookup names to ids. Fall back to default rows if name not recognised.
+    $resolveLookup = function($table, $name) use ($conn) {
+        if ($name === null || $name === '') return null;
+        $s = $conn->prepare("SELECT id FROM `$table` WHERE name = ? LIMIT 1");
+        $s->execute([$name]);
+        $id = $s->fetchColumn();
+        if ($id) return (int)$id;
+        $s = $conn->prepare("SELECT id FROM `$table` WHERE is_default = 1 LIMIT 1");
+        $s->execute();
+        $id = $s->fetchColumn();
+        return $id ? (int)$id : null;
+    };
+    $changeTypeId = $resolveLookup('change_types',      $changeType);
+    $statusId     = $resolveLookup('change_statuses',   $status);
+    $priorityId   = $resolveLookup('change_priorities', $priority);
+    $impactId     = $resolveLookup('change_impacts',    $impact);
+
     // Audit: fields to track (field_name => [label, is_longtext])
+    // Lookup-FK fields use the id columns in the row but compare the resolved names.
     $auditFields = [
         'title'                     => ['Title', false],
-        'change_type'               => ['Type', false],
-        'status'                    => ['Status', false],
-        'priority'                  => ['Priority', false],
-        'impact'                    => ['Impact', false],
+        'change_type_id'            => ['Type', false],
+        'status_id'                 => ['Status', false],
+        'priority_id'               => ['Priority', false],
+        'impact_id'                 => ['Impact', false],
         'category'                  => ['Category', false],
         'requester_id'              => ['Requester', false],
         'assigned_to_id'            => ['Assigned To', false],
@@ -131,10 +149,13 @@ try {
         'cab_approval_type'         => ['CAB Approval Type', false],
     ];
 
-    // New values map
+    // New values map. Lookup-FK fields are stored as ids but audited as names so the
+    // change_audit log keeps reading e.g. "Draft -> Approved" rather than "3 -> 5".
     $newValues = [
-        'title' => $title, 'change_type' => $changeType, 'status' => $status,
-        'priority' => $priority, 'impact' => $impact, 'category' => $category,
+        'title' => $title,
+        'change_type_id' => $changeType, 'status_id' => $status,
+        'priority_id' => $priority, 'impact_id' => $impact,
+        'category' => $category,
         'category_id' => $categoryId,
         'requester_id' => $requesterId, 'assigned_to_id' => $assignedToId,
         'approver_id' => $approverId,
@@ -151,6 +172,20 @@ try {
         'cab_required' => $cabRequired, 'cab_approval_type' => $cabApprovalType,
     ];
 
+    // For audit display, resolve old id -> name via the lookup table for FK fields
+    $lookupForField = [
+        'change_type_id' => 'change_types',
+        'status_id'      => 'change_statuses',
+        'priority_id'    => 'change_priorities',
+        'impact_id'      => 'change_impacts',
+    ];
+    $resolveLookupName = function($table, $id) use ($conn) {
+        if (!$id) return null;
+        $s = $conn->prepare("SELECT name FROM `$table` WHERE id = ? LIMIT 1");
+        $s->execute([$id]);
+        return $s->fetchColumn() ?: null;
+    };
+
     if ($changeId) {
         // Fetch existing record for audit comparison
         $oldStmt = $conn->prepare("SELECT * FROM changes WHERE id = ?");
@@ -159,7 +194,7 @@ try {
 
         // Update existing change
         $sql = "UPDATE changes SET
-                    title = ?, change_type = ?, status = ?, priority = ?, impact = ?,
+                    title = ?, change_type_id = ?, status_id = ?, priority_id = ?, impact_id = ?,
                     category = ?, category_id = ?,
                     requester_id = ?, assigned_to_id = ?, approver_id = ?,
                     work_start_datetime = ?, work_end_datetime = ?,
@@ -174,7 +209,7 @@ try {
                 WHERE id = ?";
         $stmt = $conn->prepare($sql);
         $stmt->execute([
-            $title, $changeType, $status, $priority, $impact,
+            $title, $changeTypeId, $statusId, $priorityId, $impactId,
             $category, $categoryId,
             $requesterId, $assignedToId, $approverId,
             $workStart, $workEnd, $outageStart, $outageEnd,
@@ -194,15 +229,21 @@ try {
             $auditStmt = $conn->prepare($auditSql);
 
             foreach ($auditFields as $field => $info) {
-                $oldVal = $oldRecord[$field] ?? null;
-                $newVal = $newValues[$field] ?? null;
+                // For lookup-FK fields, resolve both sides to names for the audit log
+                if (isset($lookupForField[$field])) {
+                    $oldVal = $resolveLookupName($lookupForField[$field], $oldRecord[$field] ?? null);
+                    $newVal = $newValues[$field] ?? null; // already a name string
+                } else {
+                    $oldVal = $oldRecord[$field] ?? null;
+                    $newVal = $newValues[$field] ?? null;
+                }
 
                 // Normalize for comparison
                 $oldNorm = ($oldVal === null || $oldVal === '') ? null : (string)$oldVal;
                 $newNorm = ($newVal === null || $newVal === '') ? null : (string)$newVal;
 
                 if ($oldNorm !== $newNorm) {
-                    $actionType = ($field === 'status') ? 'status_change' : 'field_change';
+                    $actionType = ($field === 'status_id') ? 'status_change' : 'field_change';
                     $oldDisplay = $oldNorm ?? '(empty)';
                     $newDisplay = $newNorm ?? '(empty)';
 
@@ -220,7 +261,7 @@ try {
     } else {
         // Create new change
         $sql = "INSERT INTO changes (
-                    title, change_type, status, priority, impact,
+                    title, change_type_id, status_id, priority_id, impact_id,
                     category, category_id,
                     requester_id, assigned_to_id, approver_id,
                     work_start_datetime, work_end_datetime,
@@ -236,7 +277,7 @@ try {
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())";
         $stmt = $conn->prepare($sql);
         $stmt->execute([
-            $title, $changeType, $status, $priority, $impact,
+            $title, $changeTypeId, $statusId, $priorityId, $impactId,
             $category, $categoryId,
             $requesterId, $assignedToId, $approverId,
             $workStart, $workEnd, $outageStart, $outageEnd,

@@ -33,10 +33,10 @@ try {
     $sql = "SELECT
                 c.id,
                 c.title,
-                c.change_type,
-                c.status,
-                c.priority,
-                c.impact,
+                ct.name AS change_type,
+                cs.name AS status,
+                cp.name AS priority,
+                ci.name AS impact,
                 c.category,
                 c.work_start_datetime,
                 c.work_end_datetime,
@@ -47,6 +47,10 @@ try {
                 assigned.full_name as assigned_to_name,
                 requester.full_name as requester_name
             FROM changes c
+            LEFT JOIN change_types      ct ON ct.id = c.change_type_id
+            LEFT JOIN change_statuses   cs ON cs.id = c.status_id
+            LEFT JOIN change_priorities cp ON cp.id = c.priority_id
+            LEFT JOIN change_impacts    ci ON ci.id = c.impact_id
             LEFT JOIN analysts assigned ON c.assigned_to_id = assigned.id
             LEFT JOIN analysts requester ON c.requester_id = requester.id
             WHERE 1=1";
@@ -54,7 +58,7 @@ try {
     $params = [];
 
     if ($status) {
-        $sql .= " AND c.status = ?";
+        $sql .= " AND cs.name = ?";
         $params[] = $status;
     }
 
@@ -71,7 +75,10 @@ try {
     $changes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Get counts per status
-    $countsSql = "SELECT status, COUNT(*) as cnt FROM changes GROUP BY status";
+    $countsSql = "SELECT cs.name AS status, COUNT(*) as cnt
+                  FROM changes c
+                  LEFT JOIN change_statuses cs ON cs.id = c.status_id
+                  GROUP BY cs.name";
     $countsStmt = $conn->prepare($countsSql);
     $countsStmt->execute();
     $countsRaw = $countsStmt->fetchAll(PDO::FETCH_ASSOC);

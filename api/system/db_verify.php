@@ -552,13 +552,54 @@ $schema = [
         'app_count'         => 'INT NULL',
     ],
 
+    'change_types' => [
+        'id'                => 'INT NOT NULL AUTO_INCREMENT',
+        'name'              => 'VARCHAR(50) NOT NULL',
+        'colour'            => 'VARCHAR(20) NULL',
+        'is_default'        => 'TINYINT(1) NOT NULL DEFAULT 0',
+        'display_order'     => 'INT NOT NULL DEFAULT 0',
+        'is_active'         => 'TINYINT(1) NOT NULL DEFAULT 1',
+        'created_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
+    'change_statuses' => [
+        'id'                => 'INT NOT NULL AUTO_INCREMENT',
+        'name'              => 'VARCHAR(50) NOT NULL',
+        'is_closed'         => 'TINYINT(1) NOT NULL DEFAULT 0',
+        'colour'            => 'VARCHAR(20) NULL',
+        'is_default'        => 'TINYINT(1) NOT NULL DEFAULT 0',
+        'display_order'     => 'INT NOT NULL DEFAULT 0',
+        'is_active'         => 'TINYINT(1) NOT NULL DEFAULT 1',
+        'created_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
+    'change_priorities' => [
+        'id'                => 'INT NOT NULL AUTO_INCREMENT',
+        'name'              => 'VARCHAR(50) NOT NULL',
+        'colour'            => 'VARCHAR(20) NULL',
+        'is_default'        => 'TINYINT(1) NOT NULL DEFAULT 0',
+        'display_order'     => 'INT NOT NULL DEFAULT 0',
+        'is_active'         => 'TINYINT(1) NOT NULL DEFAULT 1',
+        'created_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
+    'change_impacts' => [
+        'id'                => 'INT NOT NULL AUTO_INCREMENT',
+        'name'              => 'VARCHAR(50) NOT NULL',
+        'colour'            => 'VARCHAR(20) NULL',
+        'is_default'        => 'TINYINT(1) NOT NULL DEFAULT 0',
+        'display_order'     => 'INT NOT NULL DEFAULT 0',
+        'is_active'         => 'TINYINT(1) NOT NULL DEFAULT 1',
+        'created_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
     'changes' => [
         'id'                            => 'INT NOT NULL AUTO_INCREMENT',
         'title'                         => 'VARCHAR(255) NOT NULL',
-        'change_type'                   => 'VARCHAR(20) NOT NULL DEFAULT \'Normal\'',
-        'status'                        => 'VARCHAR(30) NOT NULL DEFAULT \'Draft\'',
-        'priority'                      => 'VARCHAR(20) NOT NULL DEFAULT \'Medium\'',
-        'impact'                        => 'VARCHAR(20) NOT NULL DEFAULT \'Medium\'',
+        'change_type_id'                => 'INT NULL',
+        'status_id'                     => 'INT NULL',
+        'priority_id'                   => 'INT NULL',
+        'impact_id'                     => 'INT NULL',
         'category'                      => 'VARCHAR(100) NULL',
         'requester_id'                  => 'INT NULL',
         'assigned_to_id'                => 'INT NULL',
@@ -669,9 +710,9 @@ $schema = [
         'id'                        => 'INT NOT NULL AUTO_INCREMENT',
         'name'                      => 'VARCHAR(200) NOT NULL',
         'description'               => 'VARCHAR(500) NULL',
-        'change_type'               => 'VARCHAR(20) NULL DEFAULT \'Normal\'',
-        'priority'                  => 'VARCHAR(20) NULL DEFAULT \'Medium\'',
-        'impact'                    => 'VARCHAR(20) NULL DEFAULT \'Medium\'',
+        'change_type_id'            => 'INT NULL',
+        'priority_id'               => 'INT NULL',
+        'impact_id'                 => 'INT NULL',
         'category_id'               => 'INT NULL',
         'risk_likelihood'           => 'TINYINT NULL',
         'risk_impact_score'         => 'TINYINT NULL',
@@ -1852,6 +1893,143 @@ try {
             } catch (Exception $e) {}
         } else {
             $results[] = ['table' => 'ticket_rota_entries', 'status' => 'pending', 'details' => ["Cannot drop legacy location column yet — $orphan row(s) still missing location_id"]];
+        }
+    }
+
+    // ----------------------------------------------------------------------
+    // Change Management: lookups for type / status / priority / impact
+    // ----------------------------------------------------------------------
+
+    // Seed default change types
+    if ($tableExists('change_types')) {
+        $cnt = (int) $conn->query("SELECT COUNT(*) FROM change_types")->fetchColumn();
+        if ($cnt === 0) {
+            $conn->exec("INSERT INTO change_types (name, colour, is_default, display_order) VALUES
+                ('Standard',  '#16a34a', 0, 10),
+                ('Normal',    '#2563eb', 1, 20),
+                ('Emergency', '#dc2626', 0, 30)");
+            $results[] = ['table' => 'change_types', 'status' => 'seeded', 'details' => ['Inserted 3 default change types']];
+        }
+    }
+
+    // Seed default change statuses
+    if ($tableExists('change_statuses')) {
+        $cnt = (int) $conn->query("SELECT COUNT(*) FROM change_statuses")->fetchColumn();
+        if ($cnt === 0) {
+            $conn->exec("INSERT INTO change_statuses (name, is_closed, colour, is_default, display_order) VALUES
+                ('Draft',            0, '#9e9e9e', 1, 10),
+                ('Submitted',        0, '#2563eb', 0, 20),
+                ('Pending Approval', 0, '#e65100', 0, 30),
+                ('Approved',         0, '#2e7d32', 0, 40),
+                ('Rejected',         1, '#c62828', 0, 50),
+                ('Scheduled',        0, '#9333ea', 0, 60),
+                ('In Progress',      0, '#1565c0', 0, 70),
+                ('Completed',        1, '#1b5e20', 0, 80),
+                ('Failed',           1, '#c62828', 0, 90),
+                ('Cancelled',        1, '#bdbdbd', 0, 100)");
+            $results[] = ['table' => 'change_statuses', 'status' => 'seeded', 'details' => ['Inserted 10 default change statuses']];
+        }
+    }
+
+    // Seed default change priorities
+    if ($tableExists('change_priorities')) {
+        $cnt = (int) $conn->query("SELECT COUNT(*) FROM change_priorities")->fetchColumn();
+        if ($cnt === 0) {
+            $conn->exec("INSERT INTO change_priorities (name, colour, is_default, display_order) VALUES
+                ('Low',      '#16a34a', 0, 10),
+                ('Medium',   '#2563eb', 1, 20),
+                ('High',     '#f59e0b', 0, 30),
+                ('Critical', '#dc2626', 0, 40)");
+            $results[] = ['table' => 'change_priorities', 'status' => 'seeded', 'details' => ['Inserted 4 default change priorities']];
+        }
+    }
+
+    // Seed default change impacts
+    if ($tableExists('change_impacts')) {
+        $cnt = (int) $conn->query("SELECT COUNT(*) FROM change_impacts")->fetchColumn();
+        if ($cnt === 0) {
+            $conn->exec("INSERT INTO change_impacts (name, colour, is_default, display_order) VALUES
+                ('Low',    '#16a34a', 0, 10),
+                ('Medium', '#2563eb', 1, 20),
+                ('High',   '#f59e0b', 0, 30)");
+            $results[] = ['table' => 'change_impacts', 'status' => 'seeded', 'details' => ['Inserted 3 default change impacts']];
+        }
+    }
+
+    // Backfill changes.{change_type_id, status_id, priority_id, impact_id} and change_templates equivalents
+    $changeBackfills = [
+        ['changes',           'change_type', 'change_type_id', 'change_types'],
+        ['changes',           'status',      'status_id',      'change_statuses'],
+        ['changes',           'priority',    'priority_id',    'change_priorities'],
+        ['changes',           'impact',      'impact_id',      'change_impacts'],
+        ['change_templates',  'change_type', 'change_type_id', 'change_types'],
+        ['change_templates',  'priority',    'priority_id',    'change_priorities'],
+        ['change_templates',  'impact',      'impact_id',      'change_impacts'],
+    ];
+    foreach ($changeBackfills as [$tbl, $oldCol, $newCol, $lkTbl]) {
+        if (!$tableExists($tbl) || !$colExists($tbl, $oldCol) || !$colExists($tbl, $newCol) || !$tableExists($lkTbl)) continue;
+
+        // Insert any unrecognised values into the lookup so the FK can be satisfied
+        $conn->exec("INSERT IGNORE INTO `$lkTbl` (name, display_order)
+                     SELECT DISTINCT t.`$oldCol`, 999
+                     FROM `$tbl` t
+                     LEFT JOIN `$lkTbl` l ON LOWER(l.name) = LOWER(t.`$oldCol`)
+                     WHERE t.`$oldCol` IS NOT NULL AND t.`$oldCol` <> '' AND l.id IS NULL");
+
+        $upd = $conn->exec("UPDATE `$tbl` t
+                            JOIN `$lkTbl` l ON LOWER(l.name) = LOWER(t.`$oldCol`)
+                            SET t.`$newCol` = l.id
+                            WHERE t.`$newCol` IS NULL AND t.`$oldCol` IS NOT NULL");
+        if ($upd > 0) {
+            $results[] = ['table' => $tbl, 'status' => 'migrated', 'details' => ["Backfilled $newCol for $upd row(s) from legacy $oldCol"]];
+        }
+
+        // Default any still-null rows to the configured default lookup row
+        $conn->exec("UPDATE `$tbl` SET `$newCol` = (SELECT id FROM `$lkTbl` WHERE is_default = 1 LIMIT 1) WHERE `$newCol` IS NULL");
+    }
+
+    // Add FKs + indexes for new change columns if missing
+    $changeFks = [
+        ['changes',          'fk_changes_status',      "ALTER TABLE changes ADD CONSTRAINT fk_changes_status FOREIGN KEY (status_id) REFERENCES change_statuses (id)"],
+        ['changes',          'fk_changes_priority',    "ALTER TABLE changes ADD CONSTRAINT fk_changes_priority FOREIGN KEY (priority_id) REFERENCES change_priorities (id)"],
+        ['changes',          'fk_changes_change_type', "ALTER TABLE changes ADD CONSTRAINT fk_changes_change_type FOREIGN KEY (change_type_id) REFERENCES change_types (id)"],
+        ['changes',          'fk_changes_impact',      "ALTER TABLE changes ADD CONSTRAINT fk_changes_impact FOREIGN KEY (impact_id) REFERENCES change_impacts (id)"],
+        ['change_templates', 'fk_template_change_type',"ALTER TABLE change_templates ADD CONSTRAINT fk_template_change_type FOREIGN KEY (change_type_id) REFERENCES change_types (id)"],
+        ['change_templates', 'fk_template_priority',   "ALTER TABLE change_templates ADD CONSTRAINT fk_template_priority FOREIGN KEY (priority_id) REFERENCES change_priorities (id)"],
+        ['change_templates', 'fk_template_impact',     "ALTER TABLE change_templates ADD CONSTRAINT fk_template_impact FOREIGN KEY (impact_id) REFERENCES change_impacts (id)"],
+    ];
+    foreach ($changeFks as [$tbl, $name, $sql]) {
+        if (!$tableExists($tbl) || $fkExists($tbl, $name)) continue;
+        try { $conn->exec($sql); } catch (Exception $e) {}
+    }
+    $changeIndexes = [
+        ['changes', 'ix_changes_status_id',      'status_id'],
+        ['changes', 'ix_changes_priority_id',    'priority_id'],
+        ['changes', 'ix_changes_change_type_id', 'change_type_id'],
+        ['changes', 'ix_changes_impact_id',      'impact_id'],
+    ];
+    foreach ($changeIndexes as [$tbl, $name, $col]) {
+        if (!$tableExists($tbl) || $idxExists($tbl, $name)) continue;
+        try { $conn->exec("ALTER TABLE `$tbl` ADD KEY `$name` (`$col`)"); } catch (Exception $e) {}
+    }
+
+    // Drop legacy change columns once each tablet's rows are fully backfilled
+    foreach ([['changes', 'change_type', 'change_type_id'],
+              ['changes', 'status',      'status_id'],
+              ['changes', 'priority',    'priority_id'],
+              ['changes', 'impact',      'impact_id'],
+              ['change_templates', 'change_type', 'change_type_id'],
+              ['change_templates', 'priority',    'priority_id'],
+              ['change_templates', 'impact',      'impact_id']] as [$tbl, $oldCol, $newCol]) {
+        if (!$tableExists($tbl) || !$colExists($tbl, $oldCol)) continue;
+        $orphan = (int) $conn->query("SELECT COUNT(*) FROM `$tbl` WHERE `$newCol` IS NULL")->fetchColumn();
+        if ($orphan === 0) {
+            try {
+                $conn->exec("ALTER TABLE `$tbl` DROP COLUMN `$oldCol`");
+                $results[] = ['table' => $tbl, 'status' => 'updated', 'details' => ["Dropped legacy $oldCol column"]];
+            } catch (Exception $e) {}
+        } else {
+            $results[] = ['table' => $tbl, 'status' => 'pending', 'details' => ["Cannot drop $oldCol yet — $orphan row(s) still missing $newCol"]];
         }
     }
 

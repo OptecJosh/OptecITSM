@@ -562,6 +562,33 @@ $path_prefix = '../../';  // Two levels up from tickets/settings/
                     <small style="color: #666;">Applied to every cleanup unless changed here.</small>
                 </div>
 
+                <div class="form-group">
+                    <label for="rcCustomInstructions">Custom Instructions <span style="color: #999; font-weight: normal;">(optional)</span></label>
+                    <textarea id="rcCustomInstructions" rows="6" maxlength="4000"
+                              style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; font-family: inherit; resize: vertical;"
+                              placeholder="e.g. Always sign off with 'Many thanks,'&#10;Refer to the company as 'BillCorp'&#10;Use British English spellings throughout"></textarea>
+                    <small style="color: #666;">
+                        Appended to the system prompt below. Use this for organisation-specific tweaks
+                        (sign-off variations, company name, language preferences). The hard safety rules
+                        and output format above will still take precedence.
+                    </small>
+                </div>
+
+                <details style="margin-top: 24px; border: 1px solid #e5e5e5; border-radius: 4px; background: #fafafa;">
+                    <summary style="padding: 12px 16px; cursor: pointer; font-weight: 600; color: #333;">
+                        View system prompt (read-only)
+                    </summary>
+                    <div style="padding: 0 16px 16px 16px; color: #555;">
+                        <p style="margin: 0 0 12px 0; font-size: 13px;">
+                            This is the full system prompt sent to Claude on every cleanup. The greeting
+                            name varies per ticket; the tone reflects your selection above. Your custom
+                            instructions (if any) are appended at the end at runtime — they are not shown
+                            here, edit them in the textarea above.
+                        </p>
+                        <pre id="rcPromptPreview" style="white-space: pre-wrap; word-wrap: break-word; font-family: 'Consolas', 'Monaco', monospace; font-size: 12px; line-height: 1.5; background: white; padding: 14px; border: 1px solid #e0e0e0; border-radius: 4px; max-height: 500px; overflow-y: auto; color: #333; margin: 0;"></pre>
+                    </div>
+                </details>
+
                 <div class="modal-actions" style="justify-content: flex-start; margin-top: 30px; gap: 12px;">
                     <button type="submit" class="btn btn-primary">Save</button>
                     <button type="button" id="rcTestBtn" class="btn" style="background: #6c757d; color: white;">Test connection</button>
@@ -2655,17 +2682,29 @@ $path_prefix = '../../';  // Two levels up from tickets/settings/
                 document.getElementById('rcApiKey').placeholder = data.has_api_key ? '' : 'sk-ant-...';
                 document.getElementById('rcModel').value = data.model || 'claude-haiku-4-5-20251001';
                 document.getElementById('rcTone').value  = data.tone  || 'Friendly';
+                document.getElementById('rcCustomInstructions').value = data.custom_instructions || '';
+                document.getElementById('rcPromptPreview').textContent = data.prompt_preview || '';
             } catch (err) {
                 console.error('Failed to load reply cleanup settings:', err);
             }
         }
 
+        // Re-fetch the prompt preview when the tone selection changes so the
+        // read-only panel always reflects the currently-chosen tone clause.
+        document.addEventListener('DOMContentLoaded', function() {
+            const toneSelect = document.getElementById('rcTone');
+            if (toneSelect) {
+                toneSelect.addEventListener('change', loadReplyCleanupSettings);
+            }
+        });
+
         document.getElementById('replyCleanupForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const payload = {
-                api_key: document.getElementById('rcApiKey').value,
-                model:   document.getElementById('rcModel').value,
-                tone:    document.getElementById('rcTone').value,
+                api_key:             document.getElementById('rcApiKey').value,
+                model:               document.getElementById('rcModel').value,
+                tone:                document.getElementById('rcTone').value,
+                custom_instructions: document.getElementById('rcCustomInstructions').value,
             };
             try {
                 const res = await fetch(API_TICKETS + 'save_reply_cleanup_settings.php', {

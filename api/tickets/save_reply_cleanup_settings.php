@@ -28,12 +28,16 @@ try {
     $rawKey = $input['api_key'] ?? '';
     $model  = trim($input['model'] ?? '');
     $tone   = trim($input['tone']  ?? '');
+    $customInstructions = (string)($input['custom_instructions'] ?? '');
 
     if (!in_array($model, VALID_MODELS, true)) {
         throw new Exception('Invalid model selection');
     }
     if (!in_array($tone, VALID_TONES, true)) {
         throw new Exception('Invalid tone selection');
+    }
+    if (mb_strlen($customInstructions) > 4000) {
+        throw new Exception('Custom instructions are too long (max 4000 characters)');
     }
 
     $conn = connectToDatabase();
@@ -55,8 +59,9 @@ try {
         $upsert($conn, 'tickets_reply_cleanup_api_key', $encrypted);
     }
 
-    $upsert($conn, 'tickets_reply_cleanup_model', $model);
-    $upsert($conn, 'tickets_reply_cleanup_tone',  $tone);
+    $upsert($conn, 'tickets_reply_cleanup_model',               $model);
+    $upsert($conn, 'tickets_reply_cleanup_tone',                $tone);
+    $upsert($conn, 'tickets_reply_cleanup_custom_instructions', trim($customInstructions));
 
     echo json_encode(['success' => true]);
 

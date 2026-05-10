@@ -79,6 +79,14 @@ $schema = [
         'module_key'  => 'VARCHAR(50) NOT NULL',
     ],
 
+    'user_preferences' => [
+        'id'                => 'INT NOT NULL AUTO_INCREMENT',
+        'analyst_id'        => 'INT NOT NULL',
+        'preference_key'    => 'VARCHAR(100) NOT NULL',
+        'preference_value'  => 'VARCHAR(500) NULL',
+        'updated_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
     'ticket_types' => [
         'id'                => 'INT NOT NULL AUTO_INCREMENT',
         'name'              => 'VARCHAR(100) NOT NULL',
@@ -2272,6 +2280,7 @@ try {
         ['rfp_consolidated_sources', 'uq_rfp_consolidated_sources', '(`consolidated_id`, `extracted_id`)'],
         ['rfp_invited_suppliers', 'uq_rfp_invited_suppliers', '(`rfp_id`, `supplier_id`)'],
         ['rfp_scores', 'uq_rfp_scores', '(`rfp_id`, `supplier_id`, `analyst_id`, `consolidated_id`)'],
+        ['user_preferences', 'uq_user_pref', '(`analyst_id`, `preference_key`)'],
     ];
 
     foreach ($uniqueIndexes as [$tbl, $idxName, $cols]) {

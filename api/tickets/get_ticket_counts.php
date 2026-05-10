@@ -165,6 +165,66 @@ try {
     $unassignedResult = $unassignedStmt->fetch(PDO::FETCH_ASSOC);
     $unassignedStmt->closeCursor();
 
+    // Unassigned-by-analyst count (tickets with no assigned analyst, within accessible depts)
+    if ($hasTeamFilter) {
+        if (empty($accessibleDepts)) {
+            $unassignedAnalystCount = 0;
+        } else {
+            $deptIdPlaceholdersUA = implode(',', array_fill(0, count($accessibleDepts), '?'));
+            $uaSql = "SELECT COUNT(*) FROM tickets
+                      WHERE assigned_analyst_id IS NULL
+                        AND (department_id IN ($deptIdPlaceholdersUA) OR department_id IS NULL)";
+            $uaStmt = $conn->prepare($uaSql);
+            $uaStmt->execute($accessibleDepts);
+            $unassignedAnalystCount = (int)$uaStmt->fetchColumn();
+            $uaStmt->closeCursor();
+        }
+    } else {
+        $unassignedAnalystCount = (int)$conn->query("SELECT COUNT(*) FROM tickets WHERE assigned_analyst_id IS NULL")->fetchColumn();
+    }
+
+    // Counts by analyst, and by analyst+status — bounded by accessible depts when team-filtered.
+    // The dept filter sits in the LEFT JOIN ON clause so analysts with zero matching tickets
+    // still appear in the folder list (as drop targets).
+    $deptJoinFilter = '';
+    $analystParams = [];
+    $skipAnalystQueries = false;
+    if ($hasTeamFilter) {
+        if (empty($accessibleDepts)) {
+            $skipAnalystQueries = true;
+        } else {
+            $deptJoinFilter = " AND (t.department_id IN (" . implode(',', array_fill(0, count($accessibleDepts), '?')) . ") OR t.department_id IS NULL)";
+            $analystParams = $accessibleDepts;
+        }
+    }
+
+    if ($skipAnalystQueries) {
+        $analystCounts = [];
+        $analystStatusCounts = [];
+    } else {
+        $analystCountSql = "SELECT a.id, a.full_name, COUNT(t.id) as count
+                            FROM analysts a
+                            LEFT JOIN tickets t ON t.assigned_analyst_id = a.id $deptJoinFilter
+                            WHERE a.is_active = 1
+                            GROUP BY a.id, a.full_name
+                            ORDER BY a.full_name";
+        $analystCountStmt = $conn->prepare($analystCountSql);
+        $analystCountStmt->execute($analystParams);
+        $analystCounts = $analystCountStmt->fetchAll(PDO::FETCH_ASSOC);
+        $analystCountStmt->closeCursor();
+
+        $analystStatusSql = "SELECT a.id as analyst_id, ts.name AS status, COUNT(t.id) as count
+                             FROM analysts a
+                             LEFT JOIN tickets t ON t.assigned_analyst_id = a.id $deptJoinFilter
+                             LEFT JOIN ticket_statuses ts ON ts.id = t.status_id
+                             WHERE a.is_active = 1
+                             GROUP BY a.id, ts.name";
+        $analystStatusStmt = $conn->prepare($analystStatusSql);
+        $analystStatusStmt->execute($analystParams);
+        $analystStatusCounts = $analystStatusStmt->fetchAll(PDO::FETCH_ASSOC);
+        $analystStatusStmt->closeCursor();
+    }
+
     // Master list of active statuses — drives the folder UI
     $statusListStmt = $conn->query(
         "SELECT id, name, colour, is_closed, is_default, display_order
@@ -226,12 +286,41 @@ try {
         }
     }
 
+    // Build analyst structure with status subfolders (mirrors departmentStructure)
+    $statusByAnalyst = [];
+    foreach ($analystStatusCounts as $row) {
+        if ($row['status'] === null) continue;
+        if (!in_array($row['status'], $activeStatusNames, true)) continue;
+        if (!isset($statusByAnalyst[$row['analyst_id']])) {
+            $statusByAnalyst[$row['analyst_id']] = [];
+        }
+        $statusByAnalyst[$row['analyst_id']][$row['status']] = (int)$row['count'];
+    }
+
+    $analystStructure = [];
+    foreach ($analystCounts as $a) {
+        $aId = $a['id'];
+        $aStatusMap = $statusByAnalyst[$aId] ?? [];
+        $statuses = [];
+        foreach ($activeStatusNames as $name) {
+            $statuses[$name] = $aStatusMap[$name] ?? 0;
+        }
+        $analystStructure[] = [
+            'id' => (int)$aId,
+            'name' => $a['full_name'],
+            'count' => (int)$a['count'],
+            'statuses' => $statuses
+        ];
+    }
+
     echo json_encode([
         'success' => true,
         'total_count' => $totalCount,
         'unassigned_count' => (int)$unassignedResult['count'],
+        'unassigned_analyst_count' => $unassignedAnalystCount,
         'statuses' => $statusMeta,
         'departments' => $departmentStructure,
+        'analysts' => $analystStructure,
         'overall_statuses' => $overallStatuses
     ]);
 

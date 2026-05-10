@@ -9,6 +9,7 @@ const API_BASE = window.API_BASE || 'api/';
 let emails = [];
 let selectedEmailId = null;
 let composeMode = 'new';
+let folderGrouping = 'department'; // 'department' or 'analyst' — persisted via user_preferences
 
 function showToast(message, isError = false) {
     const toast = document.getElementById('toast');
@@ -68,6 +69,51 @@ function getDisplayName(type, id) {
     return id;
 }
 
+// Resolve API base for shared endpoints (api/system/...) — works whether the page is at
+// the repo root or inside a module folder.
+function sharedApiBase() {
+    return API_BASE.replace(/[^/]+\/?$/, '');
+}
+
+async function loadFolderGroupingPreference() {
+    try {
+        const res = await fetch(sharedApiBase() + 'system/get_user_preference.php?key=tickets_folder_grouping');
+        const data = await res.json();
+        if (data && data.success && (data.value === 'analyst' || data.value === 'department')) {
+            folderGrouping = data.value;
+        }
+    } catch (e) { /* fall back to default */ }
+    // Sync the toggle UI to whatever we ended up with
+    document.querySelectorAll('.folder-group-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.group === folderGrouping);
+    });
+}
+
+async function setFolderGrouping(mode) {
+    if (mode !== 'department' && mode !== 'analyst') return;
+    if (mode === folderGrouping) return;
+    folderGrouping = mode;
+
+    // Reset selection back to "All Tickets" so we don't leave a stale dept/analyst filter active
+    currentFilter = { type: 'all' };
+    document.getElementById('emailListTitle').textContent = 'All Tickets';
+
+    // Update the toggle UI
+    document.querySelectorAll('.folder-group-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.group === folderGrouping);
+    });
+
+    renderFolders();
+    loadEmails();
+
+    // Persist (fire-and-forget)
+    fetch(sharedApiBase() + 'system/set_user_preference.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'tickets_folder_grouping', value: folderGrouping })
+    }).catch(() => {});
+}
+
 // Load data on page load
 document.addEventListener('DOMContentLoaded', function() {
     loadDepartments();
@@ -75,7 +121,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadTicketOrigins();
     loadTicketStatuses();
     loadAnalysts();
-    loadFolderCounts();
+    loadFolderGroupingPreference().then(loadFolderCounts);
     initTinyMCE();
     initAttachmentHandlers();
 
@@ -310,7 +356,7 @@ async function loadFolderCounts() {
     }
 }
 
-// Render folder structure
+// Render folder structure. Branches on folderGrouping (department vs analyst).
 function renderFolders() {
     const folderListEl = document.getElementById('folderList');
 
@@ -327,7 +373,10 @@ function renderFolders() {
         </div>
     `;
 
-    // Unassigned folder — always rendered as a drop target so tickets can be returned to it
+    // Unassigned folder — semantics depend on grouping mode (no department vs no analyst)
+    const unassignedCount = folderGrouping === 'analyst'
+        ? (folderCounts.unassigned_analyst_count || 0)
+        : (folderCounts.unassigned_count || 0);
     html += `
         <div class="folder-item drop-zone ${currentFilter.type === 'unassigned' ? 'active' : ''}"
              data-drop-type="unassigned" onclick="selectFolder('unassigned')">
@@ -335,22 +384,56 @@ function renderFolders() {
                 <span class="folder-icon">⚠️</span>
                 <span>Unassigned</span>
             </div>
-            <span class="folder-count">${folderCounts.unassigned_count || 0}</span>
+            <span class="folder-count">${unassignedCount}</span>
         </div>
     `;
 
     html += '<div class="folder-divider"></div>';
 
-    // Department folders
-    if (folderCounts.departments) {
+    if (folderGrouping === 'analyst') {
+        const analysts = folderCounts.analysts || [];
+        analysts.forEach(an => {
+            const folderKey = `analyst_${an.id}`;
+            const isExpanded = expandedFolders[folderKey];
+            const isActive = currentFilter.type === 'analyst' && currentFilter.id == an.id;
+
+            html += `
+                <div class="folder-item drop-zone ${isExpanded ? 'expanded' : ''} ${isActive ? 'active' : ''}"
+                     data-drop-type="analyst" data-analyst-id="${an.id}"
+                     onclick="toggleFolder('${folderKey}', ${an.id}, { kind: 'analyst' })">
+                    <div class="folder-name">
+                        <span class="folder-icon">👤</span>
+                        <span>${escapeHtml(an.name)}</span>
+                    </div>
+                    <span class="folder-count">${an.count}</span>
+                </div>
+            `;
+
+            html += `<div class="subfolder-group ${isExpanded ? 'expanded' : ''}"><div class="subfolder-group-inner">`;
+            const statuses = (folderCounts.statuses || []).map(s => s.name);
+            statuses.forEach(status => {
+                const count = (an.statuses || {})[status] || 0;
+                const subActive = currentFilter.type === 'analyst_status' && currentFilter.analyst_id == an.id && currentFilter.status === status;
+                html += `
+                    <div class="subfolder-item drop-zone ${subActive ? 'active' : ''} ${count === 0 ? 'empty' : ''}"
+                         data-drop-type="analyst_status" data-analyst-id="${an.id}" data-status="${escapeHtml(status)}">
+                        <span>${escapeHtml(status)}</span>
+                        <span class="folder-count">${count}</span>
+                    </div>
+                `;
+            });
+            html += `</div></div>`;
+        });
+    } else if (folderCounts.departments) {
         folderCounts.departments.forEach(dept => {
-            const isExpanded = expandedFolders[`dept_${dept.id}`];
+            const folderKey = `dept_${dept.id}`;
+            const isExpanded = expandedFolders[folderKey];
             const isActive = currentFilter.type === 'department' && currentFilter.id == dept.id;
 
             html += `
                 <div class="folder-item drop-zone ${isExpanded ? 'expanded' : ''} ${isActive ? 'active' : ''}"
                      data-drop-type="department" data-dept-id="${dept.id}"
-                     onclick="toggleFolder('dept_${dept.id}', ${dept.id})">
+                     onclick="toggleFolder('${folderKey}', ${dept.id}, { kind: 'department' })">
                     <div class="folder-name">
                         <span class="folder-icon"></span>
                         <span>${escapeHtml(dept.name)}</span>
@@ -359,7 +442,6 @@ function renderFolders() {
                 </div>
             `;
 
-            // Status subfolders — driven by the active statuses returned in folderCounts.statuses
             html += `<div class="subfolder-group ${isExpanded ? 'expanded' : ''}"><div class="subfolder-group-inner">`;
             const statuses = (folderCounts.statuses || []).map(s => s.name);
             statuses.forEach(status => {
@@ -401,14 +483,21 @@ function updateActiveFolderClasses() {
     } else if (currentFilter.type === 'dept_status') {
         const sel = `.subfolder-item[data-dept-id="${currentFilter.dept_id}"][data-status="${CSS.escape(currentFilter.status)}"]`;
         list.querySelector(sel)?.classList.add('active');
+    } else if (currentFilter.type === 'analyst') {
+        list.querySelector(`[data-drop-type="analyst"][data-analyst-id="${currentFilter.id}"]`)
+            ?.classList.add('active');
+    } else if (currentFilter.type === 'analyst_status') {
+        const sel = `.subfolder-item[data-analyst-id="${currentFilter.analyst_id}"][data-status="${CSS.escape(currentFilter.status)}"]`;
+        list.querySelector(sel)?.classList.add('active');
     }
 }
 
-// Toggle folder expansion
+// Toggle folder expansion. Works for both department and analyst folders.
+// opts.kind — 'department' (default) or 'analyst'
 // opts.selectAfter — if false, don't change the active filter/view (used by drag hover)
 // opts.forceExpand — if true, only expand (no toggle), used by drag hover
-function toggleFolder(folderId, deptId, opts = {}) {
-    const { selectAfter = true, forceExpand = false } = opts;
+function toggleFolder(folderId, groupId, opts = {}) {
+    const { selectAfter = true, forceExpand = false, kind = 'department' } = opts;
     const wasExpanded = !!expandedFolders[folderId];
     let willBeExpanded;
     if (forceExpand) {
@@ -420,10 +509,9 @@ function toggleFolder(folderId, deptId, opts = {}) {
     expandedFolders[folderId] = willBeExpanded;
 
     // Targeted class flip on the existing nodes so the CSS grid-row transition fires.
-    // Rebuilding via renderFolders() would create fresh DOM nodes already in their
-    // final state with nothing to transition from.
     const list = document.getElementById('folderList');
-    const folderRow = list?.querySelector(`.folder-item[data-drop-type="department"][data-dept-id="${deptId}"]`);
+    const dataAttr = kind === 'analyst' ? 'data-analyst-id' : 'data-dept-id';
+    const folderRow = list?.querySelector(`.folder-item[data-drop-type="${kind}"][${dataAttr}="${groupId}"]`);
     const subGroup = folderRow?.nextElementSibling;
     folderRow?.classList.toggle('expanded', willBeExpanded);
     if (subGroup && subGroup.classList.contains('subfolder-group')) {
@@ -431,9 +519,15 @@ function toggleFolder(folderId, deptId, opts = {}) {
     }
 
     if (selectAfter) {
-        currentFilter = { type: 'department', id: deptId };
-        const dept = folderCounts.departments?.find(d => d.id == deptId);
-        document.getElementById('emailListTitle').textContent = dept ? dept.name : 'Department';
+        if (kind === 'analyst') {
+            currentFilter = { type: 'analyst', id: groupId };
+            const an = folderCounts.analysts?.find(a => a.id == groupId);
+            document.getElementById('emailListTitle').textContent = an ? an.name : 'Analyst';
+        } else {
+            currentFilter = { type: 'department', id: groupId };
+            const dept = folderCounts.departments?.find(d => d.id == groupId);
+            document.getElementById('emailListTitle').textContent = dept ? dept.name : 'Department';
+        }
         updateActiveFolderClasses();
         loadEmails();
     }
@@ -467,6 +561,16 @@ function selectDeptStatus(deptId, status) {
     loadEmails();
 }
 
+// Select analyst + status
+function selectAnalystStatus(analystId, status) {
+    currentFilter = { type: 'analyst_status', analyst_id: analystId, status: status };
+    const an = folderCounts.analysts?.find(a => a.id == analystId);
+    document.getElementById('emailListTitle').textContent = `${an ? an.name : 'Analyst'} - ${status}`;
+
+    updateActiveFolderClasses();
+    loadEmails();
+}
+
 // ===== Drag-and-drop: tickets onto folders =====
 let draggedTicketId = null;
 let draggedTicketNumber = null;
@@ -493,14 +597,19 @@ function attachEmailDragHandlers() {
 }
 
 function attachFolderDropHandlers() {
-    // Click handler for subfolder rows (replaces the previous inline onclick which
-    // couldn't safely embed status names containing apostrophes)
+    // Click handler for subfolder rows (delegated so status names with apostrophes are safe)
     document.querySelectorAll('#folderList .subfolder-item').forEach(el => {
         el.addEventListener('click', (e) => {
             e.stopPropagation();
-            const deptId = parseInt(el.dataset.deptId, 10);
+            const dropType = el.dataset.dropType;
             const status = el.dataset.status;
-            if (deptId && status) selectDeptStatus(deptId, status);
+            if (dropType === 'analyst_status') {
+                const analystId = parseInt(el.dataset.analystId, 10);
+                if (analystId && status) selectAnalystStatus(analystId, status);
+            } else {
+                const deptId = parseInt(el.dataset.deptId, 10);
+                if (deptId && status) selectDeptStatus(deptId, status);
+            }
         });
     });
 
@@ -511,16 +620,17 @@ function attachFolderDropHandlers() {
             e.dataTransfer.dropEffect = 'move';
             el.classList.add('drop-target');
 
-            // Hover-to-expand on collapsed dept folders
-            if (el.dataset.dropType === 'department') {
-                const folderId = `dept_${el.dataset.deptId}`;
+            // Hover-to-expand on collapsed group folders (works for both dept and analyst)
+            const dt = el.dataset.dropType;
+            if (dt === 'department' || dt === 'analyst') {
+                const groupId = dt === 'analyst' ? el.dataset.analystId : el.dataset.deptId;
+                const folderId = `${dt === 'analyst' ? 'analyst' : 'dept'}_${groupId}`;
                 if (!expandedFolders[folderId]) {
                     if (dragHoverFolderId !== folderId) {
                         cancelDragHover();
                         dragHoverFolderId = folderId;
-                        const deptId = el.dataset.deptId;
                         dragHoverTimer = setTimeout(() => {
-                            toggleFolder(folderId, deptId, { selectAfter: false, forceExpand: true });
+                            toggleFolder(folderId, groupId, { selectAfter: false, forceExpand: true, kind: dt });
                             dragHoverTimer = null;
                         }, 600);
                     }
@@ -529,9 +639,11 @@ function attachFolderDropHandlers() {
         });
         el.addEventListener('dragleave', (e) => {
             el.classList.remove('drop-target');
-            // Only cancel hover timer if leaving the dept row that started it
-            if (el.dataset.dropType === 'department' &&
-                dragHoverFolderId === `dept_${el.dataset.deptId}`) {
+            const dt = el.dataset.dropType;
+            // Only cancel hover timer if leaving the row that started it
+            if (dt === 'department' && dragHoverFolderId === `dept_${el.dataset.deptId}`) {
+                cancelDragHover();
+            } else if (dt === 'analyst' && dragHoverFolderId === `analyst_${el.dataset.analystId}`) {
                 cancelDragHover();
             }
         });
@@ -562,13 +674,21 @@ async function handleTicketDrop(targetEl, ticketId, ticketNumber) {
     const sourceEmail = emails.find(e => String(e.ticket_id) === String(ticketId));
     const oldDeptName = sourceEmail ? getDisplayName('department', sourceEmail.department_id) : null;
     const oldStatusName = sourceEmail ? sourceEmail.status : null;
+    const oldAnalystName = sourceEmail ? getDisplayName('owner', sourceEmail.assigned_analyst_id) : null;
 
     let newDeptName = null;
     let newStatusName = null;
+    let newAnalystName = null;
 
+    // "Unassigned" target means different things depending on the active grouping
     if (dropType === 'unassigned') {
-        payload.department_id = '';
-        toastMsg = `${ticketNumber || 'Ticket'} → Unassigned`;
+        if (folderGrouping === 'analyst') {
+            payload.assigned_analyst_id = '';
+            toastMsg = `${ticketNumber || 'Ticket'} → Unassigned (no analyst)`;
+        } else {
+            payload.department_id = '';
+            toastMsg = `${ticketNumber || 'Ticket'} → Unassigned`;
+        }
     } else if (dropType === 'department') {
         payload.department_id = parseInt(targetEl.dataset.deptId, 10);
         const dept = folderCounts.departments.find(d => d.id == payload.department_id);
@@ -581,6 +701,18 @@ async function handleTicketDrop(targetEl, ticketId, ticketNumber) {
         newDeptName = dept ? dept.name : null;
         newStatusName = payload.status;
         toastMsg = `${ticketNumber || 'Ticket'} → ${newDeptName || 'Department'} / ${payload.status}`;
+    } else if (dropType === 'analyst') {
+        payload.assigned_analyst_id = parseInt(targetEl.dataset.analystId, 10);
+        const an = folderCounts.analysts?.find(a => a.id == payload.assigned_analyst_id);
+        newAnalystName = an ? an.name : null;
+        toastMsg = `${ticketNumber || 'Ticket'} → ${newAnalystName || 'Analyst'}`;
+    } else if (dropType === 'analyst_status') {
+        payload.assigned_analyst_id = parseInt(targetEl.dataset.analystId, 10);
+        payload.status = targetEl.dataset.status;
+        const an = folderCounts.analysts?.find(a => a.id == payload.assigned_analyst_id);
+        newAnalystName = an ? an.name : null;
+        newStatusName = payload.status;
+        toastMsg = `${ticketNumber || 'Ticket'} → ${newAnalystName || 'Analyst'} / ${payload.status}`;
     } else {
         return;
     }
@@ -597,11 +729,16 @@ async function handleTicketDrop(targetEl, ticketId, ticketNumber) {
         // Audit log — only for fields that actually changed
         const ticketIdInt = parseInt(ticketId, 10);
         const auditCalls = [];
-        if (newDeptName !== oldDeptName) {
+        if (newDeptName !== oldDeptName && (dropType === 'department' || dropType === 'dept_status' || (dropType === 'unassigned' && folderGrouping !== 'analyst'))) {
             auditCalls.push(logAudit(ticketIdInt, 'Department', oldDeptName, newDeptName));
         }
         if (newStatusName !== null && newStatusName !== oldStatusName) {
             auditCalls.push(logAudit(ticketIdInt, 'Status', oldStatusName, newStatusName));
+        }
+        if (dropType === 'analyst' || dropType === 'analyst_status' || (dropType === 'unassigned' && folderGrouping === 'analyst')) {
+            if (newAnalystName !== oldAnalystName) {
+                auditCalls.push(logAudit(ticketIdInt, 'Owner', oldAnalystName, newAnalystName));
+            }
         }
         await Promise.all(auditCalls);
 
@@ -626,11 +763,16 @@ async function loadEmails() {
         let url = API_BASE + 'get_emails.php?';
 
         if (currentFilter.type === 'unassigned') {
-            url += 'department_id=unassigned';
+            // "Unassigned" semantics depend on the active grouping
+            url += folderGrouping === 'analyst' ? 'assignee_id=unassigned' : 'department_id=unassigned';
         } else if (currentFilter.type === 'department') {
             url += `department_id=${currentFilter.id}`;
         } else if (currentFilter.type === 'dept_status') {
             url += `department_id=${currentFilter.dept_id}&status=${encodeURIComponent(currentFilter.status)}`;
+        } else if (currentFilter.type === 'analyst') {
+            url += `assignee_id=${currentFilter.id}`;
+        } else if (currentFilter.type === 'analyst_status') {
+            url += `assignee_id=${currentFilter.analyst_id}&status=${encodeURIComponent(currentFilter.status)}`;
         }
 
         const response = await fetch(url);

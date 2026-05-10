@@ -46,6 +46,17 @@ CREATE TABLE IF NOT EXISTS `departments` (
     UNIQUE KEY `uq_departments_name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `user_preferences` (
+    `id`                INT NOT NULL AUTO_INCREMENT,
+    `analyst_id`        INT NOT NULL,
+    `preference_key`    VARCHAR(100) NOT NULL,
+    `preference_value`  VARCHAR(500) NULL,
+    `updated_datetime`  DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_user_pref` (`analyst_id`, `preference_key`),
+    CONSTRAINT `fk_user_pref_analyst` FOREIGN KEY (`analyst_id`) REFERENCES `analysts` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `teams` (
     `id`                INT NOT NULL AUTO_INCREMENT,
     `name`              VARCHAR(100) NOT NULL,

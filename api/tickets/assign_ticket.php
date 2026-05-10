@@ -23,6 +23,12 @@ try {
     $origin_id = array_key_exists('origin_id', $data) ? $data['origin_id'] : null;
     $first_time_fix = array_key_exists('first_time_fix', $data) ? $data['first_time_fix'] : null;
     $it_training_provided = array_key_exists('it_training_provided', $data) ? $data['it_training_provided'] : null;
+    // When the caller supplies assigned_analyst_id explicitly (e.g. drag-to-analyst-folder),
+    // honour it and skip the "auto-assign to current user on dept/status change" behaviour below.
+    $explicitAnalyst = array_key_exists('assigned_analyst_id', $data);
+    $explicitAnalystId = $explicitAnalyst
+        ? (($data['assigned_analyst_id'] === '' || $data['assigned_analyst_id'] === null) ? null : (int)$data['assigned_analyst_id'])
+        : null;
 
     if (!$ticket_id) {
         throw new Exception('Ticket ID is required');
@@ -99,16 +105,24 @@ try {
         $params[] = $it_training_provided;
     }
 
-    if (empty($updates)) {
-        throw new Exception('No updates specified');
-    }
-
     // Add assignment tracking
     $newAnalystId = null;
-    if ($department_id || $ticket_type_id || $status) {
+    if ($explicitAnalyst) {
+        // Caller supplied the analyst (drag-to-analyst-folder). Set both assigned_analyst_id
+        // and owner_id so the right-pane Owner field stays in sync (mirrors update_ticket_owner.php).
+        $updates[] = "assigned_analyst_id = ?";
+        $newAnalystId = $explicitAnalystId;
+        $params[] = $newAnalystId;
+        $updates[] = "owner_id = ?";
+        $params[] = $newAnalystId;
+    } elseif ($department_id || $ticket_type_id || $status) {
         $updates[] = "assigned_analyst_id = ?";
         $newAnalystId = $_SESSION['analyst_id'];
         $params[] = $newAnalystId;
+    }
+
+    if (empty($updates)) {
+        throw new Exception('No updates specified');
     }
 
     // Always update the updated_datetime

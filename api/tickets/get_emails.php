@@ -19,6 +19,7 @@ try {
     // Get filter parameters
     $department_id = $_GET['department_id'] ?? null;
     $status = $_GET['status'] ?? null;
+    $assignee_id = $_GET['assignee_id'] ?? null;
 
     // Connect to database
     $conn = connectToDatabase();
@@ -52,6 +53,7 @@ try {
                 t.subject,
                 ts.name AS status,
                 t.department_id,
+                t.assigned_analyst_id,
                 tp.name AS priority,
                 (SELECT COUNT(*) FROM emails WHERE ticket_id = t.id) as email_count
             FROM LatestEmails le
@@ -67,6 +69,13 @@ try {
     } elseif ($department_id !== null && $department_id !== '') {
         $sql .= " AND t.department_id = ?";
         $params[] = $department_id;
+    }
+
+    if ($assignee_id === 'unassigned') {
+        $sql .= " AND t.assigned_analyst_id IS NULL";
+    } elseif ($assignee_id !== null && $assignee_id !== '') {
+        $sql .= " AND t.assigned_analyst_id = ?";
+        $params[] = $assignee_id;
     }
 
     if ($status !== null && $status !== '') {

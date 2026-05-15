@@ -247,8 +247,11 @@ const PM = (() => {
     // =========================================================
     //  Open / load a process
     // =========================================================
-    async function openProcess(id) {
-        if (dirty && !confirm('Unsaved changes will be lost. Continue?')) return;
+    // `preserveDetail` — pass true when calling from save() so the detail panel
+    // stays open across the reload that picks up fresh real IDs. Caller is
+    // responsible for re-resolving the previous selection against the new data.
+    async function openProcess(id, preserveDetail = false) {
+        if (dirty && !preserveDetail && !confirm('Unsaved changes will be lost. Continue?')) return;
         try {
             const r = await fetch(API_BASE + 'get.php?id=' + id);
             const d = await r.json();
@@ -301,7 +304,7 @@ const PM = (() => {
                 canvasEmpty.style.display = 'none';
                 renderAll();
                 renderProcessList();
-                closeDetail();
+                if (!preserveDetail) closeDetail();
                 setStatus(autosaveOn ? 'saved' : 'off');
             }
         } catch (e) { toast('Failed to load process', 'error'); }
@@ -1793,6 +1796,23 @@ const PM = (() => {
         setStatus('saving');
         const startedAt = Date.now();
 
+        // Capture the current selection by *stable identity* (position / order)
+        // so we can re-find the equivalent entity after openProcess() reloads
+        // with fresh real IDs. tempId-based selectedIds become stale after the
+        // reload, so this is how the detail panel survives autosave.
+        let prevSelection = null;
+        if (selectedStepIds.size === 1) {
+            const sid = [...selectedStepIds][0];
+            const s = getStep(sid);
+            if (s) prevSelection = { type: 'step', x: s.x, y: s.y };
+        } else if (selectedGroupId) {
+            const g = getGroup(selectedGroupId);
+            if (g) prevSelection = { type: 'group', x: g.x, y: g.y, width: g.width, height: g.height };
+        } else if (selectedLaneId) {
+            const l = getLane(selectedLaneId);
+            if (l) prevSelection = { type: 'lane', display_order: l.display_order };
+        }
+
         const title = processes.find(p => p.id == currentProcessId)?.title || 'Untitled';
         const payload = {
             id: currentProcessId,
@@ -1872,7 +1892,46 @@ const PM = (() => {
             saveInFlight = false;
             // Reload to get real IDs (temp negative IDs from newly-added steps
             // need replacing with the server's auto-increment values).
-            await openProcess(newId);
+            // preserveDetail=true keeps the panel open; we restore the selection
+            // below using the identity captured before the save ran.
+            await openProcess(newId, true);
+
+            // Restore selection against the reloaded data.
+            if (prevSelection) {
+                if (prevSelection.type === 'step') {
+                    const s = steps.find(st => st.x == prevSelection.x && st.y == prevSelection.y);
+                    if (s) {
+                        selectedStepIds.clear();
+                        selectedStepIds.add(s.id || s.tempId);
+                        showDetailForStep(s);
+                        updateSelectionVisuals();
+                    } else {
+                        closeDetail();
+                    }
+                } else if (prevSelection.type === 'group') {
+                    const g = groups.find(gr =>
+                        gr.x == prevSelection.x && gr.y == prevSelection.y &&
+                        gr.width == prevSelection.width && gr.height == prevSelection.height
+                    );
+                    if (g) {
+                        selectedGroupId = groupRef(g);
+                        showDetailForGroup(g);
+                        updateSelectionVisuals();
+                    } else {
+                        closeDetail();
+                    }
+                } else if (prevSelection.type === 'lane') {
+                    const l = lanes.find(la => la.display_order == prevSelection.display_order);
+                    if (l) {
+                        selectedLaneId = laneRef(l);
+                        showDetailForLane(l);
+                        updateSelectionVisuals();
+                    } else {
+                        closeDetail();
+                    }
+                }
+            }
+
             // openProcess resets dirty + status, so set the "Saved" status AFTER it.
             setStatus('saved');
             if (!isAutosave) toast('Saved', 'success');

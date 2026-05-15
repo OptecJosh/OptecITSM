@@ -38,8 +38,8 @@ try {
     $connStmt->execute([$id]);
     $connectors = $connStmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // process_groups table may not exist on older installs that haven't run
-    // db_verify since the groups feature shipped — fall back to empty array.
+    // process_groups + process_lanes tables may not exist on older installs that
+    // haven't run db_verify since those features shipped — fall back to empty array.
     $groups = [];
     try {
         $grpStmt = $conn->prepare("SELECT * FROM process_groups WHERE process_id = ?");
@@ -47,9 +47,17 @@ try {
         $groups = $grpStmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) {}
 
+    $lanes = [];
+    try {
+        $laneStmt = $conn->prepare("SELECT * FROM process_lanes WHERE process_id = ? ORDER BY display_order, id");
+        $laneStmt->execute([$id]);
+        $lanes = $laneStmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {}
+
     $process['steps'] = $steps;
     $process['connectors'] = $connectors;
     $process['groups'] = $groups;
+    $process['lanes'] = $lanes;
 
     echo json_encode(['success' => true, 'data' => $process]);
 } catch (Exception $e) {

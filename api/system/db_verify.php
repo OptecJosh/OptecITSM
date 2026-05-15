@@ -922,6 +922,7 @@ $schema = [
         'height'            => 'INT NOT NULL DEFAULT 80',
         'color'             => "VARCHAR(20) NULL DEFAULT '#0078d4'",
         'color2'            => 'VARCHAR(20) NULL',
+        'lane_id'           => 'INT NULL',
     ],
 
     'process_connectors' => [
@@ -942,6 +943,16 @@ $schema = [
         'y'                 => 'INT NOT NULL DEFAULT 0',
         'width'             => 'INT NOT NULL DEFAULT 240',
         'height'            => 'INT NOT NULL DEFAULT 160',
+    ],
+
+    'process_lanes' => [
+        'id'                => 'INT NOT NULL AUTO_INCREMENT',
+        'process_id'        => 'INT NOT NULL',
+        'label'             => "VARCHAR(100) NULL DEFAULT ''",
+        'color'             => "VARCHAR(20) NULL DEFAULT '#f5f7fa'",
+        'color2'            => 'VARCHAR(20) NULL',
+        'display_order'     => 'INT NOT NULL DEFAULT 0',
+        'height'            => 'INT NOT NULL DEFAULT 180',
     ],
 
     'knowledge_articles' => [

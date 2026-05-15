@@ -20,10 +20,14 @@ const PM = (() => {
     let steps = [];          // { id, tempId, type, label, description, x, y, width, height, color, el }
     let connectors = [];     // { id, tempId, fromId, toId, label }
     let groups = [];         // { id, tempId, label, color, x, y, width, height, el } — visual underlay only
+    let lanes = [];          // { id, tempId, label, color, color2, display_order, height, el, headerEl, _bandTop }
     let selectedStepIds = new Set();
     let selectedConnectorId = null;
     let selectedGroupId = null;
+    let selectedLaneId = null;
     let groupDragging = null;  // { id, mode: 'move'|'resize', offsetX, offsetY, startW, startH }
+    let laneDragging  = null;  // { id, mode: 'reorder'|'resize', startMouseY, startHeight }
+    const LANE_WIDTH = 4000;
     let nextTempId = -1;
     let dirty = false;
 
@@ -254,6 +258,7 @@ const PM = (() => {
                     height: +s.height,
                     color: s.color || '#0078d4',
                     color2: s.color2 || null,
+                    lane_id: s.lane_id != null ? +s.lane_id : null,
                     el: null
                 }));
                 connectors = (d.data.connectors || []).map(c => ({
@@ -273,6 +278,17 @@ const PM = (() => {
                     height: +g.height,
                     el: null
                 }));
+                lanes = (d.data.lanes || []).map(l => ({
+                    id: +l.id,
+                    label: l.label || '',
+                    color: l.color || '#f5f7fa',
+                    color2: l.color2 || null,
+                    display_order: +l.display_order,
+                    height: +l.height,
+                    el: null,
+                    headerEl: null,
+                    _bandTop: 0
+                }));
                 dirty = false;
                 canvasEmpty.style.display = 'none';
                 renderAll();
@@ -290,7 +306,10 @@ const PM = (() => {
         // Remove old elements
         canvas.querySelectorAll('.pm-step').forEach(el => el.remove());
         canvas.querySelectorAll('.pm-group').forEach(el => el.remove());
-        // Groups first so they sit behind steps + connectors (CSS z-index handles the rest)
+        canvas.querySelectorAll('.pm-lane').forEach(el => el.remove());
+        // Lanes first (they sit furthest back via CSS z-index = -1)
+        renderLanes();
+        // Groups next so they sit behind steps + connectors
         groups.forEach(g => {
             g.el = createGroupEl(g);
             canvas.appendChild(g.el);
@@ -559,6 +578,11 @@ const PM = (() => {
     }
 
     function onDocMouseMove(e) {
+        // Dragging a lane (reorder via header / resize via divider)
+        if (laneDragging) {
+            onLaneDocMouseMove(e);
+            return;
+        }
         // Dragging or resizing a group
         if (groupDragging) {
             onGroupDocMouseMove(e);
@@ -627,12 +651,20 @@ const PM = (() => {
     }
 
     function onDocMouseUp(e) {
+        if (laneDragging) {
+            onLaneDocMouseUp();
+            return;
+        }
         if (groupDragging) {
             onGroupDocMouseUp();
             return;
         }
         if (dragging) {
-            if (dragging.moved) markDirty();
+            if (dragging.moved) {
+                // After a step drag, auto-assign lane_id for each moved step.
+                reassignStepLanes([...selectedStepIds]);
+                markDirty();
+            }
             dragging = null;
             return;
         }
@@ -690,6 +722,7 @@ const PM = (() => {
                 selectedStepIds.clear();
                 selectedConnectorId = null;
                 selectedGroupId = null;
+                selectedLaneId = null;
                 updateSelectionVisuals();
                 closeDetail();
             }
@@ -796,8 +829,13 @@ const PM = (() => {
             width: w,
             height: h,
             color: colors[type] || '#0078d4',
+            color2: null,
+            lane_id: null,
             el: null
         };
+        // If the new step lands inside a lane band, assign that lane immediately.
+        const containingLane = laneAtY(step.y + step.height / 2);
+        if (containingLane) step.lane_id = laneRef(containingLane);
 
         steps.push(step);
         step.el = createStepEl(step);
@@ -996,6 +1034,361 @@ const PM = (() => {
         markDirty();
     }
 
+    // =========================================================
+    //  Lanes (swimlanes — structured with step ownership)
+    // =========================================================
+
+    function getLane(id) {
+        return lanes.find(l => (l.id != null && l.id == id) || l.tempId == id);
+    }
+
+    function laneRef(lane) {
+        return lane.id != null ? lane.id : lane.tempId;
+    }
+
+    function lanesOrdered() {
+        return [...lanes].sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+    }
+
+    // Cache each lane's bandTop on the lane object after sorting. Run before any
+    // hit-test or render pass that needs lane Y coordinates.
+    function recomputeLaneBandTops() {
+        let top = 0;
+        for (const l of lanesOrdered()) {
+            l._bandTop = top;
+            top += l.height;
+        }
+    }
+
+    function laneAtY(y) {
+        recomputeLaneBandTops();
+        for (const l of lanes) {
+            if (y >= l._bandTop && y < l._bandTop + l.height) return l;
+        }
+        return null;
+    }
+
+    function renderLanes() {
+        canvas.querySelectorAll('.pm-lane').forEach(el => el.remove());
+        recomputeLaneBandTops();
+        for (const l of lanesOrdered()) {
+            l.el = createLaneEl(l);
+            // Insert at the start of the canvas so lanes sit behind everything
+            canvas.insertBefore(l.el, canvas.firstChild);
+        }
+        updateLaneSelectionVisuals();
+    }
+
+    function createLaneEl(lane) {
+        const el = document.createElement('div');
+        el.className = 'pm-lane';
+        el.dataset.laneId = laneRef(lane);
+        applyLaneStyle(el, lane);
+
+        const header = document.createElement('div');
+        header.className = 'pm-lane-header';
+        header.textContent = lane.label || '(unnamed lane)';
+        header.title = 'Drag up/down to reorder. Click to select.';
+        header.addEventListener('mousedown', e => onLaneHeaderMouseDown(e, lane));
+        el.appendChild(header);
+        lane.headerEl = header;
+
+        const divider = document.createElement('div');
+        divider.className = 'pm-lane-divider';
+        divider.title = 'Drag to resize';
+        divider.addEventListener('mousedown', e => onLaneDividerMouseDown(e, lane));
+        el.appendChild(divider);
+
+        return el;
+    }
+
+    function applyLaneStyle(el, lane) {
+        el.style.top    = lane._bandTop + 'px';
+        el.style.left   = '0px';
+        el.style.width  = LANE_WIDTH + 'px';
+        el.style.height = lane.height + 'px';
+        el.style.background = fillStyle(lane.color || '#f5f7fa', lane.color2);
+        const headerEl = el.querySelector('.pm-lane-header');
+        if (headerEl) headerEl.textContent = lane.label || '(unnamed lane)';
+    }
+
+    function updateLaneSelectionVisuals() {
+        canvas.querySelectorAll('.pm-lane').forEach(el => {
+            el.classList.toggle('selected', el.dataset.laneId == selectedLaneId);
+        });
+    }
+
+    function addLane() {
+        if (!currentProcessId) { toast('Open or create a process first', 'error'); return; }
+        const tempId = nextTempId--;
+        // Suggest a max(display_order)+1 so the new lane is placed at the bottom.
+        const maxOrder = lanes.reduce((m, l) => Math.max(m, l.display_order || 0), -1);
+        const lane = {
+            tempId,
+            label: 'Lane ' + (lanes.length + 1),
+            color: '#f5f7fa',
+            color2: null,
+            display_order: maxOrder + 1,
+            height: 180,
+            el: null,
+            headerEl: null,
+            _bandTop: 0
+        };
+        lanes.push(lane);
+        renderLanes();
+        renderConnectors();
+        selectLane(lane);
+        canvasEmpty.style.display = 'none';
+        markDirty();
+    }
+
+    function selectLane(lane) {
+        // Exclusive single-select: clear step / connector / group selection.
+        selectedStepIds.clear();
+        selectedConnectorId = null;
+        selectedGroupId = null;
+        selectedLaneId = laneRef(lane);
+        canvas.focus({ preventScroll: true });
+        updateSelectionVisuals();
+        showDetailForLane(lane);
+    }
+
+    function showDetailForLane(lane) {
+        detailPanel.classList.add('open');
+        document.getElementById('detailBodyStep').style.display = 'none';
+        document.getElementById('detailBodyGroup').style.display = 'none';
+        document.getElementById('detailBodyLane').style.display = '';
+        document.getElementById('detailTitle').textContent = 'Lane Details';
+        document.getElementById('detailLaneLabel').value = lane.label || '';
+        document.getElementById('detailLaneColor').value = lane.color || '#f5f7fa';
+        document.getElementById('detailLaneHeight').value = lane.height;
+        document.getElementById('detailLaneOrder').value = lane.display_order;
+        const useGrad = !!lane.color2;
+        const gradCb = document.getElementById('detailLaneGradient');
+        const grad2  = document.getElementById('detailLaneColor2');
+        gradCb.checked = useGrad;
+        grad2.value = lane.color2 || shade(lane.color || '#f5f7fa', -40);
+        grad2.style.display = useGrad ? '' : 'none';
+        detailPanel.dataset.laneId = laneRef(lane);
+        detailPanel.dataset.stepId = '';
+        detailPanel.dataset.groupId = '';
+    }
+
+    function updateLaneFromDetail() {
+        const id = detailPanel.dataset.laneId;
+        if (!id) return;
+        const lane = getLane(id);
+        if (!lane) return;
+
+        lane.label = document.getElementById('detailLaneLabel').value;
+        lane.color = document.getElementById('detailLaneColor').value;
+        const newHeight = Math.max(80, parseInt(document.getElementById('detailLaneHeight').value, 10) || 180);
+        const newOrder  = parseInt(document.getElementById('detailLaneOrder').value, 10);
+        const useGrad = document.getElementById('detailLaneGradient').checked;
+        const grad2El = document.getElementById('detailLaneColor2');
+        grad2El.style.display = useGrad ? '' : 'none';
+        lane.color2 = useGrad ? grad2El.value : null;
+
+        if (newHeight !== lane.height) {
+            resizeLaneTo(lane, newHeight);
+        }
+        if (!isNaN(newOrder) && newOrder !== lane.display_order) {
+            reorderLaneTo(lane, newOrder);
+        }
+        renderLanes();
+        renderAllSteps();
+        renderConnectors();
+        markDirty();
+    }
+
+    // Re-render only steps (cheap re-render that preserves selection visuals).
+    function renderAllSteps() {
+        canvas.querySelectorAll('.pm-step').forEach(el => el.remove());
+        steps.forEach(s => {
+            s.el = createStepEl(s);
+            canvas.appendChild(s.el);
+        });
+        updateSelectionVisuals();
+    }
+
+    // Resize lane to `newHeight`, shifting all steps in lanes below by the delta
+    // (so they stay anchored to their own lane band as their bandTop moves).
+    function resizeLaneTo(lane, newHeight) {
+        const delta = newHeight - lane.height;
+        if (delta === 0) return;
+        lane.height = Math.max(80, newHeight);
+        const ord = lanesOrdered();
+        const myIdx = ord.findIndex(l => laneRef(l) == laneRef(lane));
+        const idsBelow = new Set(ord.slice(myIdx + 1).map(l => laneRef(l)));
+        steps.forEach(s => {
+            if (s.lane_id != null && idsBelow.has(s.lane_id)) {
+                s.y = snap(s.y + delta);
+            }
+        });
+    }
+
+    // Reorder lane to display_order = targetOrder. Steps in every affected lane
+    // are shifted so they stay anchored to their lane band.
+    function reorderLaneTo(lane, targetOrder) {
+        if (lanes.length < 2) { lane.display_order = 0; return; }
+
+        // Snapshot each step's offset within its current lane before we move things.
+        recomputeLaneBandTops();
+        const stepYWithinLane = new Map(); // step.id|tempId -> { laneRef, yWithinLane }
+        steps.forEach(s => {
+            if (s.lane_id == null) return;
+            const l = getLane(s.lane_id);
+            if (!l) return;
+            stepYWithinLane.set(s.id || s.tempId, { laneRef: s.lane_id, yWithinLane: s.y - l._bandTop });
+        });
+
+        // Move dragged lane to its new slot.
+        const ord = lanesOrdered().filter(l => laneRef(l) != laneRef(lane));
+        const clamped = Math.max(0, Math.min(ord.length, targetOrder));
+        ord.splice(clamped, 0, lane);
+        ord.forEach((l, i) => { l.display_order = i; });
+
+        // Recompute bandTops and reapply each step's offset against its lane's new bandTop.
+        recomputeLaneBandTops();
+        steps.forEach(s => {
+            const meta = stepYWithinLane.get(s.id || s.tempId);
+            if (!meta) return;
+            const l = getLane(meta.laneRef);
+            if (!l) return;
+            s.y = snap(l._bandTop + meta.yWithinLane);
+        });
+    }
+
+    // Drag-to-reorder via the left-edge header. While dragging the header we
+    // visually translate the lane element with the cursor; on mouseup we work
+    // out which slot the cursor landed in and call reorderLaneTo().
+    function onLaneHeaderMouseDown(e, lane) {
+        if (e.button !== 0) return;
+        e.stopPropagation();
+        e.preventDefault();
+        selectLane(lane);
+        laneDragging = {
+            id: laneRef(lane),
+            mode: 'reorder',
+            startMouseY: e.clientY,
+            origOrder: lane.display_order,
+            moved: false
+        };
+        if (lane.el) lane.el.classList.add('pm-lane-dragging');
+    }
+
+    function onLaneDividerMouseDown(e, lane) {
+        if (e.button !== 0) return;
+        e.stopPropagation();
+        e.preventDefault();
+        selectLane(lane);
+        laneDragging = {
+            id: laneRef(lane),
+            mode: 'resize',
+            startMouseY: e.clientY,
+            startHeight: lane.height,
+            moved: false
+        };
+    }
+
+    function onLaneDocMouseMove(e) {
+        if (!laneDragging) return;
+        const lane = getLane(laneDragging.id);
+        if (!lane) return;
+        const dy = e.clientY - laneDragging.startMouseY;
+        if (Math.abs(dy) > 2) laneDragging.moved = true;
+
+        if (laneDragging.mode === 'resize') {
+            const targetH = Math.max(80, laneDragging.startHeight + dy);
+            if (targetH !== lane.height) {
+                resizeLaneTo(lane, targetH);
+                renderLanes();
+                renderAllSteps();
+                renderConnectors();
+                // Reflect in detail panel if open for this lane
+                if (selectedLaneId == laneDragging.id) {
+                    document.getElementById('detailLaneHeight').value = lane.height;
+                }
+            }
+            return;
+        }
+
+        // Reorder: figure out which slot the cursor is currently above and snap.
+        const ord = lanesOrdered();
+        // Cursor Y within canvas coords (account for canvas scroll)
+        const rect = canvas.getBoundingClientRect();
+        const cursorY = e.clientY - rect.top + canvas.scrollTop;
+        let targetOrder = 0;
+        let acc = 0;
+        for (const l of ord) {
+            if (laneRef(l) == laneDragging.id) continue;
+            const mid = acc + l.height / 2;
+            if (cursorY > mid) targetOrder++;
+            acc += l.height;
+        }
+        if (targetOrder !== lane.display_order) {
+            reorderLaneTo(lane, targetOrder);
+            renderLanes();
+            renderAllSteps();
+            renderConnectors();
+            if (selectedLaneId == laneDragging.id) {
+                document.getElementById('detailLaneOrder').value = lane.display_order;
+            }
+        }
+    }
+
+    function onLaneDocMouseUp() {
+        if (!laneDragging) return;
+        if (laneDragging.moved) markDirty();
+        const lane = getLane(laneDragging.id);
+        if (lane && lane.el) lane.el.classList.remove('pm-lane-dragging');
+        laneDragging = null;
+    }
+
+    // Called after a step drag completes — auto-assign lane_id based on
+    // where each moved step ended up.
+    function reassignStepLanes(movedIds) {
+        if (!lanes.length) return;
+        movedIds.forEach(sid => {
+            const s = getStep(sid);
+            if (!s) return;
+            // Use the step's vertical centre for the hit test so a step
+            // straddling a divider settles into whichever lane holds its middle.
+            const lane = laneAtY(s.y + (s.height / 2));
+            const newLaneId = lane ? laneRef(lane) : null;
+            if (s.lane_id != newLaneId) s.lane_id = newLaneId;
+        });
+    }
+
+    function deleteSelectedLane() {
+        if (!selectedLaneId) return;
+        const lane = getLane(selectedLaneId);
+        if (!lane) return;
+        // Steps that belonged to this lane lose their lane assignment but keep their position.
+        steps.forEach(s => {
+            if (s.lane_id != null && s.lane_id == selectedLaneId) s.lane_id = null;
+        });
+        // Lanes below shift up by the deleted lane's height — steps in those lanes follow.
+        const ord = lanesOrdered();
+        const myIdx = ord.findIndex(l => laneRef(l) == selectedLaneId);
+        const idsBelow = new Set(ord.slice(myIdx + 1).map(l => laneRef(l)));
+        const shift = -lane.height;
+        steps.forEach(s => {
+            if (s.lane_id != null && idsBelow.has(s.lane_id)) {
+                s.y = snap(s.y + shift);
+            }
+        });
+        // Remove the lane and renumber display_order
+        lanes = lanes.filter(l => laneRef(l) != selectedLaneId);
+        lanesOrdered().forEach((l, i) => { l.display_order = i; });
+        selectedLaneId = null;
+        closeDetail();
+        renderLanes();
+        renderAllSteps();
+        renderConnectors();
+        markDirty();
+    }
+
     function addConnector(fromId, toId) {
         // Check for duplicate
         const exists = connectors.some(c =>
@@ -1011,6 +1404,10 @@ const PM = (() => {
     }
 
     function deleteSelected() {
+        if (selectedLaneId) {
+            deleteSelectedLane();
+            return;
+        }
         if (selectedGroupId) {
             const g = getGroup(selectedGroupId);
             if (g && g.el) g.el.remove();
@@ -1054,6 +1451,9 @@ const PM = (() => {
         });
         canvas.querySelectorAll('.pm-group').forEach(el => {
             el.classList.toggle('selected', el.dataset.groupId == selectedGroupId);
+        });
+        canvas.querySelectorAll('.pm-lane').forEach(el => {
+            el.classList.toggle('selected', el.dataset.laneId == selectedLaneId);
         });
         renderConnectors();
     }
@@ -1110,8 +1510,10 @@ const PM = (() => {
         detailPanel.classList.remove('open');
         detailPanel.dataset.stepId = '';
         detailPanel.dataset.groupId = '';
+        detailPanel.dataset.laneId = '';
         document.getElementById('detailBodyStep').style.display = '';
         document.getElementById('detailBodyGroup').style.display = 'none';
+        document.getElementById('detailBodyLane').style.display = 'none';
         document.getElementById('detailTitle').textContent = 'Step Details';
     }
 
@@ -1237,6 +1639,7 @@ const PM = (() => {
             title,
             steps: steps.map(s => ({
                 id: s.id || null,
+                tempId: s.tempId || null,
                 type: s.type,
                 label: s.label,
                 description: s.description,
@@ -1245,7 +1648,8 @@ const PM = (() => {
                 width: s.width,
                 height: s.height,
                 color: s.color,
-                color2: s.color2 || null
+                color2: s.color2 || null,
+                lane_id: s.lane_id != null ? s.lane_id : null
             })),
             connectors: connectors.map(c => ({
                 id: c.id || null,
@@ -1262,6 +1666,15 @@ const PM = (() => {
                 y: g.y,
                 width: g.width,
                 height: g.height
+            })),
+            lanes: lanes.map(l => ({
+                id: l.id || null,
+                tempId: l.tempId || null,
+                label: l.label,
+                color: l.color,
+                color2: l.color2 || null,
+                display_order: l.display_order,
+                height: l.height
             }))
         };
 
@@ -1320,13 +1733,16 @@ const PM = (() => {
     function clearCanvas() {
         canvas.querySelectorAll('.pm-step').forEach(el => el.remove());
         canvas.querySelectorAll('.pm-group').forEach(el => el.remove());
+        canvas.querySelectorAll('.pm-lane').forEach(el => el.remove());
         svg.querySelectorAll('.pm-connector-group').forEach(g => g.remove());
         steps = [];
         connectors = [];
         groups = [];
+        lanes = [];
         selectedStepIds.clear();
         selectedConnectorId = null;
         selectedGroupId = null;
+        selectedLaneId = null;
         dirty = false;
     }
 
@@ -1355,6 +1771,7 @@ const PM = (() => {
         closeDetail, updateStepFromDetail,
         updateConnectorLabel, removeConnector,
         toggleAutosave,
-        addGroup, updateGroupFromDetail
+        addGroup, updateGroupFromDetail,
+        addLane, updateLaneFromDetail
     };
 })();

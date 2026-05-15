@@ -1916,8 +1916,10 @@ CREATE TABLE IF NOT EXISTS `process_steps` (
     `height`            INT NOT NULL DEFAULT 80,
     `color`             VARCHAR(20) NULL DEFAULT '#0078d4',
     `color2`            VARCHAR(20) NULL,
+    `lane_id`           INT NULL,
     PRIMARY KEY (`id`),
-    KEY `idx_ps_process` (`process_id`)
+    KEY `idx_ps_process` (`process_id`),
+    KEY `idx_ps_lane` (`lane_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `process_connectors` (
@@ -1942,6 +1944,18 @@ CREATE TABLE IF NOT EXISTS `process_groups` (
     `height`            INT NOT NULL DEFAULT 160,
     PRIMARY KEY (`id`),
     KEY `idx_pg_process` (`process_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `process_lanes` (
+    `id`                INT NOT NULL AUTO_INCREMENT,
+    `process_id`        INT NOT NULL,
+    `label`             VARCHAR(100) NULL DEFAULT '',
+    `color`             VARCHAR(20) NULL DEFAULT '#f5f7fa',
+    `color2`            VARCHAR(20) NULL,
+    `display_order`     INT NOT NULL DEFAULT 0,
+    `height`            INT NOT NULL DEFAULT 180,
+    PRIMARY KEY (`id`),
+    KEY `idx_pl_process` (`process_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------

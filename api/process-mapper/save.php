@@ -21,6 +21,7 @@ $title  = trim($input['title'] ?? '');
 $steps  = $input['steps'] ?? [];
 $conns  = $input['connectors'] ?? [];
 $groups = $input['groups'] ?? [];
+$lanes  = $input['lanes']  ?? [];
 
 if (empty($title)) {
     echo json_encode(['success' => false, 'error' => 'Title is required']);
@@ -42,19 +43,42 @@ try {
         $id = (int)$conn->lastInsertId();
     }
 
-    // Replace steps/connectors/groups: delete old, insert new
+    // Replace steps/connectors/groups/lanes: delete old, insert new.
+    // Order matters: connectors FK to steps, steps FK to lanes (via lane_id).
     $conn->prepare("DELETE FROM process_connectors WHERE process_id = ?")->execute([$id]);
     $conn->prepare("DELETE FROM process_steps WHERE process_id = ?")->execute([$id]);
     $conn->prepare("DELETE FROM process_groups WHERE process_id = ?")->execute([$id]);
+    $conn->prepare("DELETE FROM process_lanes WHERE process_id = ?")->execute([$id]);
+
+    // Insert lanes first so we can map old IDs/tempIds -> new real IDs for step.lane_id.
+    $laneIdMap = [];
+    $laneInsert = $conn->prepare("INSERT INTO process_lanes (process_id, label, color, color2, display_order, height) VALUES (?, ?, ?, ?, ?, ?)");
+    foreach ($lanes as $li => $l) {
+        $oldLaneRef = $l['id'] ?? ($l['tempId'] ?? "_idx_$li");
+        $lColor2 = $l['color2'] ?? null;
+        if ($lColor2 === '') $lColor2 = null;
+        $laneInsert->execute([
+            $id,
+            $l['label'] ?? '',
+            $l['color'] ?? '#f5f7fa',
+            $lColor2,
+            (int)($l['display_order'] ?? $li),
+            (int)($l['height'] ?? 180),
+        ]);
+        $laneIdMap[$oldLaneRef] = (int)$conn->lastInsertId();
+    }
 
     // Map old step IDs/tempIds to new real IDs
     $idMap = [];
-    $stepInsert = $conn->prepare("INSERT INTO process_steps (process_id, type, label, description, x, y, width, height, color, color2) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stepInsert = $conn->prepare("INSERT INTO process_steps (process_id, type, label, description, x, y, width, height, color, color2, lane_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
     foreach ($steps as $i => $s) {
         $oldId = $s['id'] ?? ($s['tempId'] ?? $i);
         $color2 = $s['color2'] ?? null;
         if ($color2 === '') $color2 = null;
+        // Translate frontend lane_id (real or tempId) into the persisted lane id.
+        $laneRef = $s['lane_id'] ?? null;
+        $laneId = ($laneRef !== null && isset($laneIdMap[$laneRef])) ? $laneIdMap[$laneRef] : null;
         $stepInsert->execute([
             $id,
             $s['type'] ?? 'process',
@@ -66,6 +90,7 @@ try {
             (int)($s['height'] ?? 80),
             $s['color'] ?? '#0078d4',
             $color2,
+            $laneId,
         ]);
         $idMap[$oldId] = (int)$conn->lastInsertId();
     }

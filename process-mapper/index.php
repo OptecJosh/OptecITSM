@@ -64,6 +64,10 @@ $path_prefix = '../';
                         <svg width="18" height="18" viewBox="0 0 18 18"><rect x="1" y="1" width="16" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 2"/></svg>
                         <span>Group</span>
                     </button>
+                    <button class="pm-tool-btn" onclick="PM.addLane()" title="Add a horizontal swimlane (steps you drop into the band gain its lane assignment)">
+                        <svg width="18" height="18" viewBox="0 0 18 18"><rect x="1" y="3" width="16" height="4" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="1" y="11" width="16" height="4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+                        <span>Lane</span>
+                    </button>
                 </div>
                 <div class="pm-toolbar-right">
                     <button class="pm-tool-btn" onclick="PM.deleteSelected()" title="Delete selected (Del)">
@@ -139,6 +143,35 @@ $path_prefix = '../';
                 <hr style="margin: 16px 0; border: none; border-top: 1px solid #e0e0e0;">
                 <h4 style="margin-bottom: 12px; font-size: 13px; color: #666;">Connectors</h4>
                 <div id="detailConnectors"></div>
+            </div>
+            <!-- Lane detail body (shown when a lane is selected) -->
+            <div class="pm-detail-body" id="detailBodyLane" style="display: none;">
+                <div class="form-group">
+                    <label class="form-label">Label</label>
+                    <input type="text" class="form-input" id="detailLaneLabel" oninput="PM.updateLaneFromDetail()" placeholder="e.g. HR / IT / Vendor">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Colour</label>
+                    <input type="color" class="form-input" id="detailLaneColor" value="#f5f7fa" onchange="PM.updateLaneFromDetail()" style="height: 36px; padding: 2px;">
+                    <div class="pm-gradient-row">
+                        <label class="pm-gradient-toggle">
+                            <input type="checkbox" id="detailLaneGradient" onchange="PM.updateLaneFromDetail()">
+                            <span>Gradient</span>
+                        </label>
+                        <input type="color" class="form-input pm-gradient-color2" id="detailLaneColor2" value="#cfd8dc" onchange="PM.updateLaneFromDetail()">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Height</label>
+                    <input type="number" class="form-input" id="detailLaneHeight" min="80" onchange="PM.updateLaneFromDetail()">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Order (top to bottom)</label>
+                    <input type="number" class="form-input" id="detailLaneOrder" min="0" onchange="PM.updateLaneFromDetail()">
+                </div>
+                <p style="font-size: 12px; color: #888; line-height: 1.5; margin-top: 8px;">
+                    Drag the lane's left-edge header to reorder. Drag the bottom edge to resize. Drop a step into the band to assign it to this lane.
+                </p>
             </div>
             <!-- Group detail body (shown when a group is selected) -->
             <div class="pm-detail-body" id="detailBodyGroup" style="display: none;">

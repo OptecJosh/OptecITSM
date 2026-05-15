@@ -6,6 +6,17 @@
 return [
     'title' => 'ప్రక్రియ మాపర్',
 
+    'nav' => [
+        'processes' => 'ప్రక్రియలు',
+        'help'      => 'సహాయం',
+    ],
+
+    'sidebar' => [
+        'new_process'        => '+ కొత్త ప్రక్రియ',
+        'search_placeholder' => 'ప్రక్రియలను శోధించండి…',
+        'no_processes_yet'   => 'ఇంకా ప్రక్రియలు లేవు',
+    ],
+
     'toolbar' => [
         'process'   => 'ప్రక్రియ',
         'decision'  => 'నిర్ణయం',
@@ -45,6 +56,16 @@ return [
         'order'        => 'క్రమం (పై నుండి క్రిందికి)',
         'connectors'   => 'కనెక్టర్లు',
         'no_connectors'=> 'కనెక్టర్లు లేవు',
+        'step_type' => [
+            'process'  => 'ప్రక్రియ',
+            'decision' => 'నిర్ణయం',
+            'terminal' => 'ప్రారంభం/ముగింపు',
+            'document' => 'పత్రం',
+        ],
+        'step_description_placeholder' => 'ఈ దశ గురించి గమనికలను జోడించండి…',
+        'lane_label_placeholder'       => 'ఉదా. HR / IT / విక్రేత',
+        'group_label_placeholder'      => 'ఉదా. పరిష్కార దశ',
+        'lane_hint'                    => 'క్రమాన్ని మార్చడానికి లేన్ యొక్క ఎడమ-అంచు హెడర్‌ను లాగండి. పరిమాణాన్ని మార్చడానికి దిగువ అంచును లాగండి. ఈ లేన్‌కు కేటాయించడానికి బ్యాండ్‌లో ఒక దశను వదలండి.',
     ],
 
     'export_modal' => [

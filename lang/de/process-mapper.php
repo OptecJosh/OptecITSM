@@ -6,6 +6,17 @@
 return [
     'title' => 'Prozess-Mapper',
 
+    'nav' => [
+        'processes' => 'Prozesse',
+        'help'      => 'Hilfe',
+    ],
+
+    'sidebar' => [
+        'new_process'        => '+ Neuer Prozess',
+        'search_placeholder' => 'Prozesse suchen…',
+        'no_processes_yet'   => 'Noch keine Prozesse',
+    ],
+
     'toolbar' => [
         'process'   => 'Prozess',
         'decision'  => 'Entscheidung',
@@ -45,6 +56,16 @@ return [
         'order'        => 'Reihenfolge (oben nach unten)',
         'connectors'   => 'Verbindungen',
         'no_connectors'=> 'Keine Verbindungen',
+        'step_type' => [
+            'process'  => 'Prozess',
+            'decision' => 'Entscheidung',
+            'terminal' => 'Start/Ende',
+            'document' => 'Dokument',
+        ],
+        'step_description_placeholder' => 'Notizen zu diesem Schritt hinzufügen…',
+        'lane_label_placeholder'       => 'z. B. HR / IT / Lieferant',
+        'group_label_placeholder'      => 'z. B. Lösungsphase',
+        'lane_hint'                    => 'Ziehen Sie den linken Rand der Schwimmbahn, um sie neu zu ordnen. Ziehen Sie den unteren Rand, um die Größe zu ändern. Ziehen Sie einen Schritt in die Bahn, um ihn dieser zuzuweisen.',
     ],
 
     'export_modal' => [

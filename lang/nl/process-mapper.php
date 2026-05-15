@@ -6,6 +6,17 @@
 return [
     'title' => 'Processchema',
 
+    'nav' => [
+        'processes' => 'Processen',
+        'help'      => 'Help',
+    ],
+
+    'sidebar' => [
+        'new_process'        => '+ Nieuw proces',
+        'search_placeholder' => 'Processen zoeken…',
+        'no_processes_yet'   => 'Nog geen processen',
+    ],
+
     'toolbar' => [
         'process'   => 'Proces',
         'decision'  => 'Beslissing',
@@ -45,6 +56,16 @@ return [
         'order'        => 'Volgorde (boven naar beneden)',
         'connectors'   => 'Verbindingen',
         'no_connectors'=> 'Geen verbindingen',
+        'step_type' => [
+            'process'  => 'Proces',
+            'decision' => 'Beslissing',
+            'terminal' => 'Start/Einde',
+            'document' => 'Document',
+        ],
+        'step_description_placeholder' => 'Notities over deze stap toevoegen…',
+        'lane_label_placeholder'       => 'bv. HR / IT / Leverancier',
+        'group_label_placeholder'      => 'bv. Oplossingsfase',
+        'lane_hint'                    => 'Sleep de linker kop van de baan om te herordenen. Sleep de onderrand om het formaat aan te passen. Laat een stap in de baan vallen om hem aan deze baan toe te wijzen.',
     ],
 
     'export_modal' => [

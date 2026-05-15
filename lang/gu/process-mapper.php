@@ -6,6 +6,17 @@
 return [
     'title' => 'પ્રક્રિયા મેપર',
 
+    'nav' => [
+        'processes' => 'પ્રક્રિયાઓ',
+        'help'      => 'મદદ',
+    ],
+
+    'sidebar' => [
+        'new_process'        => '+ નવી પ્રક્રિયા',
+        'search_placeholder' => 'પ્રક્રિયાઓ શોધો…',
+        'no_processes_yet'   => 'હજુ સુધી કોઈ પ્રક્રિયા નથી',
+    ],
+
     'toolbar' => [
         'process'   => 'પ્રક્રિયા',
         'decision'  => 'નિર્ણય',
@@ -45,6 +56,16 @@ return [
         'order'        => 'ક્રમ (ઉપરથી નીચે)',
         'connectors'   => 'કનેક્ટર્સ',
         'no_connectors'=> 'કોઈ કનેક્ટર્સ નથી',
+        'step_type' => [
+            'process'  => 'પ્રક્રિયા',
+            'decision' => 'નિર્ણય',
+            'terminal' => 'શરૂઆત/અંત',
+            'document' => 'દસ્તાવેજ',
+        ],
+        'step_description_placeholder' => 'આ પગલાં વિશે નોંધો ઉમેરો…',
+        'lane_label_placeholder'       => 'દા.ત. HR / IT / સપ્લાયર',
+        'group_label_placeholder'      => 'દા.ત. નિરાકરણ તબક્કો',
+        'lane_hint'                    => 'ફરીથી ગોઠવવા માટે લેનની ડાબી-કિનારી હેડર ખેંચો. કદ બદલવા માટે નીચેની ધાર ખેંચો. આ લેનને સોંપવા માટે બેન્ડમાં એક પગલું છોડો.',
     ],
 
     'export_modal' => [

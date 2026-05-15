@@ -6,6 +6,17 @@
 return [
     'title' => 'प्रक्रिया मॅपर',
 
+    'nav' => [
+        'processes' => 'प्रक्रिया',
+        'help'      => 'मदत',
+    ],
+
+    'sidebar' => [
+        'new_process'        => '+ नवीन प्रक्रिया',
+        'search_placeholder' => 'प्रक्रिया शोधा…',
+        'no_processes_yet'   => 'अद्याप कोणत्या प्रक्रिया नाहीत',
+    ],
+
     'toolbar' => [
         'process'   => 'प्रक्रिया',
         'decision'  => 'निर्णय',
@@ -45,6 +56,16 @@ return [
         'order'        => 'क्रम (वरून खाली)',
         'connectors'   => 'कनेक्टर',
         'no_connectors'=> 'कनेक्टर नाहीत',
+        'step_type' => [
+            'process'  => 'प्रक्रिया',
+            'decision' => 'निर्णय',
+            'terminal' => 'सुरुवात/शेवट',
+            'document' => 'दस्तऐवज',
+        ],
+        'step_description_placeholder' => 'या पायरीबद्दल टिपा जोडा…',
+        'lane_label_placeholder'       => 'उदा. HR / IT / पुरवठादार',
+        'group_label_placeholder'      => 'उदा. निराकरण टप्पा',
+        'lane_hint'                    => 'पुनर्क्रमित करण्यासाठी लेनचा डावा शीर्षलेख ओढा. आकार बदलण्यासाठी तळाची कडा ओढा. या लेनला नियुक्त करण्यासाठी पट्ट्यात एक पायरी टाका.',
     ],
 
     'export_modal' => [

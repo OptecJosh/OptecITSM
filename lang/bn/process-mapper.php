@@ -6,6 +6,17 @@
 return [
     'title' => 'প্রসেস ম্যাপার',
 
+    'nav' => [
+        'processes' => 'প্রক্রিয়াসমূহ',
+        'help'      => 'সহায়তা',
+    ],
+
+    'sidebar' => [
+        'new_process'        => '+ নতুন প্রক্রিয়া',
+        'search_placeholder' => 'প্রক্রিয়া অনুসন্ধান…',
+        'no_processes_yet'   => 'এখনও কোনো প্রক্রিয়া নেই',
+    ],
+
     'toolbar' => [
         'process'   => 'প্রক্রিয়া',
         'decision'  => 'সিদ্ধান্ত',
@@ -45,6 +56,16 @@ return [
         'order'        => 'ক্রম (উপর থেকে নিচে)',
         'connectors'   => 'সংযোগকারী',
         'no_connectors'=> 'কোনো সংযোগকারী নেই',
+        'step_type' => [
+            'process'  => 'প্রক্রিয়া',
+            'decision' => 'সিদ্ধান্ত',
+            'terminal' => 'শুরু/শেষ',
+            'document' => 'দলিল',
+        ],
+        'step_description_placeholder' => 'এই ধাপ সম্পর্কে নোট যোগ করুন…',
+        'lane_label_placeholder'       => 'যেমন HR / IT / সরবরাহকারী',
+        'group_label_placeholder'      => 'যেমন সমাধান পর্যায়',
+        'lane_hint'                    => 'পুনর্বিন্যাস করতে লেনের বাম দিকের শিরোনাম টানুন। আকার পরিবর্তন করতে নিচের প্রান্ত টানুন। একটি ধাপ এই লেনে বরাদ্দ করতে ব্যান্ডে ফেলুন।',
     ],
 
     'export_modal' => [

@@ -6,6 +6,17 @@
 return [
     'title' => 'Mapowanie procesów',
 
+    'nav' => [
+        'processes' => 'Procesy',
+        'help'      => 'Pomoc',
+    ],
+
+    'sidebar' => [
+        'new_process'        => '+ Nowy proces',
+        'search_placeholder' => 'Szukaj procesów…',
+        'no_processes_yet'   => 'Brak procesów',
+    ],
+
     'toolbar' => [
         'process'   => 'Proces',
         'decision'  => 'Decyzja',
@@ -45,6 +56,16 @@ return [
         'order'        => 'Kolejność (od góry do dołu)',
         'connectors'   => 'Łączniki',
         'no_connectors'=> 'Brak łączników',
+        'step_type' => [
+            'process'  => 'Proces',
+            'decision' => 'Decyzja',
+            'terminal' => 'Początek/Koniec',
+            'document' => 'Dokument',
+        ],
+        'step_description_placeholder' => 'Dodaj notatki do tego kroku…',
+        'lane_label_placeholder'       => 'np. HR / IT / Dostawca',
+        'group_label_placeholder'      => 'np. Faza rozwiązywania',
+        'lane_hint'                    => 'Przeciągnij lewy nagłówek toru, aby zmienić kolejność. Przeciągnij dolną krawędź, aby zmienić rozmiar. Upuść krok w pasie, aby przypisać go do tego toru.',
     ],
 
     'export_modal' => [

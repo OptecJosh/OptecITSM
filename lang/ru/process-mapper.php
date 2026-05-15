@@ -6,6 +6,17 @@
 return [
     'title' => 'Карта процессов',
 
+    'nav' => [
+        'processes' => 'Процессы',
+        'help'      => 'Справка',
+    ],
+
+    'sidebar' => [
+        'new_process'        => '+ Новый процесс',
+        'search_placeholder' => 'Поиск процессов…',
+        'no_processes_yet'   => 'Пока нет процессов',
+    ],
+
     'toolbar' => [
         'process'   => 'Процесс',
         'decision'  => 'Решение',
@@ -45,6 +56,16 @@ return [
         'order'        => 'Порядок (сверху вниз)',
         'connectors'   => 'Соединения',
         'no_connectors'=> 'Нет соединений',
+        'step_type' => [
+            'process'  => 'Процесс',
+            'decision' => 'Решение',
+            'terminal' => 'Начало/Конец',
+            'document' => 'Документ',
+        ],
+        'step_description_placeholder' => 'Добавьте заметки об этом шаге…',
+        'lane_label_placeholder'       => 'напр. HR / IT / Поставщик',
+        'group_label_placeholder'      => 'напр. Фаза решения',
+        'lane_hint'                    => 'Перетащите левый край дорожки, чтобы изменить порядок. Перетащите нижний край, чтобы изменить размер. Перетащите шаг в полосу, чтобы назначить его этой дорожке.',
     ],
 
     'export_modal' => [

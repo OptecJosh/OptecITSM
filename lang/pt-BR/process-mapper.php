@@ -6,6 +6,17 @@
 return [
     'title' => 'Mapeador de processos',
 
+    'nav' => [
+        'processes' => 'Processos',
+        'help'      => 'Ajuda',
+    ],
+
+    'sidebar' => [
+        'new_process'        => '+ Novo processo',
+        'search_placeholder' => 'Pesquisar processos…',
+        'no_processes_yet'   => 'Ainda não há processos',
+    ],
+
     'toolbar' => [
         'process'   => 'Processo',
         'decision'  => 'Decisão',
@@ -45,6 +56,16 @@ return [
         'order'        => 'Ordem (de cima para baixo)',
         'connectors'   => 'Conectores',
         'no_connectors'=> 'Sem conectores',
+        'step_type' => [
+            'process'  => 'Processo',
+            'decision' => 'Decisão',
+            'terminal' => 'Início/Fim',
+            'document' => 'Documento',
+        ],
+        'step_description_placeholder' => 'Adicionar notas sobre esta etapa…',
+        'lane_label_placeholder'       => 'ex. RH / TI / Fornecedor',
+        'group_label_placeholder'      => 'ex. Fase de resolução',
+        'lane_hint'                    => 'Arraste o cabeçalho esquerdo da raia para reordenar. Arraste a borda inferior para redimensionar. Solte uma etapa na faixa para atribuí-la a esta raia.',
     ],
 
     'export_modal' => [

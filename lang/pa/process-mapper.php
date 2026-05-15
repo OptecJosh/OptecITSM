@@ -6,6 +6,17 @@
 return [
     'title' => 'ਪ੍ਰਕਿਰਿਆ ਮੈਪਰ',
 
+    'nav' => [
+        'processes' => 'ਪ੍ਰਕਿਰਿਆਵਾਂ',
+        'help'      => 'ਮਦਦ',
+    ],
+
+    'sidebar' => [
+        'new_process'        => '+ ਨਵੀਂ ਪ੍ਰਕਿਰਿਆ',
+        'search_placeholder' => 'ਪ੍ਰਕਿਰਿਆਵਾਂ ਖੋਜੋ…',
+        'no_processes_yet'   => 'ਅਜੇ ਤੱਕ ਕੋਈ ਪ੍ਰਕਿਰਿਆ ਨਹੀਂ',
+    ],
+
     'toolbar' => [
         'process'   => 'ਪ੍ਰਕਿਰਿਆ',
         'decision'  => 'ਫੈਸਲਾ',
@@ -45,6 +56,16 @@ return [
         'order'        => 'ਕ੍ਰਮ (ਉੱਪਰ ਤੋਂ ਹੇਠਾਂ)',
         'connectors'   => 'ਕਨੈਕਟਰ',
         'no_connectors'=> 'ਕੋਈ ਕਨੈਕਟਰ ਨਹੀਂ',
+        'step_type' => [
+            'process'  => 'ਪ੍ਰਕਿਰਿਆ',
+            'decision' => 'ਫੈਸਲਾ',
+            'terminal' => 'ਸ਼ੁਰੂ/ਅੰਤ',
+            'document' => 'ਦਸਤਾਵੇਜ਼',
+        ],
+        'step_description_placeholder' => 'ਇਸ ਕਦਮ ਬਾਰੇ ਨੋਟ ਜੋੜੋ…',
+        'lane_label_placeholder'       => 'ਜਿਵੇਂ HR / IT / ਵਿਕਰੇਤਾ',
+        'group_label_placeholder'      => 'ਜਿਵੇਂ ਹੱਲ ਪੜਾਅ',
+        'lane_hint'                    => 'ਮੁੜ-ਕ੍ਰਮਬੱਧ ਕਰਨ ਲਈ ਲੇਨ ਦੇ ਖੱਬੇ-ਕਿਨਾਰੇ ਦੀ ਸਿਰਲੇਖ ਨੂੰ ਖਿੱਚੋ। ਆਕਾਰ ਬਦਲਣ ਲਈ ਹੇਠਲੇ ਕਿਨਾਰੇ ਨੂੰ ਖਿੱਚੋ। ਇਸ ਲੇਨ ਨੂੰ ਸੌਂਪਣ ਲਈ ਬੈਂਡ ਵਿੱਚ ਇੱਕ ਕਦਮ ਛੱਡੋ।',
     ],
 
     'export_modal' => [

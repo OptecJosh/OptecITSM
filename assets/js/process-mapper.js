@@ -1090,7 +1090,7 @@ const PM = (() => {
         detailPanel.classList.add('open');
         document.getElementById('detailBodyStep').style.display = 'none';
         document.getElementById('detailBodyGroup').style.display = '';
-        document.getElementById('detailTitle').textContent = 'Group Details';
+        document.getElementById('detailTitle').textContent = t('process-mapper.detail.group_title');
         document.getElementById('detailGroupLabel').value = g.label || '';
         document.getElementById('detailGroupColor').value = g.color || '#e3f2fd';
         document.getElementById('detailGroupX').value = g.x;
@@ -1252,7 +1252,7 @@ const PM = (() => {
         document.getElementById('detailBodyStep').style.display = 'none';
         document.getElementById('detailBodyGroup').style.display = 'none';
         document.getElementById('detailBodyLane').style.display = '';
-        document.getElementById('detailTitle').textContent = 'Lane Details';
+        document.getElementById('detailTitle').textContent = t('process-mapper.detail.lane_title');
         document.getElementById('detailLaneLabel').value = lane.label || '';
         document.getElementById('detailLaneColor').value = lane.color || '#f5f7fa';
         document.getElementById('detailLaneHeight').value = lane.height;
@@ -1654,7 +1654,7 @@ const PM = (() => {
         const related = connectors.filter(c => c.fromId == sid || c.toId == sid);
         const container = document.getElementById('detailConnectors');
         if (!related.length) {
-            container.innerHTML = '<div style="color: #999; font-size: 12px;">No connectors</div>';
+            container.innerHTML = '<div style="color: #999; font-size: 12px;">' + t('process-mapper.detail.no_connectors') + '</div>';
         } else {
             container.innerHTML = related.map(c => {
                 const cid = c.id || c.tempId;
@@ -1678,7 +1678,7 @@ const PM = (() => {
         document.getElementById('detailBodyStep').style.display = '';
         document.getElementById('detailBodyGroup').style.display = 'none';
         document.getElementById('detailBodyLane').style.display = 'none';
-        document.getElementById('detailTitle').textContent = 'Step Details';
+        document.getElementById('detailTitle').textContent = t('process-mapper.detail.step_title');
     }
 
     function updateStepFromDetail() {

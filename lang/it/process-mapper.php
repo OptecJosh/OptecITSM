@@ -6,6 +6,17 @@
 return [
     'title' => 'Mappatore di processi',
 
+    'nav' => [
+        'processes' => 'Processi',
+        'help'      => 'Aiuto',
+    ],
+
+    'sidebar' => [
+        'new_process'        => '+ Nuovo processo',
+        'search_placeholder' => 'Cerca processi…',
+        'no_processes_yet'   => 'Nessun processo',
+    ],
+
     'toolbar' => [
         'process'   => 'Processo',
         'decision'  => 'Decisione',
@@ -45,6 +56,16 @@ return [
         'order'        => 'Ordine (dall\'alto verso il basso)',
         'connectors'   => 'Connettori',
         'no_connectors'=> 'Nessun connettore',
+        'step_type' => [
+            'process'  => 'Processo',
+            'decision' => 'Decisione',
+            'terminal' => 'Inizio/Fine',
+            'document' => 'Documento',
+        ],
+        'step_description_placeholder' => 'Aggiungi note su questo passo…',
+        'lane_label_placeholder'       => 'es. HR / IT / Fornitore',
+        'group_label_placeholder'      => 'es. Fase di risoluzione',
+        'lane_hint'                    => 'Trascina l\'intestazione sinistra della corsia per riordinare. Trascina il bordo inferiore per ridimensionare. Rilascia un passo nella corsia per assegnarlo a essa.',
     ],
 
     'export_modal' => [

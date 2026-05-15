@@ -32,13 +32,13 @@ $translationNamespaces = ['common', 'process-mapper'];
         <!-- Sidebar: process list -->
         <div class="pm-sidebar" id="pmSidebar">
             <div class="pm-sidebar-header">
-                <button class="btn btn-primary btn-full" onclick="PM.createProcess()">+ New Process</button>
+                <button class="btn btn-primary btn-full" onclick="PM.createProcess()"><?php echo htmlspecialchars(t('process-mapper.sidebar.new_process')); ?></button>
             </div>
             <div class="pm-sidebar-search">
-                <input type="text" id="processSearch" placeholder="Search processes..." oninput="PM.filterProcesses(this.value)">
+                <input type="text" id="processSearch" placeholder="<?php echo htmlspecialchars(t('process-mapper.sidebar.search_placeholder')); ?>" oninput="PM.filterProcesses(this.value)">
             </div>
             <div class="pm-process-list" id="processList">
-                <div class="pm-empty">No processes yet</div>
+                <div class="pm-empty"><?php echo htmlspecialchars(t('process-mapper.sidebar.no_processes_yet')); ?></div>
             </div>
         </div>
 
@@ -113,105 +113,105 @@ $translationNamespaces = ['common', 'process-mapper'];
         <!-- Detail panel (slides in) -->
         <div class="pm-detail-panel" id="detailPanel">
             <div class="pm-detail-header">
-                <h3 id="detailTitle">Step Details</h3>
+                <h3 id="detailTitle"><?php echo htmlspecialchars(t('process-mapper.detail.step_title')); ?></h3>
                 <button class="pm-detail-close" onclick="PM.closeDetail()">&times;</button>
             </div>
             <!-- Step detail body -->
             <div class="pm-detail-body" id="detailBodyStep">
                 <div class="form-group">
-                    <label class="form-label">Label</label>
+                    <label class="form-label"><?php echo htmlspecialchars(t('process-mapper.detail.label')); ?></label>
                     <input type="text" class="form-input" id="detailLabel" oninput="PM.updateStepFromDetail()">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Type</label>
+                    <label class="form-label"><?php echo htmlspecialchars(t('process-mapper.detail.type')); ?></label>
                     <select class="form-input" id="detailType" onchange="PM.updateStepFromDetail()">
-                        <option value="process">Process</option>
-                        <option value="decision">Decision</option>
-                        <option value="start">Terminal (Start/End)</option>
-                        <option value="document">Document</option>
+                        <option value="process"><?php echo htmlspecialchars(t('process-mapper.detail.step_type.process')); ?></option>
+                        <option value="decision"><?php echo htmlspecialchars(t('process-mapper.detail.step_type.decision')); ?></option>
+                        <option value="start"><?php echo htmlspecialchars(t('process-mapper.detail.step_type.terminal')); ?></option>
+                        <option value="document"><?php echo htmlspecialchars(t('process-mapper.detail.step_type.document')); ?></option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Colour</label>
+                    <label class="form-label"><?php echo htmlspecialchars(t('process-mapper.detail.colour')); ?></label>
                     <input type="color" class="form-input" id="detailColor" value="#0078d4" onchange="PM.updateStepFromDetail()" style="height: 36px; padding: 2px;">
                     <div class="pm-gradient-row">
                         <label class="pm-gradient-toggle">
                             <input type="checkbox" id="detailGradient" onchange="PM.updateStepFromDetail()">
-                            <span>Gradient</span>
+                            <span><?php echo htmlspecialchars(t('process-mapper.detail.gradient')); ?></span>
                         </label>
                         <input type="color" class="form-input pm-gradient-color2" id="detailColor2" value="#003a6b" onchange="PM.updateStepFromDetail()">
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <textarea class="form-input" id="detailDescription" rows="5" oninput="PM.updateStepFromDetail()" placeholder="Add notes about this step..."></textarea>
+                    <label class="form-label"><?php echo htmlspecialchars(t('process-mapper.detail.description')); ?></label>
+                    <textarea class="form-input" id="detailDescription" rows="5" oninput="PM.updateStepFromDetail()" placeholder="<?php echo htmlspecialchars(t('process-mapper.detail.step_description_placeholder')); ?>"></textarea>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Position</label>
+                    <label class="form-label"><?php echo htmlspecialchars(t('process-mapper.detail.position')); ?></label>
                     <div style="display: flex; gap: 8px;">
                         <input type="number" class="form-input" id="detailX" style="width: 50%;" onchange="PM.updateStepFromDetail()">
                         <input type="number" class="form-input" id="detailY" style="width: 50%;" onchange="PM.updateStepFromDetail()">
                     </div>
                 </div>
                 <hr style="margin: 16px 0; border: none; border-top: 1px solid #e0e0e0;">
-                <h4 style="margin-bottom: 12px; font-size: 13px; color: #666;">Connectors</h4>
+                <h4 style="margin-bottom: 12px; font-size: 13px; color: #666;"><?php echo htmlspecialchars(t('process-mapper.detail.connectors')); ?></h4>
                 <div id="detailConnectors"></div>
             </div>
             <!-- Lane detail body (shown when a lane is selected) -->
             <div class="pm-detail-body" id="detailBodyLane" style="display: none;">
                 <div class="form-group">
-                    <label class="form-label">Label</label>
-                    <input type="text" class="form-input" id="detailLaneLabel" oninput="PM.updateLaneFromDetail()" placeholder="e.g. HR / IT / Vendor">
+                    <label class="form-label"><?php echo htmlspecialchars(t('process-mapper.detail.label')); ?></label>
+                    <input type="text" class="form-input" id="detailLaneLabel" oninput="PM.updateLaneFromDetail()" placeholder="<?php echo htmlspecialchars(t('process-mapper.detail.lane_label_placeholder')); ?>">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Colour</label>
+                    <label class="form-label"><?php echo htmlspecialchars(t('process-mapper.detail.colour')); ?></label>
                     <input type="color" class="form-input" id="detailLaneColor" value="#f5f7fa" onchange="PM.updateLaneFromDetail()" style="height: 36px; padding: 2px;">
                     <div class="pm-gradient-row">
                         <label class="pm-gradient-toggle">
                             <input type="checkbox" id="detailLaneGradient" onchange="PM.updateLaneFromDetail()">
-                            <span>Gradient</span>
+                            <span><?php echo htmlspecialchars(t('process-mapper.detail.gradient')); ?></span>
                         </label>
                         <input type="color" class="form-input pm-gradient-color2" id="detailLaneColor2" value="#cfd8dc" onchange="PM.updateLaneFromDetail()">
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Height</label>
+                    <label class="form-label"><?php echo htmlspecialchars(t('process-mapper.detail.height')); ?></label>
                     <input type="number" class="form-input" id="detailLaneHeight" min="80" onchange="PM.updateLaneFromDetail()">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Order (top to bottom)</label>
+                    <label class="form-label"><?php echo htmlspecialchars(t('process-mapper.detail.order')); ?></label>
                     <input type="number" class="form-input" id="detailLaneOrder" min="0" onchange="PM.updateLaneFromDetail()">
                 </div>
                 <p style="font-size: 12px; color: #888; line-height: 1.5; margin-top: 8px;">
-                    Drag the lane's left-edge header to reorder. Drag the bottom edge to resize. Drop a step into the band to assign it to this lane.
+                    <?php echo htmlspecialchars(t('process-mapper.detail.lane_hint')); ?>
                 </p>
             </div>
             <!-- Group detail body (shown when a group is selected) -->
             <div class="pm-detail-body" id="detailBodyGroup" style="display: none;">
                 <div class="form-group">
-                    <label class="form-label">Label</label>
-                    <input type="text" class="form-input" id="detailGroupLabel" oninput="PM.updateGroupFromDetail()" placeholder="e.g. Resolution phase">
+                    <label class="form-label"><?php echo htmlspecialchars(t('process-mapper.detail.label')); ?></label>
+                    <input type="text" class="form-input" id="detailGroupLabel" oninput="PM.updateGroupFromDetail()" placeholder="<?php echo htmlspecialchars(t('process-mapper.detail.group_label_placeholder')); ?>">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Colour</label>
+                    <label class="form-label"><?php echo htmlspecialchars(t('process-mapper.detail.colour')); ?></label>
                     <input type="color" class="form-input" id="detailGroupColor" value="#e3f2fd" onchange="PM.updateGroupFromDetail()" style="height: 36px; padding: 2px;">
                     <div class="pm-gradient-row">
                         <label class="pm-gradient-toggle">
                             <input type="checkbox" id="detailGroupGradient" onchange="PM.updateGroupFromDetail()">
-                            <span>Gradient</span>
+                            <span><?php echo htmlspecialchars(t('process-mapper.detail.gradient')); ?></span>
                         </label>
                         <input type="color" class="form-input pm-gradient-color2" id="detailGroupColor2" value="#b3d9f7" onchange="PM.updateGroupFromDetail()">
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Position</label>
+                    <label class="form-label"><?php echo htmlspecialchars(t('process-mapper.detail.position')); ?></label>
                     <div style="display: flex; gap: 8px;">
                         <input type="number" class="form-input" id="detailGroupX" style="width: 50%;" onchange="PM.updateGroupFromDetail()">
                         <input type="number" class="form-input" id="detailGroupY" style="width: 50%;" onchange="PM.updateGroupFromDetail()">
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Size</label>
+                    <label class="form-label"><?php echo htmlspecialchars(t('process-mapper.detail.size')); ?></label>
                     <div style="display: flex; gap: 8px;">
                         <input type="number" class="form-input" id="detailGroupW" style="width: 50%;" onchange="PM.updateGroupFromDetail()" min="80">
                         <input type="number" class="form-input" id="detailGroupH" style="width: 50%;" onchange="PM.updateGroupFromDetail()" min="60">

@@ -6,6 +6,17 @@
 return [
     'title' => 'Cartographie des processus',
 
+    'nav' => [
+        'processes' => 'Processus',
+        'help'      => 'Aide',
+    ],
+
+    'sidebar' => [
+        'new_process'        => '+ Nouveau processus',
+        'search_placeholder' => 'Rechercher des processus…',
+        'no_processes_yet'   => 'Aucun processus',
+    ],
+
     'toolbar' => [
         'process'   => 'Étape',
         'decision'  => 'Décision',
@@ -45,6 +56,16 @@ return [
         'order'        => 'Ordre (haut en bas)',
         'connectors'   => 'Connecteurs',
         'no_connectors'=> 'Aucun connecteur',
+        'step_type' => [
+            'process'  => 'Étape',
+            'decision' => 'Décision',
+            'terminal' => 'Début/Fin',
+            'document' => 'Document',
+        ],
+        'step_description_placeholder' => 'Ajouter des notes sur cette étape…',
+        'lane_label_placeholder'       => 'ex. RH / IT / Fournisseur',
+        'group_label_placeholder'      => 'ex. Phase de résolution',
+        'lane_hint'                    => 'Glissez l\'en-tête gauche du couloir pour réorganiser. Glissez le bord inférieur pour redimensionner. Déposez une étape dans la bande pour l\'affecter à ce couloir.',
     ],
 
     'export_modal' => [

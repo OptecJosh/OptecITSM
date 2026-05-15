@@ -6,6 +6,17 @@
 return [
     'title' => 'प्रक्रिया मैपर',
 
+    'nav' => [
+        'processes' => 'प्रक्रियाएँ',
+        'help'      => 'सहायता',
+    ],
+
+    'sidebar' => [
+        'new_process'        => '+ नई प्रक्रिया',
+        'search_placeholder' => 'प्रक्रियाएँ खोजें…',
+        'no_processes_yet'   => 'अभी कोई प्रक्रिया नहीं',
+    ],
+
     'toolbar' => [
         'process'   => 'प्रक्रिया',
         'decision'  => 'निर्णय',
@@ -45,6 +56,16 @@ return [
         'order'        => 'क्रम (ऊपर से नीचे)',
         'connectors'   => 'कनेक्टर',
         'no_connectors'=> 'कोई कनेक्टर नहीं',
+        'step_type' => [
+            'process'  => 'प्रक्रिया',
+            'decision' => 'निर्णय',
+            'terminal' => 'प्रारंभ/अंत',
+            'document' => 'दस्तावेज़',
+        ],
+        'step_description_placeholder' => 'इस चरण के बारे में नोट्स जोड़ें…',
+        'lane_label_placeholder'       => 'जैसे HR / IT / विक्रेता',
+        'group_label_placeholder'      => 'जैसे समाधान चरण',
+        'lane_hint'                    => 'पुनः क्रमित करने के लिए लेन का बायाँ हेडर खींचें। आकार बदलने के लिए निचला किनारा खींचें। इस लेन को सौंपने के लिए बैंड में एक चरण छोड़ें।',
     ],
 
     'export_modal' => [

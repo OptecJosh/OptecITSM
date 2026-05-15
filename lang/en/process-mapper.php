@@ -10,6 +10,17 @@
 return [
     'title' => 'Process Mapper',
 
+    'nav' => [
+        'processes' => 'Processes',
+        'help'      => 'Help',
+    ],
+
+    'sidebar' => [
+        'new_process'        => '+ New Process',
+        'search_placeholder' => 'Search processes...',
+        'no_processes_yet'   => 'No processes yet',
+    ],
+
     'toolbar' => [
         'process'   => 'Process',
         'decision'  => 'Decision',
@@ -49,6 +60,16 @@ return [
         'order'        => 'Order (top to bottom)',
         'connectors'   => 'Connectors',
         'no_connectors'=> 'No connectors',
+        'step_type' => [
+            'process'  => 'Process',
+            'decision' => 'Decision',
+            'terminal' => 'Terminal (Start/End)',
+            'document' => 'Document',
+        ],
+        'step_description_placeholder' => 'Add notes about this step...',
+        'lane_label_placeholder'       => 'e.g. HR / IT / Vendor',
+        'group_label_placeholder'      => 'e.g. Resolution phase',
+        'lane_hint'                    => 'Drag the lane\'s left-edge header to reorder. Drag the bottom edge to resize. Drop a step into the band to assign it to this lane.',
     ],
 
     'export_modal' => [

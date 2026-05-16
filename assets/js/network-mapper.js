@@ -2333,15 +2333,24 @@
         return ZOOM_LEVELS[next];
     }
 
-    function zoomFit() {
+    function zoomFit(opts) {
         // Fit-to-page if a paper size is chosen (most common case once the
         // user has set up an export-ready diagram), otherwise fit to the
-        // bounding box of all placed nodes with some padding. Leaves zoom
-        // unchanged with a toast if there's nothing meaningful to fit to.
+        // bounding box of all placed nodes. Leaves zoom unchanged with a
+        // toast if there's nothing meaningful to fit to.
+        //
+        // opts: { pad?: number, snap?: boolean }
+        //   pad   — padding around the content in viewport pixels (default 40).
+        //           Present mode passes 0 so the diagram fills the screen edge
+        //           to edge.
+        //   snap  — whether to snap the computed zoom to the nearest ZOOM_LEVELS
+        //           rung (default true). Present mode passes false so the fit
+        //           is tight rather than rounded down/up to a discrete level.
         if (!elCanvas) return;
-        const PAD = 40;
-        const viewW = elCanvas.clientWidth  - PAD * 2;
-        const viewH = elCanvas.clientHeight - PAD * 2;
+        const pad  = (opts && typeof opts.pad  === 'number') ? opts.pad  : 40;
+        const useSnap = !(opts && opts.snap === false);
+        const viewW = elCanvas.clientWidth  - pad * 2;
+        const viewH = elCanvas.clientHeight - pad * 2;
         if (viewW <= 0 || viewH <= 0) return;
 
         let contentW = 0, contentH = 0;
@@ -2365,20 +2374,70 @@
             return;
         }
         const target = Math.min(viewW / contentW, viewH / contentH);
-        setZoom(target);
+        if (useSnap) {
+            setZoom(target);
+        } else {
+            // Tight fit: clamp to the ZOOM_LEVELS extremes but otherwise use
+            // the exact ratio. zoomNext handles drift recovery if the user
+            // hits +/- afterwards, so off-grid values don't break the rest
+            // of the zoom system.
+            const min = ZOOM_LEVELS[0];
+            const max = ZOOM_LEVELS[ZOOM_LEVELS.length - 1];
+            zoom = Math.max(min, Math.min(max, target));
+            applyZoom();
+        }
         // Scroll back to the origin so the fitted content shows from top-left
         elCanvas.scrollLeft = 0;
         elCanvas.scrollTop  = 0;
     }
 
+    // Pre-Present zoom + scroll, restored on exit so the user lands back
+    // on what they were looking at before the presentation.
+    let presentRestore = null;
+
     function enterPresent() {
         if (!elEditor) return;
+        presentRestore = {
+            zoom,
+            scrollLeft: elCanvas ? elCanvas.scrollLeft : 0,
+            scrollTop:  elCanvas ? elCanvas.scrollTop  : 0,
+        };
         elEditor.classList.add('is-presenting');
+        // Also mark <body> so CSS can reach elements that live outside
+        // .nm-editor — specifically the module .header bar.
+        document.body.classList.add('nm-presenting');
+        // Fit-to-screen after the chrome (toolbar/palette/detail panel/nav
+        // bar) has actually hidden — wait two rAF ticks so flex sizing on
+        // .nm-canvas has reflowed to its new clientWidth/Height before
+        // zoomFit() reads it. One tick isn't always enough on the first
+        // paint after a display-none flip.
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                // Tight fit for Present: no padding around the bbox, no
+                // snap-to-discrete-level — fill the screen exactly.
+                if (isPresenting()) zoomFit({ pad: 0, snap: false });
+            });
+        });
     }
 
     function exitPresent() {
         if (!elEditor) return;
         elEditor.classList.remove('is-presenting');
+        document.body.classList.remove('nm-presenting');
+        // Restore pre-Present zoom + scroll. Defer one frame so the
+        // re-shown chrome has reclaimed its layout space before we set
+        // scroll positions against the now-smaller canvas viewport.
+        if (presentRestore) {
+            const r = presentRestore;
+            presentRestore = null;
+            requestAnimationFrame(() => {
+                setZoom(r.zoom);
+                if (elCanvas) {
+                    elCanvas.scrollLeft = r.scrollLeft;
+                    elCanvas.scrollTop  = r.scrollTop;
+                }
+            });
+        }
     }
 
     function isPresenting() {

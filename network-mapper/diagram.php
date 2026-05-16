@@ -840,19 +840,13 @@ $path_prefix = '../';
             margin-right: 4px;
             vertical-align: middle;
         }
-        .nm-detail-actions {
-            margin: 14px 0 10px 0;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
+        .nm-detail-footer {
+            padding: 12px 16px;
+            border-top: 1px solid #e5e7eb;
+            background: #fafbfc;
+            flex-shrink: 0;
         }
-        .nm-detail-actions .nm-btn { width: 100%; padding: 9px 14px; }
-        .nm-detail-hint {
-            font-size: 12px;
-            color: #6b7280;
-            line-height: 1.5;
-            margin: 8px 0 0 0;
-        }
+        .nm-detail-footer .nm-btn { width: 100%; padding: 9px 14px; }
 
         /* ---- Properties sub-section (CMDB property values for the bound object) ---- */
         .nm-detail-section-header {
@@ -1328,10 +1322,24 @@ $path_prefix = '../';
         .nm-editor.is-presenting .nm-palette,
         .nm-editor.is-presenting .nm-detail-panel { display: none !important; }
         .nm-editor.is-presenting .nm-present-exit { display: block; }
-        /* In present mode the canvas-wrap fills the editor and the canvas
-           keeps its dot-grid + scroll behaviour — we're only hiding chrome
-           around it, not changing the canvas itself. */
+        /* Canvas-wrap fills the editor; the dot-grid background that normally
+           sits behind the diagram is replaced with plain white so the
+           presented view looks like a finished document, not a workspace. */
         .nm-editor.is-presenting .nm-canvas-wrap { padding: 0; }
+        .nm-editor.is-presenting .nm-canvas {
+            background: white !important;
+            /* Present mode tight-fits the diagram to the viewport so the
+               canvas-spacer's scrollable footprint is no longer useful —
+               hiding overflow drops the scrollbars cleanly. */
+            overflow: hidden !important;
+        }
+        /* .nm-editor's normal height = 100vh - 60px to leave room for the
+           module nav bar. With the bar hidden in Present mode we reclaim
+           that 60px so there's no empty strip at the bottom. */
+        body.nm-presenting .nm-editor { height: 100vh !important; }
+        /* Module nav bar lives outside .nm-editor so we target it via the
+           body class toggled in enterPresent()/exitPresent(). */
+        body.nm-presenting .header { display: none !important; }
 
         /* ---- Export capture mode: applied to .nm-canvas-inner during a
            PNG/PDF snapshot so the rasterised image doesn't pick up
@@ -1475,12 +1483,13 @@ $path_prefix = '../';
                         <div class="nm-detail-section-header">Properties <span class="nm-detail-section-sub">from CMDB</span></div>
                         <div id="ndProperties"></div>
                     </div>
-                    <div class="nm-detail-actions">
-                        <button class="nm-btn" id="ndAddRelatedBtn" onclick="NM.openRelatedModal()">Add related objects</button>
-                    </div>
-                    <p class="nm-detail-hint">
-                        Pulls in CMDB neighbours of this object &mdash; what it depends on, what depends on it, and any objects that reference it via a property. Tick which to add; selected objects get placed in a ring around this node and a connector is drawn for each so the line traces back to a real relationship.
-                    </p>
+                </div>
+                <!-- Sticky footer: stays pinned at the bottom of the panel so the
+                     primary action is always reachable no matter how many CMDB
+                     properties scroll above. Sits outside .nm-detail-body so
+                     the body's overflow-y: auto only scrolls the content. -->
+                <div class="nm-detail-footer">
+                    <button class="nm-btn" id="ndAddRelatedBtn" onclick="NM.openRelatedModal()">Add related objects</button>
                 </div>
             </aside>
         </div>

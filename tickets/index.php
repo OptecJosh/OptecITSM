@@ -5,16 +5,25 @@
  */
 session_start();
 require_once '../config.php';
+require_once '../includes/functions.php';
+require_once '../includes/i18n.php';
+I18n::initFromSession();
 
 $current_page = 'inbox';
+
+// Namespaces this page needs translated for the JS bridge (inbox.js will
+// gain t() calls in phase 1b; the bridge is in place ahead of time).
+$translationNamespaces = ['common', 'tickets'];
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Service Desk - Inbox</title>
+    <title><?php echo htmlspecialchars(t('tickets.title')); ?> - <?php echo htmlspecialchars(t('tickets.nav.inbox')); ?></title>
     <link rel="stylesheet" href="../assets/css/inbox.css?v=9">
+    <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
+    <script src="../assets/js/i18n.js"></script>
     <script src="../assets/js/tinymce/tinymce.min.js"></script>
 </head>
 <body>
@@ -24,10 +33,10 @@ $current_page = 'inbox';
         <!-- Folder Navigation -->
         <div class="folder-container">
             <div class="folder-header">
-                <h2>Folders</h2>
-                <div class="folder-group-toggle" role="group" aria-label="Group folders by">
-                    <button type="button" class="folder-group-btn active" data-group="department" onclick="setFolderGrouping('department')">Department</button>
-                    <button type="button" class="folder-group-btn" data-group="analyst" onclick="setFolderGrouping('analyst')">Analyst</button>
+                <h2><?php echo htmlspecialchars(t('tickets.folders.title')); ?></h2>
+                <div class="folder-group-toggle" role="group" aria-label="<?php echo htmlspecialchars(t('tickets.folders.group_label')); ?>">
+                    <button type="button" class="folder-group-btn active" data-group="department" onclick="setFolderGrouping('department')"><?php echo htmlspecialchars(t('tickets.folders.group_department')); ?></button>
+                    <button type="button" class="folder-group-btn" data-group="analyst" onclick="setFolderGrouping('analyst')"><?php echo htmlspecialchars(t('tickets.folders.group_analyst')); ?></button>
                 </div>
             </div>
             <div class="folder-list" id="folderList">
@@ -40,28 +49,28 @@ $current_page = 'inbox';
         <!-- Email List -->
         <div class="email-list-container">
             <div class="email-list-header">
-                <h3 id="emailListTitle">All Tickets</h3>
+                <h3 id="emailListTitle"><?php echo htmlspecialchars(t('tickets.list.all_tickets')); ?></h3>
                 <div class="email-list-actions">
-                    <button class="icon-btn icon-btn-new" onclick="openNewTicketModal()" title="New ticket" aria-label="New ticket">
+                    <button class="icon-btn icon-btn-new" onclick="openNewTicketModal()" title="<?php echo htmlspecialchars(t('tickets.list.new_ticket_btn')); ?>" aria-label="<?php echo htmlspecialchars(t('tickets.list.new_ticket_btn')); ?>">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     </button>
-                    <button class="icon-btn" onclick="openSearchModal()" title="Search tickets" aria-label="Search tickets">
+                    <button class="icon-btn" onclick="openSearchModal()" title="<?php echo htmlspecialchars(t('tickets.list.search_btn')); ?>" aria-label="<?php echo htmlspecialchars(t('tickets.list.search_btn')); ?>">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     </button>
-                    <button class="icon-btn" onclick="refreshCurrentView()" title="Refresh" aria-label="Refresh">
+                    <button class="icon-btn" onclick="refreshCurrentView()" title="<?php echo htmlspecialchars(t('tickets.list.refresh_btn')); ?>" aria-label="<?php echo htmlspecialchars(t('tickets.list.refresh_btn')); ?>">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
                     </button>
                 </div>
             </div>
             <div class="email-list" id="emailList">
-                <div class="reading-pane-empty">Select a folder to view tickets</div>
+                <div class="reading-pane-empty"><?php echo htmlspecialchars(t('tickets.list.select_folder')); ?></div>
             </div>
         </div>
 
         <!-- Reading Pane -->
         <div class="reading-pane" id="readingPane">
             <div class="reading-pane-empty">
-                Select a ticket to view details
+                <?php echo htmlspecialchars(t('tickets.reading_pane.select_ticket')); ?>
             </div>
         </div>
     </div>
@@ -69,16 +78,16 @@ $current_page = 'inbox';
     <!-- Add Note Modal -->
     <div class="modal" id="noteModal">
         <div class="modal-content">
-            <div class="modal-header">Add Note</div>
+            <div class="modal-header"><?php echo htmlspecialchars(t('tickets.note_modal.title')); ?></div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label class="form-label">Note</label>
-                    <textarea class="form-textarea" id="noteText" placeholder="Enter your note here..."></textarea>
+                    <label class="form-label"><?php echo htmlspecialchars(t('tickets.note_modal.note_label')); ?></label>
+                    <textarea class="form-textarea" id="noteText" placeholder="<?php echo htmlspecialchars(t('tickets.note_modal.placeholder')); ?>"></textarea>
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeNoteModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="saveNote()">Save Note</button>
+                <button class="btn btn-secondary" onclick="closeNoteModal()"><?php echo htmlspecialchars(t('common.cancel')); ?></button>
+                <button class="btn btn-primary" onclick="saveNote()"><?php echo htmlspecialchars(t('tickets.note_modal.save_btn')); ?></button>
             </div>
         </div>
     </div>
@@ -89,43 +98,43 @@ $current_page = 'inbox';
             <div class="modal-body">
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">To</label>
-                        <input type="text" class="form-input" id="emailTo" placeholder="recipient@example.com">
+                        <label class="form-label"><?php echo htmlspecialchars(t('tickets.reply_modal.to')); ?></label>
+                        <input type="text" class="form-input" id="emailTo" placeholder="<?php echo htmlspecialchars(t('tickets.reply_modal.to_placeholder')); ?>">
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">Cc</label>
-                        <input type="text" class="form-input" id="emailCc" placeholder="cc@example.com (separate multiple with semicolons)">
+                        <label class="form-label"><?php echo htmlspecialchars(t('tickets.reply_modal.cc')); ?></label>
+                        <input type="text" class="form-input" id="emailCc" placeholder="<?php echo htmlspecialchars(t('tickets.reply_modal.cc_placeholder')); ?>">
                     </div>
                 </div>
                 <input type="hidden" id="emailSubject">
                 <div class="form-group">
-                    <label class="form-label">Message</label>
+                    <label class="form-label"><?php echo htmlspecialchars(t('tickets.reply_modal.message')); ?></label>
                     <textarea id="emailBody"></textarea>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Attachments</label>
+                    <label class="form-label"><?php echo htmlspecialchars(t('tickets.reply_modal.attachments')); ?></label>
                     <div class="attachment-dropzone" id="attachmentDropzone">
                         <input type="file" id="attachmentInput" multiple style="display: none;">
                         <div class="dropzone-content">
                             <span class="dropzone-icon">📎</span>
-                            <span>Drag files here or <a href="#" onclick="document.getElementById('attachmentInput').click(); return false;">browse</a></span>
+                            <span><?php echo htmlspecialchars(t('tickets.reply_modal.drop_files')); ?> <a href="#" onclick="document.getElementById('attachmentInput').click(); return false;"><?php echo htmlspecialchars(t('tickets.reply_modal.browse')); ?></a></span>
                         </div>
                     </div>
                     <div class="attachment-list" id="attachmentList"></div>
                 </div>
             </div>
             <div id="replyCleanupUndoBar" style="display:none; padding: 8px 0; color: #555; font-size: 13px;">
-                ✨ Cleaned up — <a href="#" id="replyCleanupUndoLink" style="color: #0078d4;">Undo</a> <span id="replyCleanupUndoTimer" style="color: #999;"></span>
+                ✨ <?php echo htmlspecialchars(t('tickets.reply_modal.cleaned_up')); ?> — <a href="#" id="replyCleanupUndoLink" style="color: #0078d4;"><?php echo htmlspecialchars(t('tickets.reply_modal.undo')); ?></a> <span id="replyCleanupUndoTimer" style="color: #999;"></span>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeEmailModal()">Cancel</button>
+                <button class="btn btn-secondary" onclick="closeEmailModal()"><?php echo htmlspecialchars(t('common.cancel')); ?></button>
                 <button class="btn btn-cleanup" id="replyCleanupBtn" onclick="cleanupReplyDraft()" style="display:none;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><path d="M12 3l1.9 5.8L20 10l-5 4.5L16.5 21 12 17.8 7.5 21 9 14.5 4 10l6.1-1.2z"/></svg>
-                    Cleanup
+                    <?php echo htmlspecialchars(t('tickets.reply_modal.cleanup')); ?>
                 </button>
-                <button class="btn btn-primary" onclick="sendEmail()" id="replySendBtn">Send</button>
+                <button class="btn btn-primary" onclick="sendEmail()" id="replySendBtn"><?php echo htmlspecialchars(t('tickets.reply_modal.send')); ?></button>
             </div>
         </div>
     </div>
@@ -133,52 +142,52 @@ $current_page = 'inbox';
     <!-- New Ticket Modal -->
     <div class="modal" id="newTicketModal">
         <div class="modal-content" style="max-width: 700px;">
-            <div class="modal-header">Create New Ticket</div>
+            <div class="modal-header"><?php echo htmlspecialchars(t('tickets.new_ticket_modal.title')); ?></div>
             <div class="modal-body">
                 <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                     <div class="form-group">
-                        <label class="form-label">Requester Name *</label>
-                        <input type="text" class="form-input" id="newTicketFromName" placeholder="e.g., John Smith" required>
+                        <label class="form-label"><?php echo htmlspecialchars(t('tickets.new_ticket_modal.requester_name')); ?> *</label>
+                        <input type="text" class="form-input" id="newTicketFromName" placeholder="<?php echo htmlspecialchars(t('tickets.new_ticket_modal.name_placeholder')); ?>" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Requester Email *</label>
-                        <input type="email" class="form-input" id="newTicketFromEmail" placeholder="e.g., john.smith@company.com" required>
+                        <label class="form-label"><?php echo htmlspecialchars(t('tickets.new_ticket_modal.requester_email')); ?> *</label>
+                        <input type="email" class="form-input" id="newTicketFromEmail" placeholder="<?php echo htmlspecialchars(t('tickets.new_ticket_modal.email_placeholder')); ?>" required>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Subject *</label>
-                    <input type="text" class="form-input" id="newTicketSubject" placeholder="Brief description of the issue" required>
+                    <label class="form-label"><?php echo htmlspecialchars(t('tickets.new_ticket_modal.subject')); ?> *</label>
+                    <input type="text" class="form-input" id="newTicketSubject" placeholder="<?php echo htmlspecialchars(t('tickets.new_ticket_modal.subject_placeholder')); ?>" required>
                 </div>
                 <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
                     <div class="form-group">
-                        <label class="form-label">Department</label>
+                        <label class="form-label"><?php echo htmlspecialchars(t('tickets.new_ticket_modal.department')); ?></label>
                         <select class="form-select" id="newTicketDepartment">
-                            <option value="">-- Select --</option>
+                            <option value=""><?php echo htmlspecialchars(t('tickets.new_ticket_modal.select_placeholder')); ?></option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Type</label>
+                        <label class="form-label"><?php echo htmlspecialchars(t('tickets.new_ticket_modal.type')); ?></label>
                         <select class="form-select" id="newTicketType">
-                            <option value="">-- Select --</option>
+                            <option value=""><?php echo htmlspecialchars(t('tickets.new_ticket_modal.select_placeholder')); ?></option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Priority</label>
+                        <label class="form-label"><?php echo htmlspecialchars(t('tickets.new_ticket_modal.priority')); ?></label>
                         <select class="form-select" id="newTicketPriority">
-                            <option value="Normal">Normal</option>
-                            <option value="Low">Low</option>
-                            <option value="High">High</option>
+                            <option value="Normal"><?php echo htmlspecialchars(t('tickets.new_ticket_modal.priority_normal')); ?></option>
+                            <option value="Low"><?php echo htmlspecialchars(t('tickets.new_ticket_modal.priority_low')); ?></option>
+                            <option value="High"><?php echo htmlspecialchars(t('tickets.new_ticket_modal.priority_high')); ?></option>
                         </select>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <textarea class="form-textarea" id="newTicketBody" rows="8" placeholder="Detailed description of the issue..."></textarea>
+                    <label class="form-label"><?php echo htmlspecialchars(t('tickets.new_ticket_modal.description')); ?></label>
+                    <textarea class="form-textarea" id="newTicketBody" rows="8" placeholder="<?php echo htmlspecialchars(t('tickets.new_ticket_modal.description_placeholder')); ?>"></textarea>
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeNewTicketModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="createNewTicket()">Create Ticket</button>
+                <button class="btn btn-secondary" onclick="closeNewTicketModal()"><?php echo htmlspecialchars(t('common.cancel')); ?></button>
+                <button class="btn btn-primary" onclick="createNewTicket()"><?php echo htmlspecialchars(t('tickets.new_ticket_modal.create_btn')); ?></button>
             </div>
         </div>
     </div>
@@ -186,30 +195,30 @@ $current_page = 'inbox';
     <!-- Search Modal (Draggable) -->
     <div class="search-modal" id="searchModal">
         <div class="search-modal-header" id="searchModalHeader">
-            <span>Search Tickets</span>
+            <span><?php echo htmlspecialchars(t('tickets.search_modal.title')); ?></span>
             <button class="search-modal-close" onclick="closeSearchModal()">&times;</button>
         </div>
         <div class="search-modal-body">
             <div class="search-form">
                 <div class="search-field">
-                    <label>Ticket Number</label>
-                    <input type="text" id="searchTicketNumber" placeholder="e.g., TDB-914-96769">
+                    <label><?php echo htmlspecialchars(t('tickets.search_modal.ticket_number')); ?></label>
+                    <input type="text" id="searchTicketNumber" placeholder="<?php echo htmlspecialchars(t('tickets.search_modal.ticket_number_ph')); ?>">
                 </div>
                 <div class="search-field">
-                    <label>Email Address</label>
-                    <input type="text" id="searchEmail" placeholder="e.g., user@example.com">
+                    <label><?php echo htmlspecialchars(t('tickets.search_modal.email_address')); ?></label>
+                    <input type="text" id="searchEmail" placeholder="<?php echo htmlspecialchars(t('tickets.search_modal.email_ph')); ?>">
                 </div>
                 <div class="search-field">
-                    <label>Subject</label>
-                    <input type="text" id="searchSubject" placeholder="Search in subject...">
+                    <label><?php echo htmlspecialchars(t('tickets.search_modal.subject')); ?></label>
+                    <input type="text" id="searchSubject" placeholder="<?php echo htmlspecialchars(t('tickets.search_modal.subject_ph')); ?>">
                 </div>
                 <div class="search-actions">
-                    <button class="btn btn-primary" onclick="performSearch()">Search</button>
-                    <button class="btn btn-secondary" onclick="clearSearch()">Clear</button>
+                    <button class="btn btn-primary" onclick="performSearch()"><?php echo htmlspecialchars(t('tickets.search_modal.search_btn')); ?></button>
+                    <button class="btn btn-secondary" onclick="clearSearch()"><?php echo htmlspecialchars(t('tickets.search_modal.clear_btn')); ?></button>
                 </div>
             </div>
             <div class="search-results" id="searchResults">
-                <div class="search-results-empty">Enter search criteria above</div>
+                <div class="search-results-empty"><?php echo htmlspecialchars(t('tickets.search_modal.empty_state')); ?></div>
             </div>
         </div>
     </div>
@@ -217,25 +226,25 @@ $current_page = 'inbox';
     <!-- Schedule Modal -->
     <div class="modal" id="scheduleModal">
         <div class="modal-content" style="max-width: 400px;">
-            <div class="modal-header">Schedule Work</div>
+            <div class="modal-header"><?php echo htmlspecialchars(t('tickets.schedule_modal.title')); ?></div>
             <div class="modal-body">
                 <p class="schedule-ticket-info" id="scheduleTicketInfo"></p>
                 <div class="form-group">
-                    <label class="form-label">Date *</label>
+                    <label class="form-label"><?php echo htmlspecialchars(t('tickets.schedule_modal.date')); ?> *</label>
                     <input type="date" class="form-input" id="scheduleDate" required>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Start Time *</label>
+                    <label class="form-label"><?php echo htmlspecialchars(t('tickets.schedule_modal.start_time')); ?> *</label>
                     <input type="time" class="form-input" id="scheduleTime" required>
                 </div>
                 <div class="schedule-current" id="scheduleCurrent" style="display: none;">
-                    <p>Currently scheduled: <span id="currentSchedule"></span></p>
-                    <button class="btn btn-link" onclick="clearSchedule()">Clear schedule</button>
+                    <p><?php echo htmlspecialchars(t('tickets.schedule_modal.currently_scheduled')); ?> <span id="currentSchedule"></span></p>
+                    <button class="btn btn-link" onclick="clearSchedule()"><?php echo htmlspecialchars(t('tickets.schedule_modal.clear_schedule')); ?></button>
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeScheduleModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="saveSchedule()">Save</button>
+                <button class="btn btn-secondary" onclick="closeScheduleModal()"><?php echo htmlspecialchars(t('common.cancel')); ?></button>
+                <button class="btn btn-primary" onclick="saveSchedule()"><?php echo htmlspecialchars(t('common.save')); ?></button>
             </div>
         </div>
     </div>
@@ -303,16 +312,16 @@ $current_page = 'inbox';
     <div class="ai-chat-overlay" id="ticketAiOverlay" onclick="closeTicketAiChat()"></div>
     <div class="ai-chat-panel" id="ticketAiPanel">
         <div class="ai-chat-header">
-            <div class="ai-chat-title">Ask AI</div>
+            <div class="ai-chat-title"><?php echo htmlspecialchars(t('tickets.ai_chat.title')); ?></div>
             <button class="ai-chat-close" onclick="closeTicketAiChat()">&times;</button>
         </div>
         <div class="ai-chat-messages" id="ticketAiMessages">
             <div class="ai-chat-welcome">
-                Ask a question about this ticket and the AI will search the knowledge base for relevant articles.
+                <?php echo htmlspecialchars(t('tickets.ai_chat.welcome')); ?>
             </div>
         </div>
         <div class="ai-chat-input-area">
-            <textarea id="ticketAiInput" placeholder="Ask a question..." rows="2" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();askTicketAi();}"></textarea>
+            <textarea id="ticketAiInput" placeholder="<?php echo htmlspecialchars(t('tickets.ai_chat.placeholder')); ?>" rows="2" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();askTicketAi();}"></textarea>
             <button class="ai-chat-send" id="ticketAiSendBtn" onclick="askTicketAi()">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
             </button>

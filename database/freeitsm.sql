@@ -2168,6 +2168,7 @@ CREATE TABLE IF NOT EXISTS `cmdb_objects` (
     `class_id`          INT NOT NULL,
     `name`              VARCHAR(255) NOT NULL,
     `parent_id`         INT NULL,
+    `is_planned`        TINYINT(1) NOT NULL DEFAULT 0,
     `ai_summary`        LONGTEXT NULL,
     `ai_summary_generated_at` DATETIME NULL,
     `created_datetime`  DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
@@ -2176,6 +2177,7 @@ CREATE TABLE IF NOT EXISTS `cmdb_objects` (
     KEY `ix_cmdb_objects_class_id` (`class_id`),
     KEY `ix_cmdb_objects_parent_id` (`parent_id`),
     KEY `ix_cmdb_objects_name` (`name`),
+    KEY `ix_cmdb_objects_is_planned` (`is_planned`),
     CONSTRAINT `fk_cmdb_objects_class` FOREIGN KEY (`class_id`) REFERENCES `cmdb_classes` (`id`),
     CONSTRAINT `fk_cmdb_objects_parent` FOREIGN KEY (`parent_id`) REFERENCES `cmdb_objects` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

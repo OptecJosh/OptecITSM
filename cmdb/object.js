@@ -110,15 +110,22 @@ function render() {
             <span style="color: #1f2937;">${escapeHtml(obj.name)}</span>
         </div>
 
-        <div class="obj-header">
+        <div class="obj-header${obj.is_planned ? ' is-planned' : ''}">
             <input type="text" class="obj-name" id="objName" value="${escapeHtml(obj.name)}" maxlength="255">
             <div class="obj-meta">
                 <span class="class-badge">${escapeHtml(obj.class_name)}</span>
+                ${obj.is_planned ? '<span class="planned-pill" title="This object doesn\'t physically exist yet — toggle off when it goes live">PLANNED</span>' : ''}
                 <span><strong>Parent:</strong>
                     ${obj.parent_id
                         ? `<a href="object.php?id=${obj.parent_id}">${escapeHtml(obj.parent_name)}</a> <span style="color:#9ca3af;">(${escapeHtml(obj.parent_class_name || '')})</span>`
                         : '<span style="color:#d1d5db;">none</span>'}
                     <button class="btn-mini" style="margin-left: 8px;" onclick="openParentModal()">Edit</button>
+                </span>
+                <span><strong>Planned:</strong>
+                    <label style="cursor:pointer; display:inline-flex; align-items:center; gap:5px; vertical-align:middle;">
+                        <input type="checkbox" id="objIsPlanned" ${obj.is_planned ? 'checked' : ''} onchange="togglePlanned(this.checked)" style="margin:0;">
+                        <span style="font-size:12px; color:#666;">${obj.is_planned ? 'Yes (future state)' : 'No (real, in service)'}</span>
+                    </label>
                 </span>
                 <span><strong>Created:</strong> ${formatDate(obj.created_datetime)}</span>
                 <span><strong>Updated:</strong> ${formatDate(obj.updated_datetime)}</span>
@@ -662,6 +669,7 @@ async function savePartial(patch) {
             parent_id: patch.parent_id !== undefined ? patch.parent_id : obj.parent_id,
             property_values: []
         };
+        if (patch.is_planned !== undefined) payload.is_planned = patch.is_planned;
         const data = await postJson(API + 'save_object.php', payload);
         if (!data.success) throw new Error(data.error || 'Save failed');
         await Promise.all([loadObject(), loadImpact(), loadActivity()]);
@@ -673,6 +681,11 @@ async function savePartial(patch) {
         await Promise.all([loadObject(), loadImpact(), loadActivity()]);
         render();
     }
+}
+
+// Toggle the planned/real state from the header checkbox.
+async function togglePlanned(isPlanned) {
+    await savePartial({ is_planned: !!isPlanned });
 }
 
 // ---------- Parent picker ----------

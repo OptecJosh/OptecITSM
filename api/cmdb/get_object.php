@@ -33,6 +33,7 @@ try {
     $stmt = $conn->prepare(
         "SELECT o.id, o.name, o.class_id, c.name AS class_name, c.class_key,
                 o.parent_id, p.name AS parent_name, pc.id AS parent_class_id, pc.name AS parent_class_name,
+                o.is_planned,
                 o.ai_summary, o.ai_summary_generated_at,
                 o.created_datetime, o.updated_datetime
            FROM cmdb_objects o
@@ -48,6 +49,7 @@ try {
     foreach (['id', 'class_id', 'parent_id', 'parent_class_id'] as $f) {
         $obj[$f] = $obj[$f] !== null ? (int)$obj[$f] : null;
     }
+    $obj['is_planned'] = (int)$obj['is_planned'] === 1;
 
     // Children
     $childStmt = $conn->prepare(

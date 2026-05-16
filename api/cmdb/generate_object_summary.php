@@ -34,7 +34,8 @@ try {
     // Pull the object + class + parent
     $stmt = $conn->prepare(
         "SELECT o.id, o.name, c.name AS class_name, c.description AS class_description,
-                o.parent_id, p.name AS parent_name, pc.name AS parent_class_name
+                o.parent_id, p.name AS parent_name, pc.name AS parent_class_name,
+                o.is_planned
            FROM cmdb_objects o
            JOIN cmdb_classes c ON c.id = o.class_id
       LEFT JOIN cmdb_objects p ON p.id = o.parent_id
@@ -129,6 +130,11 @@ try {
     $msg .= "Class: " . $obj['class_name'];
     if (!empty($obj['class_description'])) $msg .= " (" . $obj['class_description'] . ")";
     $msg .= "\n";
+    // Flag planned objects prominently so the synthesis can mention "future state"
+    // rather than describing the object as if it physically existed today.
+    if ((int)($obj['is_planned'] ?? 0) === 1) {
+        $msg .= "Status: PLANNED — this object does not physically exist yet. It represents a future or proposed state.\n";
+    }
     if ($obj['parent_id']) {
         $msg .= "Parent: " . $obj['parent_name'] . " (" . $obj['parent_class_name'] . ")\n";
     } else {
@@ -205,6 +211,7 @@ Rules:
 - Refer to the object by its name. Refer to other objects by their names too.
 - Tone: factual, concise, like a senior engineer briefing a colleague.
 - If many properties are missing, you may briefly note "key fields like X are not yet filled in" — but only if it's worth flagging.
+- If the object has Status: PLANNED, frame the summary in future tense ("will host…", "is planned to…", "is a proposed…") and surface the planned status near the start of the first sentence so the reader knows immediately the object isn't yet in service.
 PROMPT;
 
     if ($cfg['custom_instructions'] !== '') {

@@ -116,6 +116,25 @@ $current_page = 'browse';
         .empty-state h3 { color: #374151; font-weight: 600; margin-bottom: 8px; }
         .empty-state p { margin-bottom: 16px; font-size: 14px; }
 
+        /* Planned-state styling — pill rendered next to the name everywhere
+           planned objects appear so the future-state distinction reads at a glance. */
+        .planned-pill {
+            display: inline-block;
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fcd34d;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+        .object-list tr.is-planned td { opacity: 0.85; }
+        .object-list tr.is-planned .object-name { font-style: italic; }
+
         .badge-count {
             background: #f3f4f6;
             color: #4b5563;
@@ -246,6 +265,15 @@ $current_page = 'browse';
                 <!-- Required-property fields injected by JS when the class has any.
                      Optional properties are filled on the detail page after creation. -->
                 <div id="newObjectReqFields"></div>
+
+                <!-- Planned toggle: future-state objects that don't physically exist yet -->
+                <div class="form-group" style="margin-top: 14px;">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <input type="checkbox" id="newObjectIsPlanned" style="width: auto; margin: 0;">
+                        <span><strong>Planned</strong> &mdash; this object doesn't physically exist yet (e.g. a future architecture state)</span>
+                    </label>
+                    <small style="margin-top: 4px; color: #888;">Planned objects show with a dashed border and a <em>PLANNED</em> pill across the CMDB. Toggle this off when the object goes live.</small>
+                </div>
             </div>
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeNewObjectModal()">Cancel</button>

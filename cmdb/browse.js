@@ -109,8 +109,8 @@ function renderObjects() {
             </thead>
             <tbody>
                 ${objects.map(o => `
-                    <tr onclick="openObject(${o.id})">
-                        <td><span class="object-name">${escapeHtml(o.name)}</span></td>
+                    <tr onclick="openObject(${o.id})"${o.is_planned ? ' class="is-planned"' : ''}>
+                        <td><span class="object-name">${escapeHtml(o.name)}</span>${o.is_planned ? ' <span class="planned-pill" title="This object doesn\'t physically exist yet">PLANNED</span>' : ''}</td>
                         <td>${o.parent_id
                             ? `<span class="parent-link"><strong>${escapeHtml(o.parent_name || '?')}</strong> <span style="color:#9ca3af">(${escapeHtml(o.parent_class_name || '')})</span></span>`
                             : '<span style="color:#d1d5db;">—</span>'}</td>
@@ -150,6 +150,9 @@ async function openNewObjectModal() {
     document.getElementById('newObjectClassName').textContent = activeClass.name;
     document.getElementById('newObjectName').value = '';
     document.getElementById('newObjectReqFields').innerHTML = '';
+    // Reset the Planned toggle so it doesn't carry state from a previous open
+    const plannedCb = document.getElementById('newObjectIsPlanned');
+    if (plannedCb) plannedCb.checked = false;
     newObjectRequiredProps = [];
     document.getElementById('newObjectModal').classList.add('active');
     setTimeout(() => document.getElementById('newObjectName').focus(), 0);
@@ -323,11 +326,13 @@ async function createObject() {
         showInlineToast('Missing required: ' + missing.join(', '), true);
         return;
     }
+    const isPlanned = document.getElementById('newObjectIsPlanned')?.checked || false;
     try {
         const data = await postJson(API + 'save_object.php', {
             class_id: activeClass.id,
             name,
             parent_id: null,
+            is_planned: isPlanned,
             property_values: values
         });
         if (!data.success) throw new Error(data.error || 'Save failed');

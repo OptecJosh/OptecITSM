@@ -67,6 +67,32 @@ $current_page = 'browse';
         .obj-meta a { color: #be185d; text-decoration: none; }
         .obj-meta a:hover { text-decoration: underline; }
 
+        /* Planned-state styling — used on the object header, browse rows, and
+           anywhere else the planned/real distinction matters. The pill itself
+           is visible at every surface; the dashed border on the header makes
+           the planned state read at a glance when you're on the detail page. */
+        .planned-pill {
+            display: inline-block;
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fcd34d;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            vertical-align: middle;
+        }
+        .obj-header.is-planned {
+            border: 2px dashed #fcd34d;
+            background: linear-gradient(180deg, #fffbeb 0%, white 60%);
+            padding: 18px 22px;
+            border-radius: 8px;
+        }
+        tr.is-planned td { opacity: 0.85; }
+        tr.is-planned .object-name { font-style: italic; }
+
         .obj-actions { margin-top: 16px; display: flex; gap: 10px; }
 
         .obj-section {

@@ -22,6 +22,7 @@ try {
 
     $sql = "SELECT o.id, o.name, o.class_id, c.name AS class_name,
                    o.parent_id, p.name AS parent_name, pc.name AS parent_class_name,
+                   o.is_planned,
                    o.created_datetime, o.updated_datetime,
                    (SELECT COUNT(*) FROM cmdb_objects ch WHERE ch.parent_id = o.id) AS child_count
               FROM cmdb_objects o
@@ -50,6 +51,7 @@ try {
         $r['class_id'] = (int)$r['class_id'];
         $r['parent_id'] = $r['parent_id'] !== null ? (int)$r['parent_id'] : null;
         $r['child_count'] = (int)$r['child_count'];
+        $r['is_planned'] = (int)$r['is_planned'] === 1;
     }
 
     echo json_encode(['success' => true, 'objects' => $rows]);

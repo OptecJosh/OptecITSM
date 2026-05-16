@@ -38,7 +38,7 @@ try {
 
     $conn = connectToDatabase();
 
-    $sql = "SELECT o.id, o.name, c.id AS class_id, c.name AS class_name
+    $sql = "SELECT o.id, o.name, c.id AS class_id, c.name AS class_name, o.is_planned
               FROM cmdb_objects o
               JOIN cmdb_classes c ON c.id = o.class_id
              WHERE o.name LIKE ?";
@@ -60,6 +60,7 @@ try {
     foreach ($rows as &$r) {
         $r['id'] = (int)$r['id'];
         $r['class_id'] = (int)$r['class_id'];
+        $r['is_planned'] = (int)$r['is_planned'] === 1;
     }
 
     echo json_encode(['success' => true, 'results' => $rows]);

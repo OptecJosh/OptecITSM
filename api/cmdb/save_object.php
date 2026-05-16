@@ -32,6 +32,11 @@ try {
     $name      = trim((string)($data['name'] ?? ''));
     $parentId  = isset($data['parent_id']) && $data['parent_id'] !== '' && $data['parent_id'] !== null ? (int)$data['parent_id'] : null;
     $values    = $data['property_values'] ?? [];
+    // is_planned: only apply if caller explicitly sends it. Absence = leave unchanged
+    // on update / use default (0 = real) on create. Tracking this separately rather
+    // than just casting lets inline-edit-one-field flows leave the flag alone.
+    $hasPlanned = array_key_exists('is_planned', $data);
+    $isPlanned = $hasPlanned ? ($data['is_planned'] ? 1 : 0) : 0;
 
     if ($name === '') throw new Exception('Name is required');
     if (mb_strlen($name) > 255) throw new Exception('Name too long (max 255 chars)');
@@ -120,16 +125,25 @@ try {
 
     if ($id === null) {
         $ins = $conn->prepare(
-            "INSERT INTO cmdb_objects (class_id, name, parent_id, created_datetime, updated_datetime)
-             VALUES (?, ?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())"
+            "INSERT INTO cmdb_objects (class_id, name, parent_id, is_planned, created_datetime, updated_datetime)
+             VALUES (?, ?, ?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())"
         );
-        $ins->execute([$classId, $name, $parentId]);
+        $ins->execute([$classId, $name, $parentId, $isPlanned]);
         $id = (int)$conn->lastInsertId();
     } else {
-        $upd = $conn->prepare(
-            "UPDATE cmdb_objects SET name = ?, parent_id = ?, updated_datetime = UTC_TIMESTAMP() WHERE id = ?"
-        );
-        $upd->execute([$name, $parentId, $id]);
+        // Only touch is_planned if the caller explicitly sent it — otherwise leave
+        // the existing value alone so inline-edit flows don't accidentally reset it.
+        if ($hasPlanned) {
+            $upd = $conn->prepare(
+                "UPDATE cmdb_objects SET name = ?, parent_id = ?, is_planned = ?, updated_datetime = UTC_TIMESTAMP() WHERE id = ?"
+            );
+            $upd->execute([$name, $parentId, $isPlanned, $id]);
+        } else {
+            $upd = $conn->prepare(
+                "UPDATE cmdb_objects SET name = ?, parent_id = ?, updated_datetime = UTC_TIMESTAMP() WHERE id = ?"
+            );
+            $upd->execute([$name, $parentId, $id]);
+        }
     }
 
     // Wipe existing values for the properties we're updating, then insert fresh.

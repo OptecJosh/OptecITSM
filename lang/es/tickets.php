@@ -132,6 +132,42 @@ return [
         'delete_failed'        => 'No se pudo eliminar el registro de tiempo: {error}',
     ],
 
+    // tickets/settings/index.php — admin settings page (tabs + section headings)
+    'settings' => [
+        'page_title' => 'Mesa de servicio - Configuración',
+        'tabs' => [
+            'departments'     => 'Departamentos',
+            'teams'           => 'Equipos',
+            'ticket_types'    => 'Tipos de ticket',
+            'ticket_origins'  => 'Orígenes de ticket',
+            'statuses'        => 'Estados',
+            'priorities'      => 'Prioridades',
+            'rota_locations'  => 'Ubicaciones de turnos',
+            'mailboxes'       => 'Buzones',
+            'email_templates' => 'Plantillas',
+            'rota'            => 'Turnos',
+            'analysts'        => 'Analistas',
+            'general'         => 'General',
+            'reply_cleanup'   => 'Limpieza de respuestas',
+        ],
+        'headings' => [
+            'departments'      => 'Departamentos',
+            'teams'            => 'Equipos',
+            'ticket_types'     => 'Tipos de ticket',
+            'ticket_origins'   => 'Orígenes de ticket',
+            'statuses'         => 'Estados',
+            'priorities'       => 'Prioridades',
+            'rota_locations'   => 'Ubicaciones de turnos',
+            'mailboxes'        => 'Buzones',
+            'email_templates'  => 'Plantillas de correo',
+            'rota_shifts'      => 'Turnos del horario',
+            'rota_settings'    => 'Configuración de turnos',
+            'analysts'         => 'Analistas',
+            'general_settings' => 'Configuración general',
+            'reply_cleanup_ai' => 'Limpieza de respuestas con IA',
+        ],
+    ],
+
     // tickets/rota.php — weekly staff rota grid
     'rota' => [
         'page_title'      => 'Mesa de servicio - Turnos',

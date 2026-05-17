@@ -132,6 +132,42 @@ return [
         'delete_failed'        => 'वेळ नोंद हटवण्यात अयशस्वी: {error}',
     ],
 
+    // tickets/settings/index.php — admin settings page (tabs + section headings)
+    'settings' => [
+        'page_title' => 'सेवा डेस्क - सेटिंग्ज',
+        'tabs' => [
+            'departments'     => 'विभाग',
+            'teams'           => 'संघ',
+            'ticket_types'    => 'तिकीट प्रकार',
+            'ticket_origins'  => 'तिकीट स्रोत',
+            'statuses'        => 'स्थिती',
+            'priorities'      => 'प्राधान्ये',
+            'rota_locations'  => 'रोटा स्थाने',
+            'mailboxes'       => 'मेलबॉक्स',
+            'email_templates' => 'टेम्पलेट',
+            'rota'            => 'रोटा',
+            'analysts'        => 'विश्लेषक',
+            'general'         => 'सामान्य',
+            'reply_cleanup'   => 'उत्तर साफसफाई',
+        ],
+        'headings' => [
+            'departments'      => 'विभाग',
+            'teams'            => 'संघ',
+            'ticket_types'     => 'तिकीट प्रकार',
+            'ticket_origins'   => 'तिकीट स्रोत',
+            'statuses'         => 'स्थिती',
+            'priorities'       => 'प्राधान्ये',
+            'rota_locations'   => 'रोटा स्थाने',
+            'mailboxes'        => 'मेलबॉक्स',
+            'email_templates'  => 'ईमेल टेम्पलेट',
+            'rota_shifts'      => 'रोटा शिफ्ट',
+            'rota_settings'    => 'रोटा सेटिंग्ज',
+            'analysts'         => 'विश्लेषक',
+            'general_settings' => 'सामान्य सेटिंग्ज',
+            'reply_cleanup_ai' => 'उत्तर साफसफाई AI',
+        ],
+    ],
+
     // tickets/rota.php — weekly staff rota grid
     'rota' => [
         'page_title'      => 'सेवा डेस्क - रोटा',

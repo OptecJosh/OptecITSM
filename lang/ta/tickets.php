@@ -132,6 +132,42 @@ return [
         'delete_failed'        => 'நேரப் பதிவை நீக்க முடியவில்லை: {error}',
     ],
 
+    // tickets/settings/index.php — admin settings page (tabs + section headings)
+    'settings' => [
+        'page_title' => 'சேவை மையம் - அமைப்புகள்',
+        'tabs' => [
+            'departments'     => 'துறைகள்',
+            'teams'           => 'குழுக்கள்',
+            'ticket_types'    => 'டிக்கெட் வகைகள்',
+            'ticket_origins'  => 'டிக்கெட் மூலங்கள்',
+            'statuses'        => 'நிலைகள்',
+            'priorities'      => 'முன்னுரிமைகள்',
+            'rota_locations'  => 'பணி அட்டவணை இடங்கள்',
+            'mailboxes'       => 'அஞ்சல் பெட்டிகள்',
+            'email_templates' => 'வார்ப்புருக்கள்',
+            'rota'            => 'பணி அட்டவணை',
+            'analysts'        => 'பகுப்பாய்வாளர்கள்',
+            'general'         => 'பொது',
+            'reply_cleanup'   => 'பதில் சுத்தம்',
+        ],
+        'headings' => [
+            'departments'      => 'துறைகள்',
+            'teams'            => 'குழுக்கள்',
+            'ticket_types'     => 'டிக்கெட் வகைகள்',
+            'ticket_origins'   => 'டிக்கெட் மூலங்கள்',
+            'statuses'         => 'நிலைகள்',
+            'priorities'       => 'முன்னுரிமைகள்',
+            'rota_locations'   => 'பணி அட்டவணை இடங்கள்',
+            'mailboxes'        => 'அஞ்சல் பெட்டிகள்',
+            'email_templates'  => 'மின்னஞ்சல் வார்ப்புருக்கள்',
+            'rota_shifts'      => 'பணி நேரங்கள்',
+            'rota_settings'    => 'பணி அட்டவணை அமைப்புகள்',
+            'analysts'         => 'பகுப்பாய்வாளர்கள்',
+            'general_settings' => 'பொது அமைப்புகள்',
+            'reply_cleanup_ai' => 'பதில் சுத்தம் AI',
+        ],
+    ],
+
     // tickets/rota.php — weekly staff rota grid
     'rota' => [
         'page_title'      => 'சேவை மையம் - பணி அட்டவணை',

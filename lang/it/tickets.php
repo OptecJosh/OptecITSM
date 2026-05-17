@@ -132,6 +132,42 @@ return [
         'delete_failed'        => 'Impossibile eliminare la registrazione tempo: {error}',
     ],
 
+    // tickets/settings/index.php — admin settings page (tabs + section headings)
+    'settings' => [
+        'page_title' => 'Service Desk - Impostazioni',
+        'tabs' => [
+            'departments'     => 'Dipartimenti',
+            'teams'           => 'Team',
+            'ticket_types'    => 'Tipi di ticket',
+            'ticket_origins'  => 'Origini ticket',
+            'statuses'        => 'Stati',
+            'priorities'      => 'Priorità',
+            'rota_locations'  => 'Sedi dei turni',
+            'mailboxes'       => 'Caselle di posta',
+            'email_templates' => 'Modelli',
+            'rota'            => 'Turni',
+            'analysts'        => 'Analisti',
+            'general'         => 'Generale',
+            'reply_cleanup'   => 'Pulizia risposte',
+        ],
+        'headings' => [
+            'departments'      => 'Dipartimenti',
+            'teams'            => 'Team',
+            'ticket_types'     => 'Tipi di ticket',
+            'ticket_origins'   => 'Origini ticket',
+            'statuses'         => 'Stati',
+            'priorities'       => 'Priorità',
+            'rota_locations'   => 'Sedi dei turni',
+            'mailboxes'        => 'Caselle di posta',
+            'email_templates'  => 'Modelli e-mail',
+            'rota_shifts'      => 'Turni di lavoro',
+            'rota_settings'    => 'Impostazioni turni',
+            'analysts'         => 'Analisti',
+            'general_settings' => 'Impostazioni generali',
+            'reply_cleanup_ai' => 'Pulizia risposte IA',
+        ],
+    ],
+
     // tickets/rota.php — weekly staff rota grid
     'rota' => [
         'page_title'      => 'Service Desk - Turni',

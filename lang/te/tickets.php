@@ -132,6 +132,42 @@ return [
         'delete_failed'        => 'సమయ ఎంట్రీని తొలగించడంలో విఫలమైంది: {error}',
     ],
 
+    // tickets/settings/index.php — admin settings page (tabs + section headings)
+    'settings' => [
+        'page_title' => 'సేవా కేంద్రం - సెట్టింగ్‌లు',
+        'tabs' => [
+            'departments'     => 'విభాగాలు',
+            'teams'           => 'బృందాలు',
+            'ticket_types'    => 'టికెట్ రకాలు',
+            'ticket_origins'  => 'టికెట్ మూలాలు',
+            'statuses'        => 'స్థితులు',
+            'priorities'      => 'ప్రాధాన్యతలు',
+            'rota_locations'  => 'రోటా ప్రదేశాలు',
+            'mailboxes'       => 'మెయిల్‌బాక్స్‌లు',
+            'email_templates' => 'టెంప్లేట్లు',
+            'rota'            => 'రోటా',
+            'analysts'        => 'విశ్లేషకులు',
+            'general'         => 'సాధారణ',
+            'reply_cleanup'   => 'ప్రత్యుత్తర శుభ్రపరచడం',
+        ],
+        'headings' => [
+            'departments'      => 'విభాగాలు',
+            'teams'            => 'బృందాలు',
+            'ticket_types'     => 'టికెట్ రకాలు',
+            'ticket_origins'   => 'టికెట్ మూలాలు',
+            'statuses'         => 'స్థితులు',
+            'priorities'       => 'ప్రాధాన్యతలు',
+            'rota_locations'   => 'రోటా ప్రదేశాలు',
+            'mailboxes'        => 'మెయిల్‌బాక్స్‌లు',
+            'email_templates'  => 'ఇమెయిల్ టెంప్లేట్లు',
+            'rota_shifts'      => 'రోటా షిఫ్ట్‌లు',
+            'rota_settings'    => 'రోటా సెట్టింగ్‌లు',
+            'analysts'         => 'విశ్లేషకులు',
+            'general_settings' => 'సాధారణ సెట్టింగ్‌లు',
+            'reply_cleanup_ai' => 'ప్రత్యుత్తర శుభ్రపరచడం AI',
+        ],
+    ],
+
     // tickets/rota.php — weekly staff rota grid
     'rota' => [
         'page_title'      => 'సేవా కేంద్రం - రోటా',

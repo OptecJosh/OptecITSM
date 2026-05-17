@@ -132,6 +132,42 @@ return [
         'delete_failed'        => 'ਸਮਾਂ ਐਂਟਰੀ ਮਿਟਾਉਣ ਵਿੱਚ ਅਸਫਲ: {error}',
     ],
 
+    // tickets/settings/index.php — admin settings page (tabs + section headings)
+    'settings' => [
+        'page_title' => 'ਸੇਵਾ ਡੈਸਕ - ਸੈਟਿੰਗਾਂ',
+        'tabs' => [
+            'departments'     => 'ਵਿਭਾਗ',
+            'teams'           => 'ਟੀਮਾਂ',
+            'ticket_types'    => 'ਟਿਕਟ ਕਿਸਮਾਂ',
+            'ticket_origins'  => 'ਟਿਕਟ ਸਰੋਤ',
+            'statuses'        => 'ਸਥਿਤੀਆਂ',
+            'priorities'      => 'ਤਰਜੀਹਾਂ',
+            'rota_locations'  => 'ਰੋਟਾ ਸਥਾਨ',
+            'mailboxes'       => 'ਮੇਲਬਾਕਸ',
+            'email_templates' => 'ਟੈਮਪਲੇਟ',
+            'rota'            => 'ਰੋਟਾ',
+            'analysts'        => 'ਵਿਸ਼ਲੇਸ਼ਕ',
+            'general'         => 'ਆਮ',
+            'reply_cleanup'   => 'ਜਵਾਬ ਸਫ਼ਾਈ',
+        ],
+        'headings' => [
+            'departments'      => 'ਵਿਭਾਗ',
+            'teams'            => 'ਟੀਮਾਂ',
+            'ticket_types'     => 'ਟਿਕਟ ਕਿਸਮਾਂ',
+            'ticket_origins'   => 'ਟਿਕਟ ਸਰੋਤ',
+            'statuses'         => 'ਸਥਿਤੀਆਂ',
+            'priorities'       => 'ਤਰਜੀਹਾਂ',
+            'rota_locations'   => 'ਰੋਟਾ ਸਥਾਨ',
+            'mailboxes'        => 'ਮੇਲਬਾਕਸ',
+            'email_templates'  => 'ਈਮੇਲ ਟੈਮਪਲੇਟ',
+            'rota_shifts'      => 'ਰੋਟਾ ਸ਼ਿਫਟ',
+            'rota_settings'    => 'ਰੋਟਾ ਸੈਟਿੰਗਾਂ',
+            'analysts'         => 'ਵਿਸ਼ਲੇਸ਼ਕ',
+            'general_settings' => 'ਆਮ ਸੈਟਿੰਗਾਂ',
+            'reply_cleanup_ai' => 'ਜਵਾਬ ਸਫ਼ਾਈ AI',
+        ],
+    ],
+
     // tickets/rota.php — weekly staff rota grid
     'rota' => [
         'page_title'      => 'ਸੇਵਾ ਡੈਸਕ - ਰੋਟਾ',

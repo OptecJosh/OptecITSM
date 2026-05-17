@@ -132,6 +132,42 @@ return [
         'delete_failed'        => 'Échec de la suppression de la saisie de temps : {error}',
     ],
 
+    // tickets/settings/index.php — admin settings page (tabs + section headings)
+    'settings' => [
+        'page_title' => 'Centre de services - Paramètres',
+        'tabs' => [
+            'departments'     => 'Départements',
+            'teams'           => 'Équipes',
+            'ticket_types'    => 'Types de ticket',
+            'ticket_origins'  => 'Origines des tickets',
+            'statuses'        => 'Statuts',
+            'priorities'      => 'Priorités',
+            'rota_locations'  => 'Lieux du planning',
+            'mailboxes'       => 'Boîtes aux lettres',
+            'email_templates' => 'Modèles',
+            'rota'            => 'Planning',
+            'analysts'        => 'Analystes',
+            'general'         => 'Général',
+            'reply_cleanup'   => 'Nettoyage des réponses',
+        ],
+        'headings' => [
+            'departments'      => 'Départements',
+            'teams'            => 'Équipes',
+            'ticket_types'     => 'Types de ticket',
+            'ticket_origins'   => 'Origines des tickets',
+            'statuses'         => 'Statuts',
+            'priorities'       => 'Priorités',
+            'rota_locations'   => 'Lieux du planning',
+            'mailboxes'        => 'Boîtes aux lettres',
+            'email_templates'  => 'Modèles d\'e-mail',
+            'rota_shifts'      => 'Vacations du planning',
+            'rota_settings'    => 'Paramètres du planning',
+            'analysts'         => 'Analystes',
+            'general_settings' => 'Paramètres généraux',
+            'reply_cleanup_ai' => 'Nettoyage des réponses par IA',
+        ],
+    ],
+
     // tickets/rota.php — weekly staff rota grid
     'rota' => [
         'page_title'      => 'Centre de services - Planning',

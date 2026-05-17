@@ -132,6 +132,42 @@ return [
         'delete_failed'        => 'সময়ের এন্ট্রি মুছতে ব্যর্থ: {error}',
     ],
 
+    // tickets/settings/index.php — admin settings page (tabs + section headings)
+    'settings' => [
+        'page_title' => 'সার্ভিস ডেস্ক - সেটিংস',
+        'tabs' => [
+            'departments'     => 'বিভাগ',
+            'teams'           => 'দল',
+            'ticket_types'    => 'টিকিটের প্রকার',
+            'ticket_origins'  => 'টিকিটের উৎস',
+            'statuses'        => 'স্ট্যাটাস',
+            'priorities'      => 'অগ্রাধিকার',
+            'rota_locations'  => 'রোটা স্থান',
+            'mailboxes'       => 'মেইলবক্স',
+            'email_templates' => 'টেমপ্লেট',
+            'rota'            => 'রোটা',
+            'analysts'        => 'বিশ্লেষক',
+            'general'         => 'সাধারণ',
+            'reply_cleanup'   => 'উত্তর পরিষ্কার',
+        ],
+        'headings' => [
+            'departments'      => 'বিভাগ',
+            'teams'            => 'দল',
+            'ticket_types'     => 'টিকিটের প্রকার',
+            'ticket_origins'   => 'টিকিটের উৎস',
+            'statuses'         => 'স্ট্যাটাস',
+            'priorities'       => 'অগ্রাধিকার',
+            'rota_locations'   => 'রোটা স্থান',
+            'mailboxes'        => 'মেইলবক্স',
+            'email_templates'  => 'ইমেল টেমপ্লেট',
+            'rota_shifts'      => 'রোটা শিফট',
+            'rota_settings'    => 'রোটা সেটিংস',
+            'analysts'         => 'বিশ্লেষক',
+            'general_settings' => 'সাধারণ সেটিংস',
+            'reply_cleanup_ai' => 'উত্তর পরিষ্কার AI',
+        ],
+    ],
+
     // tickets/rota.php — weekly staff rota grid
     'rota' => [
         'page_title'      => 'সার্ভিস ডেস্ক - রোটা',

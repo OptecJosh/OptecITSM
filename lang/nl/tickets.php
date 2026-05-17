@@ -132,6 +132,42 @@ return [
         'delete_failed'        => 'Tijdregistratie verwijderen mislukt: {error}',
     ],
 
+    // tickets/settings/index.php — admin settings page (tabs + section headings)
+    'settings' => [
+        'page_title' => 'Servicedesk - Instellingen',
+        'tabs' => [
+            'departments'     => 'Afdelingen',
+            'teams'           => 'Teams',
+            'ticket_types'    => 'Tickettypes',
+            'ticket_origins'  => 'Ticketbronnen',
+            'statuses'        => 'Statussen',
+            'priorities'      => 'Prioriteiten',
+            'rota_locations'  => 'Roosterlocaties',
+            'mailboxes'       => 'Postvakken',
+            'email_templates' => 'Sjablonen',
+            'rota'            => 'Rooster',
+            'analysts'        => 'Analisten',
+            'general'         => 'Algemeen',
+            'reply_cleanup'   => 'Antwoord opschonen',
+        ],
+        'headings' => [
+            'departments'      => 'Afdelingen',
+            'teams'            => 'Teams',
+            'ticket_types'     => 'Tickettypes',
+            'ticket_origins'   => 'Ticketbronnen',
+            'statuses'         => 'Statussen',
+            'priorities'       => 'Prioriteiten',
+            'rota_locations'   => 'Roosterlocaties',
+            'mailboxes'        => 'Postvakken',
+            'email_templates'  => 'E-mailsjablonen',
+            'rota_shifts'      => 'Roosterdiensten',
+            'rota_settings'    => 'Roosterinstellingen',
+            'analysts'         => 'Analisten',
+            'general_settings' => 'Algemene instellingen',
+            'reply_cleanup_ai' => 'Antwoord opschonen AI',
+        ],
+    ],
+
     // tickets/rota.php — weekly staff rota grid
     'rota' => [
         'page_title'      => 'Servicedesk - Rooster',

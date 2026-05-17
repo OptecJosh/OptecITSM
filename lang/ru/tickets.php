@@ -132,6 +132,42 @@ return [
         'delete_failed'        => 'Не удалось удалить запись времени: {error}',
     ],
 
+    // tickets/settings/index.php — admin settings page (tabs + section headings)
+    'settings' => [
+        'page_title' => 'Служба поддержки - Настройки',
+        'tabs' => [
+            'departments'     => 'Отделы',
+            'teams'           => 'Команды',
+            'ticket_types'    => 'Типы заявок',
+            'ticket_origins'  => 'Источники заявок',
+            'statuses'        => 'Статусы',
+            'priorities'      => 'Приоритеты',
+            'rota_locations'  => 'Места графика',
+            'mailboxes'       => 'Почтовые ящики',
+            'email_templates' => 'Шаблоны',
+            'rota'            => 'График',
+            'analysts'        => 'Аналитики',
+            'general'         => 'Общие',
+            'reply_cleanup'   => 'Очистка ответов',
+        ],
+        'headings' => [
+            'departments'      => 'Отделы',
+            'teams'            => 'Команды',
+            'ticket_types'     => 'Типы заявок',
+            'ticket_origins'   => 'Источники заявок',
+            'statuses'         => 'Статусы',
+            'priorities'       => 'Приоритеты',
+            'rota_locations'   => 'Места графика',
+            'mailboxes'        => 'Почтовые ящики',
+            'email_templates'  => 'Шаблоны писем',
+            'rota_shifts'      => 'Смены графика',
+            'rota_settings'    => 'Настройки графика',
+            'analysts'         => 'Аналитики',
+            'general_settings' => 'Общие настройки',
+            'reply_cleanup_ai' => 'Очистка ответов ИИ',
+        ],
+    ],
+
     // tickets/rota.php — weekly staff rota grid
     'rota' => [
         'page_title'      => 'Служба поддержки - График',

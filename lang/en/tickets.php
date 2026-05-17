@@ -158,6 +158,46 @@ return [
         'delete_failed'        => 'Failed to delete time entry: {error}',
     ],
 
+    // tickets/settings/index.php — admin settings page (tabs + section headings)
+    'settings' => [
+        'page_title' => 'Service Desk - Settings',
+        // Tab labels along the top of the page
+        'tabs' => [
+            'departments'     => 'Departments',
+            'teams'           => 'Teams',
+            'ticket_types'    => 'Ticket Types',
+            'ticket_origins'  => 'Ticket Origins',
+            'statuses'        => 'Statuses',
+            'priorities'      => 'Priorities',
+            'rota_locations'  => 'Rota Locations',
+            'mailboxes'       => 'Mailboxes',
+            'email_templates' => 'Templates',
+            'rota'            => 'Rota',
+            'analysts'        => 'Analysts',
+            'general'         => 'General',
+            'reply_cleanup'   => 'Reply Cleanup',
+        ],
+        // Section h2 headings inside each tab. Most mirror the tab labels but
+        // some are more descriptive — kept separate so translators can pick
+        // different phrasings where natural.
+        'headings' => [
+            'departments'      => 'Departments',
+            'teams'            => 'Teams',
+            'ticket_types'     => 'Ticket Types',
+            'ticket_origins'   => 'Ticket Origins',
+            'statuses'         => 'Statuses',
+            'priorities'       => 'Priorities',
+            'rota_locations'   => 'Rota Locations',
+            'mailboxes'        => 'Mailboxes',
+            'email_templates'  => 'Email Templates',
+            'rota_shifts'      => 'Rota Shifts',
+            'rota_settings'    => 'Rota Settings',
+            'analysts'         => 'Analysts',
+            'general_settings' => 'General Settings',
+            'reply_cleanup_ai' => 'Reply Cleanup AI',
+        ],
+    ],
+
     // tickets/rota.php — weekly staff rota grid
     'rota' => [
         'page_title'      => 'Service Desk - Rota',

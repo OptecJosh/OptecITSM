@@ -132,6 +132,42 @@ return [
         'delete_failed'        => 'സമയ എൻട്രി ഇല്ലാതാക്കാൻ പരാജയപ്പെട്ടു: {error}',
     ],
 
+    // tickets/settings/index.php — admin settings page (tabs + section headings)
+    'settings' => [
+        'page_title' => 'സേവന കേന്ദ്രം - ക്രമീകരണങ്ങൾ',
+        'tabs' => [
+            'departments'     => 'വകുപ്പുകൾ',
+            'teams'           => 'ടീമുകൾ',
+            'ticket_types'    => 'ടിക്കറ്റ് തരങ്ങൾ',
+            'ticket_origins'  => 'ടിക്കറ്റ് ഉറവിടങ്ങൾ',
+            'statuses'        => 'സ്ഥിതികൾ',
+            'priorities'      => 'മുൻഗണനകൾ',
+            'rota_locations'  => 'റോട്ട സ്ഥലങ്ങൾ',
+            'mailboxes'       => 'മെയിൽബോക്സുകൾ',
+            'email_templates' => 'ടെംപ്ലേറ്റുകൾ',
+            'rota'            => 'റോട്ട',
+            'analysts'        => 'വിശകലനവിദഗ്ദ്ധർ',
+            'general'         => 'പൊതുവായത്',
+            'reply_cleanup'   => 'മറുപടി വൃത്തിയാക്കൽ',
+        ],
+        'headings' => [
+            'departments'      => 'വകുപ്പുകൾ',
+            'teams'            => 'ടീമുകൾ',
+            'ticket_types'     => 'ടിക്കറ്റ് തരങ്ങൾ',
+            'ticket_origins'   => 'ടിക്കറ്റ് ഉറവിടങ്ങൾ',
+            'statuses'         => 'സ്ഥിതികൾ',
+            'priorities'       => 'മുൻഗണനകൾ',
+            'rota_locations'   => 'റോട്ട സ്ഥലങ്ങൾ',
+            'mailboxes'        => 'മെയിൽബോക്സുകൾ',
+            'email_templates'  => 'ഇമെയിൽ ടെംപ്ലേറ്റുകൾ',
+            'rota_shifts'      => 'റോട്ട ഷിഫ്റ്റുകൾ',
+            'rota_settings'    => 'റോട്ട ക്രമീകരണങ്ങൾ',
+            'analysts'         => 'വിശകലനവിദഗ്ദ്ധർ',
+            'general_settings' => 'പൊതുവായ ക്രമീകരണങ്ങൾ',
+            'reply_cleanup_ai' => 'മറുപടി വൃത്തിയാക്കൽ AI',
+        ],
+    ],
+
     // tickets/rota.php — weekly staff rota grid
     'rota' => [
         'page_title'      => 'സേവന കേന്ദ്രം - റോട്ട',

@@ -132,6 +132,42 @@ return [
         'delete_failed'        => 'समय प्रविष्टि हटाने में विफल: {error}',
     ],
 
+    // tickets/settings/index.php — admin settings page (tabs + section headings)
+    'settings' => [
+        'page_title' => 'सेवा डेस्क - सेटिंग्स',
+        'tabs' => [
+            'departments'     => 'विभाग',
+            'teams'           => 'टीमें',
+            'ticket_types'    => 'टिकट प्रकार',
+            'ticket_origins'  => 'टिकट स्रोत',
+            'statuses'        => 'स्थितियाँ',
+            'priorities'      => 'प्राथमिकताएँ',
+            'rota_locations'  => 'रोटा स्थान',
+            'mailboxes'       => 'मेलबॉक्स',
+            'email_templates' => 'टेम्पलेट',
+            'rota'            => 'रोटा',
+            'analysts'        => 'विश्लेषक',
+            'general'         => 'सामान्य',
+            'reply_cleanup'   => 'उत्तर सफ़ाई',
+        ],
+        'headings' => [
+            'departments'      => 'विभाग',
+            'teams'            => 'टीमें',
+            'ticket_types'     => 'टिकट प्रकार',
+            'ticket_origins'   => 'टिकट स्रोत',
+            'statuses'         => 'स्थितियाँ',
+            'priorities'       => 'प्राथमिकताएँ',
+            'rota_locations'   => 'रोटा स्थान',
+            'mailboxes'        => 'मेलबॉक्स',
+            'email_templates'  => 'ईमेल टेम्पलेट',
+            'rota_shifts'      => 'रोटा शिफ्ट',
+            'rota_settings'    => 'रोटा सेटिंग्स',
+            'analysts'         => 'विश्लेषक',
+            'general_settings' => 'सामान्य सेटिंग्स',
+            'reply_cleanup_ai' => 'उत्तर सफ़ाई AI',
+        ],
+    ],
+
     // tickets/rota.php — weekly staff rota grid
     'rota' => [
         'page_title'      => 'सेवा डेस्क - रोटा',

@@ -132,6 +132,42 @@ return [
         'delete_failed'        => 'Zeiteintrag konnte nicht gelöscht werden: {error}',
     ],
 
+    // tickets/settings/index.php — admin settings page (tabs + section headings)
+    'settings' => [
+        'page_title' => 'Service Desk - Einstellungen',
+        'tabs' => [
+            'departments'     => 'Abteilungen',
+            'teams'           => 'Teams',
+            'ticket_types'    => 'Tickettypen',
+            'ticket_origins'  => 'Ticket-Quellen',
+            'statuses'        => 'Status',
+            'priorities'      => 'Prioritäten',
+            'rota_locations'  => 'Dienstplan-Standorte',
+            'mailboxes'       => 'Postfächer',
+            'email_templates' => 'Vorlagen',
+            'rota'            => 'Dienstplan',
+            'analysts'        => 'Analysten',
+            'general'         => 'Allgemein',
+            'reply_cleanup'   => 'Antwort-Bereinigung',
+        ],
+        'headings' => [
+            'departments'      => 'Abteilungen',
+            'teams'            => 'Teams',
+            'ticket_types'     => 'Tickettypen',
+            'ticket_origins'   => 'Ticket-Quellen',
+            'statuses'         => 'Status',
+            'priorities'       => 'Prioritäten',
+            'rota_locations'   => 'Dienstplan-Standorte',
+            'mailboxes'        => 'Postfächer',
+            'email_templates'  => 'E-Mail-Vorlagen',
+            'rota_shifts'      => 'Dienstplan-Schichten',
+            'rota_settings'    => 'Dienstplan-Einstellungen',
+            'analysts'         => 'Analysten',
+            'general_settings' => 'Allgemeine Einstellungen',
+            'reply_cleanup_ai' => 'Antwort-Bereinigung KI',
+        ],
+    ],
+
     // tickets/rota.php — weekly staff rota grid
     'rota' => [
         'page_title'      => 'Service Desk - Dienstplan',

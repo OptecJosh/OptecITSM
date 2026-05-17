@@ -132,6 +132,42 @@ return [
         'delete_failed'        => 'Nie udało się usunąć wpisu czasu: {error}',
     ],
 
+    // tickets/settings/index.php — admin settings page (tabs + section headings)
+    'settings' => [
+        'page_title' => 'Centrum obsługi - Ustawienia',
+        'tabs' => [
+            'departments'     => 'Działy',
+            'teams'           => 'Zespoły',
+            'ticket_types'    => 'Typy zgłoszeń',
+            'ticket_origins'  => 'Źródła zgłoszeń',
+            'statuses'        => 'Statusy',
+            'priorities'      => 'Priorytety',
+            'rota_locations'  => 'Lokalizacje grafiku',
+            'mailboxes'       => 'Skrzynki pocztowe',
+            'email_templates' => 'Szablony',
+            'rota'            => 'Grafik',
+            'analysts'        => 'Analitycy',
+            'general'         => 'Ogólne',
+            'reply_cleanup'   => 'Czyszczenie odpowiedzi',
+        ],
+        'headings' => [
+            'departments'      => 'Działy',
+            'teams'            => 'Zespoły',
+            'ticket_types'     => 'Typy zgłoszeń',
+            'ticket_origins'   => 'Źródła zgłoszeń',
+            'statuses'         => 'Statusy',
+            'priorities'       => 'Priorytety',
+            'rota_locations'   => 'Lokalizacje grafiku',
+            'mailboxes'        => 'Skrzynki pocztowe',
+            'email_templates'  => 'Szablony e-mail',
+            'rota_shifts'      => 'Zmiany grafiku',
+            'rota_settings'    => 'Ustawienia grafiku',
+            'analysts'         => 'Analitycy',
+            'general_settings' => 'Ustawienia ogólne',
+            'reply_cleanup_ai' => 'Czyszczenie odpowiedzi AI',
+        ],
+    ],
+
     // tickets/rota.php — weekly staff rota grid
     'rota' => [
         'page_title'      => 'Centrum obsługi - Harmonogram',

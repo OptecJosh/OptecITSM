@@ -4,6 +4,9 @@
  */
 session_start();
 require_once '../../config.php';
+require_once '../../includes/functions.php';
+require_once '../../includes/i18n.php';
+I18n::initFromSession();
 
 // Check if user is logged in
 if (!isset($_SESSION['analyst_id'])) {
@@ -21,11 +24,11 @@ $current_page = 'settings';
 $path_prefix = '../../';  // Two levels up from tickets/settings/
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Service Desk - Settings</title>
+    <title><?php echo htmlspecialchars(t('tickets.settings.page_title')); ?></title>
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <script src="../../assets/js/toast.js"></script>
     <style>
@@ -193,25 +196,25 @@ $path_prefix = '../../';  // Two levels up from tickets/settings/
 
     <div class="container">
         <div class="tabs">
-            <button class="tab active" data-tab="departments" onclick="switchTab('departments')">Departments</button>
-            <button class="tab" data-tab="teams" onclick="switchTab('teams')">Teams</button>
-            <button class="tab" data-tab="ticket-types" onclick="switchTab('ticket-types')">Ticket Types</button>
-            <button class="tab" data-tab="ticket-origins" onclick="switchTab('ticket-origins')">Ticket Origins</button>
-            <button class="tab" data-tab="statuses" onclick="switchTab('statuses')">Statuses</button>
-            <button class="tab" data-tab="priorities" onclick="switchTab('priorities')">Priorities</button>
-            <button class="tab" data-tab="rota-locations" onclick="switchTab('rota-locations')">Rota Locations</button>
-            <button class="tab" data-tab="mailboxes" onclick="switchTab('mailboxes')">Mailboxes</button>
-            <button class="tab" data-tab="email-templates" onclick="switchTab('email-templates')">Templates</button>
-            <button class="tab" data-tab="rota" onclick="switchTab('rota')">Rota</button>
-            <button class="tab" data-tab="analysts" onclick="switchTab('analysts')">Analysts</button>
-            <button class="tab" data-tab="general" onclick="switchTab('general')">General</button>
-            <button class="tab" data-tab="reply-cleanup" onclick="switchTab('reply-cleanup')">Reply Cleanup</button>
+            <button class="tab active" data-tab="departments" onclick="switchTab('departments')"><?php echo htmlspecialchars(t('tickets.settings.tabs.departments')); ?></button>
+            <button class="tab" data-tab="teams" onclick="switchTab('teams')"><?php echo htmlspecialchars(t('tickets.settings.tabs.teams')); ?></button>
+            <button class="tab" data-tab="ticket-types" onclick="switchTab('ticket-types')"><?php echo htmlspecialchars(t('tickets.settings.tabs.ticket_types')); ?></button>
+            <button class="tab" data-tab="ticket-origins" onclick="switchTab('ticket-origins')"><?php echo htmlspecialchars(t('tickets.settings.tabs.ticket_origins')); ?></button>
+            <button class="tab" data-tab="statuses" onclick="switchTab('statuses')"><?php echo htmlspecialchars(t('tickets.settings.tabs.statuses')); ?></button>
+            <button class="tab" data-tab="priorities" onclick="switchTab('priorities')"><?php echo htmlspecialchars(t('tickets.settings.tabs.priorities')); ?></button>
+            <button class="tab" data-tab="rota-locations" onclick="switchTab('rota-locations')"><?php echo htmlspecialchars(t('tickets.settings.tabs.rota_locations')); ?></button>
+            <button class="tab" data-tab="mailboxes" onclick="switchTab('mailboxes')"><?php echo htmlspecialchars(t('tickets.settings.tabs.mailboxes')); ?></button>
+            <button class="tab" data-tab="email-templates" onclick="switchTab('email-templates')"><?php echo htmlspecialchars(t('tickets.settings.tabs.email_templates')); ?></button>
+            <button class="tab" data-tab="rota" onclick="switchTab('rota')"><?php echo htmlspecialchars(t('tickets.settings.tabs.rota')); ?></button>
+            <button class="tab" data-tab="analysts" onclick="switchTab('analysts')"><?php echo htmlspecialchars(t('tickets.settings.tabs.analysts')); ?></button>
+            <button class="tab" data-tab="general" onclick="switchTab('general')"><?php echo htmlspecialchars(t('tickets.settings.tabs.general')); ?></button>
+            <button class="tab" data-tab="reply-cleanup" onclick="switchTab('reply-cleanup')"><?php echo htmlspecialchars(t('tickets.settings.tabs.reply_cleanup')); ?></button>
         </div>
 
         <!-- Departments Tab -->
         <div class="tab-content active" id="departments-tab">
             <div class="section-header">
-                <h2>Departments</h2>
+                <h2><?php echo htmlspecialchars(t('tickets.settings.headings.departments')); ?></h2>
                 <button class="add-btn" onclick="openAddModal('department')">Add</button>
             </div>
             <table>
@@ -234,7 +237,7 @@ $path_prefix = '../../';  // Two levels up from tickets/settings/
         <!-- Teams Tab -->
         <div class="tab-content" id="teams-tab">
             <div class="section-header">
-                <h2>Teams</h2>
+                <h2><?php echo htmlspecialchars(t('tickets.settings.headings.teams')); ?></h2>
                 <button class="add-btn" onclick="openAddModal('team')">Add</button>
             </div>
             <p style="margin-bottom: 20px; color: #666;">Teams determine which departments analysts can access. Assign departments to teams, then assign analysts to teams to control their access.</p>
@@ -259,7 +262,7 @@ $path_prefix = '../../';  // Two levels up from tickets/settings/
         <!-- Ticket Types Tab -->
         <div class="tab-content" id="ticket-types-tab">
             <div class="section-header">
-                <h2>Ticket Types</h2>
+                <h2><?php echo htmlspecialchars(t('tickets.settings.headings.ticket_types')); ?></h2>
                 <button class="add-btn" onclick="openAddModal('ticket-type')">Add</button>
             </div>
             <table>
@@ -281,7 +284,7 @@ $path_prefix = '../../';  // Two levels up from tickets/settings/
         <!-- Ticket Origins Tab -->
         <div class="tab-content" id="ticket-origins-tab">
             <div class="section-header">
-                <h2>Ticket Origins</h2>
+                <h2><?php echo htmlspecialchars(t('tickets.settings.headings.ticket_origins')); ?></h2>
                 <button class="add-btn" onclick="openAddModal('ticket-origin')">Add</button>
             </div>
             <table>
@@ -303,7 +306,7 @@ $path_prefix = '../../';  // Two levels up from tickets/settings/
         <!-- Statuses Tab -->
         <div class="tab-content" id="statuses-tab">
             <div class="section-header">
-                <h2>Statuses</h2>
+                <h2><?php echo htmlspecialchars(t('tickets.settings.headings.statuses')); ?></h2>
                 <button class="add-btn" onclick="openAddModal('status')">Add</button>
             </div>
             <p style="margin-bottom: 20px; color: #666;">Workflow states a ticket can be in. Statuses flagged as <em>Closed</em> count as terminal — used by reports, watchtower counters and the closed-datetime auto-set on assign. Exactly one status is the default for new tickets.</p>
@@ -328,7 +331,7 @@ $path_prefix = '../../';  // Two levels up from tickets/settings/
         <!-- Priorities Tab -->
         <div class="tab-content" id="priorities-tab">
             <div class="section-header">
-                <h2>Priorities</h2>
+                <h2><?php echo htmlspecialchars(t('tickets.settings.headings.priorities')); ?></h2>
                 <button class="add-btn" onclick="openAddModal('priority')">Add</button>
             </div>
             <p style="margin-bottom: 20px; color: #666;">Priority bands shown on tickets. Exactly one priority is the default for new tickets.</p>
@@ -352,7 +355,7 @@ $path_prefix = '../../';  // Two levels up from tickets/settings/
         <!-- Rota Locations Tab -->
         <div class="tab-content" id="rota-locations-tab">
             <div class="section-header">
-                <h2>Rota Locations</h2>
+                <h2><?php echo htmlspecialchars(t('tickets.settings.headings.rota_locations')); ?></h2>
                 <button class="add-btn" onclick="openAddModal('rota-location')">Add</button>
             </div>
             <p style="margin-bottom: 20px; color: #666;">Where each analyst is working on a given day — used by the staff rota and shown as a coloured badge on every entry. Exactly one location is the default for new rota entries.</p>
@@ -376,7 +379,7 @@ $path_prefix = '../../';  // Two levels up from tickets/settings/
         <!-- Mailboxes Tab -->
         <div class="tab-content" id="mailboxes-tab">
             <div class="section-header">
-                <h2>Mailboxes</h2>
+                <h2><?php echo htmlspecialchars(t('tickets.settings.headings.mailboxes')); ?></h2>
                 <div>
                     <button class="btn btn-secondary" onclick="window.location.href='../activity.php'" style="margin-right: 10px;">Logs</button>
                     <button class="btn btn-primary" onclick="checkAllMailboxes()" style="margin-right: 10px;">Check All</button>
@@ -415,7 +418,7 @@ $path_prefix = '../../';  // Two levels up from tickets/settings/
         <!-- Email Templates Tab -->
         <div class="tab-content" id="email-templates-tab">
             <div class="section-header">
-                <h2>Email Templates</h2>
+                <h2><?php echo htmlspecialchars(t('tickets.settings.headings.email_templates')); ?></h2>
                 <button class="add-btn" onclick="openTemplateModal()">Add</button>
             </div>
             <p style="margin-bottom: 15px; color: #666;">Automated email responses triggered by ticket events. Only the first active template per event is used.</p>
@@ -439,7 +442,7 @@ $path_prefix = '../../';  // Two levels up from tickets/settings/
         <!-- Rota Tab -->
         <div class="tab-content" id="rota-tab">
             <div class="section-header">
-                <h2>Rota Shifts</h2>
+                <h2><?php echo htmlspecialchars(t('tickets.settings.headings.rota_shifts')); ?></h2>
                 <button class="add-btn" onclick="openRotaShiftModal()">Add</button>
             </div>
             <table>
@@ -458,7 +461,7 @@ $path_prefix = '../../';  // Two levels up from tickets/settings/
                 </tbody>
             </table>
             <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
-                <h2 style="font-size: 16px; margin-bottom: 12px;">Rota Settings</h2>
+                <h2 style="font-size: 16px; margin-bottom: 12px;"><?php echo htmlspecialchars(t('tickets.settings.headings.rota_settings')); ?></h2>
                 <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                     <input type="checkbox" id="rotaIncludeWeekends" onchange="saveRotaWeekendSetting()">
                     Include weekends on the rota
@@ -469,7 +472,7 @@ $path_prefix = '../../';  // Two levels up from tickets/settings/
         <!-- Analysts Tab -->
         <div class="tab-content" id="analysts-tab">
             <div class="section-header">
-                <h2>Analysts</h2>
+                <h2><?php echo htmlspecialchars(t('tickets.settings.headings.analysts')); ?></h2>
                 <button class="add-btn" onclick="openAnalystModal()">Add</button>
             </div>
             <table>
@@ -493,7 +496,7 @@ $path_prefix = '../../';  // Two levels up from tickets/settings/
         <!-- General Tab -->
         <div class="tab-content" id="general-tab">
             <div class="section-header">
-                <h2>General Settings</h2>
+                <h2><?php echo htmlspecialchars(t('tickets.settings.headings.general_settings')); ?></h2>
             </div>
             <form id="generalSettingsForm" style="max-width: 600px;">
                 <div class="form-group">
@@ -520,7 +523,7 @@ $path_prefix = '../../';  // Two levels up from tickets/settings/
         <!-- Reply Cleanup Tab -->
         <div class="tab-content" id="reply-cleanup-tab">
             <div class="section-header">
-                <h2>Reply Cleanup AI</h2>
+                <h2><?php echo htmlspecialchars(t('tickets.settings.headings.reply_cleanup_ai')); ?></h2>
             </div>
             <p style="max-width: 700px; color: #555;">
                 When an analyst types a rough reply in the ticket compose modal, the

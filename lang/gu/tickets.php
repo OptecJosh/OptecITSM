@@ -132,6 +132,42 @@ return [
         'delete_failed'        => 'સમય નોંધણી કાઢી નાખવામાં નિષ્ફળ: {error}',
     ],
 
+    // tickets/settings/index.php — admin settings page (tabs + section headings)
+    'settings' => [
+        'page_title' => 'સેવા ડેસ્ક - સેટિંગ્સ',
+        'tabs' => [
+            'departments'     => 'વિભાગો',
+            'teams'           => 'ટીમો',
+            'ticket_types'    => 'ટિકિટ પ્રકાર',
+            'ticket_origins'  => 'ટિકિટ સ્રોત',
+            'statuses'        => 'સ્થિતિઓ',
+            'priorities'      => 'પ્રાથમિકતાઓ',
+            'rota_locations'  => 'રોટા સ્થાનો',
+            'mailboxes'       => 'મેઈલબોક્સ',
+            'email_templates' => 'ટેમ્પલેટ',
+            'rota'            => 'રોટા',
+            'analysts'        => 'વિશ્લેષકો',
+            'general'         => 'સામાન્ય',
+            'reply_cleanup'   => 'જવાબ સફાઈ',
+        ],
+        'headings' => [
+            'departments'      => 'વિભાગો',
+            'teams'            => 'ટીમો',
+            'ticket_types'     => 'ટિકિટ પ્રકાર',
+            'ticket_origins'   => 'ટિકિટ સ્રોત',
+            'statuses'         => 'સ્થિતિઓ',
+            'priorities'       => 'પ્રાથમિકતાઓ',
+            'rota_locations'   => 'રોટા સ્થાનો',
+            'mailboxes'        => 'મેઈલબોક્સ',
+            'email_templates'  => 'ઈમેઈલ ટેમ્પલેટ',
+            'rota_shifts'      => 'રોટા શિફ્ટ',
+            'rota_settings'    => 'રોટા સેટિંગ્સ',
+            'analysts'         => 'વિશ્લેષકો',
+            'general_settings' => 'સામાન્ય સેટિંગ્સ',
+            'reply_cleanup_ai' => 'જવાબ સફાઈ AI',
+        ],
+    ],
+
     // tickets/rota.php — weekly staff rota grid
     'rota' => [
         'page_title'      => 'સેવા ડેસ્ક - રોટા',

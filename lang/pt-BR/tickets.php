@@ -132,6 +132,42 @@ return [
         'delete_failed'        => 'Falha ao excluir o registro de tempo: {error}',
     ],
 
+    // tickets/settings/index.php — admin settings page (tabs + section headings)
+    'settings' => [
+        'page_title' => 'Central de Serviços - Configurações',
+        'tabs' => [
+            'departments'     => 'Departamentos',
+            'teams'           => 'Equipes',
+            'ticket_types'    => 'Tipos de ticket',
+            'ticket_origins'  => 'Origens de ticket',
+            'statuses'        => 'Status',
+            'priorities'      => 'Prioridades',
+            'rota_locations'  => 'Locais da escala',
+            'mailboxes'       => 'Caixas postais',
+            'email_templates' => 'Modelos',
+            'rota'            => 'Escala',
+            'analysts'        => 'Analistas',
+            'general'         => 'Geral',
+            'reply_cleanup'   => 'Limpeza de respostas',
+        ],
+        'headings' => [
+            'departments'      => 'Departamentos',
+            'teams'            => 'Equipes',
+            'ticket_types'     => 'Tipos de ticket',
+            'ticket_origins'   => 'Origens de ticket',
+            'statuses'         => 'Status',
+            'priorities'       => 'Prioridades',
+            'rota_locations'   => 'Locais da escala',
+            'mailboxes'        => 'Caixas postais',
+            'email_templates'  => 'Modelos de e-mail',
+            'rota_shifts'      => 'Turnos da escala',
+            'rota_settings'    => 'Configurações da escala',
+            'analysts'         => 'Analistas',
+            'general_settings' => 'Configurações gerais',
+            'reply_cleanup_ai' => 'Limpeza de respostas com IA',
+        ],
+    ],
+
     // tickets/rota.php — weekly staff rota grid
     'rota' => [
         'page_title'      => 'Central de Serviços - Escala',

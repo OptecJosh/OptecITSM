@@ -132,6 +132,42 @@ return [
         'delete_failed'        => 'ಸಮಯ ನಮೂದನ್ನು ಅಳಿಸಲು ವಿಫಲವಾಗಿದೆ: {error}',
     ],
 
+    // tickets/settings/index.php — admin settings page (tabs + section headings)
+    'settings' => [
+        'page_title' => 'ಸೇವಾ ಕೇಂದ್ರ - ಸೆಟ್ಟಿಂಗ್‌ಗಳು',
+        'tabs' => [
+            'departments'     => 'ವಿಭಾಗಗಳು',
+            'teams'           => 'ತಂಡಗಳು',
+            'ticket_types'    => 'ಟಿಕೆಟ್ ಪ್ರಕಾರಗಳು',
+            'ticket_origins'  => 'ಟಿಕೆಟ್ ಮೂಲಗಳು',
+            'statuses'        => 'ಸ್ಥಿತಿಗಳು',
+            'priorities'      => 'ಆದ್ಯತೆಗಳು',
+            'rota_locations'  => 'ರೋಟಾ ಸ್ಥಳಗಳು',
+            'mailboxes'       => 'ಮೇಲ್‌ಬಾಕ್ಸ್‌ಗಳು',
+            'email_templates' => 'ಟೆಂಪ್ಲೇಟ್‌ಗಳು',
+            'rota'            => 'ರೋಟಾ',
+            'analysts'        => 'ವಿಶ್ಲೇಷಕರು',
+            'general'         => 'ಸಾಮಾನ್ಯ',
+            'reply_cleanup'   => 'ಉತ್ತರ ಸ್ವಚ್ಛಗೊಳಿಸುವಿಕೆ',
+        ],
+        'headings' => [
+            'departments'      => 'ವಿಭಾಗಗಳು',
+            'teams'            => 'ತಂಡಗಳು',
+            'ticket_types'     => 'ಟಿಕೆಟ್ ಪ್ರಕಾರಗಳು',
+            'ticket_origins'   => 'ಟಿಕೆಟ್ ಮೂಲಗಳು',
+            'statuses'         => 'ಸ್ಥಿತಿಗಳು',
+            'priorities'       => 'ಆದ್ಯತೆಗಳು',
+            'rota_locations'   => 'ರೋಟಾ ಸ್ಥಳಗಳು',
+            'mailboxes'        => 'ಮೇಲ್‌ಬಾಕ್ಸ್‌ಗಳು',
+            'email_templates'  => 'ಇಮೇಲ್ ಟೆಂಪ್ಲೇಟ್‌ಗಳು',
+            'rota_shifts'      => 'ರೋಟಾ ಶಿಫ್ಟ್‌ಗಳು',
+            'rota_settings'    => 'ರೋಟಾ ಸೆಟ್ಟಿಂಗ್‌ಗಳು',
+            'analysts'         => 'ವಿಶ್ಲೇಷಕರು',
+            'general_settings' => 'ಸಾಮಾನ್ಯ ಸೆಟ್ಟಿಂಗ್‌ಗಳು',
+            'reply_cleanup_ai' => 'ಉತ್ತರ ಸ್ವಚ್ಛಗೊಳಿಸುವಿಕೆ AI',
+        ],
+    ],
+
     // tickets/rota.php — weekly staff rota grid
     'rota' => [
         'page_title'      => 'ಸೇವಾ ಕೇಂದ್ರ - ರೋಟಾ',

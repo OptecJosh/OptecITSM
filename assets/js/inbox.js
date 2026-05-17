@@ -11,6 +11,34 @@ let selectedEmailId = null;
 let composeMode = 'new';
 let folderGrouping = 'department'; // 'department' or 'analyst' — persisted via user_preferences
 
+/**
+ * Defensive HTML balancer for email bodies.
+ *
+ * Emails frequently arrive with unclosed tags — a `<div>` with no `</div>`,
+ * an open `<font>` running to end-of-message, half a `<table>`. When that HTML
+ * is interpolated raw via a template literal and then assigned to innerHTML,
+ * the browser's HTML parser balances the tags *to the end of the parent
+ * element* — which means an unclosed div from an email body would swallow
+ * every sibling that follows it in the same DOM tree (e.g. our CMDB,
+ * time-entries, and notes panels would silently end up nested inside the
+ * email body, breaking the layout).
+ *
+ * DOMParser solves this cleanly: it parses the fragment as a full HTML
+ * document, the parser balances any open tags as it builds that document's
+ * body, and serialising body.innerHTML back gives us well-formed HTML that
+ * can't bleed into sibling elements. Scripts in the parsed document do not
+ * execute (DOMParser's documented behaviour for 'text/html').
+ */
+function safeEmailHtml(html) {
+    if (!html) return '';
+    try {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        return doc.body ? doc.body.innerHTML : '';
+    } catch (e) {
+        return '';
+    }
+}
+
 function showToast(message, isError = false) {
     const toast = document.getElementById('toast');
     toast.textContent = message;
@@ -1056,7 +1084,7 @@ function displayEmail(email) {
         </div>
         <div class="email-body">
             <div id="threadContainer">
-                <div class="email-body-content">${email.body_content}</div>
+                <div class="email-body-content">${safeEmailHtml(email.body_content)}</div>
             </div>
             <div id="cmdbObjectsContainer"></div>
             <div id="timeEntriesContainer"></div>
@@ -1098,7 +1126,7 @@ async function loadCorrespondenceThread(ticketId) {
                     <strong>${escapeHtml(e.from_name || e.from_address)}</strong>
                     &lt;${escapeHtml(e.from_address)}&gt; &mdash; ${formatFullDateTime(e.received_datetime)}
                 </div>
-                <div class="thread-message-body">${e.body_content}</div>
+                <div class="thread-message-body">${safeEmailHtml(e.body_content)}</div>
             `;
         }).join('');
     } catch (error) {

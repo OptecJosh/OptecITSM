@@ -19,6 +19,9 @@ $path_prefix = '../../';
     <style>
         body { overflow: auto; height: auto; }
 
+        /* Override the shared .container max-width so this page uses the full screen */
+        .container { max-width: none; }
+
         .tab:hover { color: #10b981; }
         .tab.active { color: #10b981; border-bottom-color: #10b981; }
 

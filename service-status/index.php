@@ -21,8 +21,6 @@ $path_prefix = '../';
 
         .status-layout {
             padding: 30px;
-            max-width: 1200px;
-            margin: 0 auto;
         }
 
         .section-title {

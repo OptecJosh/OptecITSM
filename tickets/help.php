@@ -809,6 +809,19 @@ $path_prefix = '../';
                             <p>The Settings page is where you configure the building blocks of your ticketing system. All lookup values, SLA targets, email integration, and custom fields are managed here.</p>
                         </div>
                     </div>
+
+                    <!-- Prominent SLA Management callout -->
+                    <a href="help-sla.php" style="display:flex;align-items:center;gap:18px;padding:20px 24px;margin-bottom:24px;background:linear-gradient(135deg, #0078d4 0%, #005a9e 100%);color:white;border-radius:12px;text-decoration:none;box-shadow:0 4px 12px rgba(0,120,212,0.25);transition:transform 0.15s, box-shadow 0.15s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 16px rgba(0,120,212,0.35)';" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 12px rgba(0,120,212,0.25)';">
+                        <div style="flex-shrink:0;width:56px;height:56px;border-radius:12px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:30px;height:30px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        </div>
+                        <div style="flex:1;">
+                            <div style="font-size:18px;font-weight:700;margin-bottom:4px;">SLA Management &mdash; full guide</div>
+                            <div style="font-size:13px;opacity:0.9;line-height:1.5;">Configurable options, business calendars, pause statuses, breach notifications, cron job setup, plus worked examples for single-timezone and cross-timezone teams. Meaty enough to deserve its own page.</div>
+                        </div>
+                        <div style="flex-shrink:0;font-size:24px;opacity:0.7;">&rarr;</div>
+                    </a>
+
                     <div class="tk-help-data-grid">
                         <div class="tk-help-data-card">
                             <strong>Departments</strong>

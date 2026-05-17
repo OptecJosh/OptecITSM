@@ -132,6 +132,34 @@ return [
         'delete_failed'        => 'സമയ എൻട്രി ഇല്ലാതാക്കാൻ പരാജയപ്പെട്ടു: {error}',
     ],
 
+    // tickets/users.php — end-user directory with per-user ticket list
+    'users' => [
+        'page_title'            => 'സേവന കേന്ദ്രം - ഉപയോക്താക്കൾ',
+        'list_title'            => 'ഉപയോക്താക്കൾ',
+        'search_placeholder'    => 'ഉപയോക്താക്കളെ തിരയുക…',
+        'count'                 => '{count} ഉപയോക്താക്കൾ',
+        'ticket_count'          => '{count} ടിക്കറ്റുകൾ',
+        'unknown_name'          => 'അജ്ഞാതം',
+        'no_users'              => 'ഉപയോക്താക്കൾ കണ്ടെത്തിയില്ല',
+        'select_user'           => 'അവരുടെ വിശദാംശങ്ങളും ടിക്കറ്റുകളും കാണാൻ ഒരു ഉപയോക്താവിനെ തിരഞ്ഞെടുക്കുക',
+        'no_tickets'            => 'ഈ ഉപയോക്താവിന് ടിക്കറ്റുകൾ കണ്ടെത്തിയില്ല',
+        'error_loading_tickets' => 'ടിക്കറ്റുകൾ ലോഡ് ചെയ്യുന്നതിൽ പിശക്',
+        'tickets_section'       => 'ടിക്കറ്റുകൾ ({count})',
+        'status_new_fallback'   => 'പുതിയത്',
+        'info' => [
+            'email'         => 'ഇമെയിൽ',
+            'first_seen'    => 'ആദ്യം കണ്ടത്',
+            'total_tickets' => 'ആകെ ടിക്കറ്റുകൾ',
+        ],
+        'table' => [
+            'ticket_number' => 'ടിക്കറ്റ് നമ്പർ',
+            'subject'       => 'വിഷയം',
+            'status'        => 'സ്ഥിതി',
+            'priority'      => 'മുൻഗണന',
+            'created'       => 'സൃഷ്ടിച്ചത്',
+        ],
+    ],
+
     // tickets/calendar.php — scheduled-tickets calendar view
     'calendar' => [
         'page_title'    => 'സേവന കേന്ദ്രം - കലണ്ടർ',

@@ -132,6 +132,34 @@ return [
         'delete_failed'        => 'ಸಮಯ ನಮೂದನ್ನು ಅಳಿಸಲು ವಿಫಲವಾಗಿದೆ: {error}',
     ],
 
+    // tickets/users.php — end-user directory with per-user ticket list
+    'users' => [
+        'page_title'            => 'ಸೇವಾ ಕೇಂದ್ರ - ಬಳಕೆದಾರರು',
+        'list_title'            => 'ಬಳಕೆದಾರರು',
+        'search_placeholder'    => 'ಬಳಕೆದಾರರನ್ನು ಹುಡುಕಿ…',
+        'count'                 => '{count} ಬಳಕೆದಾರರು',
+        'ticket_count'          => '{count} ಟಿಕೆಟ್‌ಗಳು',
+        'unknown_name'          => 'ಅಜ್ಞಾತ',
+        'no_users'              => 'ಯಾವುದೇ ಬಳಕೆದಾರರು ಕಂಡುಬಂದಿಲ್ಲ',
+        'select_user'           => 'ಅವರ ವಿವರಗಳು ಮತ್ತು ಟಿಕೆಟ್‌ಗಳನ್ನು ನೋಡಲು ಬಳಕೆದಾರರನ್ನು ಆಯ್ಕೆಮಾಡಿ',
+        'no_tickets'            => 'ಈ ಬಳಕೆದಾರರಿಗೆ ಯಾವುದೇ ಟಿಕೆಟ್‌ಗಳು ಕಂಡುಬಂದಿಲ್ಲ',
+        'error_loading_tickets' => 'ಟಿಕೆಟ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡುವಲ್ಲಿ ದೋಷ',
+        'tickets_section'       => 'ಟಿಕೆಟ್‌ಗಳು ({count})',
+        'status_new_fallback'   => 'ಹೊಸದು',
+        'info' => [
+            'email'         => 'ಇಮೇಲ್',
+            'first_seen'    => 'ಮೊದಲು ಕಂಡುಬಂದದ್ದು',
+            'total_tickets' => 'ಒಟ್ಟು ಟಿಕೆಟ್‌ಗಳು',
+        ],
+        'table' => [
+            'ticket_number' => 'ಟಿಕೆಟ್ ಸಂ.',
+            'subject'       => 'ವಿಷಯ',
+            'status'        => 'ಸ್ಥಿತಿ',
+            'priority'      => 'ಆದ್ಯತೆ',
+            'created'       => 'ರಚಿಸಲಾಗಿದೆ',
+        ],
+    ],
+
     // tickets/calendar.php — scheduled-tickets calendar view
     'calendar' => [
         'page_title'    => 'ಸೇವಾ ಕೇಂದ್ರ - ಕ್ಯಾಲೆಂಡರ್',

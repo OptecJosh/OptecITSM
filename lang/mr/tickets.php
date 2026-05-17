@@ -132,6 +132,34 @@ return [
         'delete_failed'        => 'वेळ नोंद हटवण्यात अयशस्वी: {error}',
     ],
 
+    // tickets/users.php — end-user directory with per-user ticket list
+    'users' => [
+        'page_title'            => 'सेवा डेस्क - वापरकर्ते',
+        'list_title'            => 'वापरकर्ते',
+        'search_placeholder'    => 'वापरकर्ते शोधा…',
+        'count'                 => '{count} वापरकर्ते',
+        'ticket_count'          => '{count} तिकिटे',
+        'unknown_name'          => 'अज्ञात',
+        'no_users'              => 'कोणतेही वापरकर्ते सापडले नाहीत',
+        'select_user'           => 'त्यांचे तपशील व तिकिटे पाहण्यासाठी वापरकर्ता निवडा',
+        'no_tickets'            => 'या वापरकर्त्यासाठी कोणतीही तिकिटे सापडली नाहीत',
+        'error_loading_tickets' => 'तिकिटे लोड करताना त्रुटी',
+        'tickets_section'       => 'तिकिटे ({count})',
+        'status_new_fallback'   => 'नवीन',
+        'info' => [
+            'email'         => 'ईमेल',
+            'first_seen'    => 'प्रथम पाहिले',
+            'total_tickets' => 'एकूण तिकिटे',
+        ],
+        'table' => [
+            'ticket_number' => 'तिकीट क्रमांक',
+            'subject'       => 'विषय',
+            'status'        => 'स्थिती',
+            'priority'      => 'प्राधान्य',
+            'created'       => 'तयार केले',
+        ],
+    ],
+
     // tickets/calendar.php — scheduled-tickets calendar view
     'calendar' => [
         'page_title'    => 'सेवा डेस्क - कॅलेंडर',

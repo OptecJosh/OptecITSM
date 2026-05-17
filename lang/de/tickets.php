@@ -132,6 +132,34 @@ return [
         'delete_failed'        => 'Zeiteintrag konnte nicht gelöscht werden: {error}',
     ],
 
+    // tickets/users.php — end-user directory with per-user ticket list
+    'users' => [
+        'page_title'            => 'Service Desk - Benutzer',
+        'list_title'            => 'Benutzer',
+        'search_placeholder'    => 'Benutzer suchen…',
+        'count'                 => '{count} Benutzer',
+        'ticket_count'          => '{count} Tickets',
+        'unknown_name'          => 'Unbekannt',
+        'no_users'              => 'Keine Benutzer gefunden',
+        'select_user'           => 'Wählen Sie einen Benutzer, um Details und Tickets anzuzeigen',
+        'no_tickets'            => 'Keine Tickets für diesen Benutzer gefunden',
+        'error_loading_tickets' => 'Fehler beim Laden der Tickets',
+        'tickets_section'       => 'Tickets ({count})',
+        'status_new_fallback'   => 'Neu',
+        'info' => [
+            'email'         => 'E-Mail',
+            'first_seen'    => 'Zuerst gesehen',
+            'total_tickets' => 'Tickets insgesamt',
+        ],
+        'table' => [
+            'ticket_number' => 'Ticket-Nr.',
+            'subject'       => 'Betreff',
+            'status'        => 'Status',
+            'priority'      => 'Priorität',
+            'created'       => 'Erstellt',
+        ],
+    ],
+
     // tickets/calendar.php — scheduled-tickets calendar view
     'calendar' => [
         'page_title'    => 'Service Desk - Kalender',

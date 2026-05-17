@@ -132,6 +132,34 @@ return [
         'delete_failed'        => 'ਸਮਾਂ ਐਂਟਰੀ ਮਿਟਾਉਣ ਵਿੱਚ ਅਸਫਲ: {error}',
     ],
 
+    // tickets/users.php — end-user directory with per-user ticket list
+    'users' => [
+        'page_title'            => 'ਸੇਵਾ ਡੈਸਕ - ਵਰਤੋਂਕਾਰ',
+        'list_title'            => 'ਵਰਤੋਂਕਾਰ',
+        'search_placeholder'    => 'ਵਰਤੋਂਕਾਰ ਖੋਜੋ…',
+        'count'                 => '{count} ਵਰਤੋਂਕਾਰ',
+        'ticket_count'          => '{count} ਟਿਕਟਾਂ',
+        'unknown_name'          => 'ਅਣਜਾਣ',
+        'no_users'              => 'ਕੋਈ ਵਰਤੋਂਕਾਰ ਨਹੀਂ ਮਿਲਿਆ',
+        'select_user'           => 'ਉਨ੍ਹਾਂ ਦੇ ਵੇਰਵੇ ਅਤੇ ਟਿਕਟਾਂ ਵੇਖਣ ਲਈ ਵਰਤੋਂਕਾਰ ਚੁਣੋ',
+        'no_tickets'            => 'ਇਸ ਵਰਤੋਂਕਾਰ ਲਈ ਕੋਈ ਟਿਕਟਾਂ ਨਹੀਂ ਮਿਲੀਆਂ',
+        'error_loading_tickets' => 'ਟਿਕਟਾਂ ਲੋਡ ਕਰਨ ਵਿੱਚ ਗਲਤੀ',
+        'tickets_section'       => 'ਟਿਕਟਾਂ ({count})',
+        'status_new_fallback'   => 'ਨਵੀਂ',
+        'info' => [
+            'email'         => 'ਈਮੇਲ',
+            'first_seen'    => 'ਪਹਿਲੀ ਵਾਰ ਵੇਖਿਆ',
+            'total_tickets' => 'ਕੁੱਲ ਟਿਕਟਾਂ',
+        ],
+        'table' => [
+            'ticket_number' => 'ਟਿਕਟ ਨੰਬਰ',
+            'subject'       => 'ਵਿਸ਼ਾ',
+            'status'        => 'ਸਥਿਤੀ',
+            'priority'      => 'ਤਰਜੀਹ',
+            'created'       => 'ਬਣਾਇਆ',
+        ],
+    ],
+
     // tickets/calendar.php — scheduled-tickets calendar view
     'calendar' => [
         'page_title'    => 'ਸੇਵਾ ਡੈਸਕ - ਕੈਲੰਡਰ',

@@ -132,6 +132,34 @@ return [
         'delete_failed'        => 'సమయ ఎంట్రీని తొలగించడంలో విఫలమైంది: {error}',
     ],
 
+    // tickets/users.php — end-user directory with per-user ticket list
+    'users' => [
+        'page_title'            => 'సేవా కేంద్రం - వినియోగదారులు',
+        'list_title'            => 'వినియోగదారులు',
+        'search_placeholder'    => 'వినియోగదారులను శోధించండి…',
+        'count'                 => '{count} వినియోగదారులు',
+        'ticket_count'          => '{count} టికెట్లు',
+        'unknown_name'          => 'తెలియదు',
+        'no_users'              => 'వినియోగదారులు కనుగొనబడలేదు',
+        'select_user'           => 'వారి వివరాలు మరియు టికెట్లను చూడటానికి వినియోగదారుని ఎంచుకోండి',
+        'no_tickets'            => 'ఈ వినియోగదారు కోసం టికెట్లు కనుగొనబడలేదు',
+        'error_loading_tickets' => 'టికెట్లను లోడ్ చేయడంలో లోపం',
+        'tickets_section'       => 'టికెట్లు ({count})',
+        'status_new_fallback'   => 'కొత్త',
+        'info' => [
+            'email'         => 'ఇమెయిల్',
+            'first_seen'    => 'మొదట కనిపించింది',
+            'total_tickets' => 'మొత్తం టికెట్లు',
+        ],
+        'table' => [
+            'ticket_number' => 'టికెట్ సంఖ్య',
+            'subject'       => 'విషయం',
+            'status'        => 'స్థితి',
+            'priority'      => 'ప్రాధాన్యత',
+            'created'       => 'సృష్టించబడింది',
+        ],
+    ],
+
     // tickets/calendar.php — scheduled-tickets calendar view
     'calendar' => [
         'page_title'    => 'సేవా కేంద్రం - క్యాలెండర్',

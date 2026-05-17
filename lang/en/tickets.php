@@ -158,6 +158,34 @@ return [
         'delete_failed'        => 'Failed to delete time entry: {error}',
     ],
 
+    // tickets/users.php — end-user directory with per-user ticket list
+    'users' => [
+        'page_title'            => 'Service Desk - Users',
+        'list_title'            => 'Users',
+        'search_placeholder'    => 'Search users...',
+        'count'                 => '{count} users',
+        'ticket_count'          => '{count} tickets',
+        'unknown_name'          => 'Unknown',
+        'no_users'              => 'No users found',
+        'select_user'           => 'Select a user to view their details and tickets',
+        'no_tickets'            => 'No tickets found for this user',
+        'error_loading_tickets' => 'Error loading tickets',
+        'tickets_section'       => 'Tickets ({count})',
+        'status_new_fallback'   => 'New',
+        'info' => [
+            'email'         => 'Email',
+            'first_seen'    => 'First Seen',
+            'total_tickets' => 'Total Tickets',
+        ],
+        'table' => [
+            'ticket_number' => 'Ticket #',
+            'subject'       => 'Subject',
+            'status'        => 'Status',
+            'priority'      => 'Priority',
+            'created'       => 'Created',
+        ],
+    ],
+
     // tickets/calendar.php — scheduled-tickets calendar view
     'calendar' => [
         'page_title'    => 'Service Desk - Calendar',

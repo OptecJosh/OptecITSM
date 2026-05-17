@@ -132,6 +132,34 @@ return [
         'delete_failed'        => 'Tijdregistratie verwijderen mislukt: {error}',
     ],
 
+    // tickets/users.php — end-user directory with per-user ticket list
+    'users' => [
+        'page_title'            => 'Servicedesk - Gebruikers',
+        'list_title'            => 'Gebruikers',
+        'search_placeholder'    => 'Gebruikers zoeken…',
+        'count'                 => '{count} gebruikers',
+        'ticket_count'          => '{count} tickets',
+        'unknown_name'          => 'Onbekend',
+        'no_users'              => 'Geen gebruikers gevonden',
+        'select_user'           => 'Selecteer een gebruiker om details en tickets te bekijken',
+        'no_tickets'            => 'Geen tickets gevonden voor deze gebruiker',
+        'error_loading_tickets' => 'Fout bij laden van tickets',
+        'tickets_section'       => 'Tickets ({count})',
+        'status_new_fallback'   => 'Nieuw',
+        'info' => [
+            'email'         => 'E-mail',
+            'first_seen'    => 'Eerst gezien',
+            'total_tickets' => 'Totaal aantal tickets',
+        ],
+        'table' => [
+            'ticket_number' => 'Ticketnr.',
+            'subject'       => 'Onderwerp',
+            'status'        => 'Status',
+            'priority'      => 'Prioriteit',
+            'created'       => 'Aangemaakt',
+        ],
+    ],
+
     // tickets/calendar.php — scheduled-tickets calendar view
     'calendar' => [
         'page_title'    => 'Servicedesk - Kalender',

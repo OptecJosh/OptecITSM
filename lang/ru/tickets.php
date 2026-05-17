@@ -132,6 +132,34 @@ return [
         'delete_failed'        => 'Не удалось удалить запись времени: {error}',
     ],
 
+    // tickets/users.php — end-user directory with per-user ticket list
+    'users' => [
+        'page_title'            => 'Служба поддержки - Пользователи',
+        'list_title'            => 'Пользователи',
+        'search_placeholder'    => 'Поиск пользователей…',
+        'count'                 => 'Пользователей: {count}',
+        'ticket_count'          => 'Заявок: {count}',
+        'unknown_name'          => 'Неизвестно',
+        'no_users'              => 'Пользователи не найдены',
+        'select_user'           => 'Выберите пользователя, чтобы увидеть его данные и заявки',
+        'no_tickets'            => 'Заявки для этого пользователя не найдены',
+        'error_loading_tickets' => 'Ошибка загрузки заявок',
+        'tickets_section'       => 'Заявки ({count})',
+        'status_new_fallback'   => 'Новая',
+        'info' => [
+            'email'         => 'Эл. почта',
+            'first_seen'    => 'Первое появление',
+            'total_tickets' => 'Всего заявок',
+        ],
+        'table' => [
+            'ticket_number' => '№ заявки',
+            'subject'       => 'Тема',
+            'status'        => 'Статус',
+            'priority'      => 'Приоритет',
+            'created'       => 'Создано',
+        ],
+    ],
+
     // tickets/calendar.php — scheduled-tickets calendar view
     'calendar' => [
         'page_title'    => 'Служба поддержки - Календарь',

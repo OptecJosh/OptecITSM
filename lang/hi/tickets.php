@@ -132,6 +132,34 @@ return [
         'delete_failed'        => 'समय प्रविष्टि हटाने में विफल: {error}',
     ],
 
+    // tickets/users.php — end-user directory with per-user ticket list
+    'users' => [
+        'page_title'            => 'सेवा डेस्क - उपयोगकर्ता',
+        'list_title'            => 'उपयोगकर्ता',
+        'search_placeholder'    => 'उपयोगकर्ता खोजें…',
+        'count'                 => '{count} उपयोगकर्ता',
+        'ticket_count'          => '{count} टिकट',
+        'unknown_name'          => 'अज्ञात',
+        'no_users'              => 'कोई उपयोगकर्ता नहीं मिला',
+        'select_user'           => 'विवरण और टिकट देखने के लिए उपयोगकर्ता चुनें',
+        'no_tickets'            => 'इस उपयोगकर्ता के लिए कोई टिकट नहीं मिला',
+        'error_loading_tickets' => 'टिकट लोड करने में त्रुटि',
+        'tickets_section'       => 'टिकट ({count})',
+        'status_new_fallback'   => 'नया',
+        'info' => [
+            'email'         => 'ईमेल',
+            'first_seen'    => 'पहली बार देखा',
+            'total_tickets' => 'कुल टिकट',
+        ],
+        'table' => [
+            'ticket_number' => 'टिकट संख्या',
+            'subject'       => 'विषय',
+            'status'        => 'स्थिति',
+            'priority'      => 'प्राथमिकता',
+            'created'       => 'बनाया गया',
+        ],
+    ],
+
     // tickets/calendar.php — scheduled-tickets calendar view
     'calendar' => [
         'page_title'    => 'सेवा डेस्क - कैलेंडर',

@@ -132,6 +132,34 @@ return [
         'delete_failed'        => 'સમય નોંધણી કાઢી નાખવામાં નિષ્ફળ: {error}',
     ],
 
+    // tickets/users.php — end-user directory with per-user ticket list
+    'users' => [
+        'page_title'            => 'સેવા ડેસ્ક - વપરાશકર્તાઓ',
+        'list_title'            => 'વપરાશકર્તાઓ',
+        'search_placeholder'    => 'વપરાશકર્તાઓ શોધો…',
+        'count'                 => '{count} વપરાશકર્તાઓ',
+        'ticket_count'          => '{count} ટિકિટ',
+        'unknown_name'          => 'અજ્ઞાત',
+        'no_users'              => 'કોઈ વપરાશકર્તા મળ્યો નથી',
+        'select_user'           => 'તેમની વિગતો અને ટિકિટ જોવા માટે વપરાશકર્તા પસંદ કરો',
+        'no_tickets'            => 'આ વપરાશકર્તા માટે કોઈ ટિકિટ મળી નથી',
+        'error_loading_tickets' => 'ટિકિટ લોડ કરવામાં ભૂલ',
+        'tickets_section'       => 'ટિકિટ ({count})',
+        'status_new_fallback'   => 'નવી',
+        'info' => [
+            'email'         => 'ઈમેઈલ',
+            'first_seen'    => 'પ્રથમ વાર જોયું',
+            'total_tickets' => 'કુલ ટિકિટ',
+        ],
+        'table' => [
+            'ticket_number' => 'ટિકિટ નંબર',
+            'subject'       => 'વિષય',
+            'status'        => 'સ્થિતિ',
+            'priority'      => 'પ્રાથમિકતા',
+            'created'       => 'બનાવ્યું',
+        ],
+    ],
+
     // tickets/calendar.php — scheduled-tickets calendar view
     'calendar' => [
         'page_title'    => 'સેવા ડેસ્ક - કેલેન્ડર',

@@ -132,6 +132,34 @@ return [
         'delete_failed'        => 'সময়ের এন্ট্রি মুছতে ব্যর্থ: {error}',
     ],
 
+    // tickets/users.php — end-user directory with per-user ticket list
+    'users' => [
+        'page_title'            => 'সার্ভিস ডেস্ক - ব্যবহারকারী',
+        'list_title'            => 'ব্যবহারকারী',
+        'search_placeholder'    => 'ব্যবহারকারী খুঁজুন…',
+        'count'                 => '{count} জন ব্যবহারকারী',
+        'ticket_count'          => '{count} টি টিকিট',
+        'unknown_name'          => 'অজানা',
+        'no_users'              => 'কোনো ব্যবহারকারী পাওয়া যায়নি',
+        'select_user'           => 'বিস্তারিত ও টিকিট দেখতে একজন ব্যবহারকারী নির্বাচন করুন',
+        'no_tickets'            => 'এই ব্যবহারকারীর জন্য কোনো টিকিট পাওয়া যায়নি',
+        'error_loading_tickets' => 'টিকিট লোড করতে ত্রুটি',
+        'tickets_section'       => 'টিকিট ({count})',
+        'status_new_fallback'   => 'নতুন',
+        'info' => [
+            'email'         => 'ইমেল',
+            'first_seen'    => 'প্রথম দেখা',
+            'total_tickets' => 'মোট টিকিট',
+        ],
+        'table' => [
+            'ticket_number' => 'টিকিট নং',
+            'subject'       => 'বিষয়',
+            'status'        => 'স্ট্যাটাস',
+            'priority'      => 'অগ্রাধিকার',
+            'created'       => 'তৈরি',
+        ],
+    ],
+
     // tickets/calendar.php — scheduled-tickets calendar view
     'calendar' => [
         'page_title'    => 'সার্ভিস ডেস্ক - ক্যালেন্ডার',

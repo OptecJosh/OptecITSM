@@ -132,6 +132,34 @@ return [
         'delete_failed'        => 'நேரப் பதிவை நீக்க முடியவில்லை: {error}',
     ],
 
+    // tickets/users.php — end-user directory with per-user ticket list
+    'users' => [
+        'page_title'            => 'சேவை மையம் - பயனர்கள்',
+        'list_title'            => 'பயனர்கள்',
+        'search_placeholder'    => 'பயனர்களைத் தேடு…',
+        'count'                 => '{count} பயனர்கள்',
+        'ticket_count'          => '{count} டிக்கெட்டுகள்',
+        'unknown_name'          => 'தெரியாதது',
+        'no_users'              => 'பயனர்கள் இல்லை',
+        'select_user'           => 'விவரங்களையும் டிக்கெட்டுகளையும் பார்க்க பயனரை தேர்ந்தெடுக்கவும்',
+        'no_tickets'            => 'இந்த பயனருக்கான டிக்கெட்டுகள் இல்லை',
+        'error_loading_tickets' => 'டிக்கெட்டுகளை ஏற்றுவதில் பிழை',
+        'tickets_section'       => 'டிக்கெட்டுகள் ({count})',
+        'status_new_fallback'   => 'புதியது',
+        'info' => [
+            'email'         => 'மின்னஞ்சல்',
+            'first_seen'    => 'முதன்முதலில் கண்டது',
+            'total_tickets' => 'மொத்த டிக்கெட்டுகள்',
+        ],
+        'table' => [
+            'ticket_number' => 'டிக்கெட் எண்',
+            'subject'       => 'பொருள்',
+            'status'        => 'நிலை',
+            'priority'      => 'முன்னுரிமை',
+            'created'       => 'உருவாக்கப்பட்டது',
+        ],
+    ],
+
     // tickets/calendar.php — scheduled-tickets calendar view
     'calendar' => [
         'page_title'    => 'சேவை மையம் - நாட்காட்டி',

@@ -132,6 +132,34 @@ return [
         'delete_failed'        => 'Falha ao excluir o registro de tempo: {error}',
     ],
 
+    // tickets/users.php — end-user directory with per-user ticket list
+    'users' => [
+        'page_title'            => 'Central de Serviços - Usuários',
+        'list_title'            => 'Usuários',
+        'search_placeholder'    => 'Pesquisar usuários…',
+        'count'                 => '{count} usuários',
+        'ticket_count'          => '{count} tickets',
+        'unknown_name'          => 'Desconhecido',
+        'no_users'              => 'Nenhum usuário encontrado',
+        'select_user'           => 'Selecione um usuário para ver seus detalhes e tickets',
+        'no_tickets'            => 'Nenhum ticket encontrado para este usuário',
+        'error_loading_tickets' => 'Erro ao carregar os tickets',
+        'tickets_section'       => 'Tickets ({count})',
+        'status_new_fallback'   => 'Novo',
+        'info' => [
+            'email'         => 'E-mail',
+            'first_seen'    => 'Visto pela primeira vez',
+            'total_tickets' => 'Total de tickets',
+        ],
+        'table' => [
+            'ticket_number' => 'N.º do ticket',
+            'subject'       => 'Assunto',
+            'status'        => 'Status',
+            'priority'      => 'Prioridade',
+            'created'       => 'Criado',
+        ],
+    ],
+
     // tickets/calendar.php — scheduled-tickets calendar view
     'calendar' => [
         'page_title'    => 'Central de Serviços - Calendário',

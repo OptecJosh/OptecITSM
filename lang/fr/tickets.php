@@ -132,6 +132,34 @@ return [
         'delete_failed'        => 'Échec de la suppression de la saisie de temps : {error}',
     ],
 
+    // tickets/users.php — end-user directory with per-user ticket list
+    'users' => [
+        'page_title'            => 'Centre de services - Utilisateurs',
+        'list_title'            => 'Utilisateurs',
+        'search_placeholder'    => 'Rechercher des utilisateurs…',
+        'count'                 => '{count} utilisateurs',
+        'ticket_count'          => '{count} tickets',
+        'unknown_name'          => 'Inconnu',
+        'no_users'              => 'Aucun utilisateur trouvé',
+        'select_user'           => 'Sélectionnez un utilisateur pour voir ses détails et ses tickets',
+        'no_tickets'            => 'Aucun ticket trouvé pour cet utilisateur',
+        'error_loading_tickets' => 'Erreur lors du chargement des tickets',
+        'tickets_section'       => 'Tickets ({count})',
+        'status_new_fallback'   => 'Nouveau',
+        'info' => [
+            'email'         => 'E-mail',
+            'first_seen'    => 'Première vue',
+            'total_tickets' => 'Total des tickets',
+        ],
+        'table' => [
+            'ticket_number' => 'N° de ticket',
+            'subject'       => 'Sujet',
+            'status'        => 'Statut',
+            'priority'      => 'Priorité',
+            'created'       => 'Créé',
+        ],
+    ],
+
     // tickets/calendar.php — scheduled-tickets calendar view
     'calendar' => [
         'page_title'    => 'Centre de services - Calendrier',

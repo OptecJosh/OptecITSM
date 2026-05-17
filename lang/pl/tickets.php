@@ -132,6 +132,34 @@ return [
         'delete_failed'        => 'Nie udało się usunąć wpisu czasu: {error}',
     ],
 
+    // tickets/users.php — end-user directory with per-user ticket list
+    'users' => [
+        'page_title'            => 'Centrum obsługi - Użytkownicy',
+        'list_title'            => 'Użytkownicy',
+        'search_placeholder'    => 'Szukaj użytkowników…',
+        'count'                 => '{count} użytkowników',
+        'ticket_count'          => '{count} zgłoszeń',
+        'unknown_name'          => 'Nieznany',
+        'no_users'              => 'Nie znaleziono użytkowników',
+        'select_user'           => 'Wybierz użytkownika, aby zobaczyć jego szczegóły i zgłoszenia',
+        'no_tickets'            => 'Nie znaleziono zgłoszeń dla tego użytkownika',
+        'error_loading_tickets' => 'Błąd ładowania zgłoszeń',
+        'tickets_section'       => 'Zgłoszenia ({count})',
+        'status_new_fallback'   => 'Nowe',
+        'info' => [
+            'email'         => 'E-mail',
+            'first_seen'    => 'Pierwsze pojawienie się',
+            'total_tickets' => 'Łączna liczba zgłoszeń',
+        ],
+        'table' => [
+            'ticket_number' => 'Nr zgłoszenia',
+            'subject'       => 'Temat',
+            'status'        => 'Status',
+            'priority'      => 'Priorytet',
+            'created'       => 'Utworzono',
+        ],
+    ],
+
     // tickets/calendar.php — scheduled-tickets calendar view
     'calendar' => [
         'page_title'    => 'Centrum obsługi - Kalendarz',

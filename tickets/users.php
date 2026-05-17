@@ -4,16 +4,24 @@
  */
 session_start();
 require_once '../config.php';
+require_once '../includes/functions.php';
+require_once '../includes/i18n.php';
+I18n::initFromSession();
 
 $current_page = 'users';
+
+// Namespaces the inline JS needs for translated strings (count / labels / table headers etc.)
+$translationNamespaces = ['common', 'tickets'];
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Service Desk - Users</title>
+    <title><?php echo htmlspecialchars(t('tickets.users.page_title')); ?></title>
     <link rel="stylesheet" href="../assets/css/inbox.css">
+    <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
+    <script src="../assets/js/i18n.js"></script>
     <style>
         .users-container {
             display: flex;
@@ -277,8 +285,8 @@ $current_page = 'users';
         <!-- Users List -->
         <div class="users-list-container">
             <div class="users-list-header">
-                <h3>Users</h3>
-                <input type="text" class="search-box" id="userSearch" placeholder="Search users..." oninput="searchUsers()">
+                <h3><?php echo htmlspecialchars(t('tickets.users.list_title')); ?></h3>
+                <input type="text" class="search-box" id="userSearch" placeholder="<?php echo htmlspecialchars(t('tickets.users.search_placeholder')); ?>" oninput="searchUsers()">
                 <div class="user-count" id="userCount"></div>
             </div>
             <div class="users-list" id="usersList">
@@ -291,7 +299,7 @@ $current_page = 'users';
         <!-- User Detail -->
         <div class="user-detail-container" id="userDetail">
             <div class="empty-state">
-                Select a user to view their details and tickets
+                <?php echo htmlspecialchars(t('tickets.users.select_user')); ?>
             </div>
         </div>
     </div>
@@ -331,19 +339,20 @@ $current_page = 'users';
             const countEl = document.getElementById('userCount');
 
             if (users.length === 0) {
-                container.innerHTML = '<div class="empty-state">No users found</div>';
-                countEl.textContent = '0 users';
+                container.innerHTML = `<div class="empty-state">${escapeHtml(t('tickets.users.no_users'))}</div>`;
+                countEl.textContent = t('tickets.users.count', { count: 0 });
                 return;
             }
 
-            countEl.textContent = `${users.length} user${users.length !== 1 ? 's' : ''}`;
+            countEl.textContent = t('tickets.users.count', { count: users.length });
+            const unknownName = t('tickets.users.unknown_name');
 
             container.innerHTML = users.map(user => `
                 <div class="user-item ${selectedUserId == user.id ? 'selected' : ''}" onclick="selectUser(${user.id})">
-                    <div class="user-name">${escapeHtml(user.display_name || 'Unknown')}</div>
+                    <div class="user-name">${escapeHtml(user.display_name || unknownName)}</div>
                     <div class="user-email">${escapeHtml(user.email || '')}</div>
                     <div class="user-meta">
-                        <span>${user.ticket_count} ticket${user.ticket_count != 1 ? 's' : ''}</span>
+                        <span>${escapeHtml(t('tickets.users.ticket_count', { count: user.ticket_count }))}</span>
                     </div>
                 </div>
             `).join('');
@@ -366,28 +375,29 @@ $current_page = 'users';
             const user = users.find(u => u.id == userId);
             if (!user) return;
 
+            const unknownName = t('tickets.users.unknown_name');
             const detailContainer = document.getElementById('userDetail');
             detailContainer.innerHTML = `
                 <div class="user-detail-header">
-                    <h2 class="user-detail-name">${escapeHtml(user.display_name || 'Unknown')}</h2>
+                    <h2 class="user-detail-name">${escapeHtml(user.display_name || unknownName)}</h2>
                     <div class="user-detail-email">${escapeHtml(user.email || '')}</div>
                 </div>
                 <div class="user-info-grid">
                     <div class="info-item">
-                        <span class="info-label">Email</span>
+                        <span class="info-label">${escapeHtml(t('tickets.users.info.email'))}</span>
                         <span class="info-value">${escapeHtml(user.email || '-')}</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">First Seen</span>
+                        <span class="info-label">${escapeHtml(t('tickets.users.info.first_seen'))}</span>
                         <span class="info-value">${formatDate(user.created_at)}</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Total Tickets</span>
+                        <span class="info-label">${escapeHtml(t('tickets.users.info.total_tickets'))}</span>
                         <span class="info-value">${user.ticket_count}</span>
                     </div>
                 </div>
                 <div class="tickets-section">
-                    <div class="tickets-header">Tickets (${user.ticket_count})</div>
+                    <div class="tickets-header">${escapeHtml(t('tickets.users.tickets_section', { count: user.ticket_count }))}</div>
                     <div class="tickets-list" id="ticketsList">
                         <div class="loading"><div class="spinner"></div></div>
                     </div>
@@ -408,17 +418,18 @@ $current_page = 'users';
 
                 if (data.success) {
                     if (data.tickets.length === 0) {
-                        container.innerHTML = '<div class="empty-state">No tickets found for this user</div>';
+                        container.innerHTML = `<div class="empty-state">${escapeHtml(t('tickets.users.no_tickets'))}</div>`;
                         return;
                     }
 
+                    const statusFallback = t('tickets.users.status_new_fallback');
                     container.innerHTML = `
                         <div class="ticket-row ticket-row-header">
-                            <span>Ticket #</span>
-                            <span>Subject</span>
-                            <span>Status</span>
-                            <span>Priority</span>
-                            <span>Created</span>
+                            <span>${escapeHtml(t('tickets.users.table.ticket_number'))}</span>
+                            <span>${escapeHtml(t('tickets.users.table.subject'))}</span>
+                            <span>${escapeHtml(t('tickets.users.table.status'))}</span>
+                            <span>${escapeHtml(t('tickets.users.table.priority'))}</span>
+                            <span>${escapeHtml(t('tickets.users.table.created'))}</span>
                         </div>
                         ${data.tickets.map(ticket => {
                             const c = ticket.status_colour || '#0078d4';
@@ -427,18 +438,18 @@ $current_page = 'users';
                             <div class="ticket-row" onclick="viewTicket(${ticket.id})">
                                 <span class="ticket-number">${escapeHtml(ticket.ticket_number)}</span>
                                 <span class="ticket-subject">${escapeHtml(ticket.subject)}</span>
-                                <span class="ticket-status" style="${statusStyle}">${escapeHtml(ticket.status || 'New')}</span>
+                                <span class="ticket-status" style="${statusStyle}">${escapeHtml(ticket.status || statusFallback)}</span>
                                 <span class="ticket-priority">${escapeHtml(ticket.priority || '-')}</span>
                                 <span class="ticket-date">${formatDate(ticket.created_datetime)}</span>
                             </div>
                         `;}).join('')}
                     `;
                 } else {
-                    container.innerHTML = '<div class="empty-state">Error loading tickets</div>';
+                    container.innerHTML = `<div class="empty-state">${escapeHtml(t('tickets.users.error_loading_tickets'))}</div>`;
                 }
             } catch (error) {
                 console.error('Error loading tickets:', error);
-                document.getElementById('ticketsList').innerHTML = '<div class="empty-state">Error loading tickets</div>';
+                document.getElementById('ticketsList').innerHTML = `<div class="empty-state">${escapeHtml(t('tickets.users.error_loading_tickets'))}</div>`;
             }
         }
 
@@ -456,11 +467,13 @@ $current_page = 'users';
             return div.innerHTML;
         }
 
-        // Format date for display
+        // Format date for display. Locale sourced from <html lang> so the date
+        // matches the user's chosen interface language.
+        const PAGE_LOCALE = document.documentElement.lang || 'en-GB';
         function formatDate(dateString) {
             if (!dateString) return '-';
             const date = new Date(dateString);
-            return date.toLocaleDateString('en-GB', {
+            return date.toLocaleDateString(PAGE_LOCALE, {
                 day: '2-digit',
                 month: 'short',
                 year: 'numeric'

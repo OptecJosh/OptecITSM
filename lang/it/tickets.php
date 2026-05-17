@@ -132,6 +132,34 @@ return [
         'delete_failed'        => 'Impossibile eliminare la registrazione tempo: {error}',
     ],
 
+    // tickets/users.php — end-user directory with per-user ticket list
+    'users' => [
+        'page_title'            => 'Service Desk - Utenti',
+        'list_title'            => 'Utenti',
+        'search_placeholder'    => 'Cerca utenti…',
+        'count'                 => '{count} utenti',
+        'ticket_count'          => '{count} ticket',
+        'unknown_name'          => 'Sconosciuto',
+        'no_users'              => 'Nessun utente trovato',
+        'select_user'           => 'Seleziona un utente per visualizzare i suoi dettagli e ticket',
+        'no_tickets'            => 'Nessun ticket trovato per questo utente',
+        'error_loading_tickets' => 'Errore nel caricamento dei ticket',
+        'tickets_section'       => 'Ticket ({count})',
+        'status_new_fallback'   => 'Nuovo',
+        'info' => [
+            'email'         => 'E-mail',
+            'first_seen'    => 'Visto la prima volta',
+            'total_tickets' => 'Ticket totali',
+        ],
+        'table' => [
+            'ticket_number' => 'N. ticket',
+            'subject'       => 'Oggetto',
+            'status'        => 'Stato',
+            'priority'      => 'Priorità',
+            'created'       => 'Creato',
+        ],
+    ],
+
     // tickets/calendar.php — scheduled-tickets calendar view
     'calendar' => [
         'page_title'    => 'Service Desk - Calendario',

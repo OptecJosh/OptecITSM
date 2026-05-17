@@ -46,6 +46,7 @@ $path_prefix = '../../';
         .action-btn:hover { color: #9333ea; }
         .action-btn.delete:hover { color: #c62828; }
         .actions-cell { white-space: nowrap; }
+        .actions-cell .action-btn { display: inline-flex; vertical-align: middle; }
         .add-btn { background: #9333ea; color: white; padding: 8px 16px; border: none; border-radius: 4px; font-size: 13px; cursor: pointer; }
         .add-btn:hover { background: #7e22ce; }
 

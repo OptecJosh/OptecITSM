@@ -564,9 +564,9 @@ $path_prefix = '../';
 Wed 16:30 UK &mdash; <strong>ticket created</strong>, response clock starts.
 Wed 17:00 UK &mdash; office closes, clock pauses (30 min consumed of 60 min target).
 Thu 09:00 UK &mdash; office opens, clock resumes.
-Thu 09:30 UK &mdash; analyst replies. Response SLA met with 30 min to spare.</div>
+Thu 09:30 UK &mdash; analyst replies. Response SLA met right at the wire (60 min consumed, 60 min target).</div>
 
-                    <p>If the analyst didn't reply until <strong>Thursday 10:00 UK</strong>, the response target would be at exactly 100% (60 minutes consumed total &mdash; 30 from Wednesday evening, 30 from Thursday morning). The 1-hour clock has only ticked during business hours.</p>
+                    <p>If the analyst hadn't replied until <strong>Thursday 10:00 UK</strong>, the response would have <strong>breached by 30 minutes</strong> (90 min consumed against the 60 min target &mdash; 30 from Wednesday evening, 60 from Thursday morning). The 1-hour clock only ticks during business hours, but an end-of-day ticket still eats most of its budget overnight when the office reopens &mdash; it's easy for an analyst arriving at 09:00 to assume they've got the full hour, when in fact only 30 minutes are left.</p>
                 </div>
 
                 <h4>Example 2: Ticket raised in the UK, service desk in Estonia</h4>

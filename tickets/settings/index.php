@@ -493,10 +493,33 @@ $translationNamespaces = ['common', 'tickets'];
                     <h3 style="margin:0;">Breach Notifications</h3>
                     <button class="add-btn" onclick="openSlaNotifModal()"><?php echo htmlspecialchars(t('common.add')); ?></button>
                 </div>
-                <p style="color:#666;margin-bottom:14px;">
-                    Email rules fired by the SLA cron worker when a ticket approaches breach (<strong>warning</strong> at the threshold % above)
-                    or has breached (<strong>breach</strong>). Create one default rule that fires for every department, then add per-department rules
-                    that <em>replace</em> the default for that department. Each ticket fires at most one email per target per trigger &mdash; no spam loops.
+
+                <div style="background:#eff6ff;border-left:4px solid #2563eb;padding:14px 16px;border-radius:4px;margin-bottom:18px;font-size:13px;line-height:1.6;color:#1e3a8a;">
+                    <strong style="display:block;margin-bottom:6px;font-size:14px;">How notification rules work</strong>
+                    Each rule has four parts: a <strong>scope</strong>, a <strong>trigger</strong>, a <strong>target</strong>, and a list of <strong>recipients</strong>.<br><br>
+
+                    <strong>Scope</strong> can be either <em>Default</em> (the rule applies to tickets in every department)
+                    or a <em>specific department</em> (the rule applies only to tickets in that department).<br>
+
+                    When a ticket is being evaluated, the system looks for a rule matching its department first &mdash; if one exists, that rule wins
+                    and the default is ignored. If there's no department-specific rule, the default rule is used. This way you can set sensible
+                    defaults that cover every department, then carve out exceptions where one team has different escalation needs.<br><br>
+
+                    <strong>Trigger</strong> is either <em>Warning</em> (the ticket has crossed the warning threshold &mdash; potential breach approaching) or
+                    <em>Breach</em> (the ticket has now exceeded its SLA target &mdash; actual breach). Each is its own rule, so you can notify
+                    different people for warnings vs. breaches.<br><br>
+
+                    <strong>Target</strong> is which SLA clock to watch &mdash; <em>Response</em>, <em>Resolution</em>, or <em>Both</em>.<br><br>
+
+                    <strong>Recipients</strong> can be any combination of: the ticket's current assignee, every analyst in the ticket's department teams,
+                    one named analyst, and/or a list of free-form email addresses (useful for shared inboxes or Slack/Teams email bridges).<br><br>
+
+                    <strong style="color:#92400e;">No rules = no emails.</strong> Even if a ticket breaches, nothing fires until you add at least
+                    one rule (start with a Default-scope Warning + Breach pair to get coverage for everything).
+                </div>
+
+                <p style="color:#666;margin-bottom:14px;font-size:13px;">
+                    Each ticket fires at most one email per target per trigger &mdash; the cron worker tracks what's already been sent so you don't get duplicates.
                 </p>
                 <table>
                     <thead>

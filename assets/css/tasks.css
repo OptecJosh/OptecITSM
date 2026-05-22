@@ -184,6 +184,20 @@ body {
     letter-spacing: 0.5px;
 }
 
+.column-status-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.column-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .column-count {
     background: #d0d4dc;
     color: #555;

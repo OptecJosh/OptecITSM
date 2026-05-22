@@ -31,12 +31,13 @@ const ANALYST_ID = document.body.dataset.analystId;
 
 document.addEventListener('DOMContentLoaded', async () => {
     await loadCardSettings();
+    await loadLookups();          // statuses drive the board columns
+    buildBoardColumns();
     // Open a task straight away if linked from the calendar/timeline (?task=N)
     loadDropdowns().then(() => {
         const taskParam = new URLSearchParams(location.search).get('task');
         if (taskParam) openDetailPanel(parseInt(taskParam, 10));
     });
-    loadLookups();
     loadTasks();
     initContextMenu();
     document.addEventListener('keydown', e => {
@@ -173,23 +174,55 @@ function switchView(view) {
 
 // ── Board Rendering ────────────────────────────────────────────────
 
+// Fallback if the statuses API is unreachable
+const DEFAULT_STATUSES = [
+    { name: 'To Do',       colour: '#6b7280' },
+    { name: 'In Progress', colour: '#9333ea' },
+    { name: 'Done',        colour: '#16a34a' }
+];
+
+// Build one board column per status — run once after statuses load
+function buildBoardColumns() {
+    const board = document.getElementById('boardView');
+    const cols = statusList.length ? statusList : DEFAULT_STATUSES;
+    board.innerHTML = '';
+    cols.forEach(s => {
+        const col = document.createElement('div');
+        col.className = 'board-column';
+        col.dataset.status = s.name;
+        col.innerHTML = `
+            <div class="board-column-header">
+                <span class="column-status-dot" style="background:${escAttr(s.colour || '#6b7280')}"></span>
+                <span class="column-title">${esc(s.name)}</span>
+                <span class="column-count">0</span>
+                <button class="column-add-btn" title="Add task">+</button>
+            </div>
+            <div class="quick-add-container" style="display:none;">
+                <input type="text" class="quick-add-input" placeholder="Task title...">
+            </div>
+            <div class="board-cards"></div>`;
+        col.querySelector('.column-add-btn').addEventListener('click', () => showQuickAdd(col));
+        col.querySelector('.quick-add-input')
+           .addEventListener('keydown', e => handleQuickAdd(e, s.name, col));
+        board.appendChild(col);
+    });
+}
+
 function renderBoard() {
-    const statuses = ['To Do', 'In Progress', 'Done'];
-    statuses.forEach(status => {
-        const container = document.getElementById('cards-' + status);
+    document.querySelectorAll('#boardView .board-column').forEach(col => {
+        const status = col.dataset.status;
+        const cardsEl = col.querySelector('.board-cards');
+        const countEl = col.querySelector('.column-count');
         const filtered = tasks.filter(t => t.status === status && taskMatchesSearch(t));
-        const countEl = document.getElementById('count' + status.replace(/\s/g, ''));
         if (countEl) countEl.textContent = filtered.length;
 
         if (filtered.length === 0) {
-            container.innerHTML = '<div class="board-empty">No tasks</div>';
+            cardsEl.innerHTML = '<div class="board-empty">No tasks</div>';
             return;
         }
 
-        container.innerHTML = filtered.map(t => renderCard(t)).join('');
-
-        // Attach drag events
-        container.querySelectorAll('.task-card').forEach(card => {
+        cardsEl.innerHTML = filtered.map(renderCard).join('');
+        cardsEl.querySelectorAll('.task-card').forEach(card => {
             card.addEventListener('mousedown', e => startDrag(e, card));
         });
     });
@@ -273,27 +306,25 @@ function formatDueBadge(dateStr) {
 
 // ── Quick Add ──────────────────────────────────────────────────────
 
-function showQuickAdd(status) {
-    const container = document.getElementById('quickAdd-' + status);
+function showQuickAdd(col) {
+    const container = col.querySelector('.quick-add-container');
     container.style.display = 'block';
     const input = container.querySelector('input');
     input.value = '';
     input.focus();
 
-    // Hide on blur if empty
+    // Hide on blur if left empty
     input.onblur = () => {
         setTimeout(() => {
-            if (!input.value.trim()) {
-                container.style.display = 'none';
-            }
+            if (!input.value.trim()) container.style.display = 'none';
         }, 150);
     };
 }
 
-async function handleQuickAdd(event, status) {
+async function handleQuickAdd(event, status, col) {
     if (event.key === 'Escape') {
         event.target.value = '';
-        event.target.parentElement.style.display = 'none';
+        col.querySelector('.quick-add-container').style.display = 'none';
         return;
     }
     if (event.key !== 'Enter') return;
@@ -303,24 +334,21 @@ async function handleQuickAdd(event, status) {
 
     input.disabled = true;
     try {
-        const resp = await fetch(API_BASE + 'save.php', {
+        const data = await fetch(API_BASE + 'save.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: title, status: status, assigned_analyst_id: ANALYST_ID || null })
-        });
-        const data = await resp.json();
+            body: JSON.stringify({ title, status, assigned_analyst_id: ANALYST_ID || null })
+        }).then(r => r.json());
 
         if (data.success) {
             input.value = '';
-            input.parentElement.style.display = 'none';
+            col.querySelector('.quick-add-container').style.display = 'none';
             loadTasks();
             showToast('Task created');
         } else {
-            console.error('Save failed:', data.error);
             showToast('Error: ' + (data.error || 'Failed to create task'));
         }
     } catch (e) {
-        console.error('Quick add error:', e);
         showToast('Failed to create task');
     }
     input.disabled = false;
@@ -567,13 +595,13 @@ function renderList() {
     }
 
     tbody.innerHTML = sorted.map(t => {
-        const statusCls = t.status.toLowerCase().replace(/\s/g, '-');
+        const sc = statusColour(t.status);
         const subtaskText = t.subtasks.total > 0 ? `${t.subtasks.done}/${t.subtasks.total}` : '—';
         const dueBadge = formatDueBadge(t.due_date);
 
         return `<tr onclick="openDetailPanel(${t.id})">
             <td><strong>${esc(t.title)}</strong></td>
-            <td><span class="status-pill ${statusCls}">${esc(t.status)}</span></td>
+            <td><span class="status-pill" style="background:${sc}1f;color:${sc}">${esc(t.status)}</span></td>
             <td><span class="priority-pill"><span class="priority-dot ${t.priority.toLowerCase()}"></span> ${esc(t.priority)}</span></td>
             <td>${esc(t.analyst_name || '—')}</td>
             <td>${esc(t.team_name || '—')}</td>
@@ -592,6 +620,23 @@ function sortList(field) {
     if (sortField === field) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
     else { sortField = field; sortDir = 'asc'; }
     renderList();
+}
+
+// ── Lookup helpers ─────────────────────────────────────────────────
+
+// Configured colour for a status name (falls back to a neutral grey)
+function statusColour(name) {
+    const s = statusList.find(x => x.name === name);
+    return (s && s.colour) ? s.colour : '#6b7280';
+}
+
+// <option> markup for a status/priority dropdown — always keeps the
+// task's current value, even if it is no longer in the active list
+function lookupOptions(list, current) {
+    const names = list.map(x => x.name);
+    if (current && !names.includes(current)) names.unshift(current);
+    return names.map(n =>
+        `<option ${n === current ? 'selected' : ''}>${esc(n)}</option>`).join('');
 }
 
 // ── Detail Panel ───────────────────────────────────────────────────
@@ -636,19 +681,13 @@ function renderDetailPanel(task) {
             <div class="detail-field">
                 <label>Status</label>
                 <select class="detail-select" onchange="saveField('status', this.value)">
-                    <option ${task.status === 'To Do' ? 'selected' : ''}>To Do</option>
-                    <option ${task.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
-                    <option ${task.status === 'Done' ? 'selected' : ''}>Done</option>
-                    <option ${task.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                    ${lookupOptions(statusList, task.status)}
                 </select>
             </div>
             <div class="detail-field">
                 <label>Priority</label>
                 <select class="detail-select" onchange="saveField('priority', this.value)">
-                    <option ${task.priority === 'Low' ? 'selected' : ''}>Low</option>
-                    <option ${task.priority === 'Medium' ? 'selected' : ''}>Medium</option>
-                    <option ${task.priority === 'High' ? 'selected' : ''}>High</option>
-                    <option ${task.priority === 'Urgent' ? 'selected' : ''}>Urgent</option>
+                    ${lookupOptions(priorityList, task.priority)}
                 </select>
             </div>
         </div>
@@ -930,8 +969,8 @@ let ctxTaskId = null;
 let statusList = [];
 let priorityList = [];
 
-// Active statuses/priorities for the right-click menu (board columns
-// stay fixed at To Do / In Progress / Done — these drive the menu only)
+// Active statuses and priorities — drive the board columns, the
+// right-click menu, and the detail-panel dropdowns
 async function loadLookups() {
     try {
         const [sRes, pRes] = await Promise.all([

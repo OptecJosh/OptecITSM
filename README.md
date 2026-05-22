@@ -769,7 +769,7 @@ Visual layer over the CMDB for drawing network and architecture diagrams. Diagra
 ### Tasks (`tasks/`)
 Kanban-style task management with board, list, calendar, and timeline views for tracking internal work.
 
-- **Board view**: Three-column Kanban board (To Do, In Progress, Done) with drag-and-drop card movement
+- **Board view**: Kanban board with one column per status — columns (and their order and colour) are driven by Settings → Statuses, so custom statuses get their own column — with drag-and-drop card movement
 - **Card quick actions**: Right-click any board card for a context menu — assign analyst, assign team, change status, change priority, or create a subtask — without opening the card
 - **Configurable card fields**: Settings → Card toggles which extras show on each board card — priority, assignee, team, start date, due date, description excerpt (first 250 chars), subtask progress, and linked-item indicator — so tasks can be scanned without opening them
 - **List view**: Sortable table with all task fields

@@ -54,7 +54,7 @@ return [
     ],
 
     'settings' => [
-        'title'            => 'Step Types',
+        'title'            => 'Step types',
         'intro'            => 'Define the block types available in the Process Mapper toolbar. Each type is a name, a shape and a colour.',
         'add_type'         => 'Add type',
         'col_order'        => 'Order',
@@ -67,8 +67,8 @@ return [
         'builtin'          => 'Built-in',
         'yes'              => 'Yes',
         'no'               => 'No',
-        'add_title'        => 'Add Step Type',
-        'edit_title'       => 'Edit Step Type',
+        'add_title'        => 'Add step type',
+        'edit_title'       => 'Edit step type',
         'field_name'       => 'Name',
         'field_shape'      => 'Shape',
         'field_colour'     => 'Colour',

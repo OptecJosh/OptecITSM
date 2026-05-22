@@ -2,6 +2,19 @@
    Process Mapper Module Styles
    ============================================================= */
 
+/* --- Header nav --------------------------------------------- */
+/* Equal-width buttons centred between the waffle menu and the avatar,
+   matching the reporting-header pattern. */
+.process-mapper-header .header-nav {
+    flex: 1;
+    justify-content: center;
+    margin-left: 0;
+}
+.process-mapper-header .header-nav .nav-btn {
+    min-width: 140px;
+    justify-content: center;
+}
+
 /* --- Layout ------------------------------------------------- */
 .pm-layout {
     display: flex;

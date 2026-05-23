@@ -3162,6 +3162,12 @@ function openTicketContextMenu(event, ticketId, ticketRef) {
 
     document.getElementById('ticketContextMenuHeader').textContent = ctxTargetTicketRef;
 
+    // Populate the Set-status submenu from the active ticket_statuses lookup.
+    // Rebuilt each time so newly-added statuses appear without a page refresh,
+    // and so the current status gets a tick when right-clicking the same
+    // ticket that's already open in the reading pane.
+    populateContextStatusSubmenu();
+
     // Position at cursor — flip if it would overflow the viewport
     menu.classList.add('active');
     const rect = menu.getBoundingClientRect();
@@ -3171,6 +3177,76 @@ function openTicketContextMenu(event, ticketId, ticketRef) {
     if (y + rect.height > window.innerHeight) y = window.innerHeight - rect.height - 4;
     menu.style.left = x + 'px';
     menu.style.top  = y + 'px';
+
+    // Submenu position — flip leftward when the parent menu lives close to
+    // the right edge of the viewport and the submenu wouldn't fit on the right.
+    const SUBMENU_W = 220;
+    menu.classList.toggle('flip-sub', x + rect.width + SUBMENU_W > window.innerWidth);
+}
+
+// Build the Set-status submenu HTML from the active ticket_statuses lookup.
+// Tick mark on the row matching the currently-open ticket's status (only
+// shows when right-clicking the ticket that's in the reading pane, since
+// context actions can target any ticket regardless of selection).
+function populateContextStatusSubmenu() {
+    const sub = document.getElementById('ctxStatusSubmenu');
+    if (!sub) return;
+    if (!ticketStatuses.length) {
+        sub.innerHTML = '<div class="ticket-context-submenu-item" style="color:#999; font-style: italic; cursor: default;">No statuses configured</div>';
+        return;
+    }
+    const currentStatus = (currentEmail && currentEmail.ticket_id == ctxTargetTicketId)
+        ? (currentEmail.status || '')
+        : '';
+    sub.innerHTML = ticketStatuses.map(s => {
+        const isCurrent = (s.name === currentStatus);
+        const swatch = s.colour
+            ? `<span class="ctx-status-swatch" style="background: ${escapeHtml(s.colour)};"></span>`
+            : '<span class="ctx-status-swatch" style="background:#ddd;"></span>';
+        return `<div class="ticket-context-submenu-item" data-status-name="${escapeHtml(s.name)}" onclick="setStatusFromContext('${escapeHtml(s.name).replace(/'/g, "\\'")}')">
+            ${swatch}<span class="ctx-status-name">${escapeHtml(s.name)}</span>${isCurrent ? '<span class="ctx-status-check">&#10003;</span>' : ''}
+        </div>`;
+    }).join('');
+}
+
+// Set a ticket's status from the right-click menu — works on whichever ticket
+// was right-clicked, even if a different ticket is open in the reading pane.
+async function setStatusFromContext(statusName) {
+    closeTicketContextMenu();
+    if (!ctxTargetTicketId) return;
+    const targetId = ctxTargetTicketId;
+    try {
+        const response = await fetch(API_BASE + 'assign_ticket.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ticket_id: targetId,
+                status: statusName
+            })
+        });
+        const data = await response.json();
+        if (!data.success) {
+            alert('Error setting status: ' + (data.error || 'unknown'));
+            return;
+        }
+        // Audit-trail entry mirrors the in-panel assignStatus() flow.
+        try {
+            const oldStatus = (currentEmail && currentEmail.ticket_id == targetId) ? (currentEmail.status || '') : '';
+            await logAudit(targetId, 'Status', oldStatus, statusName);
+        } catch (e) { /* audit is best-effort */ }
+        // If the same ticket is open in the reading pane, keep its toolbar in sync.
+        if (currentEmail && currentEmail.ticket_id == targetId) {
+            currentEmail.status = statusName;
+            const sel = document.getElementById('statusSelect');
+            if (sel) sel.value = statusName;
+            updatePropertiesSummary();
+        }
+        loadFolderCounts();
+        loadEmails();
+    } catch (error) {
+        console.error('Error setting status from context:', error);
+        alert('Failed to set status');
+    }
 }
 
 function closeTicketContextMenu() {

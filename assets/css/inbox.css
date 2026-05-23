@@ -1152,6 +1152,61 @@ body.ticket-popout .ticket-toolbar {
 .ticket-context-menu-item svg { flex-shrink: 0; color: #666; }
 .ticket-context-menu-item:hover svg { color: #0078d4; }
 
+/* Submenu parent — has a trailing arrow and a hover/focus-revealed flyout. */
+.ticket-context-menu-parent { position: relative; }
+.ticket-context-menu-parent .ctx-sub-arrow {
+    margin-left: auto;
+    color: #999;
+}
+.ticket-context-submenu {
+    position: absolute;
+    left: 100%;
+    top: -5px;        /* line up the first submenu item with the parent row */
+    min-width: 200px;
+    max-height: 320px;
+    overflow-y: auto;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+    padding: 4px 0;
+    display: none;
+    z-index: 2001;
+}
+.ticket-context-menu-parent:hover > .ticket-context-submenu,
+.ticket-context-menu-parent:focus-within > .ticket-context-submenu {
+    display: block;
+}
+/* Flip submenu to the left when the parent menu was positioned close to
+   the viewport's right edge (set by openTicketContextMenu via .flip-sub). */
+.ticket-context-menu.flip-sub .ticket-context-submenu {
+    left: auto;
+    right: 100%;
+}
+
+.ticket-context-submenu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 14px;
+    font-size: 13px;
+    color: #333;
+    cursor: pointer;
+}
+.ticket-context-submenu-item:hover { background: #f3f4f6; }
+.ticket-context-submenu-item .ctx-status-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    border: 1px solid rgba(0,0,0,0.08);
+}
+.ticket-context-submenu-item .ctx-status-name { flex: 1; }
+.ticket-context-submenu-item .ctx-status-check {
+    color: #0078d4;
+    font-weight: 600;
+}
+
 /* --- Context-menu CMDB picker results (modal-scoped) --- */
 .ctx-cmdb-results {
     max-height: 220px;

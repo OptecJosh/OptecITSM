@@ -3162,11 +3162,12 @@ function openTicketContextMenu(event, ticketId, ticketRef) {
 
     document.getElementById('ticketContextMenuHeader').textContent = ctxTargetTicketRef;
 
-    // Populate the Set-status submenu from the active ticket_statuses lookup.
-    // Rebuilt each time so newly-added statuses appear without a page refresh,
-    // and so the current status gets a tick when right-clicking the same
-    // ticket that's already open in the reading pane.
+    // Populate the Set-status + Set-priority submenus from their lookups.
+    // Rebuilt each time so newly-added entries appear without a page refresh,
+    // and so the current value gets a tick when right-clicking the ticket
+    // that's already open in the reading pane.
     populateContextStatusSubmenu();
+    populateContextPrioritySubmenu();
 
     // Position at cursor — flip if it would overflow the viewport
     menu.classList.add('active');
@@ -3207,6 +3208,82 @@ function populateContextStatusSubmenu() {
             ${swatch}<span class="ctx-status-name">${escapeHtml(s.name)}</span>${isCurrent ? '<span class="ctx-status-check">&#10003;</span>' : ''}
         </div>`;
     }).join('');
+}
+
+// Build the Set-priority submenu HTML from the active ticket_priorities
+// lookup. Priority is nullable on tickets, so the first row is a "no priority"
+// option that clears the assignment. Same chip + tick pattern as the status
+// submenu — colour swatch from the priority's stored colour.
+function populateContextPrioritySubmenu() {
+    const sub = document.getElementById('ctxPrioritySubmenu');
+    if (!sub) return;
+    if (!ticketPriorities.length) {
+        sub.innerHTML = '<div class="ticket-context-submenu-item" style="color:#999; font-style: italic; cursor: default;">No priorities configured</div>';
+        return;
+    }
+    const currentPriorityId = (currentEmail && currentEmail.ticket_id == ctxTargetTicketId)
+        ? (currentEmail.priority_id ?? null)
+        : undefined;
+    // "No priority" row that clears the assignment (priority_id is nullable).
+    const clearRow = `<div class="ticket-context-submenu-item" data-priority-id="" onclick="setPriorityFromContext('')">
+        <span class="ctx-status-swatch" style="background: transparent; border-style: dashed;"></span>
+        <span class="ctx-status-name" style="color:#888; font-style: italic;">(no priority)</span>
+        ${(currentPriorityId === null || currentPriorityId === undefined) && currentEmail && currentEmail.ticket_id == ctxTargetTicketId ? '<span class="ctx-status-check">&#10003;</span>' : ''}
+    </div>`;
+    sub.innerHTML = clearRow + ticketPriorities.map(p => {
+        const isCurrent = (currentPriorityId != null && p.id == currentPriorityId);
+        const swatch = p.colour
+            ? `<span class="ctx-status-swatch" style="background: ${escapeHtml(p.colour)};"></span>`
+            : '<span class="ctx-status-swatch" style="background:#ddd;"></span>';
+        return `<div class="ticket-context-submenu-item" data-priority-id="${p.id}" onclick="setPriorityFromContext(${p.id})">
+            ${swatch}<span class="ctx-status-name">${escapeHtml(p.name)}</span>${isCurrent ? '<span class="ctx-status-check">&#10003;</span>' : ''}
+        </div>`;
+    }).join('');
+}
+
+// Set a ticket's priority from the right-click menu. Empty string clears the
+// priority (priority_id is nullable on tickets). SLA recomputes lazily on
+// the next ticket fetch — no explicit recompute call needed.
+async function setPriorityFromContext(priorityId) {
+    closeTicketContextMenu();
+    if (!ctxTargetTicketId) return;
+    const targetId = ctxTargetTicketId;
+    const newRow   = priorityId !== '' ? ticketPriorities.find(p => p.id == priorityId) : null;
+    const newLabel = newRow ? newRow.name : '';
+    try {
+        const response = await fetch(API_BASE + 'assign_ticket.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ticket_id: targetId,
+                priority_id: priorityId === '' ? null : priorityId
+            })
+        });
+        const data = await response.json();
+        if (!data.success) {
+            alert('Error setting priority: ' + (data.error || 'unknown'));
+            return;
+        }
+        try {
+            const oldRow   = (currentEmail && currentEmail.ticket_id == targetId)
+                ? ticketPriorities.find(p => p.id == currentEmail.priority_id)
+                : null;
+            const oldLabel = oldRow ? oldRow.name : '';
+            await logAudit(targetId, 'Priority', oldLabel, newLabel);
+        } catch (e) { /* audit is best-effort */ }
+        // Keep the open ticket's toolbar in sync when the same ticket is in the reading pane.
+        if (currentEmail && currentEmail.ticket_id == targetId) {
+            currentEmail.priority_id = priorityId === '' ? null : Number(priorityId);
+            currentEmail.priority    = newLabel;
+            const sel = document.getElementById('prioritySelect');
+            if (sel) sel.value = priorityId === '' ? '' : String(priorityId);
+            updatePropertiesSummary();
+        }
+        loadEmails();
+    } catch (error) {
+        console.error('Error setting priority from context:', error);
+        alert('Failed to set priority');
+    }
 }
 
 // Set a ticket's status from the right-click menu — works on whichever ticket

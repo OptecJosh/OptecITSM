@@ -270,6 +270,16 @@ $translationNamespaces = ['common', 'tickets'];
                 <!-- Populated by openTicketContextMenu(). -->
             </div>
         </div>
+        <!-- Priority submenu parent. Same pattern as Set status, populated
+             from the active ticket_priorities lookup at menu-open time. -->
+        <div class="ticket-context-menu-item ticket-context-menu-parent" role="menuitem" tabindex="0">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+            <span>Set priority</span>
+            <svg class="ctx-sub-arrow" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
+            <div class="ticket-context-submenu" id="ctxPrioritySubmenu" role="menu">
+                <!-- Populated by openTicketContextMenu(). -->
+            </div>
+        </div>
     </div>
 
     <!-- Context menu — Link CMDB Object modal (standalone, no ticket needs to be loaded) -->
@@ -325,7 +335,7 @@ $translationNamespaces = ['common', 'tickets'];
         window.API_BASE = '../api/tickets/';
         window.CURRENT_ANALYST_ID = <?php echo (int)($_SESSION['analyst_id'] ?? 0); ?>;
     </script>
-    <script src="../assets/js/inbox.js?v=25"></script>
+    <script src="../assets/js/inbox.js?v=26"></script>
     <script>
     // Auto-check mailboxes every 60 seconds
     (function() {

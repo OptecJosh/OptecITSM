@@ -491,80 +491,117 @@ const WFE = (() => {
             opt.textContent = n.field + ' (custom)';
             fieldSel.appendChild(opt);
         }
-        document.getElementById('wfCondOp').value = n.op;
+        rebuildOperatorDropdown(n);
         renderConditionValueInput(n);
     }
 
     /**
+     * The operator dropdown's contents depend on whether the field is a
+     * normalised lookup (priority_id, status_id, etc.) or free-text.
+     *
+     * For lookup fields the value control is always a multi-select
+     * checkbox list, so the user-visible operator collapses down to:
+     *     is / is not / is empty / is not empty
+     * We always store `in` / `not_in` under the hood (they handle a
+     * one-element array the same as `equals` did), upgrading any legacy
+     * `equals` / `not_equals` ops the first time the user opens the
+     * condition. The engine's existing `in` case treats a 1-item list
+     * identically to `equals`, so behaviour is preserved.
+     *
+     * For free-text fields the full operator catalogue is shown.
+     */
+    function rebuildOperatorDropdown(n) {
+        const opSel = document.getElementById('wfCondOp');
+        const isLookup = !!window.WF_LOOKUP_VALUES[n.field];
+
+        // Silent upgrade from the older single-value ops to the
+        // multi-select-friendly ones when the field is a lookup. Keeps the
+        // UI consistent without forcing a one-off migration of stored data
+        // (workflows re-save with the upgraded op next time the user saves).
+        if (isLookup) {
+            if (n.op === 'equals')     n.op = 'in';
+            if (n.op === 'not_equals') n.op = 'not_in';
+        }
+
+        let options;
+        if (isLookup) {
+            // Friendly labels for the lookup-field case. `in` reads as
+            // "is" because tick-one-box also "is" — the multi-select is
+            // a generalisation of strict equality.
+            options = [
+                ['in',           'is'],
+                ['not_in',       'is not'],
+                ['is_empty',     'is empty'],
+                ['is_not_empty', 'is not empty'],
+            ];
+        } else {
+            options = Object.entries(window.WF_OPS);
+        }
+        opSel.innerHTML = options.map(([k, label]) =>
+            `<option value="${escAttr(k)}" ${k === n.op ? 'selected' : ''}>${escAttr(label)}</option>`
+        ).join('');
+    }
+
+    /**
      * The value control adapts to (a) whether the chosen field has a lookup
-     * (i.e. is a normalised id like `ticket.priority_id`) and (b) which
-     * operator is selected:
+     * (i.e. a normalised id like `ticket.priority_id`) and (b) the operator.
      *
-     *   - lookup + equals / not_equals  → single-select dropdown of labels
-     *   - lookup + in / not_in          → checkbox list (OR across selected)
-     *   - lookup + gt / lt              → numeric input
-     *   - lookup + is_empty / is_not_empty → no control (value is irrelevant)
-     *   - free text + equals / not_equals / contains / not_contains → text input
-     *   - free text + in / not_in       → comma-separated text input
-     *   - free text + gt / lt           → numeric input
-     *   - free text + is_empty / is_not_empty → no control
+     *   Lookup field + (in / not_in)        → checkbox list (single tick =
+     *                                          equals semantics; many ticked
+     *                                          = OR). This is the default.
+     *   Lookup field + is_empty/is_not_empty → no control
+     *   Free text + single-value op         → text input
+     *   Free text + in / not_in             → comma-separated text input
+     *   Free text + is_empty/is_not_empty   → no control
      *
-     * Existing data shape is preserved: single-value ops store a string,
-     * multi-value ops (`in`/`not_in`) store an array.
+     * The operator dropdown is filtered upstream in `rebuildOperatorDropdown`
+     * so lookup fields don't even offer `equals` / `contains` / `gt` etc. —
+     * the user just sees "is", "is not", and the empties.
      */
     function renderConditionValueInput(n) {
         const host = document.getElementById('wfCondValueHost');
         const lookup = window.WF_LOOKUP_VALUES[n.field] || null;
         const op = n.op;
 
-        // No value control needed for is_empty / is_not_empty.
         if (op === 'is_empty' || op === 'is_not_empty') {
             host.innerHTML = '<div style="font-size:12px; color:#888; padding: 6px 0;"><em>No value needed — this operator just checks presence.</em></div>';
             return;
         }
 
-        // Multi-value operators: in / not_in.
-        if (op === 'in' || op === 'not_in') {
+        // Lookup field → multi-select checkboxes regardless of op direction.
+        // Operator dropdown is restricted to in/not_in/is_empty/is_not_empty
+        // for lookup fields, so we're guaranteed a list-shaped value here.
+        if (lookup) {
             const selected = Array.isArray(n.value) ? n.value.map(String)
                            : (typeof n.value === 'string' && n.value !== '')
                              ? n.value.split(',').map(s => s.trim())
-                             : [];
-            if (lookup) {
-                // Checkbox list of the lookup table's rows.
-                host.innerHTML =
-                    '<div style="border:1px solid #ddd; border-radius:4px; padding:8px 10px; max-height:180px; overflow-y:auto; background:#fafafa;">' +
-                    lookup.map(v => {
-                        const isOn = selected.includes(String(v.id));
-                        return `<label style="display:flex; align-items:center; gap:8px; padding:3px 0; cursor:pointer; font-size: 13px; color: #333;">
-                            <input type="checkbox" value="${escAttr(v.id)}" ${isOn ? 'checked' : ''} onchange="WFE.onConditionMultiToggle()">
-                            ${escAttr(v.label)} <span style="color:#999; font-size:11px;">(${escAttr(v.id)})</span>
-                        </label>`;
-                    }).join('') +
-                    '</div>' +
-                    '<small style="display:block; color:#888; margin-top:4px;">Matches if the field is any of the ticked values.</small>';
-            } else {
-                // Free-text fallback: comma-separated.
-                host.innerHTML =
-                    '<input type="text" id="wfCondValue" autocomplete="off" oninput="WFE.updateConditionFromDetail()" value="' + escAttr(selected.join(', ')) + '" placeholder="comma-separated values">' +
-                    '<small style="display:block; color:#888; margin-top:4px;">Comma-separate the values.</small>';
-            }
-            return;
-        }
-
-        // Single-value operators: equals / not_equals / contains / not_contains / gt / lt.
-        if (lookup && (op === 'equals' || op === 'not_equals')) {
-            const currentId = (typeof n.value === 'string' || typeof n.value === 'number') ? String(n.value) : '';
+                             : (n.value != null && n.value !== '' ? [String(n.value)] : []);
             host.innerHTML =
-                '<select id="wfCondValue" onchange="WFE.updateConditionFromDetail()">' +
-                '<option value="">— pick a value —</option>' +
-                lookup.map(v =>
-                    `<option value="${escAttr(v.id)}" ${String(v.id) === currentId ? 'selected' : ''}>${escAttr(v.label)} (id: ${escAttr(v.id)})</option>`
-                ).join('') +
-                '</select>';
+                '<div style="border:1px solid #ddd; border-radius:4px; padding:8px 10px; max-height:200px; overflow-y:auto; background:#fafafa;">' +
+                lookup.map(v => {
+                    const isOn = selected.includes(String(v.id));
+                    return `<label style="display:flex; align-items:center; gap:8px; padding:4px 0; cursor:pointer; font-size: 13px; color: #333;">
+                        <input type="checkbox" value="${escAttr(v.id)}" ${isOn ? 'checked' : ''} onchange="WFE.onConditionMultiToggle()">
+                        ${escAttr(v.label)} <span style="color:#999; font-size:11px;">(id ${escAttr(v.id)})</span>
+                    </label>`;
+                }).join('') +
+                '</div>' +
+                '<small style="display:block; color:#888; margin-top:4px;">Tick one for an exact match, or several for an "any of" match.</small>';
             return;
         }
 
-        // Free text (or lookup-but-numeric-op).
+        // Free-text field, in / not_in → comma-separated.
+        if (op === 'in' || op === 'not_in') {
+            const arr = Array.isArray(n.value) ? n.value
+                       : (typeof n.value === 'string' && n.value !== '') ? n.value.split(',').map(s => s.trim())
+                       : [];
+            host.innerHTML =
+                '<input type="text" id="wfCondValue" autocomplete="off" oninput="WFE.updateConditionFromDetail()" value="' + escAttr(arr.join(', ')) + '" placeholder="comma-separated values">' +
+                '<small style="display:block; color:#888; margin-top:4px;">Comma-separate the values.</small>';
+            return;
+        }
+
+        // Free-text field, single-value op.
         const valStr = Array.isArray(n.value) ? n.value.join(', ') : String(n.value ?? '');
         host.innerHTML =
             '<input type="text" id="wfCondValue" autocomplete="off" oninput="WFE.updateConditionFromDetail()" value="' + escAttr(valStr) + '">';
@@ -623,12 +660,21 @@ const WFE = (() => {
         n.field = newField;
         n.op    = newOp;
 
-        // If the field or op changed in a way that changes the value
-        // control's shape, reset the value to a sensible default and
-        // re-render the input. Otherwise just read the current control.
+        // Field change can flip the field between lookup ↔ free-text, which
+        // changes the available operators. Rebuild the op dropdown so the
+        // user sees the right set.
+        if (fieldChanged) {
+            rebuildOperatorDropdown(n);
+            // rebuildOperatorDropdown may have upgraded n.op (equals → in,
+            // not_equals → not_in) when moving to a lookup field. Pull the
+            // possibly-changed value out of the select for downstream use.
+            n.op = document.getElementById('wfCondOp').value;
+        }
+
         if (fieldChanged || opChanged) {
-            if (newOp === 'in' || newOp === 'not_in') n.value = Array.isArray(n.value) ? n.value : [];
-            else if (newOp === 'is_empty' || newOp === 'is_not_empty') n.value = '';
+            // Pick the right default value shape for the (possibly new) op.
+            if (n.op === 'in' || n.op === 'not_in') n.value = Array.isArray(n.value) ? n.value : (n.value != null && n.value !== '' ? [String(n.value)] : []);
+            else if (n.op === 'is_empty' || n.op === 'is_not_empty') n.value = '';
             else n.value = Array.isArray(n.value) ? (n.value[0] ?? '') : (n.value ?? '');
             renderConditionValueInput(n);
         } else {

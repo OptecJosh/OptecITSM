@@ -809,6 +809,59 @@ const WFE = (() => {
         }
     }
 
+    // Build a synthetic payload from the workflow's own conditions so Test
+    // fire actually exercises the action path. For each condition with an
+    // equality-ish op we set `payload[field] = value` (or the first item of
+    // a list), so the condition trivially passes. Other ops (is_empty /
+    // is_not_empty / contains / gt / lt) get a sensible sentinel. The user
+    // wants Test fire to mean "do my actions run when conditions pass" —
+    // an empty payload would skip every workflow that has any condition.
+    function buildTestFirePayload() {
+        const payload = {};
+        const conditions = nodes.filter(n => n.kind === 'condition');
+        const setPath = (path, value) => {
+            const parts = String(path).split('.');
+            let cur = payload;
+            for (let i = 0; i < parts.length - 1; i++) {
+                const p = parts[i];
+                if (typeof cur[p] !== 'object' || cur[p] === null) cur[p] = {};
+                cur = cur[p];
+            }
+            cur[parts[parts.length - 1]] = value;
+        };
+        for (const c of conditions) {
+            const field = c.data && c.data.field;
+            const op = (c.data && c.data.op) || 'equals';
+            const val = c.data ? c.data.value : null;
+            if (!field) continue;
+            switch (op) {
+                case 'equals':
+                case 'not_equals':
+                    setPath(field, op === 'equals' ? val : (val == null ? '__not_match__' : val + '_x'));
+                    break;
+                case 'in':
+                case 'not_in': {
+                    let first = null;
+                    if (Array.isArray(val)) first = val[0];
+                    else if (typeof val === 'string' && val.indexOf(',') !== -1) first = val.split(',')[0].trim();
+                    else first = val;
+                    setPath(field, op === 'in' ? first : (first == null ? '__not_match__' : first + '_x'));
+                    break;
+                }
+                case 'contains':
+                case 'not_contains':
+                    setPath(field, op === 'contains' ? ('test ' + (val || '') + ' value') : '__not_match__');
+                    break;
+                case 'gt': setPath(field, (parseFloat(val) || 0) + 1); break;
+                case 'lt': setPath(field, (parseFloat(val) || 0) - 1); break;
+                case 'is_empty':     setPath(field, ''); break;
+                case 'is_not_empty': setPath(field, 'x'); break;
+                default: setPath(field, val);
+            }
+        }
+        return payload;
+    }
+
     async function testFire() {
         if (!workflow.id) { window.showToast('Save the workflow first.', 'error'); return; }
         window.showToast(window.t('workflow.toast.fire_started'), 'info');
@@ -817,7 +870,7 @@ const WFE = (() => {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: workflow.id, payload: {} }),
+                body: JSON.stringify({ id: workflow.id, payload: buildTestFirePayload() }),
             });
             const d = await r.json();
             if (d.success) {

@@ -69,23 +69,21 @@ class WorkflowEngine
      */
     public static function availableFields(string $trigger): array
     {
+        // The full canonical ticket payload that every ticket.* event ships
+        // (see api/tickets/assign_ticket.php + create_ticket.php). Listed
+        // once and reused so a condition on, say, ticket.priority_id works
+        // for *any* ticket trigger — not just the priority_changed one.
+        $fullTicket = [
+            'ticket.id', 'ticket.subject', 'ticket.priority_id', 'ticket.status_id',
+            'ticket.department_id', 'ticket.type_id', 'ticket.assigned_analyst_id',
+            'ticket.owner_id', 'ticket.origin_id', 'ticket.created_by',
+            'ticket.requester_email',
+        ];
         $byTrigger = [
-            'ticket.created' => [
-                'ticket.id', 'ticket.subject', 'ticket.priority_id', 'ticket.status_id',
-                'ticket.department_id', 'ticket.type_id', 'ticket.assigned_analyst_id',
-                'ticket.created_by', 'ticket.requester_email',
-            ],
-            'ticket.status_changed' => [
-                'ticket.id', 'old_status_id', 'new_status_id',
-                'ticket.priority_id', 'ticket.assigned_analyst_id',
-            ],
-            'ticket.priority_changed' => [
-                'ticket.id', 'old_priority_id', 'new_priority_id',
-                'ticket.status_id', 'ticket.assigned_analyst_id',
-            ],
-            'ticket.assigned' => [
-                'ticket.id', 'analyst_id', 'team_id',
-            ],
+            'ticket.created'          => $fullTicket,
+            'ticket.status_changed'   => array_merge($fullTicket, ['old_status_id', 'new_status_id']),
+            'ticket.priority_changed' => array_merge($fullTicket, ['old_priority_id', 'new_priority_id']),
+            'ticket.assigned'         => array_merge($fullTicket, ['analyst_id', 'team_id']),
             'form.submitted' => [
                 'form.id', 'form.name', 'submission.id', 'submission.email',
             ],

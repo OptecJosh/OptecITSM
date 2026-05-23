@@ -170,33 +170,51 @@ try {
     // engine swallows its own errors, but wrap defensively so an engine
     // outage can never break the ticket save response (already echoed).
     try {
-        // Resolve the post-update priority_id so dispatch payloads carry
-        // the actual current value (the request may have changed it).
-        $newPriorityId = $priorityWasSent
-            ? (($priority_id === '' || $priority_id === null) ? null : (int)$priority_id)
-            : $oldPriorityId;
+        // Read back the FULL post-update ticket state once so every
+        // dispatch payload carries the same canonical `ticket` object.
+        // Without this, conditions on fields the user didn't directly
+        // change (e.g. condition = priority is critical on a
+        // ticket.assigned event) read null and skip the workflow.
+        $ticketReadBack = $conn->prepare(
+            "SELECT t.id, t.subject, t.priority_id, t.status_id, t.department_id,
+                    t.ticket_type_id AS type_id, t.assigned_analyst_id,
+                    t.owner_id, t.origin_id, t.user_id AS created_by,
+                    u.email AS requester_email
+             FROM tickets t
+             LEFT JOIN users u ON u.id = t.user_id
+             WHERE t.id = ?"
+        );
+        $ticketReadBack->execute([$ticket_id]);
+        $ticketRow = $ticketReadBack->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        $ticketPayload = [
+            'id'                  => (int)$ticket_id,
+            'subject'             => isset($ticketRow['subject'])             ? (string)$ticketRow['subject'] : null,
+            'priority_id'         => isset($ticketRow['priority_id'])         ? (int)$ticketRow['priority_id'] : null,
+            'status_id'           => isset($ticketRow['status_id'])           ? (int)$ticketRow['status_id']   : null,
+            'department_id'       => isset($ticketRow['department_id'])       ? (int)$ticketRow['department_id'] : null,
+            'type_id'             => isset($ticketRow['type_id'])             ? (int)$ticketRow['type_id']     : null,
+            'assigned_analyst_id' => isset($ticketRow['assigned_analyst_id']) ? (int)$ticketRow['assigned_analyst_id'] : null,
+            'owner_id'            => isset($ticketRow['owner_id'])            ? (int)$ticketRow['owner_id']    : null,
+            'origin_id'           => isset($ticketRow['origin_id'])           ? (int)$ticketRow['origin_id']   : null,
+            'created_by'          => isset($ticketRow['created_by'])          ? (int)$ticketRow['created_by']  : null,
+            'requester_email'     => isset($ticketRow['requester_email'])     ? (string)$ticketRow['requester_email'] : null,
+        ];
 
         // ticket.status_changed
         if ($newStatusId !== null && $newStatusId !== $oldStatusId) {
             WorkflowEngine::dispatch('ticket.status_changed', [
-                'ticket' => [
-                    'id'                   => (int)$ticket_id,
-                    'priority_id'          => $newPriorityId,
-                    'assigned_analyst_id'  => $newAnalystId ?? $oldAnalystId,
-                ],
+                'ticket'        => $ticketPayload,
                 'old_status_id' => $oldStatusId,
                 'new_status_id' => $newStatusId,
             ]);
         }
 
         // ticket.priority_changed
+        $newPriorityId = $ticketPayload['priority_id'];
         if ($priorityWasSent && (string)$newPriorityId !== (string)$oldPriorityId) {
             WorkflowEngine::dispatch('ticket.priority_changed', [
-                'ticket' => [
-                    'id'                   => (int)$ticket_id,
-                    'status_id'            => $newStatusId ?? $oldStatusId,
-                    'assigned_analyst_id'  => $newAnalystId ?? $oldAnalystId,
-                ],
+                'ticket'          => $ticketPayload,
                 'old_priority_id' => $oldPriorityId,
                 'new_priority_id' => $newPriorityId,
             ]);
@@ -205,7 +223,7 @@ try {
         // ticket.assigned
         if ($newAnalystId !== null && (string)$newAnalystId !== (string)$oldAnalystId) {
             WorkflowEngine::dispatch('ticket.assigned', [
-                'ticket'     => ['id' => (int)$ticket_id],
+                'ticket'     => $ticketPayload,
                 'analyst_id' => $newAnalystId,
                 'team_id'    => null,
             ]);

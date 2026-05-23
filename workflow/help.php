@@ -23,7 +23,7 @@ $path_prefix = '../';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars(t('workflow.help.page_title')); ?></title>
     <link rel="stylesheet" href="../assets/css/inbox.css">
-    <link rel="stylesheet" href="../assets/css/workflow.css?v=1">
+    <link rel="stylesheet" href="../assets/css/workflow.css?v=2">
     <style>
         body { overflow: auto; height: auto; }
         .container { max-width: 880px; }

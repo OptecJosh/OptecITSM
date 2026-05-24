@@ -512,6 +512,24 @@ CREATE TABLE IF NOT EXISTS `ticket_email_templates` (
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `ticket_csat_responses` (
+    `id`                 INT NOT NULL AUTO_INCREMENT,
+    `ticket_id`          INT NOT NULL,
+    `token`              VARCHAR(64) NOT NULL,
+    `sent_datetime`      DATETIME NULL,
+    `responded_datetime` DATETIME NULL,
+    `rating`             TINYINT NULL,
+    `comment`            TEXT NULL,
+    `analyst_id`         INT NULL,
+    `created_at`         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_ticket_csat_token` (`token`),
+    KEY `ix_ticket_csat_ticket_id` (`ticket_id`),
+    KEY `ix_ticket_csat_responded` (`responded_datetime`),
+    CONSTRAINT `fk_ticket_csat_ticket` FOREIGN KEY (`ticket_id`) REFERENCES `tickets` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_ticket_csat_analyst` FOREIGN KEY (`analyst_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `ticket_rota_shifts` (
     `id`                INT NOT NULL AUTO_INCREMENT,
     `name`              VARCHAR(100) NOT NULL,

@@ -219,6 +219,7 @@ $translationNamespaces = ['common', 'tickets'];
             <button class="tab" data-tab="analysts" onclick="switchTab('analysts')"><?php echo htmlspecialchars(t('tickets.settings.tabs.analysts')); ?></button>
             <button class="tab" data-tab="general" onclick="switchTab('general')"><?php echo htmlspecialchars(t('tickets.settings.tabs.general')); ?></button>
             <button class="tab" data-tab="reply-cleanup" onclick="switchTab('reply-cleanup')"><?php echo htmlspecialchars(t('tickets.settings.tabs.reply_cleanup')); ?></button>
+            <button class="tab" data-tab="csat" onclick="switchTab('csat')"><?php echo htmlspecialchars(t('tickets.settings.tabs.csat')); ?></button>
         </div>
 
         <!-- Departments Tab -->
@@ -890,6 +891,78 @@ $translationNamespaces = ['common', 'tickets'];
                 <div id="rcTestResult" style="margin-top: 16px; padding: 10px 14px; border-radius: 4px; display: none; font-size: 13px;"></div>
             </form>
         </div>
+
+        <!-- CSAT Tab -->
+        <div class="tab-content" id="csat-tab">
+            <div class="section-header">
+                <h2><?php echo htmlspecialchars(t('tickets.settings.headings.csat')); ?></h2>
+            </div>
+            <p style="max-width: 700px; color: #555;">
+                When a ticket is closed, send the requester a short survey email asking them to rate the
+                experience 1&ndash;5. Responses are recorded against the analyst who closed the ticket so
+                you can pull per-analyst CSAT trends, and live as a widget on the dashboard.
+            </p>
+            <p style="max-width: 700px; color: #555;">
+                The survey email is configured under <a href="#" onclick="event.preventDefault();switchTab('email-templates');">Email templates</a>
+                &mdash; create a template with event <strong>CSAT survey</strong> and embed
+                <code>[csat_link]</code> in the body to insert the one-shot rating URL.
+            </p>
+
+            <form id="csatSettingsForm" style="max-width: 700px; margin-top: 24px;">
+                <div class="form-group">
+                    <label><?php echo htmlspecialchars(t('tickets.settings.csat.mode_label')); ?></label>
+                    <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 6px;">
+                        <label style="display: flex; gap: 10px; align-items: flex-start; cursor: pointer;">
+                            <input type="radio" name="csatMode" value="off" style="margin-top: 3px;">
+                            <span><strong>Off</strong><br><small style="color: #666;">No survey emails are sent.</small></span>
+                        </label>
+                        <label style="display: flex; gap: 10px; align-items: flex-start; cursor: pointer;">
+                            <input type="radio" name="csatMode" value="auto" style="margin-top: 3px;">
+                            <span><strong>Auto on close</strong><br><small style="color: #666;">A survey is sent automatically when a ticket moves into any closed status.</small></span>
+                        </label>
+                        <label style="display: flex; gap: 10px; align-items: flex-start; cursor: pointer;">
+                            <input type="radio" name="csatMode" value="manual" style="margin-top: 3px;">
+                            <span><strong>Manual only</strong><br><small style="color: #666;">Analysts click <em>Request feedback</em> from the ticket toolbar when they want to ask.</small></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="csatDelay"><?php echo htmlspecialchars(t('tickets.settings.csat.delay_label')); ?></label>
+                    <input type="number" id="csatDelay" min="0" max="10080" step="1" style="max-width: 160px;">
+                    <small style="display: block; color: #666; margin-top: 4px;">Wait this many minutes after close before sending. <code>0</code> = immediate. Useful if you want the user to verify the fix actually held before being asked to rate it.</small>
+                </div>
+
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" id="csatOnePerTicket">
+                        <span>One survey per ticket</span>
+                    </label>
+                    <small style="display: block; color: #666; margin-top: 4px; margin-left: 26px;">If on, a reopened-then-closed ticket only gets another survey when an analyst manually triggers it &mdash; stops survey-spamming a flaky ticket.</small>
+                </div>
+
+                <div class="form-group">
+                    <label><?php echo htmlspecialchars(t('tickets.settings.csat.scale_label')); ?></label>
+                    <div style="display: flex; gap: 20px; margin-top: 6px;">
+                        <label style="display: flex; gap: 8px; align-items: center; cursor: pointer;">
+                            <input type="radio" name="csatScale" value="stars">
+                            <span style="font-size: 18px;">&starf;&starf;&starf;&starf;&starf;</span>
+                            <span style="color: #666; font-size: 13px;">Stars</span>
+                        </label>
+                        <label style="display: flex; gap: 8px; align-items: center; cursor: pointer;">
+                            <input type="radio" name="csatScale" value="emojis">
+                            <span style="font-size: 18px;">😡 🙁 😐 🙂 😀</span>
+                            <span style="color: #666; font-size: 13px;">Emojis</span>
+                        </label>
+                    </div>
+                    <small style="display: block; color: #666; margin-top: 4px;">Both options store the same 1&ndash;5 number, so dashboards and averages work the same either way &mdash; this only changes how the survey page itself looks.</small>
+                </div>
+
+                <div class="modal-actions" style="justify-content: flex-start; margin-top: 30px;">
+                    <button type="submit" class="btn btn-primary"><?php echo htmlspecialchars(t('common.save')); ?></button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- Modal for Add/Edit -->
@@ -1242,6 +1315,7 @@ $translationNamespaces = ['common', 'tickets'];
                             <option value="new_ticket_email"><?php echo htmlspecialchars(t('tickets.settings.modals.template.event_new_ticket')); ?></option>
                             <option value="ticket_assigned"><?php echo htmlspecialchars(t('tickets.settings.modals.template.event_assigned')); ?></option>
                             <option value="ticket_closed"><?php echo htmlspecialchars(t('tickets.settings.modals.template.event_closed')); ?></option>
+                            <option value="csat_request"><?php echo htmlspecialchars(t('tickets.settings.modals.template.event_csat_request')); ?></option>
                         </select>
                     </div>
 
@@ -3021,6 +3095,7 @@ $translationNamespaces = ['common', 'tickets'];
             loadAnalysts();
             loadGeneralSettings();
             loadReplyCleanupSettings();
+            loadCsatSettings();
         });
 
         // ============================
@@ -3044,6 +3119,53 @@ $translationNamespaces = ['common', 'tickets'];
                 console.error('Failed to load reply cleanup settings:', err);
             }
         }
+
+        // ============================
+        // CSAT settings
+        // ============================
+        async function loadCsatSettings() {
+            try {
+                const res = await fetch(API_TICKETS + 'get_csat_settings.php');
+                const data = await res.json();
+                if (!data.success) return;
+
+                const mode = document.querySelector(`input[name="csatMode"][value="${data.mode || 'off'}"]`);
+                if (mode) mode.checked = true;
+
+                document.getElementById('csatDelay').value = data.delay_minutes ?? 0;
+                document.getElementById('csatOnePerTicket').checked = data.one_per_ticket !== '0';
+
+                const scale = document.querySelector(`input[name="csatScale"][value="${data.scale || 'stars'}"]`);
+                if (scale) scale.checked = true;
+            } catch (err) {
+                console.error('Failed to load CSAT settings:', err);
+            }
+        }
+
+        document.getElementById('csatSettingsForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const payload = {
+                mode:           document.querySelector('input[name="csatMode"]:checked')?.value || 'off',
+                delay_minutes:  parseInt(document.getElementById('csatDelay').value || '0', 10),
+                one_per_ticket: document.getElementById('csatOnePerTicket').checked ? '1' : '0',
+                scale:          document.querySelector('input[name="csatScale"]:checked')?.value || 'stars',
+            };
+            try {
+                const res = await fetch(API_TICKETS + 'save_csat_settings.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast('CSAT settings saved', 'success');
+                } else {
+                    showToast('Error: ' + (data.error || 'Save failed'), 'error');
+                }
+            } catch (err) {
+                showToast('Failed to save settings', 'error');
+            }
+        });
 
         // Re-fetch the prompt preview when the tone selection changes so the
         // read-only panel always reflects the currently-chosen tone clause.
@@ -3225,7 +3347,8 @@ $translationNamespaces = ['common', 'tickets'];
         const EVENT_LABELS = {
             'new_ticket_email': 'New ticket from email',
             'ticket_assigned': 'Ticket assigned',
-            'ticket_closed': 'Ticket closed'
+            'ticket_closed': 'Ticket closed',
+            'csat_request': 'CSAT survey'
         };
 
         let emailTemplates = [];

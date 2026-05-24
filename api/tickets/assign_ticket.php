@@ -161,6 +161,18 @@ try {
         // Trigger ticket_closed if status changed to a closed state
         if ($newIsClosed && !$oldIsClosed) {
             sendTemplateEmail($conn, $ticket_id, 'ticket_closed');
+
+            // CSAT auto-trigger — only when mode is 'auto'. Manual mode requires the
+            // analyst to click "Request feedback" explicitly. Off mode no-ops inside
+            // sendCsatSurvey() anyway, but checking here saves a settings round-trip.
+            require_once dirname(dirname(__DIR__)) . '/includes/csat.php';
+            try {
+                if (csatGetSetting($conn, 'csat_mode', 'off') === 'auto') {
+                    sendCsatSurvey($conn, (int)$ticket_id, (int)($_SESSION['analyst_id'] ?? 0) ?: null);
+                }
+            } catch (Exception $csEx) {
+                error_log('CSAT auto-trigger failed for ticket ' . $ticket_id . ': ' . $csEx->getMessage());
+            }
         }
     } catch (Exception $tplEx) {
         error_log('Template email error in assign_ticket: ' . $tplEx->getMessage());

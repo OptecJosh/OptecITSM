@@ -1202,6 +1202,10 @@ function displayEmail(email, recordings) {
                 <span class="action-btn-icon">📋</span>
                 <span>${escapeHtml(t('tickets.actions.audit'))}</span>
             </button>
+            <button class="action-btn" onclick="requestCsatSurvey()" title="Send a satisfaction survey to the requester">
+                <span class="action-btn-icon">⭐</span>
+                <span>${escapeHtml(t('tickets.actions.request_feedback'))}</span>
+            </button>
             <button class="action-btn action-btn-danger" onclick="deleteTicket()">
                 <span class="action-btn-icon">🗑️</span>
                 <span>${escapeHtml(t('tickets.actions.delete'))}</span>
@@ -1542,6 +1546,29 @@ async function assignOwner() {
 }
 
 // Delete ticket
+async function requestCsatSurvey() {
+    if (!currentEmail || !currentEmail.ticket_id) {
+        alert('No ticket selected');
+        return;
+    }
+    if (!confirm('Send a satisfaction survey email to the requester?')) return;
+    try {
+        const res = await fetch(`${API_BASE}request_csat.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticket_id: currentEmail.ticket_id })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert('Survey email sent.');
+        } else {
+            alert('Could not send survey: ' + (data.error || 'unknown error'));
+        }
+    } catch (err) {
+        alert('Failed: ' + err.message);
+    }
+}
+
 async function deleteTicket() {
     if (!currentEmail || !currentEmail.ticket_id) {
         alert('No ticket selected');

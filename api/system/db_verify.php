@@ -375,6 +375,18 @@ $schema = [
         'updated_datetime'  => 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP',
     ],
 
+    'ticket_csat_responses' => [
+        'id'                 => 'INT NOT NULL AUTO_INCREMENT',
+        'ticket_id'          => 'INT NOT NULL',
+        'token'              => 'VARCHAR(64) NOT NULL',
+        'sent_datetime'      => 'DATETIME NULL',
+        'responded_datetime' => 'DATETIME NULL',
+        'rating'             => 'TINYINT NULL',
+        'comment'            => 'TEXT NULL',
+        'analyst_id'         => 'INT NULL',
+        'created_at'         => 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
     'ticket_rota_shifts' => [
         'id'                => 'INT NOT NULL AUTO_INCREMENT',
         'name'              => 'VARCHAR(100) NOT NULL',
@@ -2143,6 +2155,25 @@ try {
         }
     }
 
+    // ticket_csat_responses: token must be unique (it's the survey URL key), CASCADE on ticket delete
+    if ($tableExists('ticket_csat_responses')) {
+        if (!$idxExists('ticket_csat_responses', 'uq_ticket_csat_token')) {
+            try { $conn->exec("ALTER TABLE ticket_csat_responses ADD UNIQUE KEY uq_ticket_csat_token (token)"); } catch (Exception $e) {}
+        }
+        if (!$idxExists('ticket_csat_responses', 'ix_ticket_csat_ticket_id')) {
+            try { $conn->exec("ALTER TABLE ticket_csat_responses ADD INDEX ix_ticket_csat_ticket_id (ticket_id)"); } catch (Exception $e) {}
+        }
+        if (!$idxExists('ticket_csat_responses', 'ix_ticket_csat_responded')) {
+            try { $conn->exec("ALTER TABLE ticket_csat_responses ADD INDEX ix_ticket_csat_responded (responded_datetime)"); } catch (Exception $e) {}
+        }
+        if ($tableExists('tickets') && !$fkExists('ticket_csat_responses', 'fk_ticket_csat_ticket')) {
+            try { $conn->exec("ALTER TABLE ticket_csat_responses ADD CONSTRAINT fk_ticket_csat_ticket FOREIGN KEY (ticket_id) REFERENCES tickets (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if ($tableExists('analysts') && !$fkExists('ticket_csat_responses', 'fk_ticket_csat_analyst')) {
+            try { $conn->exec("ALTER TABLE ticket_csat_responses ADD CONSTRAINT fk_ticket_csat_analyst FOREIGN KEY (analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+    }
+
     // Seed a default Mon-Fri 09:00-17:00 calendar in Europe/London if no
     // calendars exist yet. Detected installs that pre-date the SLA module
     // will pick this up on first verify; the freeitsm.sql seed handles fresh.
@@ -2183,6 +2214,25 @@ try {
             'watchtower_paused_too_long_hours' => '24',
             // Tasks calendar: how multi-day tasks render — deadline | span | repeat
             'tasks_calendar_span_mode'        => 'deadline',
+            // CSAT (customer satisfaction surveys on ticket closure)
+            // mode: off | auto | manual
+            //   off    — feature disabled, no survey ever sent
+            //   auto   — survey email queued immediately on close (or after csat_delay_minutes)
+            //   manual — analyst clicks 'Request feedback' from the ticket toolbar
+            'csat_mode'                       => 'off',
+            // Wait this many minutes after close before sending the survey email,
+            // so the user has a chance to verify the fix actually held. 0 = send immediately.
+            'csat_delay_minutes'              => '0',
+            // Render the survey UI as 5 stars (⭐⭐⭐⭐⭐) or 5 emojis (😡 🙁 😐 🙂 😀)
+            // Same 1-5 data model either way, dashboards/averages work identically.
+            'csat_scale'                      => 'stars',
+            // If 1, a reopened-then-closed ticket only gets a new survey when the analyst
+            // manually triggers it (stops survey-spamming a flaky ticket). If 0, every close fires.
+            'csat_one_per_ticket'             => '1',
+            // Shared HMAC secret for tokenising survey URLs. Random per install — leaking it
+            // would let anyone post ratings on behalf of users, so it stays in system_settings
+            // rather than going to a public file or being printed in error pages.
+            'csat_token_secret'                => bin2hex(random_bytes(32)),
         ];
         $stmt = $conn->prepare("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES (?, ?)");
         foreach ($defaults as $k => $v) { $stmt->execute([$k, $v]); }

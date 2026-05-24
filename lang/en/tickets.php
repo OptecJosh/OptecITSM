@@ -25,6 +25,7 @@ return [
         'users'     => 'Users',
         'calendar'  => 'Calendar',
         'rota'      => 'Rota',
+        'csat'      => 'CSAT',
         'settings'  => 'Settings',
         'help'      => 'Help',
     ],
@@ -125,6 +126,7 @@ return [
         'schedule'             => 'Schedule',
         'ask_ai'               => 'Ask AI',
         'audit'                => 'Audit',
+        'request_feedback'     => 'Request feedback',
         'delete'               => 'Delete',
         'loading_attachments'  => 'Loading attachments...',
     ],
@@ -177,6 +179,7 @@ return [
             'analysts'        => 'Analysts',
             'general'         => 'General',
             'reply_cleanup'   => 'Reply Cleanup',
+            'csat'            => 'CSAT',
         ],
         // Section h2 headings inside each tab. Most mirror the tab labels but
         // some are more descriptive — kept separate so translators can pick
@@ -196,6 +199,13 @@ return [
             'analysts'         => 'Analysts',
             'general_settings' => 'General Settings',
             'reply_cleanup_ai' => 'Reply Cleanup AI',
+            'csat'             => 'Customer Satisfaction Surveys',
+        ],
+
+        'csat' => [
+            'mode_label'  => 'When to send',
+            'delay_label' => 'Delay before sending (minutes)',
+            'scale_label' => 'Survey scale',
         ],
         // Shared table column headers across the settings tabs. Most tabs
         // share Name / Description / Order / Status / Actions; the rest are
@@ -373,7 +383,8 @@ return [
                 'event_trigger'       => 'Event Trigger',
                 'event_select'        => 'Select event...',
                 'event_new_ticket'    => 'New ticket from email',
-                'event_assigned'      => 'Ticket assigned',
+                'event_csat_request'         => 'CSAT survey',
+            'event_assigned'      => 'Ticket assigned',
                 'event_closed'        => 'Ticket closed',
                 'subject'             => 'Subject',
                 'subject_placeholder' => 'e.g., Your request has been received',

@@ -12,8 +12,11 @@ require_once __DIR__ . '/encryption.php';
  * Main entry point — send a template email for a ticket event.
  * Returns silently if no active template exists or no mailbox is found.
  * Never throws — errors go to error_log().
+ *
+ * $extraMergeData allows callers (e.g. the CSAT flow) to inject additional
+ * placeholders like `csat_link` that aren't derivable from the ticket alone.
  */
-function sendTemplateEmail(PDO $conn, int $ticketId, string $eventTrigger): void {
+function sendTemplateEmail(PDO $conn, int $ticketId, string $eventTrigger, array $extraMergeData = []): void {
     try {
         $template = getActiveTemplate($conn, $eventTrigger);
         if (!$template) {
@@ -25,6 +28,10 @@ function sendTemplateEmail(PDO $conn, int $ticketId, string $eventTrigger): void
             error_log("Template email: could not build merge data for ticket $ticketId");
             return;
         }
+
+        // Caller-supplied merge codes win — e.g. csat_link, which needs a freshly
+        // minted response row before the link can be built
+        $mergeData = array_merge($mergeData, $extraMergeData);
 
         // Resolve merge codes in subject and body
         $subject = resolveMergeCodes($template['subject_template'], $mergeData);

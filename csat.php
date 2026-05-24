@@ -105,33 +105,62 @@ h1 { font-size: 22px; margin-bottom: 8px; }
 p.ticket { font-size: 14px; color: #666; margin-bottom: 28px; }
 p.intro { font-size: 15px; line-height: 1.5; margin-bottom: 26px; color: #444; }
 
-.rating-row {
+/* Stars: classic fill-on-hover with trailing effect (hover #3 fills #1+#2+#3).
+   Emojis: single-highlight greyscale-to-colour, because "all previous emojis
+   also light up" doesn't make conceptual sense the way it does for stars. */
+.rating {
     display: flex;
     justify-content: center;
-    gap: 8px;
-    margin: 20px 0 28px;
-    flex-wrap: wrap;
+    gap: 6px;
+    margin: 24px 0 12px;
 }
-.rating-btn {
-    background: white;
-    border: 2px solid #e0e0e0;
-    border-radius: 10px;
-    padding: 12px 8px;
+.rating-item {
     cursor: pointer;
-    min-width: 64px;
-    transition: all 0.15s;
-    font-family: inherit;
-    color: inherit;
+    user-select: none;
+    transition: transform 0.12s ease;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
-.rating-btn:hover { border-color: #667eea; transform: translateY(-2px); }
-.rating-btn.selected {
-    border-color: #667eea;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
+.rating-item:hover { transform: scale(1.15); }
+
+/* ---- Stars ---- */
+.rating.stars .star-icon {
+    width: 46px;
+    height: 46px;
+    color: #d4d4d8;       /* unfilled — pale grey outline */
+    fill: white;          /* hollow centre */
+    stroke: currentColor;
+    stroke-width: 1.5;
+    transition: color 0.12s ease, fill 0.12s ease;
 }
-.rating-emoji { font-size: 32px; line-height: 1; margin-bottom: 6px; }
-.rating-stars { font-size: 28px; line-height: 1; margin-bottom: 4px; color: #f59e0b; }
-.rating-label { font-size: 11px; }
+.rating.stars .rating-item.active .star-icon,
+.rating.stars .rating-item.hover-active .star-icon {
+    color: #f59e0b;       /* gold border on fill */
+    fill: #fbbf24;        /* gold inside */
+}
+
+/* ---- Emojis ---- */
+.rating.emojis .rating-item {
+    font-size: 44px;
+    filter: grayscale(1) opacity(0.4);
+    transition: filter 0.12s ease, transform 0.12s ease;
+}
+.rating.emojis .rating-item:hover,
+.rating.emojis .rating-item.active {
+    filter: none;
+    transform: scale(1.25);
+}
+
+.rating-caption {
+    font-size: 13px;
+    color: #666;
+    min-height: 1.4em;
+    margin-bottom: 22px;
+    transition: color 0.12s ease;
+}
+.rating-caption.locked { color: #333; font-weight: 600; }
 
 textarea {
     width: 100%;
@@ -202,19 +231,20 @@ button.submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
     <?php endif; ?>
 
     <form method="POST">
-        <div class="rating-row" id="ratingRow">
+        <div class="rating <?= $scaleMode === 'emojis' ? 'emojis' : 'stars' ?>" id="rating">
             <?php for ($i = 1; $i <= 5; $i++): ?>
-                <button type="button" class="rating-btn" data-rating="<?= $i ?>" onclick="pickRating(<?= $i ?>)">
+                <div class="rating-item" data-rating="<?= $i ?>">
                     <?php if ($scaleMode === 'emojis'): ?>
-                        <div class="rating-emoji"><?= $emojis[$i] ?></div>
-                        <div class="rating-label"><?= htmlspecialchars($emojiLabels[$i]) ?></div>
+                        <?= $emojis[$i] ?>
                     <?php else: ?>
-                        <div class="rating-stars"><?= str_repeat('&starf;', $i) ?></div>
-                        <div class="rating-label"><?= $i ?>/5</div>
+                        <svg class="star-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                        </svg>
                     <?php endif; ?>
-                </button>
+                </div>
             <?php endfor; ?>
         </div>
+        <div class="rating-caption" id="ratingCaption">Hover and click to rate</div>
 
         <input type="hidden" name="rating" id="ratingInput" value="">
         <textarea name="comment" placeholder="Anything you'd like to add? (optional)" maxlength="2000"></textarea>
@@ -222,13 +252,57 @@ button.submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
     </form>
 
     <script>
-    function pickRating(n) {
-        document.getElementById('ratingInput').value = n;
-        document.querySelectorAll('.rating-btn').forEach(b => {
-            b.classList.toggle('selected', parseInt(b.dataset.rating, 10) === n);
+    (function () {
+        const scale = <?= json_encode($scaleMode) ?>;
+        const labels = ['', 'Very dissatisfied', 'Dissatisfied', 'Neutral', 'Satisfied', 'Very satisfied'];
+        const items = Array.from(document.querySelectorAll('.rating-item'));
+        const caption = document.getElementById('ratingCaption');
+        const input = document.getElementById('ratingInput');
+        const submit = document.getElementById('submitBtn');
+        let locked = null; // the clicked rating, or null if not yet picked
+
+        function captionFor(n) {
+            return n + ' / 5 — ' + labels[n];
+        }
+
+        // Hover preview: stars fill trailing (1..n highlight), emojis only the hovered one
+        function applyHover(n) {
+            items.forEach(el => {
+                const r = parseInt(el.dataset.rating, 10);
+                if (scale === 'stars') {
+                    el.classList.toggle('hover-active', n !== null && r <= n);
+                }
+                // emojis use the :hover pseudo + .active class; no extra work here
+            });
+            caption.classList.remove('locked');
+            caption.textContent = n !== null ? captionFor(n) : (locked !== null ? captionFor(locked) : 'Hover and click to rate');
+            if (locked !== null && n === null) caption.classList.add('locked');
+        }
+
+        function applyLocked(n) {
+            locked = n;
+            input.value = n;
+            submit.disabled = false;
+            items.forEach(el => {
+                const r = parseInt(el.dataset.rating, 10);
+                if (scale === 'stars') {
+                    el.classList.toggle('active', r <= n);
+                    el.classList.remove('hover-active');
+                } else {
+                    el.classList.toggle('active', r === n);
+                }
+            });
+            caption.textContent = captionFor(n);
+            caption.classList.add('locked');
+        }
+
+        items.forEach(el => {
+            const r = parseInt(el.dataset.rating, 10);
+            el.addEventListener('mouseenter', () => applyHover(r));
+            el.addEventListener('click',      () => applyLocked(r));
         });
-        document.getElementById('submitBtn').disabled = false;
-    }
+        document.getElementById('rating').addEventListener('mouseleave', () => applyHover(null));
+    })();
     </script>
 <?php endif; ?>
 

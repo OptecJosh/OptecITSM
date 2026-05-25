@@ -356,13 +356,26 @@
 
 /* Pop-out editor: hide the search/tags sidebar so the editor fills the
    panel, and reflow the editor form into [content | 340px property panel]
-   columns. Same CSS-only DOM-unchanged approach as the tickets popout. */
+   columns. Same CSS-only DOM-unchanged approach as the tickets popout.
+   In popout mode the editor consumes the full pane height — outer scroll
+   container becomes a flex column that fills its parent, and both panels
+   take the available height with their own internal scroll if needed. */
 .knowledge-container.editor-popout .knowledge-sidebar { display: none; }
 
+.knowledge-container.editor-popout .editor-scroll {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.knowledge-container.editor-popout .editor-header {
+    flex-shrink: 0;
+}
 .knowledge-container.editor-popout .editor-form {
+    flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: row-reverse;
-    align-items: flex-start;
+    align-items: stretch;
     gap: 24px;
 }
 .knowledge-container.editor-popout .editor-properties {
@@ -372,6 +385,7 @@
     border: 1px solid #e0e0e0;
     border-radius: 6px;
     padding: 16px;
+    overflow-y: auto;
 }
 /* Inside the property panel, stack the two-column rows vertically so
    each field gets the full panel width. */
@@ -385,6 +399,23 @@
 .knowledge-container.editor-popout .editor-content {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+.knowledge-container.editor-popout .editor-content > .form-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    margin-bottom: 0;
+}
+/* Make TinyMCE fill the available editor-content height. The default
+   iframe sizing is fixed via init config (~400px); in popout we want it
+   to fill whatever height the flex column gives it. */
+.knowledge-container.editor-popout .editor-content .tox-tinymce {
+    flex: 1;
+    height: auto !important;
+    min-height: 0;
 }
 
 .editor-form {

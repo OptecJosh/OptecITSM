@@ -181,7 +181,6 @@ $sidebarHoverClass = $sidebarMode === 'hover' ? ' sidebar-hover' : '';
                         </div>
                         <div class="editor-content">
                             <div class="form-group">
-                                <label class="form-label">Content</label>
                                 <textarea id="articleBody"></textarea>
                             </div>
                         </div>

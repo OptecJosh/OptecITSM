@@ -35,10 +35,12 @@ $translationNamespaces = ['common', 'tickets'];
 
     <div class="rota-container">
         <div class="rota-header">
-            <button class="btn btn-secondary" onclick="changeWeek(-1)">&lt; <?php echo htmlspecialchars(t('common.calendar.previous')); ?></button>
-            <h2 id="rotaTitle"></h2>
-            <button class="btn btn-secondary" onclick="changeWeek(1)"><?php echo htmlspecialchars(t('common.calendar.next')); ?> &gt;</button>
-            <button class="btn btn-primary" onclick="goToThisWeek()" style="margin-left: 20px;"><?php echo htmlspecialchars(t('common.calendar.today')); ?></button>
+            <div class="rota-nav">
+                <button class="btn btn-secondary" onclick="goToThisWeek()"><?php echo htmlspecialchars(t('common.calendar.today')); ?></button>
+                <button class="btn btn-icon" onclick="changeWeek(-1)" title="<?php echo htmlspecialchars(t('common.calendar.previous')); ?>">&lsaquo;</button>
+                <button class="btn btn-icon" onclick="changeWeek(1)" title="<?php echo htmlspecialchars(t('common.calendar.next')); ?>">&rsaquo;</button>
+                <h2 class="rota-title" id="rotaTitle"></h2>
+            </div>
         </div>
 
         <div class="rota-grid-wrapper">

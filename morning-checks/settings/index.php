@@ -55,20 +55,23 @@ $path_prefix = '../../';
             font-size: 14px;
         }
 
-        /* Check items list */
-        .checks-list { margin-top: 0; }
+        /* Check items list. Rendered as a flat list with thin separators
+           rather than per-row cards — the outer .tab-content already
+           provides the white-card surface so per-row cards were doubling
+           up the visual nesting and wasting vertical space. */
+        .checks-list {
+            margin-top: 0;
+            border-top: 1px solid #f0f0f0;
+        }
         .check-item {
-            background: #fafafa;
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-            padding: 12px 16px;
-            margin-bottom: 8px;
+            padding: 10px 8px;
             display: flex;
             align-items: center;
             gap: 12px;
+            border-bottom: 1px solid #f0f0f0;
             transition: background 0.15s;
         }
-        .check-item:hover { background: #f0f4f8; }
+        .check-item:hover { background: #fafafa; }
 
         /* Grip handle */
         .check-drag {
@@ -95,10 +98,11 @@ $path_prefix = '../../';
             text-overflow: ellipsis;
         }
 
-        /* Drag-and-drop states */
+        /* Drag-and-drop states. Blue 2px line above / below the drop
+           target indicates where the row will land. */
         .check-item.dragging { opacity: 0.4; }
-        .check-item.drag-over-top { border-top: 2px solid #007bff; margin-top: -1px; }
-        .check-item.drag-over-bottom { border-bottom: 2px solid #007bff; margin-bottom: 7px; }
+        .check-item.drag-over-top { box-shadow: inset 0 2px 0 0 #007bff; }
+        .check-item.drag-over-bottom { box-shadow: inset 0 -2px 0 0 #007bff; }
 
         /* Check actions — icon buttons (pencil + trash). Overrides
            inbox.css's chunky .action-btn default for this page so the

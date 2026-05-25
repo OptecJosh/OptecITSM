@@ -71,15 +71,6 @@ $path_prefix = '../';
             font-weight: 600;
         }
 
-        .sw-help-nav-link.highlight {
-            color: #283593;
-        }
-
-        .sw-help-nav-link.highlight.active {
-            background: #3f51b5;
-            color: white;
-        }
-
         .sw-help-nav-num {
             display: flex;
             align-items: center;
@@ -96,16 +87,6 @@ $path_prefix = '../';
 
         .sw-help-nav-link.active .sw-help-nav-num {
             background: #283593;
-            color: white;
-        }
-
-        .sw-help-nav-num.highlight {
-            background: #e8eaf6;
-            color: #283593;
-        }
-
-        .sw-help-nav-link.highlight.active .sw-help-nav-num {
-            background: rgba(255,255,255,0.25);
             color: white;
         }
 
@@ -450,8 +431,8 @@ $path_prefix = '../';
                 <span class="sw-help-nav-num">4</span>
                 Licence management
             </a>
-            <a href="#data-collection" class="sw-help-nav-link highlight" data-section="data-collection">
-                <span class="sw-help-nav-num highlight">5</span>
+            <a href="#data-collection" class="sw-help-nav-link" data-section="data-collection">
+                <span class="sw-help-nav-num">5</span>
                 How data gets collected
             </a>
             <a href="#settings" class="sw-help-nav-link" data-section="settings">

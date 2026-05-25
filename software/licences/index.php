@@ -459,7 +459,7 @@ $path_prefix = '../../';
     <div class="detail-overlay" id="licenceOverlay" onclick="if(event.target===this)closeLicenceModal()">
         <div class="detail-box">
             <div class="detail-header">
-                <h3 id="licenceModalTitle">Add Licence</h3>
+                <h3 id="licenceModalTitle">Add licence</h3>
                 <button class="detail-close" onclick="closeLicenceModal()">&times;</button>
             </div>
             <div class="detail-body">
@@ -474,11 +474,11 @@ $path_prefix = '../../';
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">Licence Type *</label>
+                        <label class="form-label">Licence type *</label>
                         <select class="form-input" id="licenceType">
                             <option value="">-- Select type --</option>
-                            <option value="Per User">Per User</option>
-                            <option value="Per Device">Per Device</option>
+                            <option value="Per User">Per user</option>
+                            <option value="Per Device">Per device</option>
                             <option value="Site">Site</option>
                             <option value="Concurrent">Concurrent</option>
                             <option value="Subscription">Subscription</option>
@@ -492,7 +492,7 @@ $path_prefix = '../../';
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">Licence Key</label>
+                    <label class="form-label">Licence key</label>
                     <input type="text" class="form-input" id="licenceKey" placeholder="Licence key or serial number">
                 </div>
 
@@ -513,18 +513,18 @@ $path_prefix = '../../';
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">Purchase Date</label>
+                        <label class="form-label">Purchase date</label>
                         <input type="date" class="form-input" id="licencePurchaseDate">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Renewal Date</label>
+                        <label class="form-label">Renewal date</label>
                         <input type="date" class="form-input" id="licenceRenewalDate">
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">Notice Period (days)</label>
+                        <label class="form-label">Notice period (days)</label>
                         <input type="number" class="form-input" id="licenceNoticeDays" min="0" placeholder="e.g. 30">
                     </div>
                     <div class="form-group">
@@ -543,7 +543,7 @@ $path_prefix = '../../';
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">Vendor Contact</label>
+                    <label class="form-label">Vendor contact</label>
                     <input type="text" class="form-input" id="licenceVendorContact" placeholder="Contact name, email, or phone">
                 </div>
 
@@ -746,7 +746,7 @@ $path_prefix = '../../';
 
             if (licenceId) {
                 // Edit mode
-                document.getElementById('licenceModalTitle').textContent = 'Edit Licence';
+                document.getElementById('licenceModalTitle').textContent = 'Edit licence';
                 const licence = allLicences.find(l => l.id == licenceId);
                 if (licence) {
                     document.getElementById('licenceId').value = licence.id;

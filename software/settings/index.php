@@ -17,7 +17,15 @@ $path_prefix = '../../';
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <style>
         body { padding-top: 0; }
-        .settings-container { height: calc(100vh - 48px); overflow-y: auto; padding: 30px; }
+        /* Full-width settings page matching the canonical layout used by
+           other modules' settings pages. */
+        .settings-container {
+            height: calc(100vh - 48px);
+            overflow-y: auto;
+            max-width: none;
+            margin: 0;
+            padding: 16px 30px 24px;
+        }
 
         /* Purple theme for Software tabs */
         .tab:hover { color: #5c6bc0; }
@@ -210,8 +218,26 @@ $path_prefix = '../../';
 
         .key-actions {
             display: flex;
-            gap: 8px;
+            gap: 4px;
         }
+        /* Icon-only row actions — matches the canonical settings tables
+           in change-management / calendar / morning-checks. Module
+           accent (Software purple) drives the hover state; danger
+           variant goes red. */
+        .action-btn {
+            background: none;
+            border: none;
+            padding: 4px;
+            color: #666;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            vertical-align: middle;
+            cursor: pointer;
+        }
+        .action-btn:hover { background: none; border: none; color: #5c6bc0; }
+        .action-btn.delete:hover { color: #c62828; }
+        .action-btn svg { width: 16px; height: 16px; }
 
         .empty-state {
             padding: 40px;
@@ -410,6 +436,12 @@ $path_prefix = '../../';
 
         const API_BASE = '../../api/software/';
         let allKeys = [];
+
+        // Row-action SVGs. Power icon for the toggle (revoke / activate
+        // — title attr distinguishes the two states) and the canonical
+        // trash icon for delete.
+        const ICON_TOGGLE = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>';
+        const ICON_DELETE = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>';
         let deleteKeyId = null;
         let newlyGeneratedKey = null;
 
@@ -448,8 +480,10 @@ $path_prefix = '../../';
                 const isActive = key.active == 1;
                 const statusClass = isActive ? 'status-active' : 'status-revoked';
                 const statusText = isActive ? 'Active' : 'Revoked';
-                const toggleBtnClass = isActive ? 'btn-warning' : 'btn-success';
-                const toggleBtnText = isActive ? 'Revoke' : 'Activate';
+                // Power icon is the same in both states; title attr tells
+                // the user which way the click will toggle. delete class
+                // is only used for the trash icon (red on hover).
+                const toggleTitle = isActive ? 'Revoke' : 'Activate';
                 const label = key.label || '<span style="color:#bbb">—</span>';
                 const owner = key.analyst_name || '<span style="color:#bbb">—</span>';
 
@@ -472,8 +506,8 @@ $path_prefix = '../../';
                     <td><span class="${statusClass}">${statusText}</span></td>
                     <td>
                         <div class="key-actions">
-                            <button class="btn ${toggleBtnClass} btn-sm" onclick="toggleKey(${key.id})">${toggleBtnText}</button>
-                            <button class="btn btn-danger btn-sm" onclick="promptDelete(${key.id})">Delete</button>
+                            <button class="action-btn" onclick="toggleKey(${key.id})" title="${toggleTitle}">${ICON_TOGGLE}</button>
+                            <button class="action-btn delete" onclick="promptDelete(${key.id})" title="Delete">${ICON_DELETE}</button>
                         </div>
                     </td>
                 </tr>`;

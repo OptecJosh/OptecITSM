@@ -895,11 +895,11 @@ $path_prefix = '../';
                     <p class="tk-help-intro">Two scheduling tools help your team stay organised: a ticket calendar that visualises workload over time, and a staff rota for managing shifts and on-call availability.</p>
 
                     <p><strong>Calendar view</strong></p>
-                    <p>The calendar displays tickets as events on a monthly, weekly, or daily grid. Each ticket appears on the date it was created (or its due date, depending on the view setting), colour-coded by priority. This makes it easy to see busy days at a glance and plan your workload accordingly.</p>
+                    <p>The calendar plots every ticket that has a <code>work_start_datetime</code> set (via the right-click <em>Record time</em> / <em>Schedule</em> modal) as a coloured block at its scheduled time. Red blocks are <em>High</em> priority, green are <em>Low</em>, blue is anything else. Use <em>Today</em>, the <em>&lt;</em> / <em>&gt;</em> chevrons, and the <strong>Month / Week / Day</strong> toggle on the right of the header to navigate &mdash; <em>Prev</em> / <em>Next</em> step by month, week or day depending on the active view.</p>
                     <div class="tk-help-fields">
-                        <div><strong>Month view</strong> &mdash; a bird's-eye view of the entire month. Ticket counts are shown on each day cell. Click a day to drill down.</div>
-                        <div><strong>Week view</strong> &mdash; more detail for the current week, with individual ticket titles visible. Useful for sprint planning.</div>
-                        <div><strong>Day view</strong> &mdash; a full list of tickets for a single day, ideal for daily stand-ups and shift handovers.</div>
+                        <div><strong>Month view</strong> &mdash; the classic 6-row grid with a weekday header strip; each day cell shows up to three ticket pills with their start time, plus a <em>+N more</em> link that drops you into Day view for that date. Today is highlighted.</div>
+                        <div><strong>Week view</strong> &mdash; Mon&ndash;Sun across the top over a 24-hour vertical timeline. Tickets render as 1-hour coloured blocks at their start time. Today's column is highlighted; the weekday header stays put while the hour grid scrolls.</div>
+                        <div><strong>Day view</strong> &mdash; a single tall column for the chosen day with the same 24-hour timeline. Tickets render as larger blocks showing <code>ticket_number &mdash; subject</code> and start time; click one to open its details.</div>
                     </div>
 
                     <p style="margin-top: 16px;"><strong>Staff rota</strong></p>

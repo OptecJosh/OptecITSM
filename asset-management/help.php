@@ -466,28 +466,32 @@ $path_prefix = '../';
                 <span class="am-help-nav-num">2</span>
                 Asset detail view
             </a>
+            <a href="#table-view" class="am-help-nav-link" data-section="table-view">
+                <span class="am-help-nav-num">3</span>
+                Table view
+            </a>
             <a href="#inventory-script" class="am-help-nav-link highlight" data-section="inventory-script">
-                <span class="am-help-nav-num highlight">3</span>
+                <span class="am-help-nav-num highlight">4</span>
                 Inventory script
             </a>
             <a href="#what-gets-collected" class="am-help-nav-link" data-section="what-gets-collected">
-                <span class="am-help-nav-num">4</span>
+                <span class="am-help-nav-num">5</span>
                 What gets collected
             </a>
             <a href="#deployment" class="am-help-nav-link highlight" data-section="deployment">
-                <span class="am-help-nav-num highlight">5</span>
+                <span class="am-help-nav-num highlight">6</span>
                 Deploying at scale
             </a>
             <a href="#servers" class="am-help-nav-link" data-section="servers">
-                <span class="am-help-nav-num">6</span>
+                <span class="am-help-nav-num">7</span>
                 Servers &amp; vCenter
             </a>
             <a href="#dashboard" class="am-help-nav-link" data-section="dashboard">
-                <span class="am-help-nav-num">7</span>
+                <span class="am-help-nav-num">8</span>
                 Dashboard
             </a>
             <a href="#tips" class="am-help-nav-link" data-section="tips">
-                <span class="am-help-nav-num">8</span>
+                <span class="am-help-nav-num">9</span>
                 Quick tips
             </a>
         </div>
@@ -560,10 +564,40 @@ $path_prefix = '../';
                     <p class="am-help-tip">Type and Status are editable inline &mdash; click the dropdown in the info grid to change them. Changes are recorded in the history.</p>
                 </div>
 
-                <!-- Section 3: Inventory Script (highlighted) -->
+                <!-- Section 3: Table View -->
+                <div class="am-help-section" id="table-view">
+                    <div class="am-help-section-header">
+                        <span class="am-help-section-num">3</span>
+                        <h3>Table view</h3>
+                    </div>
+                    <p>The <strong>Table</strong> tab in the module nav gives you a full-screen spreadsheet-style alternative to the split-pane Assets tab &mdash; built for power users who want to slice, sort and export the estate rather than drill into one asset at a time. Click any row to jump back into the split-pane detail view for that asset.</p>
+
+                    <p style="margin-top: 14px;"><strong>Sort, search and filter</strong></p>
+                    <div class="am-help-fields">
+                        <div><strong>Click a column header</strong> &mdash; cycles the sort: ascending &rarr; descending &rarr; ascending. The arrow on the active sort column highlights in blue.</div>
+                        <div><strong>Funnel icon on each header</strong> &mdash; opens an Excel-style dropdown listing the distinct values in that column with row counts and an inline search box. Untick a value to hide rows that have it; tick again to show. <em>Select all</em> / <em>Clear</em> shortcuts at the top.</div>
+                        <div><strong>Cascading filters</strong> &mdash; the distinct-values list for a column is narrowed by whatever other column filters are active, so the dropdown only shows values that actually appear in the rows still visible (matching Excel's behaviour).</div>
+                        <div><strong>Global search box</strong> &mdash; matches the typed term as a substring across every <em>visible</em> column. Hide a column with the Columns drawer to take it out of the search scope.</div>
+                        <div><strong>Reset</strong> &mdash; clears every filter, the search box and the sort in one click.</div>
+                    </div>
+
+                    <p style="margin-top: 14px;"><strong>Customise the columns</strong></p>
+                    <p>The default visible set is Hostname, Type, Status, Manufacturer, Model, OS and Assigned users. Click the <strong>Columns</strong> button on the toolbar to open a drawer where you can tick to show / hide and drag the ⋮⋮ handles to reorder. You can also drag the table headers themselves to reorder columns directly. The available hidden-by-default columns include Feature release, Build, Service tag, CPU, CPU speed, Memory and BIOS.</p>
+                    <p>Visible columns, column order and sort direction <strong>persist per analyst</strong> &mdash; saved against your account via <code>user_preferences</code> so you keep the same layout when you sign in on another machine. Search and active filters are deliberately transient session state.</p>
+
+                    <p style="margin-top: 14px;"><strong>Export</strong></p>
+                    <div class="am-help-fields">
+                        <div><strong>CSV</strong> &mdash; UTF-8 with a byte-order mark so Excel opens it cleanly; embedded commas, quotes and newlines are properly escaped. Exports the <em>current</em> view (whatever columns are visible, after filters / search / sort).</div>
+                        <div><strong>PDF</strong> &mdash; landscape A4, blue header band, your company logo on the top left, and a "{visible} of {total} &mdash; {timestamp}" subhead. Text is selectable (not a screenshot) because it's generated with jsPDF + autotable, the same library the morning-checks module uses.</div>
+                    </div>
+
+                    <p class="am-help-tip">The whole feature is column-agnostic &mdash; if a new asset field is added later, it'll automatically pick up sorting, filtering, search and export with no extra code.</p>
+                </div>
+
+                <!-- Section 4: Inventory Script (highlighted) -->
                 <div class="am-help-section am-help-section-highlight" id="inventory-script">
                     <div class="am-help-section-header">
-                        <span class="am-help-section-num highlight">3</span>
+                        <span class="am-help-section-num highlight">4</span>
                         <h3>The inventory script</h3>
                     </div>
                     <p class="am-help-intro">Assets are discovered automatically using a PowerShell script that runs on each Windows machine. It collects hardware, software, and device information, then posts it to your FreeITSM instance via the API.</p>
@@ -597,7 +631,7 @@ $path_prefix = '../';
                 <!-- Section 4: What Gets Collected -->
                 <div class="am-help-section" id="what-gets-collected">
                     <div class="am-help-section-header">
-                        <span class="am-help-section-num">4</span>
+                        <span class="am-help-section-num">5</span>
                         <h3>What gets collected</h3>
                     </div>
                     <p>The PowerShell script gathers everything you'd want to know about a Windows machine in a single run:</p>
@@ -657,7 +691,7 @@ $path_prefix = '../';
                 <!-- Section 5: Deploying at Scale (highlighted) -->
                 <div class="am-help-section am-help-section-highlight" id="deployment">
                     <div class="am-help-section-header">
-                        <span class="am-help-section-num highlight">5</span>
+                        <span class="am-help-section-num highlight">6</span>
                         <h3>Deploying at scale</h3>
                     </div>
                     <p class="am-help-intro">Running the script manually on one machine is fine for testing. In production, you'll want it running automatically across your entire estate.</p>
@@ -710,7 +744,7 @@ $path_prefix = '../';
                 <!-- Section 6: Servers & vCenter -->
                 <div class="am-help-section" id="servers">
                     <div class="am-help-section-header">
-                        <span class="am-help-section-num">6</span>
+                        <span class="am-help-section-num">7</span>
                         <h3>Servers &amp; vCenter</h3>
                     </div>
                     <p>If you run VMware vCenter, FreeITSM can sync your entire virtual machine estate with a single click.</p>
@@ -739,7 +773,7 @@ $path_prefix = '../';
                 <!-- Section 7: Dashboard -->
                 <div class="am-help-section" id="dashboard">
                     <div class="am-help-section-header">
-                        <span class="am-help-section-num">7</span>
+                        <span class="am-help-section-num">8</span>
                         <h3>Dashboard</h3>
                     </div>
                     <p>The dashboard lets you visualise your asset estate with customisable Chart.js widgets. Each analyst has their own dashboard &mdash; choose the charts that matter to you.</p>
@@ -766,10 +800,10 @@ $path_prefix = '../';
                     <p>Available chart properties include: <strong>Operating System</strong>, <strong>Manufacturer</strong>, <strong>Model</strong>, <strong>Asset Type</strong>, <strong>Asset Status</strong>, <strong>Feature Release</strong>, <strong>Domain</strong>, <strong>CPU</strong>, <strong>Memory</strong>, <strong>GPU</strong>, <strong>TPM Version</strong>, <strong>BitLocker Status</strong>, and <strong>BIOS Version</strong>.</p>
                 </div>
 
-                <!-- Section 8: Quick Tips -->
+                <!-- Section 9: Quick Tips -->
                 <div class="am-help-section" id="tips">
                     <div class="am-help-section-header">
-                        <span class="am-help-section-num">8</span>
+                        <span class="am-help-section-num">9</span>
                         <h3>Quick tips</h3>
                     </div>
                     <div class="am-help-tips-grid">

@@ -339,7 +339,10 @@
     border-radius: 6px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     z-index: 10;
-    min-width: 180px;
+    /* Wide enough that the longest label ("Radio buttons (one of)")
+       fits on one line. nowrap on the button stops any future labels
+       wrapping mid-row. */
+    min-width: 280px;
     padding: 4px 0;
 }
 
@@ -350,7 +353,7 @@
 .add-field-menu button {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     width: 100%;
     padding: 8px 14px;
     border: none;
@@ -358,10 +361,21 @@
     font-size: 13px;
     cursor: pointer;
     color: #333;
+    white-space: nowrap;
 }
 
 .add-field-menu button:hover {
     background: #f5f7fa;
+}
+
+/* Badges inside the add-field menu — fixed-width column so the labels
+   to their right line up regardless of badge text width ("@" vs "123"
+   vs "Abc"). The general .field-type-badge (used in field rows + the
+   list view) stays size-by-content. */
+.add-field-menu .field-type-badge {
+    min-width: 36px;
+    text-align: center;
+    flex-shrink: 0;
 }
 
 .field-type-badge {

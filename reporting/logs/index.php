@@ -22,10 +22,15 @@ $path_prefix = '../../';
             background: #f5f7fa;
         }
 
-        /* Full-width logs view to match the canonical layout used by
-           the other modules' settings/reporting pages. Was centred at
-           max-width: 1400px with auto margins. */
+        /* Full-width logs view. The parent .main-container is a flex
+           row from inbox.css; without flex: 1 here the .logs-container
+           sat at its content width (left-aligned, narrow) rather than
+           expanding to fill the viewport. min-width: 0 lets the inner
+           table shrink below its intrinsic width on narrow viewports
+           without forcing the flex parent to overflow. */
         .logs-container {
+            flex: 1;
+            min-width: 0;
             max-width: none;
             margin: 0;
             padding: 16px 30px 24px;

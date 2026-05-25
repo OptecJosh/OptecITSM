@@ -20,7 +20,7 @@ $path_prefix = '../../';  // Two levels up from knowledge/settings/
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Service Desk - Knowledge Settings</title>
+    <title>Service Desk - Knowledge settings</title>
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <style>
         /* Page-specific overrides for settings page */
@@ -222,16 +222,16 @@ $path_prefix = '../../';  // Two levels up from knowledge/settings/
     <div class="container">
         <div class="tabs">
             <button class="tab active" data-tab="email" onclick="switchTab('email')">Email</button>
-            <button class="tab" data-tab="ai" onclick="switchTab('ai')">AI Assistant</button>
+            <button class="tab" data-tab="ai" onclick="switchTab('ai')">AI</button>
             <button class="tab" data-tab="embeddings" onclick="switchTab('embeddings')">Embeddings</button>
-            <button class="tab" data-tab="recycle-bin" onclick="switchTab('recycle-bin')">Recycle Bin</button>
-            <button class="tab" data-tab="left-panel" onclick="switchTab('left-panel')">Left panel</button>
+            <button class="tab" data-tab="recycle-bin" onclick="switchTab('recycle-bin')">Recycle bin</button>
+            <button class="tab" data-tab="left-panel" onclick="switchTab('left-panel')">Sidebar</button>
         </div>
 
         <!-- Email Tab -->
         <div class="tab-content active" id="email-tab">
             <div class="section-header">
-                <h2>Outbound Email Settings</h2>
+                <h2>Outbound email settings</h2>
             </div>
             <p style="color: #666; margin-bottom: 20px;">Configure how knowledge articles are shared via email. Choose to use an SMTP server or a configured Microsoft 365 mailbox.</p>
 
@@ -240,7 +240,7 @@ $path_prefix = '../../';  // Two levels up from knowledge/settings/
                     <label class="radio-option" id="optionSmtp">
                         <input type="radio" name="email_method" value="smtp" onchange="toggleEmailMethod('smtp')">
                         <div class="radio-option-content">
-                            <div class="radio-option-title">SMTP Server</div>
+                            <div class="radio-option-title">SMTP server</div>
                             <div class="radio-option-desc">Use a dedicated SMTP server for sending emails</div>
                         </div>
                     </label>
@@ -248,7 +248,7 @@ $path_prefix = '../../';  // Two levels up from knowledge/settings/
                     <label class="radio-option" id="optionMailbox">
                         <input type="radio" name="email_method" value="mailbox" onchange="toggleEmailMethod('mailbox')">
                         <div class="radio-option-content">
-                            <div class="radio-option-title">Microsoft 365 Mailbox</div>
+                            <div class="radio-option-title">Microsoft 365 mailbox</div>
                             <div class="radio-option-desc">Use a configured mailbox from the Tickets module</div>
                         </div>
                     </label>
@@ -264,31 +264,31 @@ $path_prefix = '../../';  // Two levels up from knowledge/settings/
 
                 <!-- SMTP Settings -->
                 <div class="smtp-settings" id="smtpSettings">
-                    <h3 style="font-size: 16px; margin-bottom: 15px;">SMTP Configuration</h3>
+                    <h3 style="font-size: 16px; margin-bottom: 15px;">SMTP configuration</h3>
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="smtpHost">SMTP Server Hostname</label>
+                            <label for="smtpHost">SMTP server hostname</label>
                             <input type="text" id="smtpHost" placeholder="e.g., smtp.office365.com">
                         </div>
                         <div class="form-group">
-                            <label for="smtpPort">SMTP Port</label>
+                            <label for="smtpPort">SMTP port</label>
                             <input type="number" id="smtpPort" placeholder="e.g., 587">
                         </div>
                     </div>
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="smtpEncryption">Connection Type</label>
+                            <label for="smtpEncryption">Connection type</label>
                             <select id="smtpEncryption">
-                                <option value="none">None (Not Recommended)</option>
+                                <option value="none">None (not recommended)</option>
                                 <option value="tls" selected>TLS (STARTTLS)</option>
                                 <option value="ssl">SSL</option>
                             </select>
                             <small>TLS is recommended for most servers on port 587</small>
                         </div>
                         <div class="form-group">
-                            <label for="smtpAuth">Authentication Required</label>
+                            <label for="smtpAuth">Authentication required</label>
                             <select id="smtpAuth" onchange="toggleSmtpAuth()">
                                 <option value="yes" selected>Yes</option>
                                 <option value="no">No</option>
@@ -299,38 +299,38 @@ $path_prefix = '../../';  // Two levels up from knowledge/settings/
                     <div id="smtpAuthFields">
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="smtpUsername">SMTP Username</label>
+                                <label for="smtpUsername">SMTP username</label>
                                 <input type="text" id="smtpUsername" placeholder="e.g., noreply@company.com">
                             </div>
                             <div class="form-group">
-                                <label for="smtpPassword">SMTP Password</label>
+                                <label for="smtpPassword">SMTP password</label>
                                 <input type="password" id="smtpPassword" placeholder="Enter password">
                             </div>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label for="smtpFromEmail">From Email Address</label>
+                        <label for="smtpFromEmail">From email address</label>
                         <input type="email" id="smtpFromEmail" placeholder="e.g., knowledge@company.com">
                         <small>The email address that will appear in the "From" field</small>
                     </div>
 
                     <div class="form-group">
-                        <label for="smtpFromName">From Name</label>
+                        <label for="smtpFromName">From name</label>
                         <input type="text" id="smtpFromName" placeholder="e.g., Knowledge Base">
                         <small>The name that will appear alongside the email address</small>
                     </div>
 
-                    <button type="button" class="btn btn-test" onclick="testSmtp()">Test SMTP Connection</button>
+                    <button type="button" class="btn btn-test" onclick="testSmtp()">Test</button>
                     <div class="test-result" id="smtpTestResult"></div>
                 </div>
 
                 <!-- Mailbox Settings -->
                 <div class="mailbox-settings" id="mailboxSettings">
-                    <h3 style="font-size: 16px; margin-bottom: 15px;">Mailbox Selection</h3>
+                    <h3 style="font-size: 16px; margin-bottom: 15px;">Mailbox selection</h3>
 
                     <div class="form-group">
-                        <label for="selectedMailbox">Select Mailbox</label>
+                        <label for="selectedMailbox">Select mailbox</label>
                         <select id="selectedMailbox">
                             <option value="">Loading mailboxes...</option>
                         </select>
@@ -339,7 +339,7 @@ $path_prefix = '../../';  // Two levels up from knowledge/settings/
                 </div>
 
                 <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">Save Settings</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
                     <span class="save-message" id="saveMessage">Settings saved!</span>
                 </div>
             </form>
@@ -348,28 +348,28 @@ $path_prefix = '../../';  // Two levels up from knowledge/settings/
         <!-- AI Assistant Tab -->
         <div class="tab-content" id="ai-tab">
             <div class="section-header">
-                <h2>AI Assistant</h2>
+                <h2>AI assistant</h2>
             </div>
             <p style="color: #666; margin-bottom: 20px;">Configure the AI-powered assistant that answers questions based on your knowledge base articles.</p>
 
             <form id="aiSettingsForm">
-                <h3 style="font-size: 16px; margin-bottom: 15px;">Claude API (Chat)</h3>
+                <h3 style="font-size: 16px; margin-bottom: 15px;">Claude API (chat)</h3>
                 <div class="form-group">
-                    <label for="aiApiKey">Anthropic API Key</label>
+                    <label for="aiApiKey">Anthropic API key</label>
                     <input type="password" id="aiApiKey" placeholder="sk-ant-...">
                     <small>Get your API key from <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:#8764b8;">console.anthropic.com</a>. Used for answering questions.</small>
                 </div>
 
-                <h3 style="font-size: 16px; margin: 25px 0 15px 0; padding-top: 20px; border-top: 1px solid #e0e0e0;">OpenAI API (Embeddings)</h3>
+                <h3 style="font-size: 16px; margin: 25px 0 15px 0; padding-top: 20px; border-top: 1px solid #e0e0e0;">OpenAI API (embeddings)</h3>
                 <div class="form-group">
-                    <label for="openaiApiKey">OpenAI API Key</label>
+                    <label for="openaiApiKey">OpenAI API key</label>
                     <input type="password" id="openaiApiKey" placeholder="sk-proj-...">
                     <small>Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank" style="color:#8764b8;">platform.openai.com</a>. Used for semantic search (finding relevant articles).</small>
                 </div>
 
                 <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">Save AI Settings</button>
-                    <button type="button" class="btn btn-test" onclick="testAiConnection()">Test Connection</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="button" class="btn btn-test" onclick="testAiConnection()">Test</button>
                     <span class="save-message" id="aiSaveMessage">Settings saved!</span>
                 </div>
                 <div class="test-result" id="aiTestResult"></div>
@@ -379,17 +379,17 @@ $path_prefix = '../../';  // Two levels up from knowledge/settings/
         <!-- Embeddings Tab -->
         <div class="tab-content" id="embeddings-tab">
             <div class="section-header">
-                <h2>Article Embeddings</h2>
+                <h2>Article embeddings</h2>
             </div>
             <p style="color: #666; margin-bottom: 20px;">Generate vector embeddings for your knowledge articles to enable semantic search. This allows the AI to find the most relevant articles based on meaning, not just keywords.</p>
 
             <div id="embeddingStatus" style="padding: 15px; background: #f9f9f9; border-radius: 6px; margin-bottom: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div>
-                        <strong>Embedding Status</strong>
+                        <strong>Embedding status</strong>
                         <div id="embeddingStats" style="margin-top: 5px; color: #666; font-size: 13px;">Loading...</div>
                     </div>
-                    <button type="button" class="btn btn-primary" id="generateEmbeddingsBtn" onclick="generateEmbeddings()">Generate Embeddings</button>
+                    <button type="button" class="btn btn-primary" id="generateEmbeddingsBtn" onclick="generateEmbeddings()">Generate</button>
                 </div>
             </div>
 
@@ -408,7 +408,7 @@ $path_prefix = '../../';  // Two levels up from knowledge/settings/
         <!-- Recycle Bin Tab -->
         <div class="tab-content" id="recycle-bin-tab">
             <div class="section-header">
-                <h2>Recycle Bin</h2>
+                <h2>Recycle bin</h2>
             </div>
             <p style="color: #666; margin-bottom: 20px;">Configure how long archived knowledge articles are retained in the recycle bin before automatic permanent deletion.</p>
             <form id="recycleBinSettingsForm">
@@ -418,7 +418,7 @@ $path_prefix = '../../';  // Two levels up from knowledge/settings/
                     <small>Set to 0 to keep archived articles indefinitely. Range: 0-999 days. Default: 30.</small>
                 </div>
                 <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">Save Recycle Bin Settings</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
                     <span class="save-message" id="recycleBinSaveMessage" style="display:none;">Settings saved!</span>
                 </div>
             </form>
@@ -822,7 +822,7 @@ $path_prefix = '../../';  // Two levels up from knowledge/settings/
                     resultDiv.className = 'test-result success';
                     resultDiv.textContent = 'All articles already have embeddings!';
                     btn.disabled = false;
-                    btn.textContent = 'Generate Embeddings';
+                    btn.textContent = 'Generate';
                     return;
                 }
 
@@ -873,7 +873,7 @@ $path_prefix = '../../';  // Two levels up from knowledge/settings/
             }
 
             btn.disabled = false;
-            btn.textContent = 'Generate Embeddings';
+            btn.textContent = 'Generate';
         }
 
         // === Recycle Bin Settings ===

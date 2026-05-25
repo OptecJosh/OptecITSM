@@ -75,6 +75,15 @@ $path_prefix = '../';
             box-shadow: 0 -2px 10px rgba(0,0,0,0.06);
         }
 
+        /* Tighten the chart-container-inner padding. style.css defaults
+           to 20px 30px 30px 30px which leaves ~30px of dead space
+           around the canvas — the chart and legend now use that
+           reclaimed area. Chevron is positioned relative to .chart-
+           footer (one level up) so it's unaffected by this. */
+        .chart-container-inner {
+            padding: 6px 14px 4px 14px;
+        }
+
         /* Collapse chevron — small floating button in the bottom-right
            of the chart area, vertically aligned with the Chart.js
            bottom-position legend. Footer's min-height keeps it visible

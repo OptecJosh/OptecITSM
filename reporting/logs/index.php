@@ -22,10 +22,13 @@ $path_prefix = '../../';
             background: #f5f7fa;
         }
 
+        /* Full-width logs view to match the canonical layout used by
+           the other modules' settings/reporting pages. Was centred at
+           max-width: 1400px with auto margins. */
         .logs-container {
-            max-width: 1400px;
-            margin: 30px auto;
-            padding: 0 20px;
+            max-width: none;
+            margin: 0;
+            padding: 16px 30px 24px;
         }
 
         .logs-header {

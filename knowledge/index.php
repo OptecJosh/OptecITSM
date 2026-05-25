@@ -4,9 +4,31 @@
  */
 session_start();
 require_once '../config.php';
+require_once '../includes/functions.php';
 
 $current_page = 'knowledge';
 $path_prefix = '../';
+
+// Read the per-analyst sidebar preference server-side so the .sidebar-hover
+// class is on the HTML from the first paint — avoids the flash where the
+// 280px panel renders visible and then snaps shut once the JS lookup completes.
+$sidebarMode = 'always';
+if (isset($_SESSION['analyst_id'])) {
+    try {
+        $prefConn = connectToDatabase();
+        $prefStmt = $prefConn->prepare(
+            "SELECT preference_value FROM user_preferences WHERE analyst_id = ? AND preference_key = ? LIMIT 1"
+        );
+        $prefStmt->execute([(int)$_SESSION['analyst_id'], 'knowledge_sidebar_mode']);
+        $prefRow = $prefStmt->fetch(PDO::FETCH_ASSOC);
+        if ($prefRow && $prefRow['preference_value'] === 'hover') {
+            $sidebarMode = 'hover';
+        }
+    } catch (Exception $e) {
+        // Non-fatal — fall through with 'always' default
+    }
+}
+$sidebarHoverClass = $sidebarMode === 'hover' ? ' sidebar-hover' : '';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -24,7 +46,7 @@ $path_prefix = '../';
 <body>
     <?php include 'includes/header.php'; ?>
 
-    <div class="knowledge-container">
+    <div class="knowledge-container<?php echo $sidebarHoverClass; ?>">
         <!-- Sidebar with search and tags -->
         <div class="knowledge-sidebar">
             <div class="sidebar-section">

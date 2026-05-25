@@ -337,8 +337,41 @@ function renderWaffleMenuPanel($modules, $current_module, $path_prefix) {
 }
 
 function renderWaffleMenuJS() {
+    // Pre-fetch the analyst's toast notification preferences so toast.js
+    // doesn't have to AJAX for them on every page. Keys mirror the
+    // ones the preferences page writes to (toast_position,
+    // toast_animation). Defaults match toast.js's built-in fallbacks.
+    $toastPos = 'bottom-right';
+    $toastAnim = 'slide';
+    if (isset($_SESSION['analyst_id'])) {
+        try {
+            if (!function_exists('connectToDatabase')) {
+                require_once __DIR__ . '/functions.php';
+            }
+            $conn = connectToDatabase();
+            $stmt = $conn->prepare(
+                "SELECT preference_key, preference_value FROM user_preferences
+                 WHERE analyst_id = ? AND preference_key IN ('toast_position', 'toast_animation')"
+            );
+            $stmt->execute([(int)$_SESSION['analyst_id']]);
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                if ($row['preference_key'] === 'toast_position' && $row['preference_value']) {
+                    $toastPos = $row['preference_value'];
+                } elseif ($row['preference_key'] === 'toast_animation' && $row['preference_value']) {
+                    $toastAnim = $row['preference_value'];
+                }
+            }
+        } catch (Exception $e) {
+            // Defaults stand
+        }
+    }
     ?>
     <script>
+    // Per-analyst toast preferences pushed from PHP — toast.js reads
+    // these before falling back to localStorage / default.
+    window.TOAST_POSITION  = <?php echo json_encode($toastPos); ?>;
+    window.TOAST_ANIMATION = <?php echo json_encode($toastAnim); ?>;
+
     function toggleWaffleMenu() {
         const panel = document.getElementById('wafflePanel');
         const overlay = document.getElementById('waffleOverlay');

@@ -1,7 +1,13 @@
 /**
  * Global Toast Notification System
- * Position: localStorage 'toast_position' (default: bottom-right)
- * Animation: localStorage 'toast_animation' (slide|fade, default: slide)
+ *
+ * Position + animation are per-analyst preferences stored in
+ * user_preferences (keys: toast_position, toast_animation). They're
+ * pushed onto window.TOAST_POSITION / window.TOAST_ANIMATION by the
+ * shared waffle-menu.php at page-render time so toast.js doesn't have
+ * to AJAX for them. localStorage stays as a fallback for any pre-#432
+ * browsers that still have the values cached locally.
+ *
  * Usage: showToast('Message text', 'success') — types: success, error, warning, info
  */
 (function() {
@@ -57,11 +63,11 @@
     var currentAnimation = null;
 
     function getPosition() {
-        return localStorage.getItem('toast_position') || 'bottom-right';
+        return window.TOAST_POSITION || localStorage.getItem('toast_position') || 'bottom-right';
     }
 
     function getAnimation() {
-        return localStorage.getItem('toast_animation') || 'slide';
+        return window.TOAST_ANIMATION || localStorage.getItem('toast_animation') || 'slide';
     }
 
     function getContainer() {

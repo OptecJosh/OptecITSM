@@ -12,6 +12,38 @@ $current_page = 'preferences';
 $path_prefix = '../../';
 $locales = I18n::getSupportedLocales();
 $currentLocale = I18n::getLocale();
+
+// Pre-fetch every per-analyst preference this page surfaces so the
+// initial render is already in sync with the database. Avoids the
+// flicker we used to get from initial localStorage / default values
+// being replaced by AJAX-fetched values a moment later.
+$prefDefaults = [
+    'toast_position'             => 'bottom-right',
+    'toast_animation'            => 'slide',
+    'knowledge_sidebar_mode'     => 'always',
+    'process_mapper_sidebar_mode'=> 'always',
+    'mc_chart_fill_style'        => 'plain',
+];
+$prefs = $prefDefaults;
+if (isset($_SESSION['analyst_id'])) {
+    try {
+        $conn = connectToDatabase();
+        $keys = array_keys($prefDefaults);
+        $placeholders = implode(',', array_fill(0, count($keys), '?'));
+        $stmt = $conn->prepare(
+            "SELECT preference_key, preference_value FROM user_preferences
+             WHERE analyst_id = ? AND preference_key IN ($placeholders)"
+        );
+        $stmt->execute(array_merge([(int)$_SESSION['analyst_id']], $keys));
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            if (array_key_exists($row['preference_key'], $prefs) && $row['preference_value'] !== null && $row['preference_value'] !== '') {
+                $prefs[$row['preference_key']] = $row['preference_value'];
+            }
+        }
+    } catch (Exception $e) {
+        // Defaults stand
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo htmlspecialchars($currentLocale); ?>">
@@ -150,11 +182,11 @@ $currentLocale = I18n::getLocale();
     <div class="prefs-container">
         <div class="prefs-card">
             <h2>Preferences</h2>
-            <p class="subtitle">Personal settings saved to this browser.</p>
+            <p class="subtitle">Personal settings saved to your account &mdash; they follow you across browsers.</p>
 
             <div class="pref-section">
-                <h3>Interface Language</h3>
-                <p>The language used across the FreeITSM UI. Translations fall back to English for any strings not yet covered in your chosen language. Saved against your analyst account &mdash; reloads the page on change.</p>
+                <h3>Interface language</h3>
+                <p>The language used across the FreeITSM UI. Translations fall back to English for any strings not yet covered in your chosen language. Reloads the page on change.</p>
                 <select id="languageSelect" class="pref-language-select">
                     <?php foreach ($locales as $code => $native): ?>
                         <option value="<?php echo htmlspecialchars($code); ?>" <?php echo $code === $currentLocale ? 'selected' : ''; ?>>
@@ -166,100 +198,183 @@ $currentLocale = I18n::getLocale();
             </div>
 
             <div class="pref-section">
-                <h3>Notification Position</h3>
-                <p>Choose where notifications appear on your screen.</p>
+                <h3>Notification position</h3>
+                <p>Where toast notifications appear on the screen.</p>
                 <div class="position-grid" id="toastPositionGrid"></div>
             </div>
 
             <div class="pref-section">
-                <h3>Animation Style</h3>
+                <h3>Notification animation</h3>
                 <p>How notifications enter and exit the screen.</p>
                 <div class="anim-toggle" id="animToggle">
                     <button class="anim-option" data-anim="slide">Slide</button>
                     <button class="anim-option" data-anim="fade">Fade</button>
                 </div>
             </div>
+
+            <div class="pref-section">
+                <h3>Knowledge sidebar</h3>
+                <p>How the article sidebar behaves on the Knowledge module pages. Also available on the Knowledge settings page.</p>
+                <div class="anim-toggle" id="kbSidebarToggle">
+                    <button class="anim-option" data-mode="always">Always visible</button>
+                    <button class="anim-option" data-mode="hover">Show on hover</button>
+                </div>
+            </div>
+
+            <div class="pref-section">
+                <h3>Process Mapper sidebar</h3>
+                <p>How the process list sidebar behaves on the Process Mapper module pages. Also available on the Process Mapper settings page.</p>
+                <div class="anim-toggle" id="pmSidebarToggle">
+                    <button class="anim-option" data-mode="always">Always visible</button>
+                    <button class="anim-option" data-mode="hover">Show on hover</button>
+                </div>
+            </div>
+
+            <div class="pref-section">
+                <h3>Morning checks bar fill</h3>
+                <p>Solid or gradient fill for the Morning Checks 30-day trend chart. Also available on the Morning Checks settings page.</p>
+                <div class="anim-toggle" id="mcFillToggle">
+                    <button class="anim-option" data-fill="plain">Plain</button>
+                    <button class="anim-option" data-fill="gradient">Gradient</button>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
+        // Initial preference values pre-fetched server-side. The page
+        // hydrates UI controls from these instead of localStorage.
+        const INITIAL_PREFS = <?php echo json_encode($prefs); ?>;
+
+        // Generic save helper — fire-and-forget POST to the per-analyst
+        // preference store. Returns a Promise resolving to the API's
+        // success flag so call sites can chain UI feedback off it.
+        async function savePref(key, value) {
+            try {
+                const r = await fetch('../../api/system/set_user_preference.php', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: key, value: value })
+                });
+                const d = await r.json();
+                if (d && d.success) {
+                    // Reflect the change in window globals (used by toast.js)
+                    // so subsequent toasts on THIS page use the new value
+                    // without a reload.
+                    if (key === 'toast_position')  window.TOAST_POSITION  = value;
+                    if (key === 'toast_animation') window.TOAST_ANIMATION = value;
+                    return true;
+                }
+                showToast((d && d.error) || 'Failed to save', 'error');
+            } catch (e) {
+                showToast('Failed to save', 'error');
+            }
+            return false;
+        }
+
+        // ===== Notification position (toast_position) =====
         const positions = [
-            { key: 'top-left', label: 'Top left' },
-            { key: 'top-center', label: 'Top centre' },
-            { key: 'top-right', label: 'Top right' },
-            { key: 'middle-left', label: 'Middle left' },
+            { key: 'top-left',      label: 'Top left' },
+            { key: 'top-center',    label: 'Top centre' },
+            { key: 'top-right',     label: 'Top right' },
+            { key: 'middle-left',   label: 'Middle left' },
             { key: 'middle-center', label: 'Middle centre' },
-            { key: 'middle-right', label: 'Middle right' },
-            { key: 'bottom-left', label: 'Bottom left' },
+            { key: 'middle-right',  label: 'Middle right' },
+            { key: 'bottom-left',   label: 'Bottom left' },
             { key: 'bottom-center', label: 'Bottom centre' },
-            { key: 'bottom-right', label: 'Bottom right' }
+            { key: 'bottom-right',  label: 'Bottom right' }
         ];
-
         const grid = document.getElementById('toastPositionGrid');
-        const current = localStorage.getItem('toast_position') || 'bottom-right';
-
+        const currentPosition = INITIAL_PREFS.toast_position;
         positions.forEach(pos => {
             const cell = document.createElement('div');
-            cell.className = 'position-cell' + (pos.key === current ? ' active' : '');
+            cell.className = 'position-cell' + (pos.key === currentPosition ? ' active' : '');
             cell.title = pos.label;
             cell.dataset.pos = pos.key;
-
             const dot = document.createElement('div');
             dot.className = 'position-dot';
             cell.appendChild(dot);
-
-            cell.addEventListener('click', function() {
-                localStorage.setItem('toast_position', pos.key);
+            cell.addEventListener('click', async function() {
                 grid.querySelectorAll('.position-cell').forEach(c => c.classList.remove('active'));
                 cell.classList.add('active');
-                showToast('Notifications will appear here', 'info');
+                const ok = await savePref('toast_position', pos.key);
+                if (ok) showToast('Notifications will appear here', 'info');
             });
-
             grid.appendChild(cell);
         });
 
-        // Language dropdown — persists to user_preferences (key: interface_language).
-        // On save we clear the session-cached locale via a no-op call against the same
-        // session, then reload so PHP re-renders in the new language.
+        // ===== Interface language (interface_language) =====
+        // Persists to user_preferences and reloads so PHP re-renders
+        // in the new language.
         const langSelect = document.getElementById('languageSelect');
         const langHint   = document.getElementById('langSavingHint');
         if (langSelect) {
             langSelect.addEventListener('change', async function() {
-                const newLocale = langSelect.value;
                 langHint.classList.add('show');
-                try {
-                    const r = await fetch('../../api/system/set_user_preference.php', {
-                        method: 'POST',
-                        credentials: 'same-origin',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ key: 'interface_language', value: newLocale })
-                    });
-                    const d = await r.json();
-                    if (d.success) {
-                        // Reload so PHP picks up the new language for the whole UI.
-                        window.location.reload();
-                    } else {
-                        langHint.classList.remove('show');
-                        showToast(d.error || 'Failed to save language', 'error');
-                    }
-                } catch (e) {
+                const ok = await savePref('interface_language', langSelect.value);
+                if (ok) {
+                    window.location.reload();
+                } else {
                     langHint.classList.remove('show');
-                    showToast('Failed to save language', 'error');
                 }
             });
         }
 
-        // Animation toggle
-        const currentAnim = localStorage.getItem('toast_animation') || 'slide';
-        document.querySelectorAll('.anim-option').forEach(btn => {
-            if (btn.dataset.anim === currentAnim) btn.classList.add('active');
-            btn.addEventListener('click', function() {
-                localStorage.setItem('toast_animation', btn.dataset.anim);
-                document.querySelectorAll('.anim-option').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                showToast('Preview: ' + btn.dataset.anim + ' animation', 'info');
+        // ===== Generic two-button toggle wiring =====
+        // Used for animation style, sidebar modes, MC fill — anything
+        // that's a simple set of mutually-exclusive options. Pass the
+        // toggle root element, the data-* attribute key its buttons
+        // carry, the pref key, the initial value, and an optional
+        // post-save callback for feedback toasts.
+        function wireToggle(rootId, dataAttr, prefKey, initial, onSaved) {
+            const root = document.getElementById(rootId);
+            if (!root) return;
+            const select = (val) => {
+                root.querySelectorAll('.anim-option').forEach(b => {
+                    b.classList.toggle('active', b.dataset[dataAttr] === val);
+                });
+            };
+            select(initial);
+            root.querySelectorAll('.anim-option').forEach(btn => {
+                btn.addEventListener('click', async function() {
+                    const newValue = btn.dataset[dataAttr];
+                    select(newValue);
+                    const ok = await savePref(prefKey, newValue);
+                    if (ok && onSaved) onSaved(newValue);
+                });
             });
-        });
+        }
+
+        wireToggle('animToggle',      'anim', 'toast_animation',            INITIAL_PREFS.toast_animation,
+                   v => showToast('Preview: ' + v + ' animation', 'info'));
+        wireToggle('kbSidebarToggle', 'mode', 'knowledge_sidebar_mode',     INITIAL_PREFS.knowledge_sidebar_mode);
+        wireToggle('pmSidebarToggle', 'mode', 'process_mapper_sidebar_mode',INITIAL_PREFS.process_mapper_sidebar_mode);
+        wireToggle('mcFillToggle',    'fill', 'mc_chart_fill_style',        INITIAL_PREFS.mc_chart_fill_style);
+
+        // One-shot migration — if the user had old localStorage values
+        // for the two toast prefs but no DB row yet (e.g. they're
+        // upgrading from before #432), promote them to the DB so the
+        // change rides across browsers. We only migrate when the DB
+        // value is still the default and localStorage has something,
+        // to avoid overwriting a deliberate DB choice with stale
+        // browser cache. Then we drop the localStorage entry.
+        (function migrateToastPrefs() {
+            const lsPos  = localStorage.getItem('toast_position');
+            const lsAnim = localStorage.getItem('toast_animation');
+            if (lsPos && INITIAL_PREFS.toast_position === 'bottom-right' && lsPos !== 'bottom-right') {
+                savePref('toast_position', lsPos);
+                localStorage.removeItem('toast_position');
+            } else if (lsPos) {
+                localStorage.removeItem('toast_position');
+            }
+            if (lsAnim && INITIAL_PREFS.toast_animation === 'slide' && lsAnim !== 'slide') {
+                savePref('toast_animation', lsAnim);
+                localStorage.removeItem('toast_animation');
+            } else if (lsAnim) {
+                localStorage.removeItem('toast_animation');
+            }
+        })();
     </script>
 </body>
 </html>

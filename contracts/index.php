@@ -201,7 +201,7 @@ $path_prefix = '../';
             </div>
 
             <div class="sidebar-section">
-                <h3>Quick Links</h3>
+                <h3>Quick links</h3>
                 <div class="sidebar-links">
                     <a href="suppliers/" class="sidebar-link">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
@@ -223,7 +223,7 @@ $path_prefix = '../';
             </div>
 
             <div class="sidebar-section">
-                <a href="edit.php" class="sidebar-add-btn">+ New Contract</a>
+                <a href="edit.php" class="sidebar-add-btn">+ New contract</a>
             </div>
         </div>
 
@@ -240,7 +240,7 @@ $path_prefix = '../';
                             <th>Title</th>
                             <th>Supplier</th>
                             <th>Owner</th>
-                            <th>End Date</th>
+                            <th>End date</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
@@ -256,7 +256,7 @@ $path_prefix = '../';
     <!-- Search Modal -->
     <div class="search-modal" id="searchModal">
         <div class="search-modal-header">
-            <span>Search Contracts Module</span>
+            <span>Search contracts</span>
             <button class="search-modal-close" onclick="closeSearchModal()">&times;</button>
         </div>
         <div class="search-modal-body">
@@ -311,7 +311,7 @@ $path_prefix = '../';
         function renderContracts(contracts) {
             const tbody = document.getElementById('contractsList');
             if (contracts.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No contracts yet. Click "+ New Contract" to create one.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No contracts yet. Click "+ New contract" to create one.</td></tr>';
                 return;
             }
             tbody.innerHTML = contracts.map(c => {

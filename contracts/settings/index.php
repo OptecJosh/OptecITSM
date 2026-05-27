@@ -13,7 +13,7 @@ $path_prefix = '../../';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Service Desk - Contract Settings</title>
+    <title>Service Desk - Contract settings</title>
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <style>
         .container { height: calc(100vh - 48px); overflow-y: auto; max-width: none; }
@@ -95,19 +95,20 @@ $path_prefix = '../../';
 
     <div class="container">
         <div class="tabs">
-            <button class="tab active" data-tab="supplier-types" onclick="switchTab('supplier-types')">Supplier Types</button>
-            <button class="tab" data-tab="supplier-statuses" onclick="switchTab('supplier-statuses')">Supplier Statuses</button>
-            <button class="tab" data-tab="contract-statuses" onclick="switchTab('contract-statuses')">Contract Statuses</button>
-            <button class="tab" data-tab="payment-schedules" onclick="switchTab('payment-schedules')">Payment Schedules</button>
-            <button class="tab" data-tab="contract-term-tabs" onclick="switchTab('contract-term-tabs')">Contract Terms</button>
-            <button class="tab" data-tab="rfp-departments" onclick="switchTab('rfp-departments')">RFP Departments</button>
+            <button class="tab active" data-tab="supplier-types" onclick="switchTab('supplier-types')">Supplier types</button>
+            <button class="tab" data-tab="supplier-statuses" onclick="switchTab('supplier-statuses')">Supplier statuses</button>
+            <button class="tab" data-tab="contract-statuses" onclick="switchTab('contract-statuses')">Contract statuses</button>
+            <button class="tab" data-tab="payment-schedules" onclick="switchTab('payment-schedules')">Payment schedules</button>
+            <button class="tab" data-tab="contract-term-tabs" onclick="switchTab('contract-term-tabs')">Contract terms</button>
+            <button class="tab" data-tab="rfp-departments" onclick="switchTab('rfp-departments')">RFP departments</button>
             <button class="tab" data-tab="rfp-ai" onclick="switchTab('rfp-ai')">RFP AI</button>
+            <button class="tab" data-tab="left-panel" onclick="switchTab('left-panel')">Left panel</button>
         </div>
 
-        <!-- Supplier Types Tab -->
+        <!-- Supplier types Tab -->
         <div class="tab-content active" id="supplier-types-tab">
             <div class="section-header">
-                <h2>Supplier Types</h2>
+                <h2>Supplier types</h2>
                 <button class="add-btn" onclick="openAddModal('supplier-type')">Add</button>
             </div>
             <table>
@@ -126,10 +127,10 @@ $path_prefix = '../../';
             </table>
         </div>
 
-        <!-- Supplier Statuses Tab -->
+        <!-- Supplier statuses Tab -->
         <div class="tab-content" id="supplier-statuses-tab">
             <div class="section-header">
-                <h2>Supplier Statuses</h2>
+                <h2>Supplier statuses</h2>
                 <button class="add-btn" onclick="openAddModal('supplier-status')">Add</button>
             </div>
             <table>
@@ -148,10 +149,10 @@ $path_prefix = '../../';
             </table>
         </div>
 
-        <!-- Contract Statuses Tab -->
+        <!-- Contract statuses Tab -->
         <div class="tab-content" id="contract-statuses-tab">
             <div class="section-header">
-                <h2>Contract Statuses</h2>
+                <h2>Contract statuses</h2>
                 <button class="add-btn" onclick="openAddModal('contract-status')">Add</button>
             </div>
             <table>
@@ -170,10 +171,10 @@ $path_prefix = '../../';
             </table>
         </div>
 
-        <!-- Payment Schedules Tab -->
+        <!-- Payment schedules Tab -->
         <div class="tab-content" id="payment-schedules-tab">
             <div class="section-header">
-                <h2>Payment Schedules</h2>
+                <h2>Payment schedules</h2>
                 <button class="add-btn" onclick="openAddModal('payment-schedule')">Add</button>
             </div>
             <table>
@@ -191,10 +192,10 @@ $path_prefix = '../../';
                 </tbody>
             </table>
         </div>
-        <!-- Contract Term Tabs Tab -->
+        <!-- Contract terms Tab -->
         <div class="tab-content" id="contract-term-tabs-tab">
             <div class="section-header">
-                <h2>Contract Terms</h2>
+                <h2>Contract terms</h2>
                 <button class="add-btn" onclick="openAddModal('contract-term-tab')">Add</button>
             </div>
             <table>
@@ -213,10 +214,10 @@ $path_prefix = '../../';
             </table>
         </div>
 
-        <!-- RFP Departments Tab -->
+        <!-- RFP departments Tab -->
         <div class="tab-content" id="rfp-departments-tab">
             <div class="section-header">
-                <h2>RFP Departments</h2>
+                <h2>RFP departments</h2>
                 <button class="add-btn" onclick="openAddRfpDept()">Add</button>
             </div>
             <p style="color:#888; font-size:13px; margin: 0 0 16px 0;">
@@ -308,12 +309,41 @@ $path_prefix = '../../';
                 </form>
             </div>
         </div>
+
+        <!-- Left panel tab — per-analyst preference -->
+        <div class="tab-content" id="left-panel-tab">
+            <div class="section-header">
+                <h2>Left panel</h2>
+            </div>
+            <p style="color: #666; margin-bottom: 20px;">Choose how the sidebar on the main contracts pages behaves. Saved per analyst.</p>
+
+            <form id="leftPanelForm" autocomplete="off" onsubmit="event.preventDefault();">
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 10px; font-weight: 500; color: #333;">Visibility</label>
+                    <label style="display: block; padding: 10px 14px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="contractsSidebarMode" value="always" onchange="saveSidebarMode(this.value)">
+                        <strong>Always visible</strong>
+                        <span style="display: block; font-size: 12px; color: #777; margin-top: 4px; margin-left: 22px;">
+                            The sidebar stays pinned open at 260px. Good when you want stats and quick links one click away.
+                        </span>
+                    </label>
+                    <label style="display: block; padding: 10px 14px; border: 1px solid #ddd; border-radius: 6px; cursor: pointer;">
+                        <input type="radio" name="contractsSidebarMode" value="hover" onchange="saveSidebarMode(this.value)">
+                        <strong>Show on hover</strong>
+                        <span style="display: block; font-size: 12px; color: #777; margin-top: 4px; margin-left: 22px;">
+                            Collapses to a thin 16px strip at the edge of the page; hovering over it slides the full sidebar back in. Frees space for the main content.
+                        </span>
+                    </label>
+                </div>
+                <span class="save-message" id="leftPanelSaveMessage" style="display:none; color:#155724;">Saved!</span>
+            </form>
+        </div>
     </div>
 
     <!-- Edit/Add Modal -->
     <div class="modal" id="editModal">
         <div class="modal-content">
-            <div class="modal-header" id="modalTitle">Add Item</div>
+            <div class="modal-header" id="modalTitle">Add item</div>
             <form id="editForm" autocomplete="off">
                 <input type="hidden" id="itemId">
                 <input type="hidden" id="itemType">
@@ -326,7 +356,7 @@ $path_prefix = '../../';
                     <textarea id="itemDescription"></textarea>
                 </div>
                 <div class="form-group">
-                    <label for="itemOrder">Display Order</label>
+                    <label for="itemOrder">Display order</label>
                     <input type="number" id="itemOrder" value="0" min="0">
                 </div>
                 <div class="form-group">
@@ -349,7 +379,7 @@ $path_prefix = '../../';
     <!-- RFP Department Modal -->
     <div class="modal" id="rfpDeptModal">
         <div class="modal-content">
-            <div class="modal-header" id="rfpDeptModalTitle">Add RFP Department</div>
+            <div class="modal-header" id="rfpDeptModalTitle">Add RFP department</div>
             <form id="rfpDeptForm" autocomplete="off">
                 <input type="hidden" id="rfpDeptId">
                 <div class="form-group">
@@ -364,7 +394,7 @@ $path_prefix = '../../';
                     </div>
                 </div>
                 <div class="form-group">
-                    <label for="rfpDeptOrder">Display Order</label>
+                    <label for="rfpDeptOrder">Display order</label>
                     <input type="number" id="rfpDeptOrder" value="0" min="0">
                 </div>
                 <div class="form-group">
@@ -395,7 +425,7 @@ $path_prefix = '../../';
                 delete: API_BASE + 'delete_supplier_type.php',
                 key: 'supplier_types',
                 listId: 'supplier-types-list',
-                label: 'Supplier Type'
+                label: 'supplier type'
             },
             'supplier-status': {
                 get: API_BASE + 'get_supplier_statuses.php',
@@ -403,7 +433,7 @@ $path_prefix = '../../';
                 delete: API_BASE + 'delete_supplier_status.php',
                 key: 'supplier_statuses',
                 listId: 'supplier-statuses-list',
-                label: 'Supplier Status'
+                label: 'supplier status'
             },
             'contract-status': {
                 get: API_BASE + 'get_contract_statuses.php',
@@ -411,7 +441,7 @@ $path_prefix = '../../';
                 delete: API_BASE + 'delete_contract_status.php',
                 key: 'contract_statuses',
                 listId: 'contract-statuses-list',
-                label: 'Contract Status'
+                label: 'contract status'
             },
             'payment-schedule': {
                 get: API_BASE + 'get_payment_schedules.php',
@@ -419,7 +449,7 @@ $path_prefix = '../../';
                 delete: API_BASE + 'delete_payment_schedule.php',
                 key: 'payment_schedules',
                 listId: 'payment-schedules-list',
-                label: 'Payment Schedule'
+                label: 'payment schedule'
             },
             'contract-term-tab': {
                 get: API_BASE + 'get_contract_term_tabs.php',
@@ -427,7 +457,7 @@ $path_prefix = '../../';
                 delete: API_BASE + 'delete_contract_term_tab.php',
                 key: 'contract_term_tabs',
                 listId: 'contract-term-tabs-list',
-                label: 'Contract Term'
+                label: 'contract term'
             }
         };
 
@@ -501,7 +531,7 @@ $path_prefix = '../../';
         }
 
         function openAddRfpDept() {
-            document.getElementById('rfpDeptModalTitle').textContent = 'Add RFP Department';
+            document.getElementById('rfpDeptModalTitle').textContent = 'Add RFP department';
             document.getElementById('rfpDeptId').value = '';
             document.getElementById('rfpDeptName').value = '';
             document.getElementById('rfpDeptColour').value = '#6c757d';
@@ -515,7 +545,7 @@ $path_prefix = '../../';
         function editRfpDept(id) {
             const item = rfpDepartments.find(d => d.id == id);
             if (!item) return;
-            document.getElementById('rfpDeptModalTitle').textContent = 'Edit RFP Department';
+            document.getElementById('rfpDeptModalTitle').textContent = 'Edit RFP department';
             document.getElementById('rfpDeptId').value = item.id;
             document.getElementById('rfpDeptName').value = item.name;
             document.getElementById('rfpDeptColour').value = item.colour;
@@ -737,6 +767,46 @@ $path_prefix = '../../';
             if (btn) btn.classList.add('active');
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             document.getElementById(tab + '-tab').classList.add('active');
+            if (tab === 'left-panel') loadSidebarMode();
+        }
+
+        // --- Left panel preference ------------------------------------
+        // Same pattern as knowledge / process-mapper: 'always' vs 'hover',
+        // stored per-analyst via user_preferences. Header.php reads the same
+        // key on every contracts page and toggles .sidebar-hover on the
+        // .contracts-layout container.
+        const SIDEBAR_MODE_KEY = 'contracts_sidebar_mode';
+        let sidebarModeLoaded = false;
+        async function loadSidebarMode() {
+            if (sidebarModeLoaded) return;
+            sidebarModeLoaded = true;
+            try {
+                const r = await fetch('../../api/system/get_user_preference.php?key=' + encodeURIComponent(SIDEBAR_MODE_KEY), { credentials: 'same-origin' });
+                const d = await r.json();
+                const mode = (d.success && (d.value === 'always' || d.value === 'hover')) ? d.value : 'always';
+                document.querySelectorAll('input[name="contractsSidebarMode"]').forEach(i => { i.checked = (i.value === mode); });
+            } catch (e) {
+                const first = document.querySelector('input[name="contractsSidebarMode"][value="always"]');
+                if (first) first.checked = true;
+            }
+        }
+
+        async function saveSidebarMode(value) {
+            if (value !== 'always' && value !== 'hover') return;
+            try {
+                const r = await fetch('../../api/system/set_user_preference.php', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: SIDEBAR_MODE_KEY, value: value })
+                });
+                const d = await r.json();
+                if (d.success) {
+                    const msg = document.getElementById('leftPanelSaveMessage');
+                    msg.style.display = 'inline';
+                    setTimeout(() => { msg.style.display = 'none'; }, 1500);
+                }
+            } catch (e) { /* no-op */ }
         }
 
         async function loadItems(type) {

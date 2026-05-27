@@ -19,7 +19,7 @@ if (!$contract_id) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Service Desk - View Contract</title>
+    <title>Service Desk - View contract</title>
     <link rel="stylesheet" href="../assets/css/inbox.css">
     <script src="../assets/js/toast.js"></script>
     <style>
@@ -292,7 +292,7 @@ if (!$contract_id) {
             </div>
 
             <div class="sidebar-section">
-                <h3>Quick Links</h3>
+                <h3>Quick links</h3>
                 <div class="sidebar-links">
                     <a href="index.php" class="sidebar-link">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
@@ -318,7 +318,7 @@ if (!$contract_id) {
             </div>
 
             <div class="sidebar-section">
-                <a href="edit.php" class="sidebar-add-btn">+ New Contract</a>
+                <a href="edit.php" class="sidebar-add-btn">+ New contract</a>
             </div>
         </div>
 
@@ -394,7 +394,7 @@ if (!$contract_id) {
                 </div>
                 <div class="contract-details">
                     <div class="detail-group">
-                        <label>Contract Number</label>
+                        <label>Contract number</label>
                         <div class="value">${escapeHtml(c.contract_number)}</div>
                     </div>
                     <div class="detail-group">
@@ -414,65 +414,65 @@ if (!$contract_id) {
                         <div class="value">${escapeHtml(c.supplier_name || '-')}${c.supplier_trading_name ? ' <span style="color:#888;">(t/a ' + escapeHtml(c.supplier_trading_name) + ')</span>' : ''}</div>
                     </div>
                     <div class="detail-group">
-                        <label>Contract Owner</label>
+                        <label>Contract owner</label>
                         <div class="value">${escapeHtml(c.owner_name || '-')}</div>
                     </div>
 
                     <div class="section-divider"><h3>Dates</h3></div>
                     <div class="detail-group">
-                        <label>Start Date</label>
+                        <label>Start date</label>
                         <div class="value">${formatDate(c.contract_start)}</div>
                     </div>
                     <div class="detail-group">
-                        <label>End Date</label>
+                        <label>End date</label>
                         <div class="value">${formatDate(c.contract_end)}</div>
                     </div>
                     <div class="detail-group">
-                        <label>Notice Period</label>
+                        <label>Notice period</label>
                         <div class="value">${c.notice_period_days ? c.notice_period_days + ' days' : '-'}</div>
                     </div>
                     <div class="detail-group">
-                        <label>Notice Date</label>
+                        <label>Notice date</label>
                         <div class="value">${formatDate(c.notice_date)}</div>
                     </div>
 
                     <div class="section-divider"><h3>Financial</h3></div>
                     <div class="detail-group">
-                        <label>Contract Value</label>
+                        <label>Contract value</label>
                         <div class="value">${contractValue}</div>
                     </div>
                     <div class="detail-group">
-                        <label>Payment Schedule</label>
+                        <label>Payment schedule</label>
                         <div class="value">${escapeHtml(c.payment_schedule_name || '-')}</div>
                     </div>
                     <div class="detail-group">
-                        <label>Cost Centre</label>
+                        <label>Cost centre</label>
                         <div class="value">${escapeHtml(c.cost_centre || '-')}</div>
                     </div>
                     <div class="detail-group">
-                        <label>DMS Link</label>
+                        <label>DMS link</label>
                         <div class="value dms-link">${c.dms_link ? '<a href="' + escapeHtml(c.dms_link) + '" target="_blank">' + escapeHtml(c.dms_link) + '</a>' : '-'}</div>
                     </div>
 
-                    <div class="section-divider"><h3>Terms & Data Protection</h3></div>
+                    <div class="section-divider"><h3>Terms & data protection</h3></div>
                     <div class="detail-group">
                         <label>Terms</label>
                         <div class="value">${escapeHtml(formatTermsStatus(c.terms_status))}</div>
                     </div>
                     <div class="detail-group">
-                        <label>Personal Data Transferred</label>
+                        <label>Personal data transferred</label>
                         <div class="value">${formatBool(c.personal_data_transferred)}</div>
                     </div>
                     <div class="detail-group">
-                        <label>DPIA Required</label>
+                        <label>DPIA required</label>
                         <div class="value">${formatBool(c.dpia_required)}</div>
                     </div>
                     <div class="detail-group">
-                        <label>DPIA Completed Date</label>
+                        <label>DPIA completed date</label>
                         <div class="value">${formatDate(c.dpia_completed_date)}</div>
                     </div>
                     ${c.dpia_dms_link ? `<div class="detail-group full-width">
-                        <label>DPIA DMS Link</label>
+                        <label>DPIA DMS link</label>
                         <div class="value dms-link"><a href="${escapeHtml(c.dpia_dms_link)}" target="_blank">${escapeHtml(c.dpia_dms_link)}</a></div>
                     </div>` : ''}
 
@@ -488,11 +488,11 @@ if (!$contract_id) {
                 </div>
                 <div class="related-list">
                     <div class="related-section" id="relatedTasksSection">
-                        <h3>Related Tasks</h3>
+                        <h3>Related tasks</h3>
                         <div id="relatedTasksList" class="related-empty">Loading...</div>
                     </div>
                     <div class="related-section" id="relatedEventsSection">
-                        <h3>Related Calendar Events</h3>
+                        <h3>Related calendar events</h3>
                         <div id="relatedEventsList" class="related-empty">Loading...</div>
                     </div>
                 </div>
@@ -570,7 +570,7 @@ if (!$contract_id) {
                 ).join('');
 
                 const termsHtml = `
-                    <div class="section-divider"><h3>Contract Terms Detail</h3></div>
+                    <div class="section-divider"><h3>Contract terms detail</h3></div>
                     <div class="detail-group full-width">
                         <div class="terms-view-tabs">${tabButtons}</div>
                         ${tabPanels}
@@ -867,7 +867,7 @@ if (!$contract_id) {
                 </div>
                 <div class="cv-modal-row">
                     <div class="form-group">
-                        <label>Due Date</label>
+                        <label>Due date</label>
                         <input type="date" id="taskDueDate" />
                     </div>
                     <div class="form-group">

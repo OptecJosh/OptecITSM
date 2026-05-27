@@ -165,14 +165,14 @@ $path_prefix = '../../';
             <div class="sidebar-section">
                 <h3>Overview</h3>
                 <div class="sidebar-total">
-                    <span>All Contacts</span>
+                    <span>All contacts</span>
                     <span class="stat-value" id="sideTotal">-</span>
                 </div>
                 <div id="overviewBreakdown"></div>
             </div>
 
             <div class="sidebar-section">
-                <a href="#" class="sidebar-add-btn" onclick="openModal(); return false;">+ Add Contact</a>
+                <a href="#" class="sidebar-add-btn" onclick="openModal(); return false;">+ Add contact</a>
             </div>
         </div>
 
@@ -186,7 +186,7 @@ $path_prefix = '../../';
                     <thead>
                         <tr>
                             <th>Name</th>
-                            <th>Job Title</th>
+                            <th>Job title</th>
                             <th>Email</th>
                             <th>Mobile</th>
                             <th>Supplier</th>
@@ -204,11 +204,11 @@ $path_prefix = '../../';
 
     <div class="modal" id="editModal">
         <div class="modal-content">
-            <div class="modal-header" id="modalTitle">Add Contact</div>
+            <div class="modal-header" id="modalTitle">Add contact</div>
             <form id="editForm">
                 <input type="hidden" id="itemId">
                 <div class="form-group">
-                    <label for="firstName">First Name</label>
+                    <label for="firstName">First name</label>
                     <input type="text" id="firstName" required>
                 </div>
                 <div class="form-group">
@@ -220,7 +220,7 @@ $path_prefix = '../../';
                     <input type="email" id="email">
                 </div>
                 <div class="form-group">
-                    <label for="jobTitle">Job Title</label>
+                    <label for="jobTitle">Job title</label>
                     <input type="text" id="jobTitle">
                 </div>
                 <div class="form-group">
@@ -228,7 +228,7 @@ $path_prefix = '../../';
                     <input type="text" id="mobile">
                 </div>
                 <div class="form-group">
-                    <label for="directDial">Direct Dial</label>
+                    <label for="directDial">Direct dial</label>
                     <input type="text" id="directDial">
                 </div>
                 <div class="form-group">
@@ -332,7 +332,7 @@ $path_prefix = '../../';
         function renderContacts() {
             const tbody = document.getElementById('contactsList');
             if (contacts.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No contacts yet. Click "+ Add Contact" to create one.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No contacts yet. Click "+ Add contact" to create one.</td></tr>';
                 return;
             }
             tbody.innerHTML = contacts.map(c => `
@@ -356,7 +356,7 @@ $path_prefix = '../../';
         }
 
         function openModal(contact = null) {
-            document.getElementById('modalTitle').textContent = contact ? 'Edit Contact' : 'Add Contact';
+            document.getElementById('modalTitle').textContent = contact ? 'Edit contact' : 'Add contact';
             document.getElementById('itemId').value = contact ? contact.id : '';
             document.getElementById('firstName').value = contact ? contact.first_name : '';
             document.getElementById('surname').value = contact ? contact.surname : '';

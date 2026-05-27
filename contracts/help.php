@@ -622,7 +622,7 @@ $path_prefix = '../';
                     <div class="ct-help-tabs-demo">
                         <div class="ct-help-tab-demo active">SLA</div>
                         <div class="ct-help-tab-demo">KPIs</div>
-                        <div class="ct-help-tab-demo">Special Terms</div>
+                        <div class="ct-help-tab-demo">Special terms</div>
                         <div class="ct-help-tab-demo">Obligations</div>
                     </div>
                     <div class="ct-help-tab-body">

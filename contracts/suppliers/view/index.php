@@ -196,7 +196,7 @@ $path_prefix = '../../../';
             <div class="sidebar-section">
                 <h3>Overview</h3>
                 <div class="sidebar-total">
-                    <span>All Suppliers</span>
+                    <span>All suppliers</span>
                     <span class="stat-value" id="sideTotal">-</span>
                 </div>
                 <div id="overviewBreakdown"></div>
@@ -232,28 +232,28 @@ $path_prefix = '../../../';
     <!-- Edit Modal (same as suppliers list) -->
     <div class="modal" id="editModal">
         <div class="modal-content">
-            <div class="modal-header" id="modalTitle">Edit Supplier</div>
+            <div class="modal-header" id="modalTitle">Edit supplier</div>
             <form id="editForm">
                 <input type="hidden" id="itemId">
                 <div class="form-grid">
                     <div class="form-group full-width">
-                        <label for="legalName">Legal Name</label>
+                        <label for="legalName">Legal name</label>
                         <input type="text" id="legalName" required>
                     </div>
                     <div class="form-group full-width">
-                        <label for="tradingName">Trading Name</label>
+                        <label for="tradingName">Trading name</label>
                         <input type="text" id="tradingName" placeholder="If different from legal name">
                     </div>
                     <div class="form-group">
-                        <label for="regNumber">Reg Number</label>
+                        <label for="regNumber">Reg number</label>
                         <input type="text" id="regNumber">
                     </div>
                     <div class="form-group">
-                        <label for="vatNumber">VAT/Tax Number</label>
+                        <label for="vatNumber">VAT/Tax number</label>
                         <input type="text" id="vatNumber">
                     </div>
                     <div class="form-group">
-                        <label for="supplierTypeId">Supplier Type</label>
+                        <label for="supplierTypeId">Supplier type</label>
                         <select id="supplierTypeId">
                             <option value="">-- None --</option>
                         </select>
@@ -267,11 +267,11 @@ $path_prefix = '../../../';
 
                     <div class="form-section">Address</div>
                     <div class="form-group full-width">
-                        <label for="addressLine1">Address Line 1</label>
+                        <label for="addressLine1">Address line 1</label>
                         <input type="text" id="addressLine1">
                     </div>
                     <div class="form-group full-width">
-                        <label for="addressLine2">Address Line 2</label>
+                        <label for="addressLine2">Address line 2</label>
                         <input type="text" id="addressLine2">
                     </div>
                     <div class="form-group">
@@ -293,11 +293,11 @@ $path_prefix = '../../../';
 
                     <div class="form-section">Questionnaire</div>
                     <div class="form-group">
-                        <label for="questionnaireDateIssued">Date Issued</label>
+                        <label for="questionnaireDateIssued">Date issued</label>
                         <input type="date" id="questionnaireDateIssued">
                     </div>
                     <div class="form-group">
-                        <label for="questionnaireDateReceived">Date Received</label>
+                        <label for="questionnaireDateReceived">Date received</label>
                         <input type="date" id="questionnaireDateReceived">
                     </div>
 
@@ -449,23 +449,23 @@ $path_prefix = '../../../';
             document.getElementById('viewBody').innerHTML = `
                 <div class="view-grid">
                     <div class="view-field full-width">
-                        <label>Legal Name</label>
+                        <label>Legal name</label>
                         ${val(s.legal_name)}
                     </div>
                     <div class="view-field full-width">
-                        <label>Trading Name</label>
+                        <label>Trading name</label>
                         ${val(s.trading_name)}
                     </div>
                     <div class="view-field">
-                        <label>Reg Number</label>
+                        <label>Reg number</label>
                         ${val(s.reg_number)}
                     </div>
                     <div class="view-field">
-                        <label>VAT/Tax Number</label>
+                        <label>VAT/Tax number</label>
                         ${val(s.vat_number)}
                     </div>
                     <div class="view-field">
-                        <label>Supplier Type</label>
+                        <label>Supplier type</label>
                         ${val(s.supplier_type_name)}
                     </div>
                     <div class="view-field">
@@ -475,11 +475,11 @@ $path_prefix = '../../../';
 
                     <div class="view-section">Address</div>
                     <div class="view-field full-width">
-                        <label>Address Line 1</label>
+                        <label>Address line 1</label>
                         ${val(s.address_line_1)}
                     </div>
                     <div class="view-field full-width">
-                        <label>Address Line 2</label>
+                        <label>Address line 2</label>
                         ${val(s.address_line_2)}
                     </div>
                     <div class="view-field">
@@ -501,11 +501,11 @@ $path_prefix = '../../../';
 
                     <div class="view-section">Questionnaire</div>
                     <div class="view-field">
-                        <label>Date Issued</label>
+                        <label>Date issued</label>
                         ${val(formatDate(s.questionnaire_date_issued))}
                     </div>
                     <div class="view-field">
-                        <label>Date Received</label>
+                        <label>Date received</label>
                         ${val(formatDate(s.questionnaire_date_received))}
                     </div>
 
@@ -539,7 +539,7 @@ $path_prefix = '../../../';
         // Edit modal
         function openModal(supplier) {
             if (!supplier) return;
-            document.getElementById('modalTitle').textContent = 'Edit Supplier';
+            document.getElementById('modalTitle').textContent = 'Edit supplier';
             document.getElementById('itemId').value = supplier.id;
             document.getElementById('legalName').value = supplier.legal_name || '';
             document.getElementById('tradingName').value = supplier.trading_name || '';

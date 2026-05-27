@@ -81,3 +81,60 @@ require_once $path_prefix . 'includes/waffle-menu.php';
 </div>
 
 <?php renderWaffleMenuJS(); ?>
+
+<style>
+/* Per-analyst sidebar hover mode (Settings → Left panel). Applied to every
+   contracts page that uses .contracts-layout. Mirrors the knowledge /
+   process-mapper pattern. */
+.contracts-layout { position: relative; }
+.contracts-layout.sidebar-hover .contracts-sidebar {
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    width: 16px;
+    min-width: 16px;
+    z-index: 10;
+    overflow: hidden;
+    transition: width 0.18s ease;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.12);
+    padding: 0;
+}
+.contracts-layout.sidebar-hover .contracts-sidebar:hover {
+    width: 260px;
+    padding: 20px;
+    overflow-y: auto;
+}
+.contracts-layout.sidebar-hover .contracts-sidebar > * {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.12s ease 0s;
+}
+.contracts-layout.sidebar-hover .contracts-sidebar:hover > * {
+    opacity: 1;
+    pointer-events: auto;
+    transition-delay: 0.08s;
+}
+.contracts-layout.sidebar-hover .contracts-sidebar::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 6px;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 36px;
+    border-radius: 2px;
+    background: #bbb;
+    transition: opacity 0.18s;
+    pointer-events: none;
+}
+.contracts-layout.sidebar-hover .contracts-sidebar:hover::before { opacity: 0; }
+</style>
+<script>
+(async function() {
+    try {
+        const r = await fetch('<?php echo BASE_URL; ?>api/system/get_user_preference.php?key=contracts_sidebar_mode', { credentials: 'same-origin' });
+        const d = await r.json();
+        const mode = (d.success && d.value === 'hover') ? 'hover' : 'always';
+        document.querySelectorAll('.contracts-layout').forEach(el => el.classList.toggle('sidebar-hover', mode === 'hover'));
+    } catch (e) { /* no-op — default is always-visible */ }
+})();
+</script>

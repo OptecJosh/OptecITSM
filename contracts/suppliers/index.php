@@ -199,14 +199,14 @@ $path_prefix = '../../';
             <div class="sidebar-section">
                 <h3>Overview</h3>
                 <div class="sidebar-total">
-                    <span>All Suppliers</span>
+                    <span>All suppliers</span>
                     <span class="stat-value" id="sideTotal">-</span>
                 </div>
                 <div id="overviewBreakdown"></div>
             </div>
 
             <div class="sidebar-section">
-                <a href="#" class="sidebar-add-btn" onclick="openModal(); return false;">+ Add Supplier</a>
+                <a href="#" class="sidebar-add-btn" onclick="openModal(); return false;">+ Add supplier</a>
             </div>
         </div>
 
@@ -219,8 +219,8 @@ $path_prefix = '../../';
                 <table>
                     <thead>
                         <tr>
-                            <th>Legal Name</th>
-                            <th>Trading Name</th>
+                            <th>Legal name</th>
+                            <th>Trading name</th>
                             <th>Type</th>
                             <th>Status</th>
                             <th>City</th>
@@ -237,28 +237,28 @@ $path_prefix = '../../';
 
     <div class="modal" id="editModal">
         <div class="modal-content">
-            <div class="modal-header" id="modalTitle">Add Supplier</div>
+            <div class="modal-header" id="modalTitle">Add supplier</div>
             <form id="editForm">
                 <input type="hidden" id="itemId">
                 <div class="form-grid">
                     <div class="form-group full-width">
-                        <label for="legalName">Legal Name</label>
+                        <label for="legalName">Legal name</label>
                         <input type="text" id="legalName" required>
                     </div>
                     <div class="form-group full-width">
-                        <label for="tradingName">Trading Name</label>
+                        <label for="tradingName">Trading name</label>
                         <input type="text" id="tradingName" placeholder="If different from legal name">
                     </div>
                     <div class="form-group">
-                        <label for="regNumber">Reg Number</label>
+                        <label for="regNumber">Reg number</label>
                         <input type="text" id="regNumber">
                     </div>
                     <div class="form-group">
-                        <label for="vatNumber">VAT/Tax Number</label>
+                        <label for="vatNumber">VAT/Tax number</label>
                         <input type="text" id="vatNumber">
                     </div>
                     <div class="form-group">
-                        <label for="supplierTypeId">Supplier Type</label>
+                        <label for="supplierTypeId">Supplier type</label>
                         <select id="supplierTypeId">
                             <option value="">-- None --</option>
                         </select>
@@ -272,11 +272,11 @@ $path_prefix = '../../';
 
                     <div class="form-section">Address</div>
                     <div class="form-group full-width">
-                        <label for="addressLine1">Address Line 1</label>
+                        <label for="addressLine1">Address line 1</label>
                         <input type="text" id="addressLine1">
                     </div>
                     <div class="form-group full-width">
-                        <label for="addressLine2">Address Line 2</label>
+                        <label for="addressLine2">Address line 2</label>
                         <input type="text" id="addressLine2">
                     </div>
                     <div class="form-group">
@@ -298,11 +298,11 @@ $path_prefix = '../../';
 
                     <div class="form-section">Questionnaire</div>
                     <div class="form-group">
-                        <label for="questionnaireDateIssued">Date Issued</label>
+                        <label for="questionnaireDateIssued">Date issued</label>
                         <input type="date" id="questionnaireDateIssued">
                     </div>
                     <div class="form-group">
-                        <label for="questionnaireDateReceived">Date Received</label>
+                        <label for="questionnaireDateReceived">Date received</label>
                         <input type="date" id="questionnaireDateReceived">
                     </div>
 
@@ -429,7 +429,7 @@ $path_prefix = '../../';
         function renderSuppliers() {
             const tbody = document.getElementById('suppliersList');
             if (suppliers.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No suppliers yet. Click "+ Add Supplier" to create one.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No suppliers yet. Click "+ Add supplier" to create one.</td></tr>';
                 return;
             }
             tbody.innerHTML = suppliers.map(s => `
@@ -455,7 +455,7 @@ $path_prefix = '../../';
         }
 
         function openModal(supplier = null) {
-            document.getElementById('modalTitle').textContent = supplier ? 'Edit Supplier' : 'Add Supplier';
+            document.getElementById('modalTitle').textContent = supplier ? 'Edit supplier' : 'Add supplier';
             document.getElementById('itemId').value = supplier ? supplier.id : '';
             document.getElementById('legalName').value = supplier ? supplier.legal_name : '';
             document.getElementById('tradingName').value = supplier ? (supplier.trading_name || '') : '';

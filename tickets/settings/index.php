@@ -1045,7 +1045,8 @@ $translationNamespaces = ['common', 'tickets'];
     <div class="modal" id="mailboxModal">
         <div class="modal-content" style="max-width: 700px;">
             <div class="modal-header" id="mailboxModalTitle"><?php echo htmlspecialchars(t('tickets.settings.modals.mailbox.add_title')); ?></div>
-            <form id="mailboxForm" autocomplete="off" style="overflow-y: auto; flex: 1; padding: 20px 24px;">
+            <div class="modal-body">
+            <form id="mailboxForm" autocomplete="off">
                 <input type="hidden" id="mailboxId">
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
@@ -1166,11 +1167,12 @@ $translationNamespaces = ['common', 'tickets'];
                     <div id="whitelistEntries" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
                 </div>
 
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeMailboxModal()"><?php echo htmlspecialchars(t('common.cancel')); ?></button>
-                    <button type="submit" class="btn btn-primary"><?php echo htmlspecialchars(t('common.save')); ?></button>
-                </div>
             </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeMailboxModal()"><?php echo htmlspecialchars(t('common.cancel')); ?></button>
+                <button type="submit" form="mailboxForm" class="btn btn-primary"><?php echo htmlspecialchars(t('common.save')); ?></button>
+            </div>
         </div>
     </div>
 
@@ -1315,6 +1317,7 @@ $translationNamespaces = ['common', 'tickets'];
     <div class="modal" id="templateModal">
         <div class="modal-content" style="max-width: 700px;">
             <div class="modal-header" id="templateModalTitle"><?php echo htmlspecialchars(t('tickets.settings.modals.template.add_title')); ?></div>
+            <div class="modal-body">
             <form id="templateForm">
                 <input type="hidden" id="templateId">
 
@@ -1365,11 +1368,12 @@ $translationNamespaces = ['common', 'tickets'];
                     </div>
                 </div>
 
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeTemplateModal()"><?php echo htmlspecialchars(t('common.cancel')); ?></button>
-                    <button type="submit" class="btn btn-primary"><?php echo htmlspecialchars(t('common.save')); ?></button>
-                </div>
             </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeTemplateModal()"><?php echo htmlspecialchars(t('common.cancel')); ?></button>
+                <button type="submit" form="templateForm" class="btn btn-primary"><?php echo htmlspecialchars(t('common.save')); ?></button>
+            </div>
         </div>
     </div>
 

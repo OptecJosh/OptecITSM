@@ -2169,6 +2169,26 @@ body.ticket-popout .ticket-toolbar {
 .modal-content:has(> .modal-body),
 .modal-content:has(> form > .modal-body) { overflow-y: visible; }
 
+/* When a modal opts into the canonical 3-pane layout (modal-header +
+   modal-body + modal-footer as flex siblings), the body / footer handle
+   their own padding — so neutralise any per-page .modal-content padding
+   override (e.g. tickets/settings sets padding:30px globally). And give
+   the modal-header a sensible default since per-page overrides typically
+   strip its padding for the simpler form-direct-in-content pattern. */
+.modal-content:has(> .modal-body),
+.modal-content:has(> form > .modal-body) {
+    padding: 0;
+}
+.modal-content:has(> .modal-body) > .modal-header,
+.modal-content:has(> form > .modal-body) > .modal-header {
+    padding: 20px 24px;
+    margin: 0;
+    border-bottom: 1px solid #e0e0e0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+}
+
 /* Shared toggle switch (#453). Modules customise the on-state colour by
    setting --accent (or the legacy --toggle-accent) on a parent — the
    structural CSS lives here so every module looks identical. */

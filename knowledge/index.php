@@ -231,13 +231,17 @@ $sidebarHoverClass = $sidebarMode === 'hover' ? ' sidebar-hover' : '';
 
     <!-- Archived Article Preview Modal -->
     <div class="modal" id="archivedArticleModal">
-        <div class="modal-content" style="max-width: 800px; max-height: 85vh; display: flex; flex-direction: column; padding: 30px;">
-            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
                 <h3 id="archivedArticleTitle" style="margin: 0;"></h3>
-                <button class="btn btn-secondary" onclick="closeArchivedArticleModal()" style="flex-shrink: 0;">&times;</button>
             </div>
-            <div id="archivedArticleMeta" style="font-size: 13px; color: #666; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #e0e0e0;"></div>
-            <div id="archivedArticleBody" class="article-content-body" style="overflow-y: auto; flex: 1; padding: 4px 0;"></div>
+            <div class="modal-body">
+                <div id="archivedArticleMeta" style="font-size: 13px; color: #666; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #e0e0e0;"></div>
+                <div id="archivedArticleBody" class="article-content-body"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeArchivedArticleModal()">Close</button>
+            </div>
         </div>
     </div>
 

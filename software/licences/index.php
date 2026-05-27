@@ -460,7 +460,6 @@ $path_prefix = '../../';
         <div class="detail-box">
             <div class="detail-header">
                 <h3 id="licenceModalTitle">Add licence</h3>
-                <button class="detail-close" onclick="closeLicenceModal()">&times;</button>
             </div>
             <div class="detail-body">
                 <input type="hidden" id="licenceId" value="">

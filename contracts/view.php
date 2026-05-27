@@ -843,7 +843,6 @@ if (!$contract_id) {
         <div class="cv-modal">
             <div class="cv-modal-header">
                 <h3>New task for this contract</h3>
-                <button type="button" class="cv-modal-close" onclick="closeTaskModal()">&times;</button>
             </div>
             <div class="cv-modal-body">
                 <div class="form-group">
@@ -901,7 +900,6 @@ if (!$contract_id) {
         <div class="cv-modal">
             <div class="cv-modal-header">
                 <h3>Add to calendar</h3>
-                <button type="button" class="cv-modal-close" onclick="closeEventModal()">&times;</button>
             </div>
             <div class="cv-modal-body">
                 <div class="form-group">

@@ -533,7 +533,6 @@ $path_prefix  = '../../';
         <div class="edit-modal">
             <div class="edit-modal-header">
                 <span id="editModalTitle">Edit requirement</span>
-                <button class="close-x" onclick="closeEditModal()">&times;</button>
             </div>
             <div class="edit-modal-body">
                 <div class="form-row">
@@ -580,7 +579,6 @@ $path_prefix  = '../../';
         <div class="edit-modal wide">
             <div class="edit-modal-header">
                 <span>Split requirement</span>
-                <button class="close-x" onclick="closeSplitModal()">&times;</button>
             </div>
             <div class="edit-modal-body">
                 <div class="form-row">
@@ -612,7 +610,6 @@ $path_prefix  = '../../';
         <div class="edit-modal">
             <div class="edit-modal-header">
                 <span id="resolveModalTitle">Resolve conflict</span>
-                <button class="close-x" onclick="closeResolveModal()">&times;</button>
             </div>
             <div class="edit-modal-body">
                 <div id="resolveContext" style="margin-bottom:14px;font-size:13px;color:#555;"></div>
@@ -633,7 +630,6 @@ $path_prefix  = '../../';
         <div class="edit-modal">
             <div class="edit-modal-header">
                 <span>Merge selected requirements</span>
-                <button class="close-x" onclick="closeMergeModal()">&times;</button>
             </div>
             <div class="edit-modal-body">
                 <div id="mergeSummary" class="merge-summary"></div>

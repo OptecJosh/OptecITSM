@@ -235,7 +235,6 @@ $path_prefix = '../../';
         <div class="modal-card">
             <div class="modal-header">
                 <h3 id="rfpModalTitle">New RFP</h3>
-                <button class="modal-close" onclick="closeModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="rfpId">

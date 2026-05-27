@@ -322,7 +322,6 @@ $chart_initial_height_calc = 'calc((100vh - 60px) * ' . ($chart_height_pct / 100
     <!-- Raise Ticket Modal -->
     <div id="raiseTicketModal" class="modal">
         <div class="modal-content" style="max-width: 640px;">
-            <span class="close" onclick="closeRaiseTicketModal()">&times;</span>
             <h2>Raise a ticket</h2>
             <p>Create a ticket linked to this morning check. The check name, status and notes are pre-filled below.</p>
             <form id="raiseTicketForm">

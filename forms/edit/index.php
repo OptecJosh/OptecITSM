@@ -1582,7 +1582,6 @@ $path_prefix = '../../';
         <div class="ai-modal">
             <div class="ai-modal-header">
                 <h3 id="aiModalTitle"><span class="ai-sparkle">&#10024;</span> AI Assist &mdash; describe your form</h3>
-                <button type="button" class="ai-modal-close" onclick="closeAiModal()">&times;</button>
             </div>
             <div class="ai-modal-body">
                 <label for="aiDescription" id="aiPromptLabel">What's the form for?</label>

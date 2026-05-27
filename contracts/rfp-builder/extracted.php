@@ -271,7 +271,6 @@ $path_prefix  = '../../';
         <div class="modal-card">
             <div class="modal-header">
                 <h3>Edit requirement</h3>
-                <button class="modal-close" onclick="closeEditModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="editId">

@@ -789,7 +789,6 @@ function renderHeaderRight($analyst_name, $path_prefix) {
         <div class="account-modal-box">
             <div class="account-modal-header">
                 <?php echo htmlspecialchars(t('common.password_modal.title')); ?>
-                <button class="account-modal-close" onclick="closePasswordModal()">&times;</button>
             </div>
             <div class="account-modal-body">
                 <div id="pwMsg" class="acct-msg"></div>
@@ -818,11 +817,13 @@ function renderHeaderRight($analyst_name, $path_prefix) {
         <div class="account-modal-box">
             <div class="account-modal-header">
                 <?php echo htmlspecialchars(t('common.mfa_modal.title')); ?>
-                <button class="account-modal-close" onclick="closeMfaModal()">&times;</button>
             </div>
             <div class="account-modal-body">
                 <div id="mfaMsg" class="acct-msg"></div>
                 <div id="mfaContent"><?php echo htmlspecialchars(t('common.loading')); ?></div>
+            </div>
+            <div class="account-modal-footer">
+                <button class="acct-btn acct-btn-secondary" onclick="closeMfaModal()"><?php echo htmlspecialchars(t('common.close')); ?></button>
             </div>
         </div>
     </div>

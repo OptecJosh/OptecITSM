@@ -689,7 +689,6 @@ $current_page = 'browse';
     <div class="float-modal" id="propDefModal">
         <div class="float-modal-header" id="propDefModalHeader">
             <span id="propDefModalTitle">Edit property</span>
-            <button type="button" class="float-modal-close" onclick="closePropDefModal()">&times;</button>
         </div>
         <div class="float-modal-body">
             <form id="propDefForm" onsubmit="event.preventDefault(); savePropDef();">

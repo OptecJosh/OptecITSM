@@ -228,7 +228,6 @@ $path_prefix = '../../';
         <div class="drill-modal">
             <div class="drill-header">
                 <h3 id="drillTitle">&hellip;<span class="drill-count" id="drillCount"></span></h3>
-                <button type="button" class="drill-close" onclick="closeDrillModal()">&times;</button>
             </div>
             <div class="drill-body" id="drillBody">
                 <div class="drill-loading">Loading&hellip;</div>

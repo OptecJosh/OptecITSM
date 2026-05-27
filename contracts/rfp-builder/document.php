@@ -426,7 +426,6 @@ $path_prefix  = '../../';
         <div class="modal-edit-shell">
             <div class="modal-edit-header">
                 <h3>Procurement context</h3>
-                <button class="close-x" onclick="closeContextModal()">&times;</button>
             </div>
             <div class="modal-edit-body">
                 <div class="form-row">
@@ -447,7 +446,6 @@ $path_prefix  = '../../';
         <div class="modal-edit-shell">
             <div class="modal-edit-header">
                 <h3 id="framingEditTitle">Edit framing section</h3>
-                <button class="close-x" onclick="closeFramingEdit()">&times;</button>
             </div>
             <div class="modal-edit-body">
                 <div class="form-row">
@@ -468,7 +466,6 @@ $path_prefix  = '../../';
         <div class="modal-edit-shell">
             <div class="modal-edit-header">
                 <h3 id="sectionEditTitle">Edit section</h3>
-                <button class="close-x" onclick="closeSectionEdit()">&times;</button>
             </div>
             <div class="modal-edit-body">
                 <div class="form-row">
@@ -489,7 +486,6 @@ $path_prefix  = '../../';
         <div class="modal-history-shell">
             <div class="modal-edit-header">
                 <h3 id="historyTitle">Version history</h3>
-                <button class="close-x" onclick="closeHistoryModal()">&times;</button>
             </div>
             <div class="modal-edit-body" id="historyBody">
                 <div class="loading" style="padding:40px 0;">Loading…</div>

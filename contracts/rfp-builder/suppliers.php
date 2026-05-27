@@ -190,7 +190,6 @@ $path_prefix  = '../../';
         <div class="modal-shell">
             <div class="modal-header">
                 <h3>Add supplier</h3>
-                <button class="close-x" onclick="closeInviteModal()">&times;</button>
             </div>
             <div class="modal-tabs">
                 <button class="modal-tab active" id="tabExisting" onclick="setInviteTab('existing')">Pick existing</button>

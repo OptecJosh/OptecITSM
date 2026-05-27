@@ -274,7 +274,6 @@ if (count($_um_parts) > 1) {
     <div class="ss-modal-box">
         <div class="ss-modal-header">
             My Account
-            <button class="ss-modal-close" onclick="ssCloseAccountModal()">&times;</button>
         </div>
         <div class="ss-modal-body">
             <div id="ssAcctMsg" class="ss-msg"></div>
@@ -307,6 +306,9 @@ if (count($_um_parts) > 1) {
                 <button class="ss-btn ss-btn-primary" id="ssPwSaveBtn" onclick="ssSavePassword()">Change</button>
             </div>
         </div>
+        <div class="ss-modal-footer">
+            <button class="ss-btn ss-btn-secondary" onclick="ssCloseAccountModal()">Close</button>
+        </div>
     </div>
 </div>
 
@@ -315,11 +317,13 @@ if (count($_um_parts) > 1) {
     <div class="ss-modal-box">
         <div class="ss-modal-header">
             Multi-Factor Authentication
-            <button class="ss-modal-close" onclick="ssCloseMfaModal()">&times;</button>
         </div>
         <div class="ss-modal-body">
             <div id="ssMfaMsg" class="ss-msg"></div>
             <div id="ssMfaContent">Loading...</div>
+        </div>
+        <div class="ss-modal-footer">
+            <button class="ss-btn ss-btn-secondary" onclick="ssCloseMfaModal()">Close</button>
         </div>
     </div>
 </div>

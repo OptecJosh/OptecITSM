@@ -271,6 +271,10 @@ $path_prefix  = '../../';
             min-height: 0; /* required so canvas inside doesn't blow out */
         }
         .spider-body canvas { max-width: 100%; max-height: 100%; }
+        .spider-footer {
+            display: flex; justify-content: flex-end; gap: 10px;
+            padding: 12px 24px; border-top: 1px solid #eee; background: #fff;
+        }
         .spider-empty {
             color: #999; font-size: 14px; font-style: italic; text-align: center;
         }
@@ -356,13 +360,15 @@ $path_prefix  = '../../';
         <div class="spider-modal">
             <div class="spider-header">
                 <h3 id="spiderTitle">Score by category</h3>
-                <button class="close-x" onclick="closeSpiderModal()">&times;</button>
             </div>
             <div class="spider-body">
                 <canvas id="spiderCanvas"></canvas>
                 <div id="spiderEmpty" class="spider-empty" style="display:none;">
                     No scores yet — score a few requirements and the chart will fill in.
                 </div>
+            </div>
+            <div class="spider-footer">
+                <button class="btn btn-secondary" onclick="closeSpiderModal()">Close</button>
             </div>
         </div>
     </div>

@@ -582,10 +582,7 @@ $translationNamespaces = ['common', 'tickets'];
         <!-- ===== Breach Notification rule modal ===== -->
         <div id="slaNotifModal" class="modal">
             <div class="modal-content" style="max-width:640px;">
-                <div class="modal-header">
-                    <h3 id="slaNotifModalTitle">Add notification rule</h3>
-                    <span class="close" onclick="closeSlaNotifModal()">&times;</span>
-                </div>
+                <div class="modal-header" id="slaNotifModalTitle">Add notification rule</div>
                 <div class="modal-body">
                     <input type="hidden" id="slaNotifId" value="">
 

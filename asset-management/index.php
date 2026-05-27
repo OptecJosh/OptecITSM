@@ -906,7 +906,6 @@ $path_prefix = '../';
         <div class="modal-content">
             <div class="modal-header">
                 <span>Assign User to Asset</span>
-                <button class="modal-close" onclick="closeAssignModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
@@ -929,7 +928,6 @@ $path_prefix = '../';
         <div class="modal-content modal-wide">
             <div class="modal-header">
                 <span>Asset History</span>
-                <button class="modal-close" onclick="closeHistoryModal()">&times;</button>
             </div>
             <div class="modal-body" id="historyModalBody">
                 <div class="loading"><div class="spinner"></div></div>

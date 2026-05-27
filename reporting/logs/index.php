@@ -342,10 +342,12 @@ $path_prefix = '../../';
         <div class="modal-content">
             <div class="modal-header">
                 <h3>Log Details (JSON)</h3>
-                <button class="modal-close" onclick="closeJsonModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <pre class="json-display" id="jsonContent"></pre>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeJsonModal()">Close</button>
             </div>
         </div>
     </div>

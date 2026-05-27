@@ -151,6 +151,10 @@ $path_prefix = '../../';
             white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
             font-size: 13px; line-height: 1.5; color: #333; background: #fafafa;
         }
+        .modal-footer {
+            display: flex; justify-content: flex-end; gap: 10px;
+            padding: 12px 24px; border-top: 1px solid #eee; background: #fff;
+        }
 
         .alert-info {
             background: #fff7ed; border-left: 4px solid #f59e0b;
@@ -239,10 +243,12 @@ $path_prefix = '../../';
                     <h3 id="modalTitle">Extracted text</h3>
                     <div class="modal-meta" id="modalMeta">-</div>
                 </div>
-                <button class="modal-close" onclick="closeTextModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <pre id="modalText">Loading...</pre>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeTextModal()">Close</button>
             </div>
         </div>
     </div>

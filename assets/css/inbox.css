@@ -1959,6 +1959,32 @@ body.ticket-popout .ticket-toolbar {
     margin-bottom: 20px;
 }
 
+/* Grouped panel — a grey card around a settings sub-section so each one
+   visually stands alone. Used by the Tickets > Settings > SLA tab and any
+   future settings tab that groups several distinct sub-sections vertically. */
+.settings-group {
+    background: #fafafa;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 24px;
+}
+.settings-group:last-child {
+    margin-bottom: 0;
+}
+.settings-group > h3:first-child {
+    margin-top: 0;
+}
+.settings-group > .section-header {
+    margin-top: 0;
+    margin-bottom: 16px;
+}
+/* h3 sitting next to an Add button inside a section-header shouldn't push
+   the header taller — kill the default block margin. */
+.settings-group > .section-header > h3 {
+    margin: 0;
+}
+
 .section-header h2 {
     font-size: 22px;
     color: #333;

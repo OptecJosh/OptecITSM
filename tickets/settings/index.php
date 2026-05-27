@@ -378,8 +378,8 @@ $translationNamespaces = ['common', 'tickets'];
             </p>
 
             <!-- ===== Global SLA settings ===== -->
-            <div class="settings-group" style="background:#fafafa;border:1px solid #e0e0e0;border-radius:6px;padding:20px;margin-bottom:30px;">
-                <h3 style="margin-top:0;">Global settings</h3>
+            <div class="settings-group">
+                <h3>Global settings</h3>
                 <form id="slaGlobalForm" style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
                     <div class="form-group" style="grid-column:span 2;">
                         <label for="slaEnforceFrom">Enforce SLAs from</label>
@@ -449,7 +449,7 @@ $translationNamespaces = ['common', 'tickets'];
             </div>
 
             <!-- ===== SLA Targets per priority ===== -->
-            <div class="settings-group" style="margin-bottom:30px;">
+            <div class="settings-group">
                 <h3>SLA targets per priority</h3>
                 <p style="color:#666;margin-bottom:14px;">Response and resolution times for each ticket priority. Times are in minutes (60 = 1 hour, 240 = 4 hours, 1440 = 1 day). The calendar determines which business hours the clock ticks against. Leave blank to skip that target.</p>
                 <table>
@@ -471,7 +471,7 @@ $translationNamespaces = ['common', 'tickets'];
             <!-- ===== Business Calendars ===== -->
             <div class="settings-group">
                 <div class="section-header">
-                    <h3 style="margin:0;">Business calendars</h3>
+                    <h3>Business calendars</h3>
                     <button class="add-btn" onclick="openSlaCalendarModal()"><?php echo htmlspecialchars(t('common.add')); ?></button>
                 </div>
                 <p style="color:#666;margin-bottom:14px;">Define working hours, timezones, and holiday lists. Calendars are referenced by SLA targets (above) and by individual priorities. One calendar is the default for new priorities.</p>
@@ -495,7 +495,7 @@ $translationNamespaces = ['common', 'tickets'];
             <!-- ===== Breach Notifications ===== -->
             <div class="settings-group">
                 <div class="section-header">
-                    <h3 style="margin:0;">Breach notifications</h3>
+                    <h3>Breach notifications</h3>
                     <button class="add-btn" onclick="openSlaNotifModal()"><?php echo htmlspecialchars(t('common.add')); ?></button>
                 </div>
 
@@ -550,7 +550,7 @@ $translationNamespaces = ['common', 'tickets'];
             <!-- ===== Cron Activity ===== -->
             <div class="settings-group">
                 <div class="section-header">
-                    <h3 style="margin:0;">Cron activity</h3>
+                    <h3>Cron activity</h3>
                     <button class="add-btn" onclick="loadSlaCronRuns()" title="Refresh">&#x21bb;</button>
                 </div>
                 <p style="color:#666;margin-bottom:14px;">

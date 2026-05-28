@@ -18,7 +18,7 @@ $translationNamespaces = ['common', 'tasks'];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('tasks.title') . ' ' . t('tasks.nav.calendar')); ?></title>
     <link rel="stylesheet" href="../../assets/css/inbox.css">
-    <link rel="stylesheet" href="../../assets/css/tasks.css?v=11">
+    <link rel="stylesheet" href="../../assets/css/tasks.css?v=12">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <script src="../../assets/js/i18n.js"></script>
 </head>
@@ -58,6 +58,14 @@ $translationNamespaces = ['common', 'tasks'];
                 <div class="sidebar-label"><?php echo htmlspecialchars(t('tasks.sidebar.legend')); ?></div>
                 <div class="cal-legend" id="calLegend"></div>
             </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-label"><?php echo htmlspecialchars(t('tasks.calendar.span_mode')); ?></div>
+                <div class="cal-mode-hint">
+                    <span id="calModeHint"></span>
+                    <a href="../settings/#calendar"><?php echo htmlspecialchars(t('tasks.calendar.change')); ?></a>
+                </div>
+            </div>
         </div>
 
         <!-- Main content -->
@@ -70,13 +78,14 @@ $translationNamespaces = ['common', 'tasks'];
                         <button class="cal-nav-btn cal-nav-arrow" onclick="calNext()" title="<?php echo htmlspecialchars(t('tasks.calendar.next')); ?>">&rsaquo;</button>
                         <h2 id="calTitle">&nbsp;</h2>
                     </div>
-                    <div class="cal-mode-hint">
-                        <span id="calModeHint"></span>
-                        <a href="../settings/#calendar"><?php echo htmlspecialchars(t('tasks.calendar.change')); ?></a>
+                    <div class="view-toggle">
+                        <button class="view-btn active" data-view="month" onclick="setView('month')"><?php echo htmlspecialchars(t('tasks.calendar.view_month')); ?></button>
+                        <button class="view-btn" data-view="week" onclick="setView('week')"><?php echo htmlspecialchars(t('tasks.calendar.view_week')); ?></button>
+                        <button class="view-btn" data-view="day" onclick="setView('day')"><?php echo htmlspecialchars(t('tasks.calendar.view_day')); ?></button>
                     </div>
                 </div>
-                <div class="cal-wrap">
-                    <div class="cal-weekdays">
+                <div class="cal-wrap" id="calWrap">
+                    <div class="cal-weekdays" id="calWeekdays">
                         <div><?php echo htmlspecialchars(t('tasks.calendar.mon')); ?></div>
                         <div><?php echo htmlspecialchars(t('tasks.calendar.tue')); ?></div>
                         <div><?php echo htmlspecialchars(t('tasks.calendar.wed')); ?></div>
@@ -93,6 +102,6 @@ $translationNamespaces = ['common', 'tasks'];
         </div>
     </div>
     <script>window.API_BASE = '../../api/tasks/';</script>
-    <script src="../../assets/js/tasks-calendar.js?v=4"></script>
+    <script src="../../assets/js/tasks-calendar.js?v=5"></script>
 </body>
 </html>

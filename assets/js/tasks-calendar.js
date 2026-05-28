@@ -14,6 +14,7 @@ let viewDate = new Date();
 viewDate.setHours(0, 0, 0, 0);
 viewDate.setDate(1);
 
+let viewMode = 'month';  // 'month' | 'week' | 'day'
 let currentFilter = 'my';
 let currentFilterTeamId = null;
 let currentFilterAnalystId = null;
@@ -115,36 +116,48 @@ function setAnalystFilter(analystId) {
     loadTasks();
 }
 
-// ── Month navigation ───────────────────────────────────────────────
-function calPrev() { viewDate.setMonth(viewDate.getMonth() - 1); renderCalendar(); }
-function calNext() { viewDate.setMonth(viewDate.getMonth() + 1); renderCalendar(); }
+// ── Navigation ─────────────────────────────────────────────────────
+function calPrev() {
+    if (viewMode === 'month') viewDate.setMonth(viewDate.getMonth() - 1);
+    else if (viewMode === 'week') viewDate.setDate(viewDate.getDate() - 7);
+    else viewDate.setDate(viewDate.getDate() - 1);
+    renderCalendar();
+}
+function calNext() {
+    if (viewMode === 'month') viewDate.setMonth(viewDate.getMonth() + 1);
+    else if (viewMode === 'week') viewDate.setDate(viewDate.getDate() + 7);
+    else viewDate.setDate(viewDate.getDate() + 1);
+    renderCalendar();
+}
 function calToday() {
     const now = new Date();
-    viewDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    now.setHours(0, 0, 0, 0);
+    viewDate = (viewMode === 'month')
+        ? new Date(now.getFullYear(), now.getMonth(), 1)
+        : now;
+    renderCalendar();
+}
+
+function setView(mode) {
+    viewMode = mode;
+    document.querySelectorAll('.view-btn').forEach(b =>
+        b.classList.toggle('active', b.dataset.view === mode));
+    // Month view anchors to the 1st; week/day anchors to the day itself.
+    if (mode === 'month') viewDate.setDate(1);
     renderCalendar();
 }
 
 // ── Rendering ──────────────────────────────────────────────────────
 function renderCalendar() {
-    const grid = document.getElementById('calGrid');
-    const year = viewDate.getFullYear();
-    const month = viewDate.getMonth();
-
-    document.getElementById('calTitle').textContent =
-        viewDate.toLocaleDateString(UI_LOCALE, { month: 'long', year: 'numeric' });
     document.getElementById('calModeHint').textContent =
         window.t('tasks.calendar.mode_hint', { mode: window.t('tasks.calendar.mode_' + spanMode) });
+    if (viewMode === 'week') return renderWeek();
+    if (viewMode === 'day')  return renderDay();
+    renderMonth();
+}
 
-    // Grid runs from the Monday on/before the 1st to the Sunday on/after the last
-    const first = new Date(year, month, 1);
-    const gridStart = new Date(first);
-    gridStart.setDate(first.getDate() - mondayCol(first));
-    const last = new Date(year, month + 1, 0);
-    const gridEnd = new Date(last);
-    gridEnd.setDate(last.getDate() + (6 - mondayCol(last)));
-    const weekCount = (Math.round((gridEnd - gridStart) / 86400000) + 1) / 7;
-
-    // Resolve each task to the date range it occupies
+// Resolve each task to the date range it occupies, respecting span mode.
+function placedTasks() {
     const placed = [];
     tasks.forEach(t => {
         if (!t.due_date) return;
@@ -153,71 +166,176 @@ function renderCalendar() {
         if (spanMode !== 'deadline' && t.start_date && t.start_date <= end) start = t.start_date;
         placed.push({ task: t, start, end });
     });
+    return placed;
+}
 
+// Render one week's day cells + bars. monthCtx is the month number to dim
+// out-of-month cells against (or null in week view, where no dimming applies).
+function renderWeekRow(weekStart, todayStr, placed, monthCtx) {
+    const weekStartStr = ymd(weekStart);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    const weekEndStr = ymd(weekEnd);
+
+    const intervals = [];
+    placed.forEach(p => {
+        if (p.end < weekStartStr || p.start > weekEndStr) return;
+        const segStart = p.start < weekStartStr ? weekStartStr : p.start;
+        const segEnd = p.end > weekEndStr ? weekEndStr : p.end;
+        intervals.push({
+            p,
+            startCol: dayDiff(weekStartStr, segStart),
+            endCol: dayDiff(weekStartStr, segEnd),
+            contLeft: p.start < weekStartStr,
+            contRight: p.end > weekEndStr
+        });
+    });
+
+    intervals.sort((a, b) =>
+        a.startCol - b.startCol || (b.endCol - b.startCol) - (a.endCol - a.startCol));
+    const laneEnd = [];
+    intervals.forEach(iv => {
+        let lane = 0;
+        while (lane < laneEnd.length && laneEnd[lane] >= iv.startCol) lane++;
+        laneEnd[lane] = iv.endCol;
+        iv.lane = lane;
+    });
+
+    let cells = '';
+    for (let c = 0; c < 7; c++) {
+        const d = new Date(weekStart);
+        d.setDate(weekStart.getDate() + c);
+        const ds = ymd(d);
+        const cls = [
+            'cal-day',
+            (monthCtx !== null && d.getMonth() !== monthCtx) ? 'cal-out' : '',
+            ds === todayStr ? 'cal-today' : '',
+            c >= 5 ? 'cal-weekend' : ''
+        ].filter(Boolean).join(' ');
+        cells += `<div class="${cls}"><span class="cal-daynum">${d.getDate()}</span></div>`;
+    }
+
+    let bars = '';
+    intervals.forEach(iv => { bars += renderBars(iv); });
+
+    return { cells, bars, lanes: laneEnd.length };
+}
+
+function renderMonth() {
+    const grid = document.getElementById('calGrid');
+    document.getElementById('calWeekdays').style.display = '';
+    grid.className = 'cal-grid';
+
+    const year = viewDate.getFullYear();
+    const month = viewDate.getMonth();
+
+    document.getElementById('calTitle').textContent =
+        viewDate.toLocaleDateString(UI_LOCALE, { month: 'long', year: 'numeric' });
+
+    const first = new Date(year, month, 1);
+    const gridStart = new Date(first);
+    gridStart.setDate(first.getDate() - mondayCol(first));
+    const last = new Date(year, month + 1, 0);
+    const gridEnd = new Date(last);
+    gridEnd.setDate(last.getDate() + (6 - mondayCol(last)));
+    const weekCount = (Math.round((gridEnd - gridStart) / 86400000) + 1) / 7;
+
+    const placed = placedTasks();
     const todayStr = ymd(new Date());
     let html = '';
 
     for (let w = 0; w < weekCount; w++) {
         const weekStart = new Date(gridStart);
         weekStart.setDate(gridStart.getDate() + w * 7);
-        const weekStartStr = ymd(weekStart);
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 6);
-        const weekEndStr = ymd(weekEnd);
-
-        // Tasks intersecting this week → column intervals
-        const intervals = [];
-        placed.forEach(p => {
-            if (p.end < weekStartStr || p.start > weekEndStr) return;
-            const segStart = p.start < weekStartStr ? weekStartStr : p.start;
-            const segEnd = p.end > weekEndStr ? weekEndStr : p.end;
-            intervals.push({
-                p,
-                startCol: dayDiff(weekStartStr, segStart),
-                endCol: dayDiff(weekStartStr, segEnd),
-                contLeft: p.start < weekStartStr,
-                contRight: p.end > weekEndStr
-            });
-        });
-
-        // Greedy lane allocation so bars never overlap
-        intervals.sort((a, b) =>
-            a.startCol - b.startCol || (b.endCol - b.startCol) - (a.endCol - a.startCol));
-        const laneEnd = [];
-        intervals.forEach(iv => {
-            let lane = 0;
-            while (lane < laneEnd.length && laneEnd[lane] >= iv.startCol) lane++;
-            laneEnd[lane] = iv.endCol;
-            iv.lane = lane;
-        });
-
-        // Day cells
-        let cells = '';
-        for (let c = 0; c < 7; c++) {
-            const d = new Date(weekStart);
-            d.setDate(weekStart.getDate() + c);
-            const ds = ymd(d);
-            const cls = [
-                'cal-day',
-                d.getMonth() === month ? '' : 'cal-out',
-                ds === todayStr ? 'cal-today' : '',
-                c >= 5 ? 'cal-weekend' : ''
-            ].filter(Boolean).join(' ');
-            cells += `<div class="${cls}"><span class="cal-daynum">${d.getDate()}</span></div>`;
-        }
-
-        // Bars
-        let bars = '';
-        intervals.forEach(iv => { bars += renderBars(iv); });
-
-        const weekHeight = Math.max(96, 28 + laneEnd.length * 24 + 6);
+        const row = renderWeekRow(weekStart, todayStr, placed, month);
+        const weekHeight = Math.max(96, 28 + row.lanes * 24 + 6);
         html += `<div class="cal-week" style="min-height:${weekHeight}px">
-            <div class="cal-week-days">${cells}</div>
-            <div class="cal-week-bars">${bars}</div>
+            <div class="cal-week-days">${row.cells}</div>
+            <div class="cal-week-bars">${row.bars}</div>
         </div>`;
     }
 
     grid.innerHTML = html;
+}
+
+function renderWeek() {
+    const grid = document.getElementById('calGrid');
+    document.getElementById('calWeekdays').style.display = '';
+    grid.className = 'cal-grid cal-week-view';
+
+    // Monday of the week containing viewDate
+    const weekStart = new Date(viewDate);
+    weekStart.setDate(viewDate.getDate() - mondayCol(viewDate));
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+
+    // Title — "5 – 11 May 2026" or "28 Apr – 4 May 2026"
+    const sameMonth = weekStart.getMonth() === weekEnd.getMonth();
+    const sameYear = weekStart.getFullYear() === weekEnd.getFullYear();
+    const startLabel = weekStart.toLocaleDateString(UI_LOCALE,
+        sameMonth ? { day: 'numeric' } : (sameYear ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: 'numeric' }));
+    const endLabel = weekEnd.toLocaleDateString(UI_LOCALE,
+        { day: 'numeric', month: 'short', year: 'numeric' });
+    document.getElementById('calTitle').textContent = `${startLabel} – ${endLabel}`;
+
+    const placed = placedTasks();
+    const todayStr = ymd(new Date());
+    const row = renderWeekRow(weekStart, todayStr, placed, null);
+
+    grid.innerHTML = `<div class="cal-week">
+        <div class="cal-week-days">${row.cells}</div>
+        <div class="cal-week-bars">${row.bars}</div>
+    </div>`;
+}
+
+function renderDay() {
+    const grid = document.getElementById('calGrid');
+    document.getElementById('calWeekdays').style.display = 'none';
+    grid.className = '';
+
+    document.getElementById('calTitle').textContent =
+        viewDate.toLocaleDateString(UI_LOCALE,
+            { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+    const dayStr = ymd(viewDate);
+    const placed = placedTasks().filter(p => p.start <= dayStr && dayStr <= p.end);
+
+    // Sort: open before done, then by title
+    placed.sort((a, b) => {
+        const ad = Number(a.task.status_is_closed) === 1 ? 1 : 0;
+        const bd = Number(b.task.status_is_closed) === 1 ? 1 : 0;
+        return ad - bd || a.task.title.localeCompare(b.task.title);
+    });
+
+    if (!placed.length) {
+        grid.innerHTML = `<div class="cal-day-list"><div class="cal-day-empty">${esc(window.t('tasks.calendar.day_empty'))}</div></div>`;
+        return;
+    }
+
+    const rows = placed.map(p => {
+        const t = p.task;
+        const done = Number(t.status_is_closed) === 1;
+        const colour = t.status_colour || '#6b7280';
+        const meta = [];
+        if (t.status_name) meta.push(esc(t.status_name));
+        if (t.analyst_name) meta.push(esc(t.analyst_name));
+        if (p.start !== p.end) meta.push(esc(fmt(p.start) + ' → ' + fmt(p.end)));
+        else if (t.due_date) meta.push(esc(fmt(t.due_date)));
+        const tagDots = (surfaceTags && t.tags && t.tags.length)
+            ? `<span class="cal-day-task-tags">${t.tags.slice(0, 4).map(tg =>
+                `<span class="mini-tag-dot" style="background:${esc(tg.colour || '#6b7280')}"></span>`).join('')}</span>`
+            : '';
+        return `<div class="cal-day-task${done ? ' cal-day-task-done' : ''}" onclick="openTask(${t.id})">
+            <span class="cal-day-task-dot" style="background:${esc(colour)}"></span>
+            <div class="cal-day-task-body">
+                <div class="cal-day-task-title">${esc(t.title)}</div>
+                ${meta.length ? `<div class="cal-day-task-meta">${meta.join(' · ')}</div>` : ''}
+            </div>
+            ${tagDots}
+        </div>`;
+    }).join('');
+
+    grid.innerHTML = `<div class="cal-day-list">${rows}</div>`;
 }
 
 function renderBars(iv) {

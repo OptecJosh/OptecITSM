@@ -18,7 +18,7 @@ $translationNamespaces = ['common', 'tasks'];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('tasks.title') . ' ' . t('tasks.nav.timeline')); ?></title>
     <link rel="stylesheet" href="../../assets/css/inbox.css">
-    <link rel="stylesheet" href="../../assets/css/tasks.css?v=13">
+    <link rel="stylesheet" href="../../assets/css/tasks.css?v=14">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <script src="../../assets/js/i18n.js"></script>
 </head>
@@ -79,7 +79,32 @@ $translationNamespaces = ['common', 'tasks'];
             </div>
         </div>
     </div>
+
+    <!-- Bar right-click context menu -->
+    <div class="ctx-menu" id="tlCtxMenu">
+        <div class="ctx-item ctx-has-sub">
+            <span class="ctx-item-label"><?php echo htmlspecialchars(t('tasks.context.assign_analyst')); ?></span>
+            <span class="ctx-arrow">&rsaquo;</span>
+            <div class="ctx-submenu" id="tlCtxAnalyst"></div>
+        </div>
+        <div class="ctx-item ctx-has-sub">
+            <span class="ctx-item-label"><?php echo htmlspecialchars(t('tasks.context.assign_team')); ?></span>
+            <span class="ctx-arrow">&rsaquo;</span>
+            <div class="ctx-submenu" id="tlCtxTeam"></div>
+        </div>
+        <div class="ctx-item ctx-has-sub">
+            <span class="ctx-item-label"><?php echo htmlspecialchars(t('tasks.context.change_status')); ?></span>
+            <span class="ctx-arrow">&rsaquo;</span>
+            <div class="ctx-submenu" id="tlCtxStatus"></div>
+        </div>
+        <div class="ctx-item ctx-has-sub">
+            <span class="ctx-item-label"><?php echo htmlspecialchars(t('tasks.context.change_priority')); ?></span>
+            <span class="ctx-arrow">&rsaquo;</span>
+            <div class="ctx-submenu" id="tlCtxPriority"></div>
+        </div>
+    </div>
+
     <script>window.API_BASE = '../../api/tasks/';</script>
-    <script src="../../assets/js/tasks-timeline.js?v=6"></script>
+    <script src="../../assets/js/tasks-timeline.js?v=7"></script>
 </body>
 </html>

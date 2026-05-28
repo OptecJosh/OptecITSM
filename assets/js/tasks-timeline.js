@@ -23,14 +23,26 @@ let currentFilter = 'my';
 let currentFilterTeamId = null;
 let currentFilterAnalystId = null;
 let tasks = [];
+let analysts = [];
+let teams = [];
+let statuses = [];
+let priorities = [];
 let groupBy = 'analyst';
 let surfaceTags = false;
 
+// Drag-to-edit state — set on mousedown over a bar, cleared on mouseup
+let dragState = null;
+let currentDayW = COMFORT_DAY_W;
+
+// Right-click context-menu state
+let ctxTaskId = null;
+
 // ── Init ───────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-    await loadDropdowns();
+    await Promise.all([loadDropdowns(), loadStatuses(), loadPriorities()]);
     await loadSettings();
     loadTasks();
+    initTlContextMenu();
 
     // Re-fit when the viewport changes
     let resizeTimer = null;
@@ -56,16 +68,32 @@ async function loadDropdowns() {
             fetch(API_BASE + 'list.php?teams=1').then(r => r.json())
         ]);
         if (aRes.success) {
+            analysts = aRes.analysts;
             document.getElementById('analystFilter').innerHTML =
                 '<option value="">' + esc(window.t('tasks.filter.all_analysts')) + '</option>' +
-                aRes.analysts.map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('');
+                analysts.map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('');
         }
         if (tRes.success) {
+            teams = tRes.teams;
             document.getElementById('teamFilter').innerHTML =
                 '<option value="">' + esc(window.t('tasks.filter.all_teams')) + '</option>' +
-                tRes.teams.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
+                teams.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
         }
     } catch (e) { console.error('Failed to load dropdowns:', e); }
+}
+
+async function loadStatuses() {
+    try {
+        const d = await fetch(API_BASE + 'get_task_statuses.php').then(r => r.json());
+        if (d.success) statuses = (d.statuses || []).filter(s => s.is_active);
+    } catch (e) { console.error('Failed to load statuses:', e); }
+}
+
+async function loadPriorities() {
+    try {
+        const d = await fetch(API_BASE + 'get_task_priorities.php').then(r => r.json());
+        if (d.success) priorities = (d.priorities || []).filter(p => p.is_active);
+    } catch (e) { console.error('Failed to load priorities:', e); }
 }
 
 async function loadTasks() {
@@ -156,6 +184,9 @@ function render() {
     const trackW = rangeDays * dayW;
     const innerW = LABEL_W + trackW;
 
+    // Stash dayW so the drag handlers can convert pixel-delta to day-delta
+    currentDayW = dayW;
+
     document.getElementById('tlRange').textContent =
         fmt(rangeStartStr) + ' – ' + fmt(ymd(rangeEnd));
 
@@ -215,9 +246,14 @@ function render() {
                 </div>
                 <div class="tl-row-track" style="width:${trackW}px">
                     <div class="tl-bar${done ? ' tl-bar-done' : ''}"
+                         data-taskid="${t.id}"
+                         data-start="${esc(it.start)}" data-end="${esc(it.end)}"
                          style="left:${left}px;width:${width}px;background:${colour}"
-                         title="${tip}" onclick="openTask(${t.id})">
+                         title="${tip}"
+                         onmousedown="onBarMouseDown(event)">
+                        <div class="tl-bar-handle tl-bar-handle-l"></div>
                         <span class="tl-bar-label">${esc(t.title)}</span>${tagDots}
+                        <div class="tl-bar-handle tl-bar-handle-r"></div>
                     </div>
                 </div>
             </div>`;
@@ -311,4 +347,187 @@ function esc(text) {
     const div = document.createElement('div');
     div.textContent = String(text);
     return div.innerHTML;
+}
+
+function escAttr(value) {
+    return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+function addDayStr(ds, n) { return ymd(addDays(ds, n)); }
+
+// ── Drag-to-edit dates ─────────────────────────────────────────────
+function onBarMouseDown(e) {
+    if (e.button !== 0) return;  // left button only — right-click goes through to the ctx menu
+    const bar = e.currentTarget;
+    const handleEl = e.target.closest('.tl-bar-handle');
+    const mode = handleEl
+        ? (handleEl.classList.contains('tl-bar-handle-l') ? 'resize-l' : 'resize-r')
+        : 'move';
+
+    dragState = {
+        taskId: parseInt(bar.dataset.taskid, 10),
+        mode,
+        startX: e.clientX,
+        bar,
+        origStart: bar.dataset.start,
+        origEnd:   bar.dataset.end,
+        origLeft:  parseFloat(bar.style.left),
+        origWidth: parseFloat(bar.style.width),
+        moved: false
+    };
+
+    bar.classList.add('tl-bar-dragging');
+    document.addEventListener('mousemove', onDragMove);
+    document.addEventListener('mouseup',   onDragUp);
+    e.preventDefault();
+}
+
+function onDragMove(e) {
+    if (!dragState) return;
+    const dx = e.clientX - dragState.startX;
+    if (Math.abs(dx) > 3) dragState.moved = true;
+
+    const snap = Math.round(dx / currentDayW) * currentDayW;
+
+    if (dragState.mode === 'move') {
+        dragState.bar.style.left = (dragState.origLeft + snap) + 'px';
+    } else if (dragState.mode === 'resize-l') {
+        // Don't let the left edge cross the right edge (keep min 1 day wide)
+        const maxShift = dragState.origWidth - currentDayW;
+        const shift = Math.min(maxShift, snap);
+        dragState.bar.style.left  = (dragState.origLeft + shift) + 'px';
+        dragState.bar.style.width = (dragState.origWidth - shift) + 'px';
+    } else if (dragState.mode === 'resize-r') {
+        const newWidth = Math.max(currentDayW, dragState.origWidth + snap);
+        dragState.bar.style.width = newWidth + 'px';
+    }
+}
+
+async function onDragUp(e) {
+    document.removeEventListener('mousemove', onDragMove);
+    document.removeEventListener('mouseup',   onDragUp);
+    if (!dragState) return;
+    const ds = dragState;
+    dragState = null;
+    ds.bar.classList.remove('tl-bar-dragging');
+
+    // No movement → treat as a click: open the task
+    if (!ds.moved) { openTask(ds.taskId); return; }
+
+    const dayDelta = Math.round((e.clientX - ds.startX) / currentDayW);
+    let newStart = ds.origStart, newEnd = ds.origEnd;
+    let payload = { id: ds.taskId };
+
+    if (ds.mode === 'move') {
+        newStart = addDayStr(ds.origStart, dayDelta);
+        newEnd   = addDayStr(ds.origEnd,   dayDelta);
+        payload.start_date = newStart;
+        payload.due_date   = newEnd;
+    } else if (ds.mode === 'resize-l') {
+        newStart = addDayStr(ds.origStart, dayDelta);
+        if (newStart > ds.origEnd) newStart = ds.origEnd;
+        payload.start_date = newStart;
+    } else if (ds.mode === 'resize-r') {
+        newEnd = addDayStr(ds.origEnd, dayDelta);
+        if (newEnd < ds.origStart) newEnd = ds.origStart;
+        payload.due_date = newEnd;
+    }
+
+    if (newStart === ds.origStart && newEnd === ds.origEnd) return;
+
+    try {
+        await fetch(API_BASE + 'save.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        loadTasks();
+    } catch (err) { console.error(err); }
+}
+
+// ── Right-click context menu ───────────────────────────────────────
+function initTlContextMenu() {
+    document.addEventListener('contextmenu', e => {
+        const bar = e.target.closest('.tl-bar');
+        if (bar) openTlCtx(e, parseInt(bar.dataset.taskid, 10));
+        else closeTlCtx();
+    });
+    document.addEventListener('click', closeTlCtx);
+    document.addEventListener('scroll', closeTlCtx, true);
+    window.addEventListener('resize', closeTlCtx);
+
+    document.getElementById('tlCtxMenu').addEventListener('click', e => {
+        const opt = e.target.closest('.ctx-sub-item');
+        if (!opt) return;
+        const field = opt.dataset.field;
+        let value = opt.dataset.value;
+        if (field === 'assigned_analyst_id' || field === 'assigned_team_id') {
+            value = value === '' ? null : parseInt(value, 10);
+        }
+        ctxSetField(field, value);
+    });
+}
+
+function openTlCtx(e, taskId) {
+    e.preventDefault();
+    const t = tasks.find(x => x.id === taskId);
+    if (!t) return;
+    ctxTaskId = taskId;
+    buildTlCtxSubmenus(t);
+
+    const menu = document.getElementById('tlCtxMenu');
+    menu.style.display = 'block';
+    const mw = menu.offsetWidth, mh = menu.offsetHeight;
+    const x = Math.min(e.clientX, window.innerWidth - mw - 6);
+    const y = Math.min(e.clientY, window.innerHeight - mh - 6);
+    menu.style.left = Math.max(6, x) + 'px';
+    menu.style.top  = Math.max(6, y) + 'px';
+    menu.classList.toggle('flip-sub',   e.clientX + mw + 190 > window.innerWidth);
+    menu.classList.toggle('flip-sub-v', e.clientY > window.innerHeight * 0.55);
+}
+
+function closeTlCtx() {
+    const menu = document.getElementById('tlCtxMenu');
+    if (menu) menu.style.display = 'none';
+    ctxTaskId = null;
+}
+
+function buildTlCtxSubmenus(t) {
+    const opt = (field, value, label, current, swatch) =>
+        `<div class="ctx-sub-item${current ? ' current' : ''}" data-field="${field}" data-value="${escAttr(value)}">
+            ${swatch || ''}<span class="ctx-sub-label">${esc(label)}</span>
+            ${current ? '<span class="ctx-check">✓</span>' : ''}
+        </div>`;
+    const swatch = c => `<span class="ctx-swatch" style="background:${escAttr(c || '#888')}"></span>`;
+
+    document.getElementById('tlCtxAnalyst').innerHTML =
+        opt('assigned_analyst_id', '', window.t('tasks.detail.unassigned'), !t.assigned_analyst_id) +
+        analysts.map(a => opt('assigned_analyst_id', a.id, a.name, t.assigned_analyst_id == a.id)).join('');
+
+    document.getElementById('tlCtxTeam').innerHTML =
+        opt('assigned_team_id', '', window.t('tasks.detail.no_team'), !t.assigned_team_id) +
+        teams.map(tm => opt('assigned_team_id', tm.id, tm.name, t.assigned_team_id == tm.id)).join('');
+
+    document.getElementById('tlCtxStatus').innerHTML =
+        statuses.map(s => opt('status', s.name, s.name, t.status === s.name, swatch(s.colour))).join('')
+        || `<div class="ctx-sub-empty">${esc(window.t('tasks.context.no_statuses'))}</div>`;
+
+    document.getElementById('tlCtxPriority').innerHTML =
+        priorities.map(p => opt('priority', p.name, p.name, t.priority === p.name, swatch(p.colour))).join('')
+        || `<div class="ctx-sub-empty">${esc(window.t('tasks.context.no_priorities'))}</div>`;
+}
+
+async function ctxSetField(field, value) {
+    const id = ctxTaskId;
+    closeTlCtx();
+    if (!id) return;
+    try {
+        await fetch(API_BASE + 'save.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, [field]: value })
+        });
+        loadTasks();
+    } catch (e) { console.error(e); }
 }

@@ -11,7 +11,9 @@ const LABEL_W = 220;
 const ROW_H = 36;
 const GROUP_H = 30;
 const HEADER_H = 48;
-const DAY_WIDTHS = [14, 22, 34, 52];
+const MIN_DAY_W = 8;       // below this, days overflow and the timeline scrolls horizontally
+const SHOW_NUM_W = 12;     // day-number text becomes illegible below this
+const SCROLLBAR_PAD = 14;  // reserve space so a vertical scrollbar doesn't trigger horizontal overflow
 const STATUS_ORDER = ['To Do', 'In Progress', 'Blocked', 'Done', 'Cancelled'];
 
 // Locale for date formatting — matches the page's i18n locale
@@ -23,7 +25,6 @@ let currentFilterTeamId = null;
 let currentFilterAnalystId = null;
 let tasks = [];
 let groupBy = 'analyst';
-let zoomIndex = 2;
 let surfaceTags = false;
 
 // ── Init ───────────────────────────────────────────────────────────
@@ -31,6 +32,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadDropdowns();
     await loadSettings();
     loadTasks();
+
+    // Re-fit when the viewport changes
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => { if (tasks.length) render(); }, 150);
+    });
 });
 
 async function loadSettings() {
@@ -109,17 +117,9 @@ function setAnalystFilter(analystId) {
 
 function setGroupBy(value) { groupBy = value; render(); }
 
-function zoom(dir) {
-    const next = zoomIndex + dir;
-    if (next < 0 || next >= DAY_WIDTHS.length) return;
-    zoomIndex = next;
-    render();
-}
-
 // ── Rendering ──────────────────────────────────────────────────────
 function render() {
     const host = document.getElementById('tlScroll');
-    const dayW = DAY_WIDTHS[zoomIndex];
 
     // Resolve each task to a [start, end] range
     const items = [];
@@ -148,6 +148,13 @@ function render() {
     const rangeEnd = addDays(maxStr, 4);
     const rangeStartStr = ymd(rangeStart);
     const rangeDays = dayDiff(rangeStartStr, ymd(rangeEnd)) + 1;
+
+    // Fit the day grid to whatever width is left after the row labels and a
+    // scrollbar reservation. Floor for tidy integer cells; clamp to MIN_DAY_W
+    // so very long ranges still render readably (scrolls horizontally then).
+    const available = host.clientWidth - LABEL_W - SCROLLBAR_PAD;
+    const dayW = Math.max(MIN_DAY_W, Math.floor(available / rangeDays));
+    const showDayNum = dayW >= SHOW_NUM_W;
     const trackW = rangeDays * dayW;
     const innerW = LABEL_W + trackW;
 
@@ -178,7 +185,7 @@ function render() {
             (d.getDay() === 0 || d.getDay() === 6) ? 'tl-weekend' : '',
             ds === todayStr ? 'tl-day-today' : ''
         ].filter(Boolean).join(' ');
-        dayCells += `<div class="${cls}" style="width:${dayW}px">${d.getDate()}</div>`;
+        dayCells += `<div class="${cls}" style="width:${dayW}px">${showDayNum ? d.getDate() : ''}</div>`;
     }
 
     // ── Body: grouped rows ──

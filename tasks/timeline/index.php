@@ -18,7 +18,7 @@ $translationNamespaces = ['common', 'tasks'];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('tasks.title') . ' ' . t('tasks.nav.timeline')); ?></title>
     <link rel="stylesheet" href="../../assets/css/inbox.css">
-    <link rel="stylesheet" href="../../assets/css/tasks.css?v=10">
+    <link rel="stylesheet" href="../../assets/css/tasks.css?v=13">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <script src="../../assets/js/i18n.js"></script>
 </head>
@@ -72,11 +72,6 @@ $translationNamespaces = ['common', 'tasks'];
                         <button class="cal-nav-btn cal-today-btn" onclick="scrollToToday()"><?php echo htmlspecialchars(t('tasks.timeline.today')); ?></button>
                         <span class="tl-range" id="tlRange"></span>
                     </div>
-                    <div class="tl-zoom">
-                        <span><?php echo htmlspecialchars(t('tasks.timeline.zoom')); ?></span>
-                        <button class="cal-nav-btn" onclick="zoom(-1)" title="<?php echo htmlspecialchars(t('tasks.timeline.zoom_out')); ?>">&minus;</button>
-                        <button class="cal-nav-btn" onclick="zoom(1)" title="<?php echo htmlspecialchars(t('tasks.timeline.zoom_in')); ?>">+</button>
-                    </div>
                 </div>
                 <div class="tl-scroll" id="tlScroll">
                     <div class="cal-loading"><?php echo htmlspecialchars(t('tasks.timeline.loading')); ?></div>
@@ -85,6 +80,6 @@ $translationNamespaces = ['common', 'tasks'];
         </div>
     </div>
     <script>window.API_BASE = '../../api/tasks/';</script>
-    <script src="../../assets/js/tasks-timeline.js?v=4"></script>
+    <script src="../../assets/js/tasks-timeline.js?v=5"></script>
 </body>
 </html>

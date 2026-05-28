@@ -18,7 +18,7 @@ $translationNamespaces = ['common', 'tasks'];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('tasks.title') . ' ' . t('tasks.nav.calendar')); ?></title>
     <link rel="stylesheet" href="../../assets/css/inbox.css">
-    <link rel="stylesheet" href="../../assets/css/tasks.css?v=10">
+    <link rel="stylesheet" href="../../assets/css/tasks.css?v=11">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <script src="../../assets/js/i18n.js"></script>
 </head>
@@ -65,9 +65,9 @@ $translationNamespaces = ['common', 'tasks'];
             <div class="cal-layout">
                 <div class="cal-toolbar">
                     <div class="cal-nav">
-                        <button class="cal-nav-btn" onclick="calPrev()" title="<?php echo htmlspecialchars(t('tasks.calendar.prev')); ?>">&lsaquo;</button>
                         <button class="cal-nav-btn cal-today-btn" onclick="calToday()"><?php echo htmlspecialchars(t('tasks.calendar.today')); ?></button>
-                        <button class="cal-nav-btn" onclick="calNext()" title="<?php echo htmlspecialchars(t('tasks.calendar.next')); ?>">&rsaquo;</button>
+                        <button class="cal-nav-btn cal-nav-arrow" onclick="calPrev()" title="<?php echo htmlspecialchars(t('tasks.calendar.prev')); ?>">&lsaquo;</button>
+                        <button class="cal-nav-btn cal-nav-arrow" onclick="calNext()" title="<?php echo htmlspecialchars(t('tasks.calendar.next')); ?>">&rsaquo;</button>
                         <h2 id="calTitle">&nbsp;</h2>
                     </div>
                     <div class="cal-mode-hint">

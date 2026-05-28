@@ -337,7 +337,7 @@ $path_prefix = '../../';
                     </div>
                 </form>
             </div>
-            <div class="modal-actions">
+            <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" onclick="closeClassModal()">Cancel</button>
                 <button type="button" class="btn btn-primary" onclick="saveClass()">Save</button>
             </div>
@@ -378,7 +378,7 @@ $path_prefix = '../../';
                     </tbody>
                 </table>
             </div>
-            <div class="modal-actions">
+            <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" onclick="closePropsModal()">Done</button>
             </div>
         </div>
@@ -437,7 +437,7 @@ $path_prefix = '../../';
                     </div>
                 </form>
             </div>
-            <div class="modal-actions">
+            <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" onclick="closePropertyModal()">Cancel</button>
                 <button type="button" class="btn btn-primary" onclick="saveProperty()">Save</button>
             </div>
@@ -483,7 +483,7 @@ $path_prefix = '../../';
                     </div>
                 </form>
             </div>
-            <div class="modal-actions">
+            <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" onclick="closeRelTypeModal()">Cancel</button>
                 <button type="button" class="btn btn-primary" onclick="saveRelType()">Save</button>
             </div>
@@ -550,7 +550,7 @@ $path_prefix = '../../';
                     </div>
                 </div>
             </div>
-            <div class="modal-actions" id="aiSuggestActions">
+            <div class="modal-footer" id="aiSuggestActions">
                 <button type="button" class="btn btn-secondary" id="aiSuggestSecondaryBtn" onclick="closeAiSuggestModal()">Cancel</button>
                 <button type="button" class="btn btn-primary" id="aiSuggestPrimaryBtn" onclick="aiPrimaryAction()">Continue</button>
             </div>

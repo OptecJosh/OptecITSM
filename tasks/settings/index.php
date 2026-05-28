@@ -240,58 +240,62 @@ $translationNamespaces = ['common', 'tasks'];
 
         <!-- Tags Tab -->
         <div class="tab-content" id="tags-tab">
-            <div class="section-header">
-                <h2><?php echo htmlspecialchars(t('tasks.settings.tags_heading')); ?></h2>
-                <button class="add-btn" onclick="openLookupModal('tag')"><?php echo htmlspecialchars(t('tasks.settings.add')); ?></button>
+            <div class="settings-group">
+                <div class="section-header">
+                    <h3><?php echo htmlspecialchars(t('tasks.settings.tags_heading')); ?></h3>
+                    <button class="add-btn" onclick="openLookupModal('tag')"><?php echo htmlspecialchars(t('tasks.settings.add')); ?></button>
+                </div>
+                <p style="color: #666; margin-bottom: 14px;"><?php echo htmlspecialchars(t('tasks.settings.tags_intro')); ?></p>
+                <table class="lookup-table">
+                    <thead><tr>
+                        <th><?php echo htmlspecialchars(t('tasks.settings.col_name')); ?></th>
+                        <th><?php echo htmlspecialchars(t('tasks.settings.col_colour')); ?></th>
+                        <th><?php echo htmlspecialchars(t('tasks.settings.col_order')); ?></th>
+                        <th><?php echo htmlspecialchars(t('tasks.settings.col_actions')); ?></th>
+                    </tr></thead>
+                    <tbody id="tags-list"><tr><td colspan="4" style="text-align:center;"><?php echo htmlspecialchars(t('tasks.settings.loading')); ?></td></tr></tbody>
+                </table>
             </div>
-            <p style="color: #666; margin-bottom: 16px;"><?php echo htmlspecialchars(t('tasks.settings.tags_intro')); ?></p>
-            <table class="lookup-table">
-                <thead><tr>
-                    <th><?php echo htmlspecialchars(t('tasks.settings.col_name')); ?></th>
-                    <th><?php echo htmlspecialchars(t('tasks.settings.col_colour')); ?></th>
-                    <th><?php echo htmlspecialchars(t('tasks.settings.col_order')); ?></th>
-                    <th><?php echo htmlspecialchars(t('tasks.settings.col_actions')); ?></th>
-                </tr></thead>
-                <tbody id="tags-list"><tr><td colspan="4" style="text-align:center;"><?php echo htmlspecialchars(t('tasks.settings.loading')); ?></td></tr></tbody>
-            </table>
 
-            <h3 style="margin: 28px 0 4px; font-size: 15px; color: #333;"><?php echo htmlspecialchars(t('tasks.settings.tags_display_heading')); ?></h3>
-            <div class="card-field-options">
-                <label class="card-field-row">
-                    <input type="checkbox" data-tagsetting="allow_create" onchange="saveTagSettings()">
-                    <div>
-                        <div class="card-field-name"><?php echo htmlspecialchars(t('tasks.settings.tag_allow_create_name')); ?></div>
-                        <div class="card-field-desc"><?php echo htmlspecialchars(t('tasks.settings.tag_allow_create_desc')); ?></div>
-                    </div>
-                </label>
-                <label class="card-field-row">
-                    <input type="checkbox" data-tagsetting="surface_card" onchange="saveTagSettings()">
-                    <div>
-                        <div class="card-field-name"><?php echo htmlspecialchars(t('tasks.settings.tag_surface_card_name')); ?></div>
-                        <div class="card-field-desc"><?php echo htmlspecialchars(t('tasks.settings.tag_surface_card_desc')); ?></div>
-                    </div>
-                </label>
-                <label class="card-field-row">
-                    <input type="checkbox" data-tagsetting="surface_filter" onchange="saveTagSettings()">
-                    <div>
-                        <div class="card-field-name"><?php echo htmlspecialchars(t('tasks.settings.tag_surface_filter_name')); ?></div>
-                        <div class="card-field-desc"><?php echo htmlspecialchars(t('tasks.settings.tag_surface_filter_desc')); ?></div>
-                    </div>
-                </label>
-                <label class="card-field-row">
-                    <input type="checkbox" data-tagsetting="surface_search" onchange="saveTagSettings()">
-                    <div>
-                        <div class="card-field-name"><?php echo htmlspecialchars(t('tasks.settings.tag_surface_search_name')); ?></div>
-                        <div class="card-field-desc"><?php echo htmlspecialchars(t('tasks.settings.tag_surface_search_desc')); ?></div>
-                    </div>
-                </label>
-                <label class="card-field-row">
-                    <input type="checkbox" data-tagsetting="surface_calendar" onchange="saveTagSettings()">
-                    <div>
-                        <div class="card-field-name"><?php echo htmlspecialchars(t('tasks.settings.tag_surface_calendar_name')); ?></div>
-                        <div class="card-field-desc"><?php echo htmlspecialchars(t('tasks.settings.tag_surface_calendar_desc')); ?></div>
-                    </div>
-                </label>
+            <div class="settings-group">
+                <h3><?php echo htmlspecialchars(t('tasks.settings.tags_display_heading')); ?></h3>
+                <div class="card-field-options">
+                    <label class="card-field-row">
+                        <input type="checkbox" data-tagsetting="allow_create" onchange="saveTagSettings()">
+                        <div>
+                            <div class="card-field-name"><?php echo htmlspecialchars(t('tasks.settings.tag_allow_create_name')); ?></div>
+                            <div class="card-field-desc"><?php echo htmlspecialchars(t('tasks.settings.tag_allow_create_desc')); ?></div>
+                        </div>
+                    </label>
+                    <label class="card-field-row">
+                        <input type="checkbox" data-tagsetting="surface_card" onchange="saveTagSettings()">
+                        <div>
+                            <div class="card-field-name"><?php echo htmlspecialchars(t('tasks.settings.tag_surface_card_name')); ?></div>
+                            <div class="card-field-desc"><?php echo htmlspecialchars(t('tasks.settings.tag_surface_card_desc')); ?></div>
+                        </div>
+                    </label>
+                    <label class="card-field-row">
+                        <input type="checkbox" data-tagsetting="surface_filter" onchange="saveTagSettings()">
+                        <div>
+                            <div class="card-field-name"><?php echo htmlspecialchars(t('tasks.settings.tag_surface_filter_name')); ?></div>
+                            <div class="card-field-desc"><?php echo htmlspecialchars(t('tasks.settings.tag_surface_filter_desc')); ?></div>
+                        </div>
+                    </label>
+                    <label class="card-field-row">
+                        <input type="checkbox" data-tagsetting="surface_search" onchange="saveTagSettings()">
+                        <div>
+                            <div class="card-field-name"><?php echo htmlspecialchars(t('tasks.settings.tag_surface_search_name')); ?></div>
+                            <div class="card-field-desc"><?php echo htmlspecialchars(t('tasks.settings.tag_surface_search_desc')); ?></div>
+                        </div>
+                    </label>
+                    <label class="card-field-row">
+                        <input type="checkbox" data-tagsetting="surface_calendar" onchange="saveTagSettings()">
+                        <div>
+                            <div class="card-field-name"><?php echo htmlspecialchars(t('tasks.settings.tag_surface_calendar_name')); ?></div>
+                            <div class="card-field-desc"><?php echo htmlspecialchars(t('tasks.settings.tag_surface_calendar_desc')); ?></div>
+                        </div>
+                    </label>
+                </div>
             </div>
         </div>
     </div>

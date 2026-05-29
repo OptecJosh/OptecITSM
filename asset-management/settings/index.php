@@ -257,6 +257,7 @@ $path_prefix = '../../';
             <button class="tab" data-tab="asset-statuses" onclick="switchTab('asset-statuses')">Asset statuses</button>
             <button class="tab" data-tab="locations" onclick="switchTab('locations')">Locations</button>
             <button class="tab" data-tab="suppliers" onclick="switchTab('suppliers')">Suppliers</button>
+            <button class="tab" data-tab="warranty" onclick="switchTab('warranty')">Warranty alerts</button>
             <button class="tab" data-tab="vcenter" onclick="switchTab('vcenter')">vCenter</button>
             <button class="tab" data-tab="intune" onclick="switchTab('intune')">InTune</button>
         </div>
@@ -351,6 +352,44 @@ $path_prefix = '../../';
                     <tr><td colspan="2" style="text-align: center; padding: 20px; color: #999;">Loading...</td></tr>
                 </tbody>
             </table>
+        </div>
+
+        <!-- Warranty alerts Tab -->
+        <div class="tab-content" id="warranty-tab">
+            <div class="settings-section">
+                <div class="settings-section-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                    <h2>Warranty expiry alerts</h2>
+                </div>
+                <div class="settings-section-body">
+                    <p class="settings-description">
+                        Surface assets whose warranty has expired or is about to, based on each asset's
+                        <strong>Warranty expiry</strong> date. Choose where they show up &mdash; a card on the
+                        Watchtower dashboard, events on the Calendar (in a "Warranty" category), or both.
+                    </p>
+                    <form id="warrantyForm" onsubmit="saveWarrantySettings(event)">
+                        <div class="form-group">
+                            <label class="form-label" for="warrantySurface">Show alerts in</label>
+                            <select class="form-input" id="warrantySurface" style="max-width: 340px;">
+                                <option value="off">Off</option>
+                                <option value="dashboard">Watchtower dashboard only</option>
+                                <option value="calendar">Calendar only</option>
+                                <option value="both">Watchtower dashboard and Calendar</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="warrantyDays">Warn this many days before expiry</label>
+                            <input type="number" class="form-input" id="warrantyDays" min="1" max="3650" value="30" style="max-width: 140px;">
+                            <div class="form-hint">Assets already past their warranty date are always included.</div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary" id="warrantySaveBtn">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
 
         <!-- vCenter Tab -->
@@ -759,10 +798,42 @@ $path_prefix = '../../';
                     // batch size: default to 30 if not stored
                     const batch = parseInt(data.settings.intune_app_batch_size, 10);
                     document.getElementById('intuneAppBatchSize').value = (batch > 0 ? batch : 30);
+
+                    // Warranty alert settings
+                    document.getElementById('warrantySurface').value = data.settings.asset_warranty_surface || 'dashboard';
+                    const wDays = parseInt(data.settings.asset_warranty_days, 10);
+                    document.getElementById('warrantyDays').value = (wDays > 0 ? wDays : 30);
                 }
             } catch (error) {
                 console.error('Error loading settings:', error);
             }
+        }
+
+        async function saveWarrantySettings(e) {
+            e.preventDefault();
+            const btn = document.getElementById('warrantySaveBtn');
+            btn.disabled = true; btn.textContent = 'Saving...';
+            try {
+                const res = await fetch(API_SETTINGS + 'save_system_settings.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ settings: {
+                        asset_warranty_surface: document.getElementById('warrantySurface').value,
+                        asset_warranty_days: String(Math.max(1, Math.min(3650, parseInt(document.getElementById('warrantyDays').value, 10) || 30)))
+                    }})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    // Resync the calendar so it immediately matches the new choice.
+                    try { await fetch(API_BASE + 'sync_warranty_calendar.php', { method: 'POST' }); } catch (e) {}
+                    showToast('Warranty alert settings saved', 'success');
+                } else {
+                    showToast('Error: ' + data.error, 'error');
+                }
+            } catch (e) {
+                showToast('Failed to save settings', 'error');
+            }
+            btn.disabled = false; btn.textContent = 'Save';
         }
 
         async function saveVcenterSettings(e) {

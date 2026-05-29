@@ -81,6 +81,13 @@ try {
     $auditStmt = $conn->prepare($auditSql);
     $auditStmt->execute([$asset_id, $_SESSION['analyst_id'], $fieldLabel, $oldDisplay, $newDisplay]);
 
+    // Keep the calendar's warranty events in step when a warranty date changes
+    // (no-op unless the warranty-alert setting includes the calendar).
+    if ($field === 'warranty_expiry') {
+        require_once '../../includes/asset_warranty_calendar.php';
+        try { syncAssetWarrantyCalendar($conn); } catch (Exception $syncEx) { /* non-critical */ }
+    }
+
     echo json_encode(['success' => true]);
 
 } catch (Exception $e) {

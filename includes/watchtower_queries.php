@@ -251,9 +251,33 @@ function getWatchtowerData($conn) {
          WHERE last_seen IS NOT NULL AND last_seen < DATE_SUB(NOW(), INTERVAL 7 DAY)"
     )->fetchColumn();
 
+    // Warranty expiries — only surfaced here when the asset_warranty_surface
+    // setting includes the dashboard. Counts assets already expired or expiring
+    // within asset_warranty_days (default 30). Defensive: warranty_expiry may
+    // not exist until a DB verification has run.
+    $wtSurface = 'dashboard';
+    $wtDays = 30;
+    try {
+        $set = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('asset_warranty_surface','asset_warranty_days')")->fetchAll(PDO::FETCH_KEY_PAIR);
+        if (!empty($set['asset_warranty_surface'])) $wtSurface = $set['asset_warranty_surface'];
+        if (!empty($set['asset_warranty_days']) && (int)$set['asset_warranty_days'] > 0) $wtDays = (int)$set['asset_warranty_days'];
+    } catch (Exception $e) { /* defaults */ }
+    $wtShowWarranty = in_array($wtSurface, ['dashboard', 'both'], true);
+    $asWarranty = 0;
+    if ($wtShowWarranty) {
+        try {
+            $w = $conn->prepare("SELECT COUNT(*) FROM assets WHERE warranty_expiry IS NOT NULL AND warranty_expiry <= DATE_ADD(CURDATE(), INTERVAL ? DAY)");
+            $w->execute([$wtDays]);
+            $asWarranty = (int)$w->fetchColumn();
+        } catch (Exception $e) { $wtShowWarranty = false; }
+    }
+
     $assets = [
-        'total'       => $asTotal,
-        'not_seen_7d' => $asNotSeen
+        'total'         => $asTotal,
+        'not_seen_7d'   => $asNotSeen,
+        'warranty_soon' => $asWarranty,
+        'warranty_days' => $wtDays,
+        'warranty_show' => $wtShowWarranty
     ];
 
     // -- Tasks --

@@ -521,7 +521,7 @@ Unified attention dashboard — a single pane of glass showing actionable items 
 - **Service Status**: Active incidents, degraded services
 - **Contracts**: Expiring contracts (30/90 day), upcoming notice periods
 - **Knowledge**: Recently published articles, overdue reviews
-- **Assets**: Total count, assets not seen in 7+ days
+- **Assets**: Total count, assets not seen in 7+ days, and (when enabled in Asset Settings → Warranty alerts) a red card for assets whose warranty has expired or is expiring soon
 - **Features**: Color-coded status dots (green/amber/red), auto-refresh every 5 minutes, click-through to each module
 
 ### Tickets (`tickets/`)
@@ -573,6 +573,7 @@ IT asset management with vCenter integration.
   - Status filtering on supported widgets
   - Drag-and-drop reordering
 - **Settings**: vCenter server URL, username, and password (encrypted); Microsoft InTune tenant ID, client ID, client secret, and verify-SSL toggle (sensitive values encrypted); Sync button kicks off a Microsoft Graph-based InTune device import as a background worker, showing a progress bar
+- **Warranty alerts** (Settings → Warranty alerts): choose where to surface assets whose warranty has expired or is expiring within a configurable number of days — a red card on the Watchtower dashboard, events on the Calendar (auto-synced into a "Warranty" category), both, or off. Calendar events are regenerated whenever a warranty date changes or the setting is saved, so they stay in step without a cron job
 - **Suppliers** (Settings → Suppliers): the asset supplier is normalised against the shared `suppliers` registry (the same one the Contracts module uses) via a `supplies_assets` flag. The tab searches the registry and toggles which suppliers are *available for assets*, and can quick-add a new supplier by name (creating a minimal registry row you can flesh out later in Contracts). Only flagged, active suppliers appear in the asset supplier dropdown
 - **Locations** (Settings → Locations): build an arbitrary-depth physical location hierarchy (adjacency-list tree in `asset_locations`) — nest as deep or shallow as you like and each branch is independent (e.g. `UK › London › Office 1` alongside a flat `Datacentre`). Add a sub-location from any node, rename, re-parent (with cycle protection), collapse/expand branches, and delete (blocked while a location still has children)
 - **InTune integration**: Pulls all managed devices from Microsoft InTune (via Microsoft Graph `/deviceManagement/managedDevices`) into `intune_devices` and links them to `assets` by hostname (auto-creates stub assets for unknown hostnames). Asset detail panel shows an extra **InTune** tab when a device matches

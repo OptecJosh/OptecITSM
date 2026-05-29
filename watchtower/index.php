@@ -692,7 +692,10 @@ $path_prefix = '../';
     function renderAssets(d) {
         const as = d.assets;
 
-        if (as.not_seen_7d > 0) {
+        const warrantyAlert = as.warranty_show && as.warranty_soon > 0;
+        if (warrantyAlert) {
+            setDot('wtAsDot', 'red');
+        } else if (as.not_seen_7d > 0) {
             setDot('wtAsDot', 'amber');
         } else {
             setDot('wtAsDot', 'green');
@@ -701,12 +704,18 @@ $path_prefix = '../';
         let html = '<div class="wt-metrics">';
         html += metric(as.total, 'Total', '#334155');
         html += metric(as.not_seen_7d, 'Offline', as.not_seen_7d > 0 ? '#f59e0b' : '#94a3b8');
+        if (as.warranty_show) {
+            html += metric(as.warranty_soon, 'Warranty', as.warranty_soon > 0 ? '#d13438' : '#94a3b8');
+        }
         html += '</div>';
 
         html += '<div class="wt-attention">';
+        if (warrantyAlert) {
+            html += attentionItem('red', '<span class="wt-attention-bold">' + as.warranty_soon + '</span> asset(s) with warranty expired or expiring within ' + as.warranty_days + ' days');
+        }
         if (as.not_seen_7d > 0) {
             html += attentionItem('amber', '<span class="wt-attention-bold">' + as.not_seen_7d + '</span> asset(s) not seen in 7+ days');
-        } else {
+        } else if (!warrantyAlert) {
             html += attentionItem('green', 'All assets recently active');
         }
         html += '</div>';

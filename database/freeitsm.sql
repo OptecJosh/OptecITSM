@@ -1315,6 +1315,10 @@ CREATE TABLE IF NOT EXISTS `calendar_events` (
     `location`          VARCHAR(255) NULL,
     `contract_id`       INT NULL,
     `created_by`        INT NOT NULL,
+    -- Marks auto-generated events (e.g. 'asset_warranty'); NULL = a normal,
+    -- user-created event. Lets a generator resync its own events without
+    -- touching manual ones.
+    `source`            VARCHAR(30) NULL,
     `created_at`        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),

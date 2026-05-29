@@ -921,6 +921,7 @@ $schema = [
         'location'          => 'VARCHAR(255) NULL',
         'contract_id'       => 'INT NULL',
         'created_by'        => 'INT NOT NULL',
+        'source'            => 'VARCHAR(30) NULL',
         'created_at'        => 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP',
         'updated_at'        => 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP',
     ],

@@ -1247,6 +1247,24 @@ $translationNamespaces = ['common', 'tickets'];
                 </div>
 
                 <div class="form-group">
+                    <label for="analystAuthProvider">Sign-in method</label>
+                    <select id="analystAuthProvider">
+                        <option value="">Local (username &amp; password)</option>
+                        <?php
+                        // Single sign-on providers — assigning one makes this analyst an SSO user
+                        // (strict isolation: they can only sign in via the chosen provider).
+                        try {
+                            $apConn = connectToDatabase();
+                            foreach ($apConn->query("SELECT id, display_name FROM auth_providers ORDER BY sort_order, display_name") as $ap) {
+                                echo '<option value="' . (int)$ap['id'] . '">' . htmlspecialchars($ap['display_name']) . '</option>';
+                            }
+                        } catch (Exception $e) { /* table may not exist yet */ }
+                        ?>
+                    </select>
+                    <small style="color: #666;">Local users sign in with a password. Assign a provider to require SSO for this analyst — on their next SSO sign-in their identity is linked automatically (matched by email).</small>
+                </div>
+
+                <div class="form-group">
                     <label class="toggle-label">
                         <span class="toggle-switch">
                             <input type="checkbox" id="analystActive" checked>
@@ -3002,6 +3020,7 @@ $translationNamespaces = ['common', 'tickets'];
             document.getElementById('analystEmail').value = analyst ? (analyst.email || '') : '';
             document.getElementById('analystPassword').value = '';
             document.getElementById('analystActive').checked = analyst ? analyst.is_active : true;
+            document.getElementById('analystAuthProvider').value = (analyst && analyst.auth_provider_id) ? String(analyst.auth_provider_id) : '';
 
             // Password is required only for new analysts
             const passwordInput = document.getElementById('analystPassword');
@@ -3081,7 +3100,8 @@ $translationNamespaces = ['common', 'tickets'];
                 full_name: document.getElementById('analystFullName').value,
                 email: document.getElementById('analystEmail').value || null,
                 password: document.getElementById('analystPassword').value || null,
-                is_active: document.getElementById('analystActive').checked
+                is_active: document.getElementById('analystActive').checked,
+                auth_provider_id: document.getElementById('analystAuthProvider').value || null
             };
 
             try {

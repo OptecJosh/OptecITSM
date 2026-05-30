@@ -579,43 +579,110 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="error-message"><?php echo htmlspecialchars($sso_error); ?></div>
             <?php endif; ?>
 
-            <form method="POST" action="" autocomplete="off">
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" name="username" required autofocus autocomplete="off">
-                </div>
-
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" required autocomplete="off">
-                </div>
-
-                <button type="submit" class="login-button">Sign In</button>
-            </form>
-            <a href="forgot-password.php" class="forgot-link">Forgot password?</a>
-
             <?php
-            // Single sign-on buttons — shown only when SSO is enabled and at
-            // least one provider is enabled. Each links to the OIDC entry point.
+            // Work out SSO / local availability to lay out the login page.
             $ssoProviders = [];
+            $ssoOn = false; $localOn = true;
             try {
                 $ssoConn = connectToDatabase();
-                $ssoOn = (($ssoConn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'sso_enabled'")->fetchColumn()) ?: '0') === '1';
+                $cfg = [];
+                foreach ($ssoConn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('sso_enabled','local_login_enabled')") as $r) {
+                    $cfg[$r['setting_key']] = $r['setting_value'];
+                }
+                $ssoOn   = ($cfg['sso_enabled'] ?? '0') === '1';
+                $localOn = ($cfg['local_login_enabled'] ?? '1') !== '0';
                 if ($ssoOn) {
                     $ssoProviders = $ssoConn->query("SELECT id, display_name FROM auth_providers WHERE enabled = 1 ORDER BY sort_order, display_name")->fetchAll(PDO::FETCH_ASSOC);
                 }
             } catch (Exception $e) { $ssoProviders = []; }
+            $ssoActive = $ssoOn && !empty($ssoProviders);
+            // Break-glass: ?local=1 always reveals the local form, even when local login is "off".
+            $forceLocal = isset($_GET['local']);
+            // Show the local form up-front unless SSO is leading and local login is switched off.
+            $localVisible = !$ssoActive || $localOn || $forceLocal;
+            $divider = 'display:flex;align-items:center;gap:10px;margin:20px 0 14px;color:#9aa;font-size:12px;';
             ?>
-            <?php if (!empty($ssoProviders)): ?>
-                <div style="display:flex;align-items:center;gap:10px;margin:20px 0 14px;color:#9aa;font-size:12px;">
-                    <span style="flex:1;height:1px;background:#ddd;"></span>or<span style="flex:1;height:1px;background:#ddd;"></span>
+
+            <?php if ($ssoActive): ?>
+                <!-- Email-first router: type email -> routed to your provider (or fall back to local) -->
+                <div id="emailFirst">
+                    <div class="form-group">
+                        <label for="ssoEmail">Email</label>
+                        <input type="email" id="ssoEmail" autofocus autocomplete="username" placeholder="you@example.com">
+                    </div>
+                    <button type="button" class="login-button" id="continueBtn">Continue</button>
+                    <div class="error-message" id="routerError" style="display:none;margin-top:10px;"></div>
                 </div>
+                <div style="<?php echo $divider; ?>"><span style="flex:1;height:1px;background:#ddd;"></span>or<span style="flex:1;height:1px;background:#ddd;"></span></div>
                 <?php foreach ($ssoProviders as $p): ?>
                     <a href="<?php echo htmlspecialchars(BASE_URL . 'api/auth/oidc_login.php?provider=' . (int)$p['id']); ?>"
                        style="display:block;text-align:center;padding:11px;margin-bottom:8px;border:1px solid #cfd8dc;border-radius:6px;color:#37474f;text-decoration:none;font-weight:600;font-size:14px;background:#fff;">
                         <?php echo htmlspecialchars($p['display_name']); ?>
                     </a>
                 <?php endforeach; ?>
+            <?php endif; ?>
+
+            <!-- Local username/password form -->
+            <form method="POST" action="" autocomplete="off" id="localLoginForm" style="<?php echo $localVisible ? '' : 'display:none;'; ?>">
+                <?php if ($ssoActive): ?>
+                    <div style="<?php echo $divider; ?>"><span style="flex:1;height:1px;background:#ddd;"></span>local account<span style="flex:1;height:1px;background:#ddd;"></span></div>
+                <?php endif; ?>
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required<?php echo $ssoActive ? '' : ' autofocus'; ?> autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required autocomplete="off">
+                </div>
+                <button type="submit" class="login-button">Sign In</button>
+            </form>
+            <a href="forgot-password.php" class="forgot-link">Forgot password?</a>
+
+            <?php if ($ssoActive && !$localVisible): ?>
+                <a href="#" id="showLocalLink" class="forgot-link" style="display:block;margin-top:10px;">Sign in with a local account</a>
+            <?php endif; ?>
+
+            <?php if ($ssoActive): ?>
+            <script>
+            (function () {
+                var BASE = <?php echo json_encode(BASE_URL); ?>;
+                var contBtn = document.getElementById('continueBtn');
+                var emailEl = document.getElementById('ssoEmail');
+                var routerErr = document.getElementById('routerError');
+                var localForm = document.getElementById('localLoginForm');
+                var showLocalLink = document.getElementById('showLocalLink');
+
+                function revealLocal(focus) {
+                    if (localForm) localForm.style.display = '';
+                    if (showLocalLink) showLocalLink.style.display = 'none';
+                    if (focus) { var u = document.getElementById('username'); if (u) u.focus(); }
+                }
+                if (showLocalLink) showLocalLink.addEventListener('click', function (e) { e.preventDefault(); revealLocal(true); });
+
+                async function resolve() {
+                    var email = (emailEl.value || '').trim();
+                    if (!email) { routerErr.textContent = 'Please enter your email.'; routerErr.style.display = 'block'; return; }
+                    routerErr.style.display = 'none';
+                    contBtn.disabled = true;
+                    try {
+                        var r = await fetch(BASE + 'api/auth/resolve_login.php', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ email: email })
+                        });
+                        var d = await r.json();
+                        if (d && d.mode === 'sso' && d.provider_id) {
+                            window.location = BASE + 'api/auth/oidc_login.php?provider=' + d.provider_id;
+                            return;
+                        }
+                    } catch (e) { /* fall through to local */ }
+                    revealLocal(true); // local or unknown email
+                    contBtn.disabled = false;
+                }
+                if (contBtn) contBtn.addEventListener('click', resolve);
+                if (emailEl) emailEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); resolve(); } });
+            })();
+            </script>
             <?php endif; ?>
         <?php endif; ?>
     </div>

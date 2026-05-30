@@ -202,6 +202,11 @@ $redirectUri = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . BASE_U
                     <input type="checkbox" id="fAutoCreate">
                     <div class="cb-label"><strong>Auto-create users on first login (JIT)</strong><span>Create an analyst automatically the first time someone signs in via this provider. Leave off for tightly controlled pilots where only pre-created users may enter.</span></div>
                 </div>
+                <div class="form-field" id="defaultModulesField">
+                    <label>Default module access for auto-created users</label>
+                    <div class="hint">Comma-separated module keys granted to JIT-created analysts (e.g. <code>tickets, knowledge</code>). <strong>Leave blank and they get full access to every module</strong> — set this for pilots so auto-created users aren't admins.</div>
+                    <input type="text" id="fDefaultModules" placeholder="tickets, knowledge">
+                </div>
             </div>
             <div class="sso-modal-footer">
                 <button class="btn btn-secondary" id="cancelModalBtn" type="button">Cancel</button>
@@ -291,6 +296,7 @@ $redirectUri = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . BASE_U
         document.getElementById('fScopes').value = p ? (p.scopes || 'openid email profile') : 'openid email profile';
         document.getElementById('fEnabled').checked = p ? !!p.enabled : true;
         document.getElementById('fAutoCreate').checked = p ? !!p.auto_create_users : false;
+        document.getElementById('fDefaultModules').value = p ? (p.default_modules || '') : '';
         const secret = document.getElementById('fClientSecret');
         secret.value = '';
         if (p && p.has_secret) {
@@ -350,7 +356,8 @@ $redirectUri = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . BASE_U
             client_secret: document.getElementById('fClientSecret').value,
             scopes: document.getElementById('fScopes').value.trim(),
             enabled: document.getElementById('fEnabled').checked ? 1 : 0,
-            auto_create_users: document.getElementById('fAutoCreate').checked ? 1 : 0
+            auto_create_users: document.getElementById('fAutoCreate').checked ? 1 : 0,
+            default_modules: document.getElementById('fDefaultModules').value.trim()
         };
         if (!payload.display_name || !payload.issuer_url || !payload.client_id) {
             showToast('Display name, issuer URL and client ID are required', 'error');

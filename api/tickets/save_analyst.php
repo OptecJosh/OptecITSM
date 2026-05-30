@@ -28,6 +28,8 @@ $fullName = trim($data['full_name'] ?? '');
 $email = trim($data['email'] ?? '') ?: null;
 $password = $data['password'] ?? null;
 $isActive = $data['is_active'] ?? true;
+// Which sign-in method: NULL/empty = local password, otherwise an auth_providers.id (SSO).
+$authProviderId = !empty($data['auth_provider_id']) ? (int)$data['auth_provider_id'] : null;
 
 // Validation
 if (empty($username)) {
@@ -69,10 +71,11 @@ try {
                     email = ?,
                     password_hash = ?,
                     is_active = ?,
+                    auth_provider_id = ?,
                     last_modified_datetime = UTC_TIMESTAMP()
                     WHERE id = ?";
             $stmt = $conn->prepare($sql);
-            $stmt->execute([$username, $fullName, $email, $passwordHash, $isActive ? 1 : 0, $id]);
+            $stmt->execute([$username, $fullName, $email, $passwordHash, $isActive ? 1 : 0, $authProviderId, $id]);
         } else {
             // Update without changing password
             $sql = "UPDATE analysts SET
@@ -80,10 +83,11 @@ try {
                     full_name = ?,
                     email = ?,
                     is_active = ?,
+                    auth_provider_id = ?,
                     last_modified_datetime = UTC_TIMESTAMP()
                     WHERE id = ?";
             $stmt = $conn->prepare($sql);
-            $stmt->execute([$username, $fullName, $email, $isActive ? 1 : 0, $id]);
+            $stmt->execute([$username, $fullName, $email, $isActive ? 1 : 0, $authProviderId, $id]);
         }
 
         echo json_encode(['success' => true, 'message' => 'Analyst updated successfully']);
@@ -91,10 +95,10 @@ try {
         // Create new analyst
         $passwordHash = password_hash($password, PASSWORD_DEFAULT);
 
-        $sql = "INSERT INTO analysts (username, password_hash, full_name, email, is_active, created_datetime, last_modified_datetime)
-                VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())";
+        $sql = "INSERT INTO analysts (username, password_hash, full_name, email, is_active, auth_provider_id, created_datetime, last_modified_datetime)
+                VALUES (?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())";
         $stmt = $conn->prepare($sql);
-        $stmt->execute([$username, $passwordHash, $fullName, $email, $isActive ? 1 : 0]);
+        $stmt->execute([$username, $passwordHash, $fullName, $email, $isActive ? 1 : 0, $authProviderId]);
 
         echo json_encode(['success' => true, 'message' => 'Analyst created successfully']);
     }

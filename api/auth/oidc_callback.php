@@ -143,6 +143,9 @@ try {
     $_SESSION['analyst_name']     = $analyst['full_name'];
     $_SESSION['analyst_email']    = $analyst['email'];
     $_SESSION['allowed_modules']  = getAnalystAllowedModules($conn, $analystId);
+    // Remember the SSO context so logout can also end the session at the IdP.
+    $_SESSION['sso_provider_id']  = $providerId;
+    $_SESSION['sso_id_token']     = $tokens['id_token'];
 
     header('Location: ' . BASE_URL);
     exit;

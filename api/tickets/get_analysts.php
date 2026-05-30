@@ -17,7 +17,7 @@ if (!isset($_SESSION['analyst_id'])) {
 try {
     $conn = connectToDatabase();
 
-    $sql = "SELECT id, username, full_name, email, is_active, created_datetime, last_login_datetime, last_modified_datetime
+    $sql = "SELECT id, username, full_name, email, is_active, auth_provider_id, created_datetime, last_login_datetime, last_modified_datetime
             FROM analysts
             ORDER BY full_name";
 
@@ -29,6 +29,7 @@ try {
     foreach ($analysts as &$analyst) {
         $analyst['id'] = (int)$analyst['id'];
         $analyst['is_active'] = (bool)$analyst['is_active'];
+        $analyst['auth_provider_id'] = $analyst['auth_provider_id'] !== null ? (int)$analyst['auth_provider_id'] : null;
     }
 
     echo json_encode(['success' => true, 'analysts' => $analysts]);

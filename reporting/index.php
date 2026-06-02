@@ -65,8 +65,8 @@ $translationNamespaces = ['common', 'reporting'];
         }
 
         .report-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.14);
             border-color: #ca5010;
         }
 

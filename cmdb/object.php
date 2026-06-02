@@ -293,10 +293,10 @@ $translationNamespaces = ['common', 'cmdb'];
             margin-bottom: 6px;
             text-decoration: none;
             color: inherit;
-            transition: background 0.12s;
+            transition: background 0.12s, box-shadow 0.12s, transform 0.12s ease-out;
         }
         .ticket-card:last-child { margin-bottom: 0; }
-        .ticket-card:hover { background: #fce7f3; border-color: #fbcfe8; }
+        .ticket-card:hover { background: #fce7f3; border-color: #fbcfe8; box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateY(-2px); }
         .ticket-card.closed { opacity: 0.7; }
         .ticket-card-body { flex: 1; min-width: 0; }
         .ticket-card-line1 {

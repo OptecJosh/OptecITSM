@@ -2989,9 +2989,9 @@ body.ticket-popout .ticket-toolbar {
     border-radius: 4px;
     text-decoration: none;
     color: inherit;
-    transition: background 0.12s, border-color 0.12s;
+    transition: background 0.12s, border-color 0.12s, box-shadow 0.12s, transform 0.12s ease-out;
 }
-.cmdb-link-card:hover { background: #fce7f3; border-color: #f9a8d4; }
+.cmdb-link-card:hover { background: #fce7f3; border-color: #f9a8d4; box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateY(-2px); }
 .cmdb-link-card-body { flex: 1; min-width: 0; }
 .cmdb-link-card-name {
     color: #111827;

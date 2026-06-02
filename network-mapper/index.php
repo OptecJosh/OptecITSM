@@ -94,8 +94,8 @@ $translationNamespaces = ['common', 'network-mapper'];
         }
         .nm-card:hover {
             border-color: #06b6d4;
-            box-shadow: 0 6px 18px rgba(6,182,212,0.10);
-            transform: translateY(-1px);
+            box-shadow: 0 8px 18px rgba(6,182,212,0.16);
+            transform: translateY(-3px);
         }
         .nm-card-title-row {
             display: flex;

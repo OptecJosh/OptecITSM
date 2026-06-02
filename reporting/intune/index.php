@@ -190,8 +190,8 @@ $translationNamespaces = ['common', 'reporting'];
         }
         .drill-footer .btn-export:hover { background: #b34810; }
 
-        .kpi-card.clickable { cursor: pointer; transition: box-shadow 0.15s; }
-        .kpi-card.clickable:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .kpi-card.clickable { cursor: pointer; transition: box-shadow 0.15s, transform 0.15s ease-out; }
+        .kpi-card.clickable:hover { box-shadow: 0 8px 18px rgba(0,0,0,0.14); transform: translateY(-3px); }
 
         @media (max-width: 1100px) {
             .kpi-strip { grid-template-columns: repeat(3, 1fr); }

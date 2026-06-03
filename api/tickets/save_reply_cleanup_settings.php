@@ -1,13 +1,14 @@
 <?php
 /**
- * API: Save Reply Cleanup AI settings
- * Encrypts the API key at rest. Honours the masked-no-change pattern so an
- * analyst can edit other fields without re-entering the key.
+ * API: Save Reply Cleanup tone + custom instructions.
+ *
+ * Provider / model / API key are now owned by the shared AI panel
+ * (api/system/ai/save_settings.php, ns=tickets_reply_cleanup). This endpoint
+ * only persists the reply-cleanup-specific tone and custom-instructions text.
  */
 session_start(['read_and_close' => true]);
 require_once '../../config.php';
 require_once '../../includes/functions.php';
-require_once '../../includes/encryption.php';
 
 header('Content-Type: application/json');
 
@@ -16,23 +17,13 @@ if (!isset($_SESSION['analyst_id'])) {
     exit;
 }
 
-const VALID_MODELS = [
-    'claude-haiku-4-5-20251001',
-    'claude-sonnet-4-6',
-    'claude-opus-4-7',
-];
 const VALID_TONES = ['Friendly', 'Formal', 'Brief'];
 
 try {
     $input = json_decode(file_get_contents('php://input'), true);
-    $rawKey = $input['api_key'] ?? '';
-    $model  = trim($input['model'] ?? '');
     $tone   = trim($input['tone']  ?? '');
     $customInstructions = (string)($input['custom_instructions'] ?? '');
 
-    if (!in_array($model, VALID_MODELS, true)) {
-        throw new Exception('Invalid model selection');
-    }
     if (!in_array($tone, VALID_TONES, true)) {
         throw new Exception('Invalid tone selection');
     }
@@ -51,15 +42,6 @@ try {
         $stmt->execute([':k' => $key, ':v' => $value]);
     };
 
-    // Only write the API key if a fresh value was provided. The masked
-    // placeholder ("****abcd") sent back from the GET endpoint is treated as
-    // "leave existing untouched".
-    if (!isMaskedNoChangeValue($rawKey)) {
-        $encrypted = encryptValue(trim($rawKey));
-        $upsert($conn, 'tickets_reply_cleanup_api_key', $encrypted);
-    }
-
-    $upsert($conn, 'tickets_reply_cleanup_model',               $model);
     $upsert($conn, 'tickets_reply_cleanup_tone',                $tone);
     $upsert($conn, 'tickets_reply_cleanup_custom_instructions', trim($customInstructions));
 

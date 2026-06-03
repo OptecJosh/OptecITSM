@@ -17,6 +17,7 @@
  */
 
 require_once __DIR__ . '/../../includes/encryption.php';
+require_once __DIR__ . '/../../includes/ai_settings.php';
 
 const FORMS_AI_VALID_PROVIDERS = ['anthropic', 'openai'];
 
@@ -57,32 +58,10 @@ function formsEffectiveSslVerify(bool $perCallVerify): bool
  */
 function loadFormsAiConfig(PDO $conn): array
 {
-    $stmt = $conn->prepare(
-        "SELECT setting_key, setting_value FROM system_settings
-          WHERE setting_key IN ('forms_ai_provider', 'forms_ai_model',
-                                'forms_ai_api_key', 'forms_ai_verify_ssl')"
-    );
-    $stmt->execute();
-
-    $cfg = ['provider' => 'anthropic', 'model' => '', 'api_key' => '', 'verify_ssl' => true];
-    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-        $k = $row['setting_key'];
-        $v = $row['setting_value'];
-        if ($k === 'forms_ai_provider') {
-            if (in_array($v, FORMS_AI_VALID_PROVIDERS, true)) $cfg['provider'] = $v;
-        } elseif ($k === 'forms_ai_model' && $v !== '') {
-            $cfg['model'] = $v;
-        } elseif ($k === 'forms_ai_api_key') {
-            $cfg['api_key'] = decryptValue($v) ?? '';
-        } elseif ($k === 'forms_ai_verify_ssl') {
-            $cfg['verify_ssl'] = $v !== '0';
-        }
-    }
-
-    if ($cfg['model'] === '') {
-        $cfg['model'] = FORMS_AI_DEFAULT_MODEL[$cfg['provider']] ?? '';
-    }
-    if ($cfg['api_key'] === '') {
+    // Provider / model / key / verify_ssl now come from the shared building
+    // block (ns=forms_ai), which adds OpenRouter alongside Anthropic/OpenAI.
+    $cfg = aiSettingsLoad($conn, 'forms_ai');
+    if (($cfg['api_key'] ?? '') === '') {
         throw new Exception('Forms AI is not configured. Set your provider, model and API key under Forms → Settings → AI.');
     }
     return $cfg;

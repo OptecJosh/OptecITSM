@@ -5,6 +5,7 @@
 session_start();
 require_once '../../config.php';
 require_once '../../includes/i18n.php';
+require_once '../../includes/ai_settings_panel.php';
 I18n::initFromSession();
 
 if (!isset($_SESSION['analyst_id'])) {
@@ -25,6 +26,7 @@ $translationNamespaces = ['common', 'forms'];
     <title><?php echo htmlspecialchars(t('forms.settings.page_title')); ?></title>
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <script src="../../assets/js/i18n.js"></script>
+    <script src="../../assets/js/ai-settings.js"></script>
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <style>
         .container {
@@ -297,48 +299,7 @@ $translationNamespaces = ['common', 'forms'];
                 <?php echo htmlspecialchars(t('forms.settings.ai_intro')); ?>
             </p>
 
-            <form id="formsAiForm" class="ai-form" autocomplete="off" onsubmit="event.preventDefault(); FormsAi.save();">
-                <div class="form-group">
-                    <label for="formsProvider"><?php echo htmlspecialchars(t('forms.settings.provider')); ?></label>
-                    <select id="formsProvider" onchange="FormsAi.onProviderChange()">
-                        <option value="anthropic"><?php echo htmlspecialchars(t('forms.settings.provider_anthropic')); ?></option>
-                        <option value="openai"><?php echo htmlspecialchars(t('forms.settings.provider_openai')); ?></option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="formsModel"><?php echo htmlspecialchars(t('forms.settings.model')); ?></label>
-                    <input type="text" id="formsModel" list="formsModelOptions" placeholder="<?php echo htmlspecialchars(t('forms.settings.model_ph')); ?>" autocomplete="off">
-                    <datalist id="formsModelOptions"></datalist>
-                    <small><?php echo htmlspecialchars(t('forms.settings.model_help')); ?></small>
-                </div>
-
-                <div class="form-group">
-                    <label for="formsApiKey"><?php echo htmlspecialchars(t('forms.settings.api_key')); ?></label>
-                    <input type="text" id="formsApiKey" autocomplete="off" placeholder="<?php echo htmlspecialchars(t('forms.settings.api_key_ph')); ?>">
-                    <small><?php echo t('forms.settings.api_key_help'); ?></small>
-                </div>
-
-                <div class="form-group">
-                    <label class="toggle-row">
-                        <span class="toggle-switch">
-                            <input type="checkbox" id="formsVerifySsl" checked onchange="FormsAi.onVerifySslChange()">
-                            <span class="toggle-slider"></span>
-                        </span>
-                        <?php echo htmlspecialchars(t('forms.settings.verify_ssl')); ?>
-                    </label>
-                    <small><?php echo htmlspecialchars(t('forms.settings.verify_ssl_help')); ?></small>
-                    <div id="formsSslWarning" class="ssl-warning">
-                        <?php echo t('forms.settings.ssl_warning'); ?>
-                    </div>
-                </div>
-
-                <div class="ai-actions">
-                    <button type="submit" class="btn btn-primary"><?php echo htmlspecialchars(t('forms.settings.save')); ?></button>
-                    <button type="button" class="btn-test" id="formsTestBtn" onclick="FormsAi.testKey()"><?php echo htmlspecialchars(t('forms.settings.test_connection')); ?></button>
-                    <span id="formsTestStatus" class="test-status"></span>
-                </div>
-            </form>
+            <?php renderAiSettingsPanel('forms_ai'); ?>
         </div>
     </div>
 
@@ -358,143 +319,10 @@ $translationNamespaces = ['common', 'forms'];
 
         document.addEventListener('DOMContentLoaded', function() {
             loadSettings();
-            FormsAi.load();
         });
 
-        // ===== AI tab — per-module billing =====
-        // Provider / model / API key / verify-SSL form for the form
-        // builder's AI Assist. Mirrors the Workflow + RFP Builder AI
-        // settings pattern. Saves to forms_ai_* keys in system_settings
-        // so the spend lands against the Forms feature on the provider
-        // dashboard.
-        const FORMS_AI_MODEL_OPTIONS = {
-            anthropic: [
-                { id: 'claude-opus-4-7',           label: window.t('forms.settings.model_opus') },
-                { id: 'claude-sonnet-4-6',         label: window.t('forms.settings.model_sonnet') },
-                { id: 'claude-haiku-4-5-20251001', label: window.t('forms.settings.model_haiku') },
-            ],
-            openai: [
-                { id: 'gpt-4.1',     label: window.t('forms.settings.model_gpt41') },
-                { id: 'gpt-4o',      label: window.t('forms.settings.model_gpt4o') },
-                { id: 'gpt-4o-mini', label: window.t('forms.settings.model_gpt4o_mini') },
-            ],
-        };
-        const FORMS_AI_DEFAULT_MODEL = {
-            anthropic: 'claude-sonnet-4-6',
-            openai:    'gpt-4o',
-        };
-
-        const FormsAi = (() => {
-            function escHtml(s) {
-                const d = document.createElement('div');
-                d.textContent = s == null ? '' : String(s);
-                return d.innerHTML;
-            }
-            function setStatus(msg, kind) {
-                const el = document.getElementById('formsTestStatus');
-                el.textContent = msg;
-                el.style.color = kind === 'success' ? '#065f46'
-                               : kind === 'error'   ? '#d13438'
-                               : kind === 'busy'    ? '#b45309'
-                               :                      '#555';
-            }
-            function refreshModelOptions() {
-                const provider = document.getElementById('formsProvider').value;
-                const list = document.getElementById('formsModelOptions');
-                const opts = FORMS_AI_MODEL_OPTIONS[provider] || [];
-                list.innerHTML = opts.map(m => `<option value="${escHtml(m.id)}">${escHtml(m.label)}</option>`).join('');
-            }
-            function onProviderChange() {
-                refreshModelOptions();
-                const provider = document.getElementById('formsProvider').value;
-                const modelEl  = document.getElementById('formsModel');
-                const known    = (FORMS_AI_MODEL_OPTIONS[provider] || []).map(m => m.id);
-                if (!modelEl.value || !known.includes(modelEl.value)) {
-                    modelEl.value = FORMS_AI_DEFAULT_MODEL[provider];
-                }
-            }
-            function onVerifySslChange() {
-                const checked = document.getElementById('formsVerifySsl').checked;
-                document.getElementById('formsSslWarning').style.display = checked ? 'none' : 'block';
-            }
-
-            async function load() {
-                try {
-                    const r = await fetch(API_BASE + 'get_ai_settings.php', { credentials: 'same-origin' });
-                    const d = await r.json();
-                    if (!d.success) throw new Error(d.error || window.t('forms.settings.load_failed'));
-                    const s = d.settings || {};
-                    document.getElementById('formsProvider').value = s.forms_ai_provider || 'anthropic';
-                    refreshModelOptions();
-                    document.getElementById('formsModel').value =
-                        s.forms_ai_model || FORMS_AI_DEFAULT_MODEL[document.getElementById('formsProvider').value];
-                    document.getElementById('formsApiKey').value = s.forms_ai_api_key || '';
-                    document.getElementById('formsApiKey').placeholder = d.has_key
-                        ? window.t('forms.settings.key_saved_ph')
-                        : window.t('forms.settings.api_key_ph');
-                    document.getElementById('formsVerifySsl').checked = (s.forms_ai_verify_ssl !== '0');
-                    onVerifySslChange();
-                } catch (e) {
-                    setStatus(window.t('forms.settings.could_not_load', { message: e.message }), 'error');
-                }
-            }
-
-            async function save() {
-                const payload = {
-                    provider:   document.getElementById('formsProvider').value,
-                    model:      document.getElementById('formsModel').value.trim(),
-                    api_key:    document.getElementById('formsApiKey').value,
-                    verify_ssl: document.getElementById('formsVerifySsl').checked ? '1' : '0',
-                };
-                try {
-                    const r = await fetch(API_BASE + 'save_ai_settings.php', {
-                        method: 'POST',
-                        credentials: 'same-origin',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload),
-                    });
-                    const d = await r.json();
-                    if (!d.success) throw new Error(d.error || window.t('forms.settings.save_failed'));
-                    showToast(window.t('forms.toast.ai_settings_saved'), 'success');
-                    setStatus('', '');
-                    await load();
-                } catch (e) {
-                    showToast(e.message, 'error');
-                }
-            }
-
-            async function testKey() {
-                const btn = document.getElementById('formsTestBtn');
-                const payload = {
-                    provider:   document.getElementById('formsProvider').value,
-                    model:      document.getElementById('formsModel').value.trim(),
-                    api_key:    document.getElementById('formsApiKey').value,
-                    verify_ssl: document.getElementById('formsVerifySsl').checked ? '1' : '0',
-                };
-                if (!payload.model) { setStatus(window.t('forms.settings.pick_model'), 'error'); return; }
-                btn.disabled = true;
-                setStatus(window.t('forms.settings.testing'), 'busy');
-                try {
-                    const r = await fetch(API_BASE + 'test_ai_key.php', {
-                        method: 'POST',
-                        credentials: 'same-origin',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload),
-                    });
-                    const d = await r.json();
-                    if (!d.success) throw new Error(d.error || window.t('forms.settings.test_failed'));
-                    const tokens = (d.tokens_in != null && d.tokens_out != null)
-                        ? window.t('forms.settings.test_tokens', { in: d.tokens_in, out: d.tokens_out }) : '';
-                    setStatus(window.t('forms.settings.test_ok', { provider: d.provider, model: d.model, latency: d.latency_ms, tokens: tokens }), 'success');
-                } catch (e) {
-                    setStatus(window.t('forms.settings.test_failed_msg', { message: e.message }), 'error');
-                } finally {
-                    btn.disabled = false;
-                }
-            }
-
-            return { load, save, testKey, onProviderChange, onVerifySslChange };
-        })();
+        // AI provider/model/key for the form builder's AI Assist is now handled
+        // by the shared panel (renderAiSettingsPanel('forms_ai') + ai-settings.js).
 
         function selectAlignment(align) {
             currentAlignment = align;

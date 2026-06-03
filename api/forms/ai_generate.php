@@ -185,12 +185,7 @@ try {
         $userMessage = "Form description from the user:\n\n" . $description;
     }
 
-    $resp = rfpAiCallAnthropicStreaming($conn, [
-        'system'      => FORM_AI_SYSTEM,
-        'user'        => $userMessage,
-        'max_tokens'  => 4000,
-        'temperature' => 0.2,
-    ], function (string $eventType, array $data) use (&$accumulated, &$finalUsage) {
+    $onEvent = function (string $eventType, array $data) use (&$accumulated, &$finalUsage) {
         if ($eventType === 'text') {
             $accumulated .= $data['delta'] ?? '';
             sse_send('text', ['delta' => $data['delta'] ?? '']);
@@ -198,7 +193,34 @@ try {
             $finalUsage = array_merge($finalUsage, $data);
             sse_send('usage', $data);
         }
-    }, $settingsOverride);
+    };
+
+    $opts = [
+        'system'      => FORM_AI_SYSTEM,
+        'user'        => $userMessage,
+        'max_tokens'  => 4000,
+        'temperature' => 0.2,
+    ];
+
+    if ($formsCfg['provider'] === 'anthropic') {
+        // Anthropic keeps live token-by-token streaming (unchanged engine).
+        $resp = rfpAiCallAnthropicStreaming($conn, $opts, $onEvent, $settingsOverride);
+    } else {
+        // OpenRouter / OpenAI: one-shot via the shared client, emitted as a
+        // single SSE chunk so the front-end SSE consumer is unaffected.
+        require_once '../../includes/ai_provider.php';
+        $one = aiProviderChat($formsCfg, $opts);
+        $onEvent('text', ['delta' => $one['content']]);
+        $onEvent('usage', ['tokens_in' => $one['tokens_in'], 'tokens_out' => $one['tokens_out']]);
+        $resp = [
+            'content'     => $one['content'],
+            'tokens_in'   => $one['tokens_in'],
+            'tokens_out'  => $one['tokens_out'],
+            'cache_read'  => null,
+            'cache_write' => null,
+            'duration_ms' => $one['duration_ms'],
+        ];
+    }
 
     // Strip any stray fences (the prompt forbids them but be tolerant).
     $content = $resp['content'];

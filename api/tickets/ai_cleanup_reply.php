@@ -18,6 +18,7 @@ require_once '../../config.php';
 require_once '../../includes/functions.php';
 require_once '../../includes/encryption.php';
 require_once '../../includes/rfp_ai.php';
+require_once '../../includes/ai_settings.php';
 require_once '../../includes/reply_cleanup_prompt.php';
 
 // Disable buffering so SSE events flush immediately.
@@ -66,40 +67,30 @@ if (mb_strlen($draftText) > 5000) {
 try {
     $conn = connectToDatabase();
 
-    // Load the per-feature AI settings (separate from RFP AI / Knowledge AI
-    // so usage shows up as its own workspace on the Anthropic console).
-    $stmt = $conn->prepare(
-        "SELECT setting_key, setting_value FROM system_settings
-          WHERE setting_key IN ('tickets_reply_cleanup_api_key',
-                                'tickets_reply_cleanup_model',
-                                'tickets_reply_cleanup_tone',
-                                'tickets_reply_cleanup_custom_instructions')"
-    );
-    $stmt->execute();
-
-    $apiKey = '';
-    $model  = '';
-    $tone   = '';
-    $customInstructions = '';
-    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-        $val = $row['setting_value'];
-        if ($row['setting_key'] === 'tickets_reply_cleanup_api_key') {
-            $apiKey = $val !== '' ? decryptValue($val) : '';
-        } elseif ($row['setting_key'] === 'tickets_reply_cleanup_model') {
-            $model = $val ?? '';
-        } elseif ($row['setting_key'] === 'tickets_reply_cleanup_tone') {
-            $tone = $val ?? '';
-        } elseif ($row['setting_key'] === 'tickets_reply_cleanup_custom_instructions') {
-            $customInstructions = $val ?? '';
-        }
-    }
-
-    if ($apiKey === '') {
-        sse_send('error', ['message' => 'Reply Cleanup AI not configured. Set up the key in Tickets → Settings → Reply Cleanup.']);
+    // Provider / model / key / verify_ssl come from the shared AI block
+    // (ns=tickets_reply_cleanup) so this feature keeps its own key + billing
+    // line. Tone + custom instructions are reply-cleanup specific.
+    $aiCfg = aiSettingsLoad($conn, 'tickets_reply_cleanup');
+    if (($aiCfg['api_key'] ?? '') === '') {
+        sse_send('error', ['message' => 'Reply Cleanup AI not configured. Set up the provider and key in Tickets → Settings → Reply Cleanup.']);
         exit;
     }
-    if ($model === '') $model = 'claude-haiku-4-5-20251001';
-    if ($tone  === '') $tone  = 'Friendly';
+
+    $tone = '';
+    $customInstructions = '';
+    $stmt = $conn->prepare(
+        "SELECT setting_key, setting_value FROM system_settings
+          WHERE setting_key IN ('tickets_reply_cleanup_tone', 'tickets_reply_cleanup_custom_instructions')"
+    );
+    $stmt->execute();
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        if ($row['setting_key'] === 'tickets_reply_cleanup_tone') {
+            $tone = $row['setting_value'] ?? '';
+        } elseif ($row['setting_key'] === 'tickets_reply_cleanup_custom_instructions') {
+            $customInstructions = $row['setting_value'] ?? '';
+        }
+    }
+    if ($tone === '') $tone = 'Friendly';
 
     // Resolve requester first name + ticket subject in one query.
     // users.preferred_name wins if the user has set one, else fall back to
@@ -160,28 +151,37 @@ try {
     $userMessage .= "ANALYST'S DRAFT REPLY (clean this up):\n";
     $userMessage .= $draftText;
 
-    $resp = rfpAiCallAnthropicStreaming(
-        $conn,
-        [
-            'system'      => $system,
-            'user'        => $userMessage,
-            'max_tokens'  => 1024,
-            'temperature' => 0.3,
-        ],
-        function (string $eventType, array $data) {
-            if ($eventType === 'text') {
-                sse_send('text', ['delta' => $data['delta'] ?? '']);
-            } elseif ($eventType === 'usage') {
-                sse_send('usage', $data);
-            }
-        },
-        [
+    $onEvent = function (string $eventType, array $data) {
+        if ($eventType === 'text') {
+            sse_send('text', ['delta' => $data['delta'] ?? '']);
+        } elseif ($eventType === 'usage') {
+            sse_send('usage', $data);
+        }
+    };
+    $opts = [
+        'system'      => $system,
+        'user'        => $userMessage,
+        'max_tokens'  => 1024,
+        'temperature' => 0.3,
+    ];
+
+    if ($aiCfg['provider'] === 'anthropic') {
+        // Anthropic keeps live token-by-token streaming (unchanged engine).
+        $resp = rfpAiCallAnthropicStreaming($conn, $opts, $onEvent, [
             'provider'   => 'anthropic',
-            'api_key'    => $apiKey,
-            'model'      => $model,
-            'verify_ssl' => SSL_VERIFY_PEER,
-        ]
-    );
+            'api_key'    => $aiCfg['api_key'],
+            'model'      => $aiCfg['model'],
+            'verify_ssl' => $aiCfg['verify_ssl'] ? '1' : '0',
+        ]);
+    } else {
+        // OpenRouter / OpenAI: one-shot via the shared client, emitted as a
+        // single SSE chunk so the front-end SSE consumer is unaffected.
+        require_once '../../includes/ai_provider.php';
+        $one  = aiProviderChat($aiCfg, $opts);
+        $onEvent('text', ['delta' => $one['content']]);
+        $onEvent('usage', ['tokens_in' => $one['tokens_in'], 'tokens_out' => $one['tokens_out']]);
+        $resp = $one + ['cache_read' => null, 'cache_write' => null];
+    }
 
     sse_send('done', [
         'duration_ms' => $resp['duration_ms'] ?? null,

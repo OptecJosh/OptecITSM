@@ -6,6 +6,7 @@ session_start();
 require_once '../../config.php';
 require_once '../../includes/functions.php';
 require_once '../../includes/i18n.php';
+require_once '../../includes/ai_settings_panel.php';
 I18n::initFromSession();
 
 // Check if user is logged in
@@ -35,6 +36,7 @@ $translationNamespaces = ['common', 'tickets'];
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <script src="../../assets/js/i18n.js"></script>
+    <script src="../../assets/js/ai-settings.js"></script>
     <style>
         /* Page-specific overrides for settings page */
 
@@ -836,52 +838,39 @@ $translationNamespaces = ['common', 'tickets'];
             </p>
 
             <div class="reply-cleanup-layout">
-                <form id="replyCleanupForm">
-                    <div class="form-group">
-                        <label for="rcApiKey">Anthropic API key</label>
-                        <input type="password" id="rcApiKey" autocomplete="off" placeholder="sk-ant-...">
-                        <small style="color: #666;">Encrypted at rest. Leave the masked value untouched to keep the existing key.</small>
-                    </div>
+                <div>
+                    <!-- Provider / model / key — shared reusable panel (Anthropic / OpenAI / OpenRouter). -->
+                    <?php renderAiSettingsPanel('tickets_reply_cleanup'); ?>
 
-                    <div class="form-group">
-                        <label for="rcModel">Model</label>
-                        <select id="rcModel" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
-                            <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (recommended — fast and cheap)</option>
-                            <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
-                            <option value="claude-opus-4-7">Claude Opus 4.7</option>
-                        </select>
-                        <small style="color: #666;">Haiku is plenty for grammar fixes and greetings.</small>
-                    </div>
+                    <!-- Tone + custom instructions (reply-cleanup specific), saved separately. -->
+                    <form id="replyCleanupForm" style="margin-top: 24px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+                        <div class="form-group">
+                            <label for="rcTone">Tone</label>
+                            <select id="rcTone" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                <option value="Friendly">Friendly (default)</option>
+                                <option value="Formal">Formal</option>
+                                <option value="Brief">Brief</option>
+                            </select>
+                            <small style="color: #666;">Applied to every cleanup unless changed here.</small>
+                        </div>
 
-                    <div class="form-group">
-                        <label for="rcTone">Tone</label>
-                        <select id="rcTone" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
-                            <option value="Friendly">Friendly (default)</option>
-                            <option value="Formal">Formal</option>
-                            <option value="Brief">Brief</option>
-                        </select>
-                        <small style="color: #666;">Applied to every cleanup unless changed here.</small>
-                    </div>
+                        <div class="form-group">
+                            <label for="rcCustomInstructions">Custom instructions <span style="color: #999; font-weight: normal;">(optional)</span></label>
+                            <textarea id="rcCustomInstructions" rows="6" maxlength="4000"
+                                      style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; font-family: inherit; resize: vertical;"
+                                      placeholder="e.g. Always sign off with 'Many thanks,'&#10;Refer to the company as 'BillCorp'&#10;Use British English spellings throughout"></textarea>
+                            <small style="color: #666;">
+                                Appended to the system prompt shown to the right. Use this for organisation-specific tweaks
+                                (sign-off variations, company name, language preferences). The hard safety rules
+                                and output format will still take precedence.
+                            </small>
+                        </div>
 
-                    <div class="form-group">
-                        <label for="rcCustomInstructions">Custom instructions <span style="color: #999; font-weight: normal;">(optional)</span></label>
-                        <textarea id="rcCustomInstructions" rows="6" maxlength="4000"
-                                  style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; font-family: inherit; resize: vertical;"
-                                  placeholder="e.g. Always sign off with 'Many thanks,'&#10;Refer to the company as 'BillCorp'&#10;Use British English spellings throughout"></textarea>
-                        <small style="color: #666;">
-                            Appended to the system prompt shown to the right. Use this for organisation-specific tweaks
-                            (sign-off variations, company name, language preferences). The hard safety rules
-                            and output format will still take precedence.
-                        </small>
-                    </div>
-
-                    <div class="modal-actions" style="justify-content: flex-start; margin-top: 30px; gap: 12px;">
-                        <button type="submit" class="btn btn-primary"><?php echo htmlspecialchars(t('common.save')); ?></button>
-                        <button type="button" id="rcTestBtn" class="btn" style="background: #6c757d; color: white;"><?php echo htmlspecialchars(t('tickets.settings.buttons.test_connection')); ?></button>
-                    </div>
-
-                    <div id="rcTestResult" style="margin-top: 16px; padding: 10px 14px; border-radius: 4px; display: none; font-size: 13px;"></div>
-                </form>
+                        <div class="modal-actions" style="justify-content: flex-start; margin-top: 24px;">
+                            <button type="submit" class="btn btn-primary"><?php echo htmlspecialchars(t('common.save')); ?></button>
+                        </div>
+                    </form>
+                </div>
 
                 <aside class="reply-cleanup-prompt-panel">
                     <details open>
@@ -3184,9 +3173,7 @@ $translationNamespaces = ['common', 'tickets'];
                 const data = await res.json();
                 if (!data.success) return;
 
-                document.getElementById('rcApiKey').value = data.api_key_masked || '';
-                document.getElementById('rcApiKey').placeholder = data.has_api_key ? '' : 'sk-ant-...';
-                document.getElementById('rcModel').value = data.model || 'claude-haiku-4-5-20251001';
+                // Provider / model / key are handled by the shared AI panel.
                 document.getElementById('rcTone').value  = data.tone  || 'Friendly';
                 document.getElementById('rcCustomInstructions').value = data.custom_instructions || '';
                 document.getElementById('rcPromptPreview').textContent = data.prompt_preview || '';
@@ -3254,8 +3241,6 @@ $translationNamespaces = ['common', 'tickets'];
         document.getElementById('replyCleanupForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const payload = {
-                api_key:             document.getElementById('rcApiKey').value,
-                model:               document.getElementById('rcModel').value,
                 tone:                document.getElementById('rcTone').value,
                 custom_instructions: document.getElementById('rcCustomInstructions').value,
             };
@@ -3277,38 +3262,7 @@ $translationNamespaces = ['common', 'tickets'];
             }
         });
 
-        document.getElementById('rcTestBtn').addEventListener('click', async function() {
-            const btn = this;
-            const result = document.getElementById('rcTestResult');
-            btn.disabled = true;
-            btn.textContent = 'Testing…';
-            result.style.display = 'none';
-            try {
-                const res = await fetch(API_TICKETS + 'test_reply_cleanup_key.php', { method: 'POST' });
-                const data = await res.json();
-                result.style.display = 'block';
-                if (data.success) {
-                    result.style.background = '#e6f4e6';
-                    result.style.color = '#1b5e20';
-                    result.style.border = '1px solid #a5d6a7';
-                    result.textContent = data.message || 'Connection OK';
-                } else {
-                    result.style.background = '#fdecea';
-                    result.style.color = '#a00';
-                    result.style.border = '1px solid #f5c2c0';
-                    result.textContent = data.error || 'Test failed';
-                }
-            } catch (err) {
-                result.style.display = 'block';
-                result.style.background = '#fdecea';
-                result.style.color = '#a00';
-                result.style.border = '1px solid #f5c2c0';
-                result.textContent = 'Network error: ' + err.message;
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Test connection';
-            }
-        });
+        // Connection testing is handled by the shared AI panel's Test button.
 
         // General Settings Functions
         const timezones = [

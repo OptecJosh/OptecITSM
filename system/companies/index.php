@@ -52,7 +52,7 @@ $translationNamespaces = ['common', 'system'];
 
         /* Public email domains card */
         .card-title { font-size: 16px; font-weight: 600; color: #333; margin: 0 0 6px 0; }
-        .card-hint { font-size: 13px; color: #888; margin: 0 0 16px 0; max-width: 640px; line-height: 1.5; }
+        .card-hint { font-size: 13px; color: #888; margin: 0 0 16px 0; line-height: 1.5; }
         .freemail-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border-radius: 14px; font-size: 12px; background: #eceff1; color: #37474f; margin: 2px 6px 2px 0; }
         .freemail-chip button { background: none; border: none; cursor: pointer; color: #90a4ae; font-size: 14px; line-height: 1; padding: 0 2px; border-radius: 50%; }
         .freemail-chip button:hover { color: #c62828; }

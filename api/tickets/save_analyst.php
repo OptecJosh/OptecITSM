@@ -89,8 +89,8 @@ try {
             $stmt = $conn->prepare($sql);
             $stmt->execute([$username, $fullName, $email, $isActive ? 1 : 0, $authProviderId, $id]);
         }
-
-        echo json_encode(['success' => true, 'message' => 'Analyst updated successfully']);
+        $analystId = (int)$id;
+        $message = 'Analyst updated successfully';
     } else {
         // Create new analyst
         $passwordHash = password_hash($password, PASSWORD_DEFAULT);
@@ -99,9 +99,32 @@ try {
                 VALUES (?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())";
         $stmt = $conn->prepare($sql);
         $stmt->execute([$username, $passwordHash, $fullName, $email, $isActive ? 1 : 0, $authProviderId]);
-
-        echo json_encode(['success' => true, 'message' => 'Analyst created successfully']);
+        $analystId = (int)$conn->lastInsertId();
+        $message = 'Analyst created successfully';
     }
+
+    // Multi-tenancy: company access. Only touched when the form actually sends it
+    // (it's hidden on a single-company install), so we never clobber the all-access
+    // default on installs that don't show the control.
+    if (array_key_exists('can_access_all_tenants', $data) && $analystId > 0) {
+        $allAccess = !empty($data['can_access_all_tenants']) ? 1 : 0;
+        $tenantIds = is_array($data['tenant_ids'] ?? null) ? array_map('intval', $data['tenant_ids']) : [];
+        try {
+            $conn->prepare("UPDATE analysts SET can_access_all_tenants = ? WHERE id = ?")->execute([$allAccess, $analystId]);
+            // Rebuild the per-company grants from scratch (ignored anyway while all-access).
+            $conn->prepare("DELETE FROM analyst_tenant_access WHERE analyst_id = ?")->execute([$analystId]);
+            if (!$allAccess && $tenantIds) {
+                $ins = $conn->prepare("INSERT IGNORE INTO analyst_tenant_access (analyst_id, tenant_id) VALUES (?, ?)");
+                foreach (array_unique($tenantIds) as $tid) {
+                    if ($tid > 0) $ins->execute([$analystId, $tid]);
+                }
+            }
+        } catch (Exception $e) {
+            // Access tables not migrated yet → leave the analyst saved without touching access.
+        }
+    }
+
+    echo json_encode(['success' => true, 'message' => $message]);
 
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);

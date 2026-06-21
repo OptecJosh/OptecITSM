@@ -1276,6 +1276,20 @@ $translationNamespaces = ['common', 'tickets'];
                     <small style="color: #666;">Local users sign in with a password. Assign a provider to require SSO for this analyst — on their next SSO sign-in their identity is linked automatically (matched by email).</small>
                 </div>
 
+                <!-- Multi-tenancy: company access. Hidden on a single-company install
+                     (shown by JS only when more than one company exists). -->
+                <div class="form-group" id="analystAccessGroup" style="display: none;">
+                    <label class="toggle-label">
+                        <span class="toggle-switch">
+                            <input type="checkbox" id="analystAllAccess" checked onchange="syncAnalystAccess()">
+                            <span class="toggle-slider"></span>
+                        </span>
+                        Access all companies
+                    </label>
+                    <small style="color: #666; display: block; margin-top: 4px;">On = this analyst can work in every company (now and any added later). Off = only the companies you tick below.</small>
+                    <div id="analystCompanyList" style="display: none; margin-top: 8px; max-height: 180px; overflow-y: auto; border: 1px solid #eee; border-radius: 6px; padding: 8px;"></div>
+                </div>
+
                 <div class="form-group">
                     <label class="toggle-label">
                         <span class="toggle-switch">
@@ -3203,10 +3217,17 @@ $translationNamespaces = ['common', 'tickets'];
                 const safeName = escapeHtml(a.full_name).replace(/'/g, "\\'");
                 const safeUsername = escapeHtml(a.username).replace(/'/g, "\\'");
 
+                // Multi-tenancy: flag analysts restricted to specific companies.
+                // All-access analysts (and every analyst on a single-company install)
+                // show nothing.
+                const grantCount = (a.tenant_ids || []).length;
+                const accessChip = a.can_access_all_tenants ? '' :
+                    `<span class="status-badge" style="background:#fff3e0; color:#e65100; margin-left:6px;" title="Access limited to ${grantCount} compan${grantCount === 1 ? 'y' : 'ies'}">${grantCount} compan${grantCount === 1 ? 'y' : 'ies'}</span>`;
+
                 return `
                     <tr>
                         <td><strong>${escapeHtml(a.username)}</strong></td>
-                        <td>${escapeHtml(a.full_name)}</td>
+                        <td>${escapeHtml(a.full_name)}${accessChip}</td>
                         <td>${escapeHtml(a.email || '')}</td>
                         <td>${teamsText}</td>
                         <td>${statusBadge}</td>
@@ -3230,6 +3251,30 @@ $translationNamespaces = ['common', 'tickets'];
             }).join('');
         }
 
+        // Multi-tenancy: companies for the analyst access control (cached, active only).
+        let analystCompaniesCache = null;
+        async function loadAnalystCompanies() {
+            if (analystCompaniesCache !== null) return analystCompaniesCache;
+            try {
+                const r = await fetch('../../api/system/get_tenants.php');
+                const d = await r.json();
+                analystCompaniesCache = (d.success ? d.companies : []).filter(c => c.is_active);
+            } catch (e) { analystCompaniesCache = []; }
+            return analystCompaniesCache;
+        }
+        function syncAnalystAccess() {
+            const all = document.getElementById('analystAllAccess').checked;
+            document.getElementById('analystCompanyList').style.display = all ? 'none' : '';
+        }
+        function renderAnalystCompanyList(companies, grantedIds) {
+            const granted = new Set((grantedIds || []).map(Number));
+            document.getElementById('analystCompanyList').innerHTML = companies.map(c => `
+                <label style="display:flex; align-items:center; gap:8px; padding:4px 2px; font-size:13px; cursor:pointer;">
+                    <input type="checkbox" class="analyst-company-cb" value="${c.id}" ${granted.has(Number(c.id)) ? 'checked' : ''}>
+                    ${escapeHtml(c.name)}
+                </label>`).join('');
+        }
+
         function openAnalystModal(analyst = null) {
             document.getElementById('analystModalTitle').textContent = analyst ? t('tickets.settings.modals.analyst.edit_title') : t('tickets.settings.modals.analyst.add_title');
             document.getElementById('analystId').value = analyst ? analyst.id : '';
@@ -3250,6 +3295,20 @@ $translationNamespaces = ['common', 'tickets'];
                 passwordInput.setAttribute('required', 'required');
                 passwordGroup.querySelector('small').textContent = 'Required for new analysts.';
             }
+
+            // Multi-tenancy company access — shown only when more than one company exists.
+            const accessGroup = document.getElementById('analystAccessGroup');
+            loadAnalystCompanies().then(companies => {
+                if (companies.length > 1) {
+                    accessGroup.style.display = '';
+                    // New analysts default to all-access (matches the install default).
+                    document.getElementById('analystAllAccess').checked = analyst ? !!analyst.can_access_all_tenants : true;
+                    renderAnalystCompanyList(companies, analyst ? (analyst.tenant_ids || []) : []);
+                    syncAnalystAccess();
+                } else {
+                    accessGroup.style.display = 'none';
+                }
+            });
 
             document.getElementById('analystModal').classList.add('active');
         }
@@ -3321,6 +3380,16 @@ $translationNamespaces = ['common', 'tickets'];
                 is_active: document.getElementById('analystActive').checked,
                 auth_provider_id: document.getElementById('analystAuthProvider').value || null
             };
+
+            // Multi-tenancy: send company access only when the control is shown
+            // (more than one company). Omitting it on N=1 leaves the default intact.
+            const accessGroup = document.getElementById('analystAccessGroup');
+            if (accessGroup.style.display !== 'none') {
+                const allAccess = document.getElementById('analystAllAccess').checked;
+                formData.can_access_all_tenants = allAccess ? 1 : 0;
+                formData.tenant_ids = allAccess ? [] :
+                    Array.from(document.querySelectorAll('.analyst-company-cb:checked')).map(cb => parseInt(cb.value, 10));
+            }
 
             try {
                 const response = await fetch(API_BASE + 'save_analyst.php', {

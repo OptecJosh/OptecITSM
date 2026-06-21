@@ -285,3 +285,43 @@ function resolveTicketTenantForEmail(PDO $conn, $mailboxId, string $fromAddress)
     // No match → triage (NULL).
     return null;
 }
+
+/**
+ * Is this a public free-email / consumer domain (gmail.com, outlook.com, …)?
+ *
+ * Such domains must NEVER be registered to a company for shared-intake routing
+ * (two different clients can both send from gmail.com, so a mapping would
+ * mis-route one of them). They still reach support fine — they simply land in
+ * triage and are filed by hand. Used to guard domain registration and, later,
+ * to flag triage rows.
+ */
+function isFreemailDomain(string $domain): bool {
+    static $freemail = [
+        'gmail.com', 'googlemail.com', 'outlook.com', 'hotmail.com', 'hotmail.co.uk',
+        'live.com', 'live.co.uk', 'msn.com', 'yahoo.com', 'yahoo.co.uk', 'ymail.com',
+        'icloud.com', 'me.com', 'mac.com', 'aol.com', 'protonmail.com', 'proton.me',
+        'gmx.com', 'gmx.co.uk', 'mail.com', 'zoho.com', 'yandex.com', 'fastmail.com',
+        'btinternet.com', 'sky.com', 'talktalk.net', 'virginmedia.com', 'ntlworld.com',
+    ];
+    return in_array(strtolower(trim($domain)), $freemail, true);
+}
+
+/**
+ * Normalise a user-entered email domain for storage/matching: lower-cased,
+ * trimmed, with any leading "@", scheme or "www." stripped. Returns '' if what
+ * remains isn't a plausible domain.
+ */
+function normaliseEmailDomain(string $raw): string {
+    $d = strtolower(trim($raw));
+    $d = preg_replace('#^https?://#', '', $d);
+    $d = ltrim($d, '@');
+    $d = preg_replace('#^www\.#', '', $d);
+    $d = explode('/', $d)[0];           // drop any path
+    $d = explode('@', $d);              // if they pasted a full address, keep the domain
+    $d = end($d);
+    // A plausible domain: labels of letters/digits/hyphens, at least one dot, valid TLD.
+    if (!preg_match('/^(?=.{1,253}$)([a-z0-9](-?[a-z0-9])*\.)+[a-z]{2,}$/', $d)) {
+        return '';
+    }
+    return $d;
+}

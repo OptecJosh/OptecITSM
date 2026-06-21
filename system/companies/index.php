@@ -114,6 +114,18 @@ $translationNamespaces = ['common', 'system'];
                     <input type="checkbox" id="fActive" checked>
                     <div class="cb-label"><strong><?php echo htmlspecialchars(t('system.companies.cb_active')); ?></strong><span><?php echo htmlspecialchars(t('system.companies.cb_active_desc')); ?></span></div>
                 </div>
+
+                <!-- Email domains (shared-intake routing). Shown only when editing an
+                     existing company on a multi-company install (populated by JS). -->
+                <div class="form-field" id="domainsSection" style="display: none;">
+                    <label><?php echo htmlspecialchars(t('system.companies.domains_label')); ?></label>
+                    <div class="hint"><?php echo htmlspecialchars(t('system.companies.domains_hint')); ?></div>
+                    <div id="domainsList"></div>
+                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                        <input type="text" id="domainInput" placeholder="<?php echo htmlspecialchars(t('system.companies.domain_placeholder')); ?>" style="flex: 1;">
+                        <button type="button" class="btn btn-secondary" id="addDomainBtn"><?php echo htmlspecialchars(t('system.companies.domain_add')); ?></button>
+                    </div>
+                </div>
             </div>
             <div class="co-modal-footer">
                 <button class="btn btn-secondary" id="cancelModalBtn" type="button"><?php echo htmlspecialchars(t('system.companies.cancel')); ?></button>
@@ -166,10 +178,93 @@ $translationNamespaces = ['common', 'system'];
         active.checked = c ? !!c.is_active : true;
         // The default company is always active and can't be deactivated.
         active.disabled = !!(c && c.is_default);
+
+        // Email domains: only when editing an existing company on a multi-company
+        // install (shared-intake routing is meaningless with a single company).
+        const domainsSection = document.getElementById('domainsSection');
+        document.getElementById('domainInput').value = '';
+        if (c && c.id && companies.length > 1) {
+            domainsSection.style.display = '';
+            loadDomains(c.id);
+        } else {
+            domainsSection.style.display = 'none';
+            document.getElementById('domainsList').innerHTML = '';
+        }
+
         modal.classList.add('open');
         document.getElementById('fName').focus();
     }
     function closeModal() { modal.classList.remove('open'); }
+
+    // ---------- Company email domains ----------
+    let currentDomains = [];
+    async function loadDomains(tenantId) {
+        document.getElementById('domainsList').innerHTML = '';
+        try {
+            const r = await fetch(API + 'system/get_tenant_domains.php?tenant_id=' + tenantId);
+            const d = await r.json();
+            currentDomains = d.success ? d.domains : [];
+        } catch (e) { currentDomains = []; }
+        renderDomains();
+    }
+    function renderDomains() {
+        const list = document.getElementById('domainsList');
+        if (!currentDomains.length) {
+            list.innerHTML = '<div style="color:#aaa; font-size:12px; font-style:italic; padding:6px 0;">' + esc(window.t('system.companies.domains_none')) + '</div>';
+            return;
+        }
+        list.innerHTML = currentDomains.map(d => `
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 10px; border:1px solid #eee; border-radius:5px; margin-bottom:6px; font-size:13px;">
+                <span>${esc(d.domain)}</span>
+                <button type="button" class="table-action-btn" data-remove-domain="${d.id}">${esc(window.t('system.companies.domain_remove'))}</button>
+            </div>`).join('');
+    }
+    async function addDomain() {
+        const tenantId = document.getElementById('companyId').value;
+        const input = document.getElementById('domainInput');
+        const domain = input.value.trim();
+        if (!tenantId || !domain) return;
+        const btn = document.getElementById('addDomainBtn');
+        btn.disabled = true;
+        try {
+            const r = await fetch(API + 'system/add_tenant_domain.php', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tenant_id: tenantId, domain })
+            });
+            const d = await r.json();
+            if (d.success) {
+                input.value = '';
+                showToast(window.t('system.companies.domain_added'), 'success');
+                loadDomains(tenantId);
+            } else {
+                showToast(d.error || window.t('system.companies.domain_add_failed'), 'error');
+            }
+        } catch (e) { showToast(window.t('system.companies.domain_add_failed'), 'error'); }
+        btn.disabled = false;
+    }
+    async function removeDomain(id) {
+        try {
+            const r = await fetch(API + 'system/delete_tenant_domain.php', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id })
+            });
+            const d = await r.json();
+            if (d.success) {
+                showToast(window.t('system.companies.domain_removed'), 'success');
+                loadDomains(document.getElementById('companyId').value);
+            } else {
+                showToast(d.error || window.t('system.companies.domain_remove_failed'), 'error');
+            }
+        } catch (e) { showToast(window.t('system.companies.domain_remove_failed'), 'error'); }
+    }
+    document.getElementById('addDomainBtn').addEventListener('click', addDomain);
+    document.getElementById('domainInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); addDomain(); }
+    });
+    document.getElementById('domainsList').addEventListener('click', e => {
+        const rm = e.target.getAttribute('data-remove-domain');
+        if (rm) removeDomain(parseInt(rm, 10));
+    });
 
     document.getElementById('addCompanyBtn').addEventListener('click', () => openModal(null));
     document.getElementById('cancelModalBtn').addEventListener('click', closeModal);

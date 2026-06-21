@@ -454,5 +454,18 @@ return [
         'company_saved' => 'Company saved',
         'error'         => 'Error: {error}',
         'save_failed'   => 'Failed to save',
+
+        // Email domains (shared-intake routing)
+        'domains_label'       => 'Email domains',
+        'domains_hint'        => 'Mail from a shared-intake mailbox is routed to this company when the sender\'s domain matches one of these. Public providers (gmail.com, etc.) can\'t be added — that mail is filed by hand from triage.',
+        'domains_save_first'  => 'Save the company first, then add its email domains.',
+        'domains_none'        => 'No domains yet.',
+        'domain_placeholder'  => 'acme.com',
+        'domain_add'          => 'Add',
+        'domain_remove'       => 'Remove',
+        'domain_added'        => 'Domain added',
+        'domain_removed'      => 'Domain removed',
+        'domain_add_failed'   => 'Failed to add domain',
+        'domain_remove_failed'=> 'Failed to remove domain',
     ],
 ];

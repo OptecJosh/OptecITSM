@@ -496,9 +496,12 @@ CREATE TABLE IF NOT EXISTS `target_mailboxes` (
     `imported_action`       VARCHAR(20) NOT NULL DEFAULT 'delete',
     `imported_folder`       VARCHAR(100) NULL,
     `is_active`             TINYINT(1) NOT NULL DEFAULT 1,
+    `tenant_id`             INT NULL,
     `created_datetime`      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `last_checked_datetime` DATETIME NULL,
-    PRIMARY KEY (`id`)
+    PRIMARY KEY (`id`),
+    KEY `ix_target_mailboxes_tenant_id` (`tenant_id`),
+    CONSTRAINT `fk_target_mailboxes_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `emails` (

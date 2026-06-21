@@ -341,6 +341,7 @@ $schema = [
         'imported_action'         => 'VARCHAR(20) NOT NULL DEFAULT \'delete\'',
         'imported_folder'         => 'VARCHAR(100) NULL',
         'is_active'               => 'TINYINT(1) NOT NULL DEFAULT 1',
+        'tenant_id'               => 'INT NULL',
         'created_datetime'        => 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP',
         'last_checked_datetime'   => 'DATETIME NULL',
     ],
@@ -2016,6 +2017,18 @@ try {
     $results = [];
     $dbName = DB_NAME;
 
+    // Multi-tenancy: was target_mailboxes.tenant_id absent *before* this run added
+    // it? If so the post-schema section backfills existing mailboxes to the Default
+    // company (pinning them) — but ONLY this once. Once multi-tenancy is live a NULL
+    // tenant_id legitimately means "shared intake" (route by sender), so we must
+    // never re-backfill on later verifies or we'd clobber that deliberate choice.
+    $mailboxTenantColWasMissing = false;
+    try {
+        $mbProbe = $conn->prepare("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = ? AND table_name = 'target_mailboxes' AND column_name = 'tenant_id'");
+        $mbProbe->execute([$dbName]);
+        $mailboxTenantColWasMissing = ((int)$mbProbe->fetchColumn() === 0);
+    } catch (Exception $e) {}
+
     foreach ($schema as $tableName => $columns) {
         $tableResult = ['table' => $tableName, 'status' => 'ok', 'details' => []];
 
@@ -2330,6 +2343,30 @@ try {
             $backfilled = $conn->exec("UPDATE tickets SET tenant_id = $defaultTenantId WHERE tenant_id IS NULL");
             if ($backfilled > 0) {
                 $results[] = ['table' => 'tickets', 'status' => 'updated', 'details' => ["Backfilled tenant_id on $backfilled ticket(s) to the Default tenant"]];
+            }
+        }
+    }
+    // target_mailboxes.tenant_id — index + FK + a ONE-TIME backfill pinning every
+    // existing mailbox to the Default company. This keeps existing inbound mail
+    // flowing to Default exactly as before once a second company is added (a
+    // pinned mailbox decides the tenant; the sender is ignored). NULL means
+    // "shared intake" (route by sender domain) going forward, so — unlike tickets
+    // — we backfill ONLY when the column was just added ($mailboxTenantColWasMissing),
+    // never on later verifies, so an admin's deliberate shared-intake choice sticks.
+    if ($tableExists('target_mailboxes') && $tableExists('tenants') && $colExists('target_mailboxes', 'tenant_id')) {
+        if (!$idxExists('target_mailboxes', 'ix_target_mailboxes_tenant_id')) {
+            try { $conn->exec("ALTER TABLE target_mailboxes ADD KEY ix_target_mailboxes_tenant_id (tenant_id)"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('target_mailboxes', 'fk_target_mailboxes_tenant')) {
+            try { $conn->exec("ALTER TABLE target_mailboxes ADD CONSTRAINT fk_target_mailboxes_tenant FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+        if ($mailboxTenantColWasMissing) {
+            $defaultTenantId = (int) ($conn->query("SELECT id FROM tenants WHERE is_default = 1 ORDER BY id LIMIT 1")->fetchColumn() ?: 0);
+            if ($defaultTenantId > 0) {
+                $pinned = $conn->exec("UPDATE target_mailboxes SET tenant_id = $defaultTenantId WHERE tenant_id IS NULL");
+                if ($pinned > 0) {
+                    $results[] = ['table' => 'target_mailboxes', 'status' => 'updated', 'details' => ["Pinned $pinned existing mailbox(es) to the Default company (multi-tenancy migration)"]];
+                }
             }
         }
     }

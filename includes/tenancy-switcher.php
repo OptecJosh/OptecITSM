@@ -47,9 +47,10 @@ function renderTenantSwitcher(PDO $conn, int $analystId): void {
         .tenant-switcher { position: relative; margin-right: 16px; }
         .tenant-switcher-btn {
             display: flex; align-items: center; gap: 8px;
+            height: 34px; box-sizing: border-box;
             background: rgba(255,255,255,0.12);
             color: #fff; border: none; cursor: pointer;
-            padding: 6px 12px; border-radius: 4px;
+            padding: 0 12px; border-radius: 4px;
             font-size: 13px; font-weight: 600; font-family: inherit;
             transition: background 0.15s;
             max-width: 240px;

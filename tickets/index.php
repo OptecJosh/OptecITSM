@@ -280,6 +280,28 @@ $translationNamespaces = ['common', 'tickets'];
                 <!-- Populated by openTicketContextMenu(). -->
             </div>
         </div>
+        <!-- Department submenu parent. Lists the analyst's team departments
+             (same source as the in-panel Department dropdown); picking one sets
+             department_id. Includes a "(no department)" clear row. -->
+        <div class="ticket-context-menu-item ticket-context-menu-parent" role="menuitem" tabindex="0">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9v.01"/><path d="M9 12v.01"/><path d="M9 15v.01"/><path d="M9 18v.01"/></svg>
+            <span>Set department</span>
+            <svg class="ctx-sub-arrow" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
+            <div class="ticket-context-submenu" id="ctxDepartmentSubmenu" role="menu">
+                <!-- Populated by openTicketContextMenu(). -->
+            </div>
+        </div>
+        <!-- Type submenu parent. Lists active ticket_types (same source as the
+             in-panel Type dropdown); picking one sets ticket_type_id. Includes a
+             "(no type)" clear row. -->
+        <div class="ticket-context-menu-item ticket-context-menu-parent" role="menuitem" tabindex="0">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+            <span>Set type</span>
+            <svg class="ctx-sub-arrow" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
+            <div class="ticket-context-submenu" id="ctxTypeSubmenu" role="menu">
+                <!-- Populated by openTicketContextMenu(). -->
+            </div>
+        </div>
         <!-- Assign-to submenu parent. Lists active analysts; picking one sets
              both assigned_analyst_id and owner_id (mirrors drag-to-analyst-folder). -->
         <div class="ticket-context-menu-item ticket-context-menu-parent" role="menuitem" tabindex="0">
@@ -343,7 +365,7 @@ $translationNamespaces = ['common', 'tickets'];
         window.API_BASE = '../api/tickets/';
         window.CURRENT_ANALYST_ID = <?php echo (int)($_SESSION['analyst_id'] ?? 0); ?>;
     </script>
-    <script src="../assets/js/inbox.js?v=29"></script>
+    <script src="../assets/js/inbox.js?v=30"></script>
     <script>
     // Auto-check mailboxes every 60 seconds
     (function() {

@@ -3226,6 +3226,8 @@ function openTicketContextMenu(event, ticketId, ticketRef) {
     // right-clicking the ticket that's already open in the reading pane.
     populateContextStatusSubmenu();
     populateContextPrioritySubmenu();
+    populateContextDepartmentSubmenu();
+    populateContextTypeSubmenu();
     populateContextAssigneeSubmenu();
 
     // Position at cursor — flip if it would overflow the viewport
@@ -3342,6 +3344,146 @@ async function setPriorityFromContext(priorityId) {
     } catch (error) {
         console.error('Error setting priority from context:', error);
         showToast('Failed to set priority', 'error');
+    }
+}
+
+// Build the Set-department submenu HTML from the analyst's team departments
+// (same `departments` lookup as the in-panel Department dropdown). department_id
+// is nullable, so the first row is a "(no department)" option that clears it.
+function populateContextDepartmentSubmenu() {
+    const sub = document.getElementById('ctxDepartmentSubmenu');
+    if (!sub) return;
+    if (!departments.length) {
+        sub.innerHTML = '<div class="ticket-context-submenu-item" style="color:#999; font-style: italic; cursor: default;">No departments available</div>';
+        return;
+    }
+    const currentDeptId = (currentEmail && currentEmail.ticket_id == ctxTargetTicketId)
+        ? (currentEmail.department_id ?? null)
+        : undefined;
+    const onOpenTicket = currentEmail && currentEmail.ticket_id == ctxTargetTicketId;
+    const clearRow = `<div class="ticket-context-submenu-item" data-department-id="" onclick="setDepartmentFromContext('')">
+        <span class="ctx-status-swatch" style="background: transparent; border-style: dashed;"></span>
+        <span class="ctx-status-name" style="color:#888; font-style: italic;">(no department)</span>
+        ${(currentDeptId === null || currentDeptId === undefined) && onOpenTicket ? '<span class="ctx-status-check">&#10003;</span>' : ''}
+    </div>`;
+    sub.innerHTML = clearRow + departments.map(d => {
+        const isCurrent = (currentDeptId != null && d.id == currentDeptId);
+        return `<div class="ticket-context-submenu-item" data-department-id="${d.id}" onclick="setDepartmentFromContext(${d.id})">
+            <span class="ctx-status-swatch" style="background:#e5e7eb; border:none;"></span><span class="ctx-status-name">${escapeHtml(d.name)}</span>${isCurrent ? '<span class="ctx-status-check">&#10003;</span>' : ''}
+        </div>`;
+    }).join('');
+}
+
+// Set a ticket's department from the right-click menu. Empty string clears it
+// (department_id is nullable). Refreshes folder counts + the list because the
+// inbox can be grouped by department.
+async function setDepartmentFromContext(departmentId) {
+    closeTicketContextMenu();
+    if (!ctxTargetTicketId) return;
+    const targetId = ctxTargetTicketId;
+    const newRow   = departmentId !== '' ? departments.find(d => d.id == departmentId) : null;
+    const newLabel = newRow ? newRow.name : '';
+    try {
+        const response = await fetch(API_BASE + 'assign_ticket.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ticket_id: targetId,
+                department_id: departmentId === '' ? null : departmentId
+            })
+        });
+        const data = await response.json();
+        if (!data.success) {
+            showToast('Error setting department: ' + (data.error || 'unknown'), 'error');
+            return;
+        }
+        try {
+            const oldLabel = (currentEmail && currentEmail.ticket_id == targetId)
+                ? (getDisplayName('department', currentEmail.department_id) || '')
+                : '';
+            await logAudit(targetId, 'Department', oldLabel, newLabel);
+        } catch (e) { /* audit is best-effort */ }
+        // Keep the open ticket's toolbar in sync when it's the same one.
+        if (currentEmail && currentEmail.ticket_id == targetId) {
+            currentEmail.department_id = departmentId === '' ? null : Number(departmentId);
+            const sel = document.getElementById('departmentSelect');
+            if (sel) sel.value = departmentId === '' ? '' : String(departmentId);
+            updatePropertiesSummary();
+        }
+        loadFolderCounts();
+        loadEmails();
+    } catch (error) {
+        console.error('Error setting department from context:', error);
+        showToast('Failed to set department', 'error');
+    }
+}
+
+// Build the Set-type submenu HTML from the active ticket_types lookup (same
+// `ticketTypes` source as the in-panel Type dropdown). ticket_type_id is
+// nullable, so the first row is a "(no type)" option that clears it.
+function populateContextTypeSubmenu() {
+    const sub = document.getElementById('ctxTypeSubmenu');
+    if (!sub) return;
+    if (!ticketTypes.length) {
+        sub.innerHTML = '<div class="ticket-context-submenu-item" style="color:#999; font-style: italic; cursor: default;">No types configured</div>';
+        return;
+    }
+    const currentTypeId = (currentEmail && currentEmail.ticket_id == ctxTargetTicketId)
+        ? (currentEmail.ticket_type_id ?? null)
+        : undefined;
+    const onOpenTicket = currentEmail && currentEmail.ticket_id == ctxTargetTicketId;
+    const clearRow = `<div class="ticket-context-submenu-item" data-type-id="" onclick="setTypeFromContext('')">
+        <span class="ctx-status-swatch" style="background: transparent; border-style: dashed;"></span>
+        <span class="ctx-status-name" style="color:#888; font-style: italic;">(no type)</span>
+        ${(currentTypeId === null || currentTypeId === undefined) && onOpenTicket ? '<span class="ctx-status-check">&#10003;</span>' : ''}
+    </div>`;
+    sub.innerHTML = clearRow + ticketTypes.map(tt => {
+        const isCurrent = (currentTypeId != null && tt.id == currentTypeId);
+        return `<div class="ticket-context-submenu-item" data-type-id="${tt.id}" onclick="setTypeFromContext(${tt.id})">
+            <span class="ctx-status-swatch" style="background:#e5e7eb; border:none;"></span><span class="ctx-status-name">${escapeHtml(tt.name)}</span>${isCurrent ? '<span class="ctx-status-check">&#10003;</span>' : ''}
+        </div>`;
+    }).join('');
+}
+
+// Set a ticket's type from the right-click menu. Empty string clears it
+// (ticket_type_id is nullable).
+async function setTypeFromContext(typeId) {
+    closeTicketContextMenu();
+    if (!ctxTargetTicketId) return;
+    const targetId = ctxTargetTicketId;
+    const newRow   = typeId !== '' ? ticketTypes.find(t => t.id == typeId) : null;
+    const newLabel = newRow ? newRow.name : '';
+    try {
+        const response = await fetch(API_BASE + 'assign_ticket.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ticket_id: targetId,
+                ticket_type_id: typeId === '' ? null : typeId
+            })
+        });
+        const data = await response.json();
+        if (!data.success) {
+            showToast('Error setting type: ' + (data.error || 'unknown'), 'error');
+            return;
+        }
+        try {
+            const oldLabel = (currentEmail && currentEmail.ticket_id == targetId)
+                ? (getDisplayName('ticket_type', currentEmail.ticket_type_id) || '')
+                : '';
+            await logAudit(targetId, 'Ticket Type', oldLabel, newLabel);
+        } catch (e) { /* audit is best-effort */ }
+        // Keep the open ticket's toolbar in sync when it's the same one.
+        if (currentEmail && currentEmail.ticket_id == targetId) {
+            currentEmail.ticket_type_id = typeId === '' ? null : Number(typeId);
+            const sel = document.getElementById('ticketTypeSelect');
+            if (sel) sel.value = typeId === '' ? '' : String(typeId);
+            updatePropertiesSummary();
+        }
+        loadEmails();
+    } catch (error) {
+        console.error('Error setting type from context:', error);
+        showToast('Failed to set type', 'error');
     }
 }
 

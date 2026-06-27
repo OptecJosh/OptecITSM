@@ -45,8 +45,13 @@ $path_prefix = '../';
         .pm-section h3 { margin: 0 0 10px; font-size: 1rem; color: #6a1b9a; }
         .pm-field-label { font-size: 12px; text-transform: uppercase; letter-spacing: .4px; color: #6b7280; margin-bottom: 3px; }
         .pm-field-val { margin-bottom: 12px; white-space: pre-wrap; }
-        .pm-link-row { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
+        .pm-link-row { display: flex; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
         .pm-link-row a { color: #6a1b9a; text-decoration: none; font-weight: 600; }
+        .pm-icon-btn { background: none; border: none; cursor: pointer; color: #6b7280; padding: 4px; border-radius: 4px; display: inline-flex; align-items: center; line-height: 0; }
+        .pm-icon-btn:hover { background: #f0f0f0; color: #374151; }
+        .pm-icon-btn.danger { color: #c62828; }
+        .pm-icon-btn.danger:hover { background: #fdeaea; }
+        .pm-icon-btn svg { width: 16px; height: 16px; }
         .pm-audit { font-size: 12px; color: #555; padding: 4px 0; border-bottom: 1px solid #f4f4f4; }
         /* Editor modal */
         .pm-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 1000; align-items: flex-start; justify-content: center; overflow-y: auto; }
@@ -167,6 +172,6 @@ $path_prefix = '../';
 
     <script src="<?php echo BASE_URL; ?>assets/js/toast.js"></script>
     <script src="<?php echo BASE_URL; ?>assets/js/confirm.js"></script>
-    <script src="<?php echo BASE_URL; ?>assets/js/problem-management.js?v=7"></script>
+    <script src="<?php echo BASE_URL; ?>assets/js/problem-management.js?v=8"></script>
 </body>
 </html>

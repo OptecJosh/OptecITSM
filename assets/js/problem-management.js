@@ -8,6 +8,10 @@ let pmSearchTimer = null;
 let pmCurrentId = null;       // open detail
 let pmDetailCache = null;     // last loaded detail payload
 
+// Open-in-new-tab and unlink icons (feather-style), used in the linked panels.
+const PM_OPEN_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>';
+const PM_UNLINK_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17H7A5 5 0 0 1 7 7h2"></path><path d="M15 7h2a5 5 0 0 1 4 8"></path><line x1="8" y1="12" x2="12" y2="12"></line><line x1="2" y1="2" x2="22" y2="22"></line></svg>';
+
 function pmEsc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
@@ -114,14 +118,16 @@ function pmRenderDetail(data) {
             <a href="../tickets/index.php?ticket_id=${i.id}" target="_blank">${pmEsc(i.ticket_number || ('#' + i.id))}</a>
             <span style="flex:1;">${pmEsc(i.subject || '')}</span>
             <span style="color:#6b7280;font-size:12px;">${pmEsc(i.status || '')}</span>
-            <a href="#" onclick="pmUnlinkIncident(${i.id});return false;" style="color:#c62828;" title="Unlink">✕</a>
+            <a class="pm-icon-btn" href="../tickets/index.php?ticket_id=${i.id}" target="_blank" title="Open incident">${PM_OPEN_SVG}</a>
+            <button class="pm-icon-btn danger" onclick="pmUnlinkIncident(${i.id})" title="Unlink incident">${PM_UNLINK_SVG}</button>
         </div>`).join('') || '<div style="color:#9ca3af;font-size:13px;">No incidents linked yet.</div>';
     const changes = (data.changes || []).map(c => `
         <div class="pm-link-row">
             <a href="../change-management/index.php?change_id=${c.id}" target="_blank">Change #${c.id}</a>
             <span style="flex:1;">${pmEsc(c.title || '')}</span>
             <span style="color:#6b7280;font-size:12px;">${pmEsc(c.status || '')}</span>
-            <a href="#" onclick="pmUnlinkChange(${c.id});return false;" style="color:#c62828;" title="Unlink">✕</a>
+            <a class="pm-icon-btn" href="../change-management/index.php?change_id=${c.id}" target="_blank" title="Open change">${PM_OPEN_SVG}</a>
+            <button class="pm-icon-btn danger" onclick="pmUnlinkChange(${c.id})" title="Unlink change">${PM_UNLINK_SVG}</button>
         </div>`).join('') || '<div style="color:#9ca3af;font-size:13px;">No change linked yet.</div>';
     const audit = (data.audit || []).map(a => {
         const when = a.created_datetime ? new Date(a.created_datetime.replace(' ', 'T') + 'Z').toLocaleString() : '';
@@ -288,6 +294,8 @@ async function pmLinkSelected() {
     pmOpenDetail(pmCurrentId);
 }
 async function pmUnlinkIncident(ticketId) {
+    const ok = await showConfirm({ title: 'Unlink incident?', message: 'This removes the link to this problem. The incident itself is not deleted.', okLabel: 'Unlink', okClass: 'danger' });
+    if (!ok) return;
     try {
         const res = await fetch(PM_API + 'unlink_ticket.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ problem_id: pmCurrentId, ticket_id: ticketId }) });
         const data = await res.json();
@@ -348,6 +356,8 @@ async function pmLinkChangeSelected() {
     pmOpenDetail(pmCurrentId);
 }
 async function pmUnlinkChange(changeId) {
+    const ok = await showConfirm({ title: 'Unlink change?', message: 'This removes the link to this problem. The change itself is not deleted.', okLabel: 'Unlink', okClass: 'danger' });
+    if (!ok) return;
     try {
         const res = await fetch(PM_API + 'unlink_change.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ problem_id: pmCurrentId, change_id: changeId }) });
         const data = await res.json();

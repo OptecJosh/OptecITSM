@@ -96,16 +96,14 @@ $translationNamespaces = ['common', 'tickets'];
     <div class="modal" id="emailModal">
         <div class="modal-content">
             <div class="modal-body">
-                <div class="form-row">
+                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                     <div class="form-group">
                         <label class="form-label"><?php echo htmlspecialchars(t('tickets.reply_modal.to')); ?></label>
-                        <input type="text" class="form-input" id="emailTo" placeholder="<?php echo htmlspecialchars(t('tickets.reply_modal.to_placeholder')); ?>">
+                        <input type="text" class="form-input" id="emailTo" autocomplete="off" placeholder="<?php echo htmlspecialchars(t('tickets.reply_modal.to_placeholder')); ?>">
                     </div>
-                </div>
-                <div class="form-row">
                     <div class="form-group">
                         <label class="form-label"><?php echo htmlspecialchars(t('tickets.reply_modal.cc')); ?></label>
-                        <input type="text" class="form-input" id="emailCc" placeholder="<?php echo htmlspecialchars(t('tickets.reply_modal.cc_placeholder')); ?>">
+                        <input type="text" class="form-input" id="emailCc" autocomplete="off" placeholder="<?php echo htmlspecialchars(t('tickets.reply_modal.cc_placeholder')); ?>">
                     </div>
                 </div>
                 <input type="hidden" id="emailSubject">

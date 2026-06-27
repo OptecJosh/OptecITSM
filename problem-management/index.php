@@ -63,6 +63,14 @@ $path_prefix = '../';
         .pm-btn-primary { background: #6a1b9a; color: #fff; border-color: #6a1b9a; }
         .pm-btn-danger { color: #c62828; border-color: #e0a3a3; }
         .pm-ai-out { background: #f7f3fb; border: 1px dashed #c9a8e0; border-radius: 6px; padding: 10px 12px; margin-top: 8px; white-space: pre-wrap; font-size: 13px; display: none; }
+        /* Incident picker */
+        .pm-pick-row { display: flex; gap: 12px; align-items: flex-start; padding: 10px 14px; border-bottom: 1px solid #f0f0f0; cursor: pointer; }
+        .pm-pick-row:hover { background: #faf7fd; }
+        .pm-pick-row input { margin-top: 3px; }
+        .pm-pick-main { flex: 1; min-width: 0; }
+        .pm-pick-title { font-weight: 600; color: #1a1a1a; }
+        .pm-pick-meta { font-size: 12px; color: #6b7280; margin-top: 2px; }
+        .pm-pick-num { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: #6b7280; }
     </style>
 </head>
 <body data-analyst-id="<?php echo $_SESSION['analyst_id'] ?? ''; ?>">
@@ -116,6 +124,22 @@ $path_prefix = '../';
         </div>
     </div>
 
+    <!-- Link-incident picker modal -->
+    <div class="pm-modal" id="pmLinkModal">
+        <div class="pm-modal-content" style="max-width: 780px;">
+            <div class="pm-modal-head">Link incidents to this problem</div>
+            <div class="pm-modal-body">
+                <input type="text" id="pmLinkSearch" class="pm-search" placeholder="Search open incidents by number or subject…" oninput="pmLinkSearchDebounced()" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #cfd8dc;border-radius:6px;">
+                <div id="pmLinkList" style="margin-top:12px; max-height:52vh; overflow-y:auto; border:1px solid #eee; border-radius:8px;"><div class="pm-empty">Loading…</div></div>
+            </div>
+            <div class="pm-modal-foot">
+                <label style="margin-right:auto; font-size:13px; color:#555; display:flex; align-items:center; gap:6px;"><input type="checkbox" id="pmLinkAll" onchange="pmToggleAllLinkable(this.checked)"> Select all</label>
+                <button class="pm-btn" onclick="document.getElementById('pmLinkModal').classList.remove('active')">Cancel</button>
+                <button class="pm-btn pm-btn-primary" id="pmLinkSelBtn" onclick="pmLinkSelected()">Link selected</button>
+            </div>
+        </div>
+    </div>
+
     <!-- AI suggestions modal -->
     <div class="pm-modal" id="pmSuggestModal">
         <div class="pm-modal-content">
@@ -127,6 +151,6 @@ $path_prefix = '../';
 
     <script src="<?php echo BASE_URL; ?>assets/js/toast.js"></script>
     <script src="<?php echo BASE_URL; ?>assets/js/confirm.js"></script>
-    <script src="<?php echo BASE_URL; ?>assets/js/problem-management.js?v=3"></script>
+    <script src="<?php echo BASE_URL; ?>assets/js/problem-management.js?v=4"></script>
 </body>
 </html>

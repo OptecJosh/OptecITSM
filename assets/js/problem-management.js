@@ -234,15 +234,58 @@ async function pmDelete() {
 }
 
 // ----- Linking (endpoints added in phases B/C) -----
-async function pmLinkIncident() {
-    const num = prompt('Link an incident — enter its ticket number (e.g. ABC-123-45678):');
-    if (!num) return;
+let pmLinkSearchTimer = null;
+function pmLinkIncident() {
+    if (!pmCurrentId) return;
+    const search = document.getElementById('pmLinkSearch'); if (search) search.value = '';
+    const all = document.getElementById('pmLinkAll'); if (all) all.checked = false;
+    document.getElementById('pmLinkModal').classList.add('active');
+    pmLoadLinkable();
+}
+function pmLinkSearchDebounced() {
+    clearTimeout(pmLinkSearchTimer);
+    pmLinkSearchTimer = setTimeout(pmLoadLinkable, 250);
+}
+async function pmLoadLinkable() {
+    const list = document.getElementById('pmLinkList');
+    const q = (document.getElementById('pmLinkSearch') || {}).value || '';
+    list.innerHTML = '<div class="pm-empty">Loading…</div>';
     try {
-        const res = await fetch(PM_API + 'link_ticket.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ problem_id: pmCurrentId, ticket_number: num.trim() }) });
+        const res = await fetch(PM_API + 'list_linkable_tickets.php?problem_id=' + pmCurrentId + '&q=' + encodeURIComponent(q.trim()));
         const data = await res.json();
-        if (!data.success) { pmToast(data.error || 'Link failed', 'error'); return; }
-        pmToast('Incident linked', 'success'); pmOpenDetail(pmCurrentId);
-    } catch (e) { pmToast('Link failed', 'error'); }
+        if (!data.success) { list.innerHTML = '<div class="pm-empty">' + pmEsc(data.error || 'Failed to load') + '</div>'; return; }
+        if (!data.tickets.length) { list.innerHTML = '<div class="pm-empty">' + (q.trim() ? 'No matching open incidents.' : 'No open incidents available to link.') + '</div>'; return; }
+        list.innerHTML = data.tickets.map(t => `
+            <label class="pm-pick-row">
+                <input type="checkbox" class="pm-pick-cb" value="${t.id}">
+                <span class="pm-pick-main">
+                    <span class="pm-pick-title">${pmEsc(t.subject || '(no subject)')}</span>
+                    <span class="pm-pick-meta"><span class="pm-pick-num">${pmEsc(t.ticket_number)}</span>${t.status ? ' · ' + pmEsc(t.status) : ''}${t.requester ? ' · ' + pmEsc(t.requester) : ''}</span>
+                </span>
+            </label>`).join('');
+    } catch (e) { list.innerHTML = '<div class="pm-empty">Failed to load incidents</div>'; }
+}
+function pmToggleAllLinkable(checked) {
+    document.querySelectorAll('#pmLinkList .pm-pick-cb').forEach(cb => cb.checked = checked);
+}
+async function pmLinkSelected() {
+    const ids = Array.from(document.querySelectorAll('#pmLinkList .pm-pick-cb:checked')).map(cb => cb.value);
+    if (!ids.length) { pmToast('Select at least one incident', 'warning'); return; }
+    const btn = document.getElementById('pmLinkSelBtn');
+    btn.disabled = true; const orig = btn.textContent; btn.textContent = 'Linking…';
+    let ok = 0, fail = 0;
+    for (const id of ids) {
+        try {
+            const res = await fetch(PM_API + 'link_ticket.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ problem_id: pmCurrentId, ticket_id: parseInt(id, 10) }) });
+            const data = await res.json();
+            if (data.success) ok++; else fail++;
+        } catch (e) { fail++; }
+    }
+    btn.disabled = false; btn.textContent = orig;
+    document.getElementById('pmLinkModal').classList.remove('active');
+    if (ok) pmToast(ok + (ok === 1 ? ' incident linked' : ' incidents linked') + (fail ? ', ' + fail + ' failed' : ''), fail ? 'warning' : 'success');
+    else pmToast('Link failed', 'error');
+    pmOpenDetail(pmCurrentId);
 }
 async function pmUnlinkIncident(ticketId) {
     try {

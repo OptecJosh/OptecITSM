@@ -113,27 +113,37 @@ async function pmOpenDetail(id) {
 function pmRenderDetail(data) {
     const p = data.problem;
     const statusBadge = p.status_name ? `<span class="pm-badge" style="background:#6a1b9a">${pmEsc(p.status_name)}</span>` : '';
-    const incidents = (data.incidents || []).map(i => `
-        <div class="pm-link-row">
-            <a href="../tickets/index.php?ticket_id=${i.id}" target="_blank">${pmEsc(i.ticket_number || ('#' + i.id))}</a>
-            <span style="flex:1;">${pmEsc(i.subject || '')}</span>
-            <span style="color:#6b7280;font-size:12px;">${pmEsc(i.status || '')}</span>
-            <a class="pm-icon-btn" href="../tickets/index.php?ticket_id=${i.id}" target="_blank" title="Open incident">${PM_OPEN_SVG}</a>
-            <button class="pm-icon-btn danger" onclick="pmUnlinkIncident(${i.id})" title="Unlink incident">${PM_UNLINK_SVG}</button>
-        </div>`).join('') || '<div style="color:#9ca3af;font-size:13px;">No incidents linked yet.</div>';
-    const changes = (data.changes || []).map(c => `
-        <div class="pm-link-row">
-            <a href="../change-management/index.php?change_id=${c.id}" target="_blank">Change #${c.id}</a>
-            <span style="flex:1;">${pmEsc(c.title || '')}</span>
-            <span style="color:#6b7280;font-size:12px;">${pmEsc(c.status || '')}</span>
-            <a class="pm-icon-btn" href="../change-management/index.php?change_id=${c.id}" target="_blank" title="Open change">${PM_OPEN_SVG}</a>
-            <button class="pm-icon-btn danger" onclick="pmUnlinkChange(${c.id})" title="Unlink change">${PM_UNLINK_SVG}</button>
-        </div>`).join('') || '<div style="color:#9ca3af;font-size:13px;">No change linked yet.</div>';
-    const audit = (data.audit || []).map(a => {
+    const incidentRows = (data.incidents || []).map(i => `
+        <tr>
+            <td><a href="../tickets/index.php?ticket_id=${i.id}" target="_blank">${pmEsc(i.ticket_number || ('#' + i.id))}</a></td>
+            <td>${pmEsc(i.subject || '')}</td>
+            <td>${pmEsc(i.status || '')}</td>
+            <td class="pm-actions">
+                <a class="pm-icon-btn" href="../tickets/index.php?ticket_id=${i.id}" target="_blank" title="Open incident">${PM_OPEN_SVG}</a>
+                <button class="pm-icon-btn danger" onclick="pmUnlinkIncident(${i.id})" title="Unlink incident">${PM_UNLINK_SVG}</button>
+            </td>
+        </tr>`).join('');
+    const incidents = `<table class="pm-table"><thead><tr><th>Reference</th><th>Subject</th><th>Status</th><th></th></tr></thead>
+        <tbody>${incidentRows || '<tr class="pm-empty-row"><td colspan="4">No incidents linked yet.</td></tr>'}</tbody></table>`;
+    const changeRows = (data.changes || []).map(c => `
+        <tr>
+            <td><a href="../change-management/index.php?change_id=${c.id}" target="_blank">Change #${c.id}</a></td>
+            <td>${pmEsc(c.title || '')}</td>
+            <td>${pmEsc(c.status || '')}</td>
+            <td class="pm-actions">
+                <a class="pm-icon-btn" href="../change-management/index.php?change_id=${c.id}" target="_blank" title="Open change">${PM_OPEN_SVG}</a>
+                <button class="pm-icon-btn danger" onclick="pmUnlinkChange(${c.id})" title="Unlink change">${PM_UNLINK_SVG}</button>
+            </td>
+        </tr>`).join('');
+    const changes = `<table class="pm-table"><thead><tr><th>Reference</th><th>Title</th><th>Status</th><th></th></tr></thead>
+        <tbody>${changeRows || '<tr class="pm-empty-row"><td colspan="4">No change linked yet.</td></tr>'}</tbody></table>`;
+    const auditRows = (data.audit || []).map(a => {
         const when = a.created_datetime ? new Date(a.created_datetime.replace(' ', 'T') + 'Z').toLocaleString() : '';
         const what = a.action_type === 'created' ? 'created the problem' : `changed ${pmEsc(a.field_name)}` + (a.new_value ? ` to “${pmEsc(a.new_value)}”` : '');
-        return `<div class="pm-audit">${when} — ${pmEsc(a.analyst_name || 'Someone')} ${what}</div>`;
+        return `<tr><td class="pm-when">${when}</td><td>${pmEsc(a.analyst_name || 'Someone')}</td><td>${what}</td></tr>`;
     }).join('');
+    const audit = `<table class="pm-table"><thead><tr><th>When</th><th>Who</th><th>What</th></tr></thead>
+        <tbody>${auditRows || '<tr class="pm-empty-row"><td colspan="3">No history.</td></tr>'}</tbody></table>`;
 
     document.getElementById('pmDetailView').innerHTML = `
         <div class="pm-detail">
@@ -174,7 +184,7 @@ function pmRenderDetail(data) {
             </div>
             <div class="pm-section">
                 <h3>History</h3>
-                ${audit || '<div style="color:#9ca3af;font-size:13px;">No history.</div>'}
+                ${audit}
             </div>
         </div>`;
 }

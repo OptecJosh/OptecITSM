@@ -52,6 +52,14 @@ $path_prefix = '../';
         .pm-icon-btn.danger { color: #c62828; }
         .pm-icon-btn.danger:hover { background: #fdeaea; }
         .pm-icon-btn svg { width: 16px; height: 16px; }
+        .pm-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .pm-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: #6b7280; font-weight: 600; padding: 6px 10px; border-bottom: 2px solid #eee; }
+        .pm-table td { padding: 7px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+        .pm-table tr:last-child td { border-bottom: none; }
+        .pm-table a { color: #6a1b9a; text-decoration: none; font-weight: 600; }
+        .pm-table .pm-actions { white-space: nowrap; text-align: right; width: 1%; }
+        .pm-table .pm-when { white-space: nowrap; color: #6b7280; }
+        .pm-empty-row td { color: #9ca3af; }
         .pm-audit { font-size: 12px; color: #555; padding: 4px 0; border-bottom: 1px solid #f4f4f4; }
         /* Editor modal */
         .pm-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 1000; align-items: flex-start; justify-content: center; overflow-y: auto; }
@@ -172,6 +180,6 @@ $path_prefix = '../';
 
     <script src="<?php echo BASE_URL; ?>assets/js/toast.js"></script>
     <script src="<?php echo BASE_URL; ?>assets/js/confirm.js"></script>
-    <script src="<?php echo BASE_URL; ?>assets/js/problem-management.js?v=8"></script>
+    <script src="<?php echo BASE_URL; ?>assets/js/problem-management.js?v=9"></script>
 </body>
 </html>

@@ -318,6 +318,16 @@ $translationNamespaces = ['common', 'tickets'];
                 <!-- Populated by openTicketContextMenu(). -->
             </div>
         </div>
+        <!-- Move-to-company submenu parent. Multi-company installs only; hidden at N=1.
+             Lists the companies the analyst can access; picking one re-homes the ticket. -->
+        <div class="ticket-context-menu-item ticket-context-menu-parent" id="ctxCompanyParent" role="menuitem" tabindex="0" style="display:none;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16"/><path d="M19 21V9a2 2 0 0 0-2-2h-2"/><path d="M9 7h2"/><path d="M9 11h2"/><path d="M9 15h2"/></svg>
+            <span>Move to company</span>
+            <svg class="ctx-sub-arrow" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
+            <div class="ticket-context-submenu" id="ctxCompanySubmenu" role="menu">
+                <!-- Populated by openTicketContextMenu(). -->
+            </div>
+        </div>
         <div style="height:1px;background:#eee;margin:4px 0;"></div>
         <button class="ticket-context-menu-item" type="button" onclick="contextMoveToTrash()">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
@@ -384,7 +394,7 @@ $translationNamespaces = ['common', 'tickets'];
         window.API_BASE = '../api/tickets/';
         window.CURRENT_ANALYST_ID = <?php echo (int)($_SESSION['analyst_id'] ?? 0); ?>;
     </script>
-    <script src="../assets/js/inbox.js?v=40"></script>
+    <script src="../assets/js/inbox.js?v=41"></script>
     <script>
     // Auto-check mailboxes every 60 seconds
     (function() {

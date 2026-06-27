@@ -3785,6 +3785,7 @@ function openTicketContextMenu(event, ticketId, ticketRef) {
     populateContextDepartmentSubmenu();
     populateContextTypeSubmenu();
     populateContextAssigneeSubmenu();
+    populateContextCompanySubmenu();
 
     // Position at cursor — flip if it would overflow the viewport
     menu.classList.add('active');
@@ -3971,6 +3972,59 @@ async function setDepartmentFromContext(departmentId) {
     } catch (error) {
         console.error('Error setting department from context:', error);
         showToast('Failed to set department', 'error');
+    }
+}
+
+// Build the Move-to-company submenu (multi-company installs only; hidden at N=1).
+// Lists the companies this analyst can access; the current one is ticked when
+// right-clicking the ticket open in the reading pane.
+function populateContextCompanySubmenu() {
+    const parent = document.getElementById('ctxCompanyParent');
+    const sub = document.getElementById('ctxCompanySubmenu');
+    if (!parent || !sub) return;
+    if (!isMultiCompany || !moveCompanies.length) {
+        parent.style.display = 'none';
+        return;
+    }
+    parent.style.display = '';
+    const currentTid = (currentEmail && currentEmail.ticket_id == ctxTargetTicketId)
+        ? (currentEmail.tenant_id ?? (moveCompanies.find(c => c.is_default) || {}).id)
+        : undefined;
+    sub.innerHTML = moveCompanies.map(c => {
+        const isCurrent = (currentTid != null && String(c.id) === String(currentTid));
+        return `<div class="ticket-context-submenu-item" data-tenant-id="${c.id}" onclick="moveToCompanyFromContext(${c.id})">
+            <span class="ctx-status-swatch" style="background:#ede7f6; border:none;"></span><span class="ctx-status-name">${escapeHtml(c.name)}</span>${isCurrent ? '<span class="ctx-status-check">&#10003;</span>' : ''}
+        </div>`;
+    }).join('');
+}
+
+// Move a ticket to another company from the right-click menu. The endpoint writes
+// the audit entry server-side, so (unlike the other context actions) there's no
+// client-side logAudit here.
+async function moveToCompanyFromContext(tenantId) {
+    closeTicketContextMenu();
+    if (!ctxTargetTicketId) return;
+    const targetId = ctxTargetTicketId;
+    try {
+        const res = await fetch(API_BASE + 'move_ticket_to_company.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticket_id: targetId, tenant_id: tenantId })
+        });
+        const data = await res.json();
+        if (!data.success) {
+            showToast('Could not move ticket: ' + (data.error || 'unknown error'), 'error');
+            return;
+        }
+        showToast(data.message || 'Ticket moved', 'success');
+        if (currentEmail && currentEmail.ticket_id == targetId) {
+            currentEmail.tenant_id = tenantId;
+            selectEmail(currentEmail.id); // refresh the open ticket's company field + banner
+        }
+        loadFolderCounts();
+        loadEmails();
+    } catch (e) {
+        showToast('Failed to move ticket', 'error');
     }
 }
 

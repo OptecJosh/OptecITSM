@@ -922,7 +922,9 @@ if (!isset($_SESSION['analyst_id'])) {
 | `get_email_detail.php` | GET | Full email content and ticket info |
 | `create_ticket.php` | POST | Create manual ticket (stamps the chosen send-from `mailbox_id` on the initial email) |
 | `get_sendable_mailboxes.php` | GET | Mailboxes the active company can send replies from (pinned + shared, active + signed-in) — powers the New Ticket mailbox picker |
-| `delete_ticket.php` | POST | Delete ticket and related records |
+| `delete_ticket.php` | POST | Move a ticket to the trash (soft-delete — restorable) |
+| `restore_ticket.php` | POST | Restore a ticket from the trash |
+| `permanently_delete_ticket.php` | POST | Permanently delete a trashed ticket + all its data (irreversible) |
 | `assign_ticket.php` | POST | Assign ticket to analyst |
 | `update_ticket_owner.php` | POST | Set ticket owner |
 | `schedule_ticket.php` | POST | Set work_start_datetime |

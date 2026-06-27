@@ -295,6 +295,8 @@ $schema = [
         'user_id'               => 'INT NULL',
         'owner_id'              => 'INT NULL',
         'work_start_datetime'   => 'DATETIME NULL',
+        'deleted_datetime'      => 'DATETIME NULL',
+        'deleted_by'            => 'INT NULL',
     ],
 
     'ticket_audit' => [

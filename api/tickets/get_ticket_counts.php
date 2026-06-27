@@ -37,6 +37,9 @@ try {
     // $ttParams within each execute() differs, because positional placeholders
     // bind in order of appearance — ON-clause placeholders precede WHERE ones.
     list($ttSql, $ttParams) = ticketTenantFilter($conn, $analystId, 't');
+    // Hide trashed (soft-deleted) tickets from every count below. No placeholder,
+    // so $ttParams is unchanged; appended wherever $ttSql is used (WHERE + ON).
+    $ttSql .= " AND t.deleted_datetime IS NULL";
 
     if ($hasTeamFilter) {
         // User has team assignments - filter to only their departments
@@ -335,9 +338,16 @@ try {
         ];
     }
 
+    // Trash count — company-scoped (matches the trash list, which isn't team-filtered).
+    list($trashTtSql, $trashTtParams) = ticketTenantFilter($conn, $analystId, 't');
+    $trashStmt = $conn->prepare("SELECT COUNT(*) FROM tickets t WHERE t.deleted_datetime IS NOT NULL" . $trashTtSql);
+    $trashStmt->execute($trashTtParams);
+    $trashCount = (int)$trashStmt->fetchColumn();
+
     echo json_encode([
         'success' => true,
         'total_count' => $totalCount,
+        'trash_count' => $trashCount,
         'unassigned_count' => (int)$unassignedResult['count'],
         'unassigned_analyst_count' => $unassignedAnalystCount,
         'statuses' => $statusMeta,

@@ -32,6 +32,7 @@ try {
               LEFT JOIN users u         ON u.id   = t.user_id
               LEFT JOIN tenants ten     ON ten.id = t.tenant_id
              WHERE t.department_id IS NOT NULL AND d.id IS NULL
+               AND t.deleted_datetime IS NULL
              ORDER BY t.tenant_id, t.created_datetime DESC
              LIMIT " . ($LIMIT + 1);
     $rows = $conn->query($sql)->fetchAll(PDO::FETCH_ASSOC);

@@ -89,6 +89,12 @@ try {
     $sql .= $tenantSql;
     $params = array_merge($params, $tenantParams);
 
+    // Trash: the Trash folder shows ONLY soft-deleted tickets; every other view
+    // hides them.
+    $sql .= !empty($_GET['trashed'])
+        ? " AND t.deleted_datetime IS NOT NULL"
+        : " AND t.deleted_datetime IS NULL";
+
     $sql .= " ORDER BY le.received_datetime DESC";
 
     $stmt = $conn->prepare($sql);

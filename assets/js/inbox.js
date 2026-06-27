@@ -508,6 +508,18 @@ function renderFolders() {
         });
     }
 
+    // Trash folder — soft-deleted tickets, restorable. Pinned to the bottom.
+    html += '<div class="folder-divider"></div>';
+    html += `
+        <div class="folder-item ${currentFilter.type === 'trash' ? 'active' : ''}" data-folder-key="trash" onclick="selectFolder('trash')">
+            <div class="folder-name">
+                <span class="folder-icon">🗑️</span>
+                <span>Trash</span>
+            </div>
+            <span class="folder-count">${folderCounts.trash_count || 0}</span>
+        </div>
+    `;
+
     folderListEl.innerHTML = html;
 
     // Wire drag-and-drop on freshly rendered folder rows
@@ -594,6 +606,9 @@ function selectFolder(type, id = null) {
         currentFilter = { type: 'department', id: id };
         const dept = folderCounts.departments.find(d => d.id == id);
         document.getElementById('emailListTitle').textContent = dept ? dept.name : 'Department';
+    } else if (type === 'trash') {
+        currentFilter = { type: 'trash' };
+        document.getElementById('emailListTitle').textContent = 'Trash';
     }
 
     updateActiveFolderClasses();
@@ -822,6 +837,8 @@ async function loadEmails() {
             url += `assignee_id=${currentFilter.id}`;
         } else if (currentFilter.type === 'analyst_status') {
             url += `assignee_id=${currentFilter.analyst_id}&status=${encodeURIComponent(currentFilter.status)}`;
+        } else if (currentFilter.type === 'trash') {
+            url += 'trashed=1';
         }
 
         const response = await fetch(url);
@@ -848,10 +865,16 @@ function renderEmailList() {
         return;
     }
 
+    const inTrash = currentFilter.type === 'trash';
     emailListEl.innerHTML = emails.map(email => {
         const emailCount = email.email_count || 1;
         const countBadge = emailCount > 1 ? `<span class="email-count-badge">${emailCount}</span>` : '';
         const ticketId = email.ticket_id || email.id;
+        const trashActions = inTrash ? `
+                <div style="display:flex;gap:8px;margin-top:7px;">
+                    <button onclick="event.stopPropagation(); restoreTicketFromTrash(${ticketId})" style="font-size:11px;padding:3px 9px;border:1px solid #c8d6cf;background:#eefaf2;color:#1b7a43;border-radius:4px;cursor:pointer;">↩ Restore</button>
+                    <button onclick="event.stopPropagation(); permanentlyDeleteFromTrash(${ticketId}, '${escapeHtml(email.ticket_number || '')}')" style="font-size:11px;padding:3px 9px;border:1px solid #e6c4c4;background:#fdeceb;color:#b71c1c;border-radius:4px;cursor:pointer;">✕ Delete forever</button>
+                </div>` : '';
         // Reserve a slot for the SLA dot; populated asynchronously by loadInboxSlaIndicators()
         // once the batch endpoint responds. Stays empty (and invisible) for tickets without SLA.
         return `
@@ -865,7 +888,7 @@ function renderEmailList() {
                 <div class="email-footer-row">
                     <div class="email-time">${formatDateTime(email.received_datetime)}</div>
                     <div class="email-sla-slot" data-sla-slot="${ticketId}"></div>
-                </div>
+                </div>${trashActions}
             </div>
         `;
     }).join('');
@@ -1594,7 +1617,7 @@ async function deleteTicket() {
         return;
     }
 
-    if (!(await showConfirm({ title: 'Delete', message: 'Are you sure you want to delete this ticket? This will permanently delete the ticket and all associated emails and notes.', okLabel: 'Delete', okClass: 'danger' }))) return;
+    if (!(await showConfirm({ title: 'Move to trash', message: 'Move this ticket to the trash? You can restore it from the Trash folder.', okLabel: 'Move to trash', okClass: 'danger' }))) return;
 
     try {
         const response = await fetch(API_BASE + 'delete_ticket.php', {
@@ -1614,16 +1637,58 @@ async function deleteTicket() {
             // Clear reading pane
             document.getElementById('readingPane').innerHTML = '<div class="reading-pane-empty">Select an email to read</div>';
 
+            showToast('Moved to trash', 'success');
             // Refresh folder counts and email list
             loadFolderCounts();
             loadEmails();
         } else {
-            showToast('Error deleting ticket: ' + data.error, 'error');
+            showToast('Error moving ticket to trash: ' + data.error, 'error');
         }
     } catch (error) {
         console.error('Error:', error);
         showToast('Failed to delete ticket', 'error');
     }
+}
+
+// Restore a ticket from the Trash folder.
+async function restoreTicketFromTrash(ticketId) {
+    try {
+        const res = await fetch(API_BASE + 'restore_ticket.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticket_id: ticketId })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast('Ticket restored', 'success');
+            loadFolderCounts();
+            loadEmails();
+        } else {
+            showToast('Restore failed: ' + data.error, 'error');
+        }
+    } catch (e) { showToast('Restore failed', 'error'); }
+}
+
+// Permanently delete a ticket from the Trash folder (irreversible).
+async function permanentlyDeleteFromTrash(ticketId, ticketNumber) {
+    if (!(await showConfirm({
+        title: 'Delete permanently',
+        message: `Permanently delete ticket ${ticketNumber || ''} and all its emails, attachments and notes? This cannot be undone.`,
+        okLabel: 'Delete permanently', okClass: 'danger'
+    }))) return;
+    try {
+        const res = await fetch(API_BASE + 'permanently_delete_ticket.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticket_id: ticketId })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast('Ticket permanently deleted', 'success');
+            loadFolderCounts();
+            loadEmails();
+        } else {
+            showToast('Delete failed: ' + data.error, 'error');
+        }
+    } catch (e) { showToast('Delete failed', 'error'); }
 }
 
 // Show audit history modal

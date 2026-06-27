@@ -27,6 +27,7 @@ try {
     // companies (§9). The placeholder sits in the SELECT subquery, so its param
     // must lead the bound list.
     list($ttSql, $ttParams) = ticketTenantFilter($conn, (int)$_SESSION['analyst_id'], 't');
+    $ttSql .= " AND t.deleted_datetime IS NULL"; // exclude trashed tickets from the per-user count
 
     // Build query with optional search
     $sql = "SELECT

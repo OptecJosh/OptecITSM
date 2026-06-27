@@ -56,6 +56,7 @@ try {
 
     // Multi-tenancy: scope the calendar to the active company (no-op at N=1).
     list($ttSql, $ttParams) = ticketTenantFilter($conn, (int)$_SESSION['analyst_id'], 't');
+    $ttSql .= " AND t.deleted_datetime IS NULL"; // hide trashed tickets
     $sql .= $ttSql . " ORDER BY t.work_start_datetime ASC";
 
     $stmt = $conn->prepare($sql);

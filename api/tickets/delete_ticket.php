@@ -1,15 +1,12 @@
 <?php
 /**
- * API Endpoint: Delete a ticket and all associated data
+ * API Endpoint: Move a ticket to the trash (soft-delete).
  *
- * Children are removed in foreign-key-safe order inside a transaction. Several
- * child tables have FKs with NO "ON DELETE CASCADE" (email_attachments→emails,
- * ticket_notes/ticket_audit/ticket_time_entries→tickets), so they must be
- * deleted explicitly and in the right order — otherwise a ticket whose emails
- * carry attachments fails with "1451 Cannot delete or update a parent row".
- * The remaining children (ticket_recordings, ticket_csat_responses,
- * ticket_cmdb_objects, sla_notifications_sent, tasks) have CASCADE / SET NULL
- * rules and clean themselves up.
+ * Sets deleted_datetime/deleted_by rather than removing anything, so the ticket
+ * (and all its emails, attachments, notes, history) can be restored. List and
+ * count queries hide trashed tickets (deleted_datetime IS NULL filter). The
+ * real, irreversible removal lives in permanently_delete_ticket.php, reachable
+ * from the Trash view.
  */
 session_start(['read_and_close' => true]);
 require_once '../../config.php';
@@ -43,63 +40,27 @@ try {
         exit;
     }
 
-    // Check if ticket exists
-    $checkStmt = $conn->prepare("SELECT id FROM tickets WHERE id = ?");
+    // Only act on a live ticket (don't re-trash one already in the bin).
+    $checkStmt = $conn->prepare("SELECT id FROM tickets WHERE id = ? AND deleted_datetime IS NULL");
     $checkStmt->execute([$ticketId]);
     if (!$checkStmt->fetch()) {
         echo json_encode(['success' => false, 'error' => 'Ticket not found']);
         exit;
     }
 
-    // Collect attachment file paths up front so we can remove the physical files
-    // after the rows are gone (filesystem ops aren't transactional).
-    $pathStmt = $conn->prepare(
-        "SELECT file_path FROM email_attachments
-         WHERE email_id IN (SELECT id FROM emails WHERE ticket_id = ?)"
-    );
-    $pathStmt->execute([$ticketId]);
-    $attachmentPaths = $pathStmt->fetchAll(PDO::FETCH_COLUMN);
+    $analystId = (int)$_SESSION['analyst_id'];
 
-    $conn->beginTransaction();
+    // Soft-delete: flag it as trashed. Nothing is removed, so it can be restored.
+    $conn->prepare("UPDATE tickets SET deleted_datetime = UTC_TIMESTAMP(), deleted_by = ? WHERE id = ?")
+         ->execute([$analystId, $ticketId]);
 
-    // 1. Email attachments (child of emails — must go before emails)
     $conn->prepare(
-        "DELETE FROM email_attachments
-         WHERE email_id IN (SELECT id FROM emails WHERE ticket_id = ?)"
-    )->execute([$ticketId]);
+        "INSERT INTO ticket_audit (ticket_id, analyst_id, field_name, old_value, new_value, created_datetime)
+         VALUES (?, ?, 'Trash', 'active', 'moved to trash', UTC_TIMESTAMP())"
+    )->execute([$ticketId, $analystId]);
 
-    // 2. Emails linked to the ticket
-    $conn->prepare("DELETE FROM emails WHERE ticket_id = ?")->execute([$ticketId]);
-
-    // 3. Notes
-    $conn->prepare("DELETE FROM ticket_notes WHERE ticket_id = ?")->execute([$ticketId]);
-
-    // 4. Audit history
-    $conn->prepare("DELETE FROM ticket_audit WHERE ticket_id = ?")->execute([$ticketId]);
-
-    // 5. Time entries
-    $conn->prepare("DELETE FROM ticket_time_entries WHERE ticket_id = ?")->execute([$ticketId]);
-
-    // 6. The ticket itself (CASCADE/SET NULL children go with it)
-    $conn->prepare("DELETE FROM tickets WHERE id = ?")->execute([$ticketId]);
-
-    $conn->commit();
-
-    // Best-effort removal of the now-orphaned attachment files. Failures here
-    // never undo the delete — the rows are already gone.
-    $attachBase = dirname(dirname(__DIR__)) . '/tickets/attachments/';
-    foreach ($attachmentPaths as $rel) {
-        $full = $attachBase . $rel;
-        if (is_file($full)) {
-            @unlink($full);
-        }
-    }
-
-    echo json_encode(['success' => true, 'message' => 'Ticket deleted successfully']);
+    echo json_encode(['success' => true, 'message' => 'Ticket moved to trash']);
 
 } catch (Exception $e) {
-    if (isset($conn) && $conn->inTransaction()) {
-        $conn->rollBack();
-    }
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
 }

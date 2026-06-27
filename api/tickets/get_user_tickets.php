@@ -49,6 +49,7 @@ try {
     // §9 guardrail — an analyst sees a requester's tickets only within the company
     // they're working in, never that person's tickets in other companies.
     list($ttSql, $ttParams) = ticketTenantFilter($conn, (int)$_SESSION['analyst_id'], 't');
+    $ttSql .= " AND t.deleted_datetime IS NULL"; // hide trashed tickets
     $sql .= $ttSql . " ORDER BY t.created_datetime DESC";
 
     $stmt = $conn->prepare($sql);

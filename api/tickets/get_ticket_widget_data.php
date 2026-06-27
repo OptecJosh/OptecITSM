@@ -83,6 +83,8 @@ try {
         $whereClauses[] = preg_replace('/^\s*AND\s+/', '', $ttSql); // drop the leading "AND" — joined with AND below
         $params = array_merge($params, $ttParams);
     }
+    // Exclude trashed (soft-deleted) tickets from every dashboard aggregate (no param).
+    $whereClauses[] = 't.deleted_datetime IS NULL';
 
     $where = count($whereClauses) > 0 ? ' WHERE ' . implode(' AND ', $whereClauses) : '';
 

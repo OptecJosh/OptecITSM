@@ -76,6 +76,7 @@ try {
 
     // Multi-tenancy: scope search to the analyst's active company (no-op at N=1).
     list($ttSql, $ttParams) = ticketTenantFilter($conn, (int)$_SESSION['analyst_id'], 't');
+    $ttSql .= " AND t.deleted_datetime IS NULL"; // hide trashed tickets
     $sql .= $ttSql . " ORDER BY e.received_datetime DESC";
     $params = array_merge($params, $ttParams);
 

@@ -64,7 +64,7 @@ try {
                             FROM analyst_tenant_access ata JOIN analysts a ON a.id = ata.analyst_id
                            WHERE a.is_active = 1 ORDER BY a.full_name");
     $ticketRows  = $rows("SELECT tenant_id, COUNT(*) AS total, SUM(closed_datetime IS NULL) AS open
-                            FROM tickets GROUP BY tenant_id");
+                            FROM tickets WHERE deleted_datetime IS NULL GROUP BY tenant_id");
     // Requesters approximated by email-domain → company mapping.
     $reqRows     = $rows("SELECT td.tenant_id, COUNT(u.id) AS cnt
                             FROM tenant_domains td

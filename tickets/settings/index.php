@@ -2752,20 +2752,31 @@ $translationNamespaces = ['common', 'tickets'];
         async function testChannel(id, btn) {
             const original = btn ? btn.innerHTML : '';
             if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
-            showToast('Testing connection…', 'info');
+            const out = document.getElementById('channelsResult');
+            if (out) out.innerHTML = '<div style="padding:10px 12px;color:#555;">Running channel tests…</div>';
             try {
                 const res = await fetch(MSG_API + 'test_channel.php', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id })
+                    body: JSON.stringify({ id, mode: 'all' })
                 });
                 const data = await res.json();
-                if (data.success) {
-                    showToast('✓ ' + (data.message || 'Connection OK'), 'success');
-                } else {
-                    showToast('Connection failed: ' + (data.error || 'unknown error'), 'error');
+                if (!data.success) {
+                    if (out) out.innerHTML = `<div style="padding:10px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;color:#b91c1c;">Test failed: ${escapeHtml(data.error || 'unknown error')}</div>`;
+                    return;
                 }
+                const labels = { credentials: 'Credentials', reachability: 'Webhook reachability', simulation: 'Inbound handling' };
+                const rows = Object.keys(data.results).map(k => {
+                    const r = data.results[k];
+                    const icon = r.ok ? '✅' : '❌';
+                    const color = r.ok ? '#166534' : '#b91c1c';
+                    return `<div style="display:flex;gap:8px;padding:6px 0;">
+                        <span>${icon}</span>
+                        <span><strong>${labels[k] || k}:</strong> <span style="color:${color};">${escapeHtml(r.detail || '')}</span></span>
+                    </div>`;
+                }).join('');
+                if (out) out.innerHTML = `<div style="padding:12px 14px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;">${rows}</div>`;
             } catch (e) {
-                showToast('Connection test failed', 'error');
+                if (out) out.innerHTML = `<div style="padding:10px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;color:#b91c1c;">Channel test request failed.</div>`;
             } finally {
                 if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.innerHTML = original; }
             }

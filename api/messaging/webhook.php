@@ -70,6 +70,15 @@ if ($channelId <= 0) {
     webhookFail(400, 'Missing channel');
 }
 
+// Liveness echo for the reachability self-test (FreeITSM → its own public URL).
+// Unauthenticated and side-effect-free: it only confirms this script is reachable
+// at this URL by echoing the caller's nonce. No message processing happens here.
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET' && isset($_GET['ping'])) {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => true, 'pong' => (string) $_GET['ping']]);
+    exit;
+}
+
 try {
     $conn = connectToDatabase();
 } catch (Exception $e) {

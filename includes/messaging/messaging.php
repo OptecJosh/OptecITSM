@@ -87,6 +87,39 @@ function messagingDecodeCredentials($stored): array
 }
 
 /**
+ * The public base URL (scheme://host[:port]) used to build webhook URLs. Uses the
+ * admin-set 'messaging_public_base_url' system setting when present, otherwise
+ * derives it from the current request (honouring ngrok/tunnel proxy headers).
+ */
+function messagingPublicBaseUrl(PDO $conn): string
+{
+    try {
+        $st = $conn->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'messaging_public_base_url'");
+        $st->execute();
+        $configured = trim((string) ($st->fetchColumn() ?: ''));
+        if ($configured !== '') {
+            return rtrim($configured, '/');
+        }
+    } catch (Exception $e) { /* table missing → derive from request */ }
+
+    $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') ? 'https' : 'http';
+    $host = $_SERVER['HTTP_X_FORWARDED_HOST'] ?? ($_SERVER['HTTP_HOST'] ?? 'localhost');
+    return $proto . '://' . $host;
+}
+
+/**
+ * The full public webhook URL for a channel — what gets pasted into the provider.
+ * The app root is derived from SCRIPT_NAME so it works under any sub-path.
+ */
+function messagingWebhookUrl(PDO $conn, int $channelId): string
+{
+    $base = messagingPublicBaseUrl($conn);
+    $root = preg_replace('#/api/messaging/.*$#', '', $_SERVER['SCRIPT_NAME'] ?? '');
+    return $base . $root . '/api/messaging/webhook.php?channel=' . $channelId;
+}
+
+/**
  * Normalise a phone identifier to '+<digits>' for storage and matching. Strips a
  * "whatsapp:" prefix, spaces, dashes and brackets. Returns '' if nothing usable.
  */

@@ -60,6 +60,9 @@ try {
                 t.it_training_provided,
                 t.owner_id,
                 t.work_start_datetime,
+                t.tenant_id,
+                t.user_id,
+                u.email AS requester_email,
                 t.created_datetime as ticket_created,
                 t.updated_datetime as ticket_updated,
                 t.deleted_datetime
@@ -67,6 +70,7 @@ try {
             INNER JOIN tickets t ON e.ticket_id = t.id
             LEFT JOIN ticket_statuses ts ON ts.id = t.status_id
             LEFT JOIN ticket_priorities tp ON tp.id = t.priority_id
+            LEFT JOIN users u ON u.id = t.user_id
             WHERE ";
 
     // Look up by email ID or by ticket ID (gets the initial email for the ticket)
@@ -111,6 +115,39 @@ try {
     $email['has_attachments'] = (bool)$email['has_attachments'];
     $email['first_time_fix'] = $email['first_time_fix'] === null ? null : (bool)$email['first_time_fix'];
     $email['it_training_provided'] = $email['it_training_provided'] === null ? null : (bool)$email['it_training_provided'];
+
+    // Multi-tenancy: the ticket's company, and a soft wrong-company suggestion. All of
+    // this stays null on a single-company install (isMultiTenant false), so the reading
+    // pane shows nothing extra at N=1.
+    $email['tenant_id'] = $email['tenant_id'] !== null ? (int)$email['tenant_id'] : null;
+    $email['company_name'] = null;
+    $email['company_warning'] = null;
+    if (isMultiTenant($conn)) {
+        $effectiveTenant = $email['tenant_id'] ?? getDefaultTenantId($conn);
+        $cur = getTenantById($conn, (int)$effectiveTenant);
+        $email['company_name'] = $cur['name'] ?? null;
+
+        // Where does the requester's address say this should go? If that's a real
+        // company and differs from where the ticket currently sits, flag it (soft).
+        $reqEmail = trim((string)($email['requester_email'] ?? ''));
+        if ($reqEmail === '') {
+            // Fall back to the inbound sender address if there's no linked user.
+            $reqEmail = trim((string)($email['from_address'] ?? ''));
+        }
+        if ($reqEmail !== '') {
+            $suggested = resolveTenantIdForAddress($conn, $reqEmail);
+            if ($suggested !== null && (int)$suggested !== (int)$effectiveTenant) {
+                $sug = getTenantById($conn, (int)$suggested);
+                if ($sug) {
+                    $email['company_warning'] = [
+                        'suggested_id'   => (int)$suggested,
+                        'suggested_name' => $sug['name'],
+                        'requester'      => $reqEmail,
+                    ];
+                }
+            }
+        }
+    }
 
     // Mark email as read if not already
     if (!$email['is_read']) {

@@ -250,6 +250,7 @@ FreeITSM can host **multiple client companies in one install** — aimed at MSPs
 - **Tickets scoped by company** — the ticket list and folder counts show only the active company's tickets.
 - **Email routing** — each mailbox is either *pinned* to a company (its mail always goes there) or a *shared intake* that routes by the sender's domain; an exact sender address can be mapped too (for personal/webmail clients). Anything unmatched lands safely in a **triage queue** — nothing is ever lost. A read-only **routing test** and per-company "how email reaches this company" summary help you configure it.
 - **Per-company settings** — settings are *global defaults a company can tailor* (add its own / hide an inherited one). Built for **ticket types** and **ticket origins**; statuses, priorities, teams and mailboxes stay global by design.
+- **Move ticket to another company** — a misrouted ticket isn't stuck: a **Company** picker in the reading pane re-homes it (access-gated both ways, audit-logged), and a **soft wrong-company warning** flags when the requester's domain points at a different company, with a one-click move.
 
 **Status:** active development. Deeper cross-company isolation on the remaining ticket endpoints (search, ticket detail, dashboards) and per-company **departments / SLAs / self-service** are still being rolled out, so a real multi-company go-live isn't recommended yet. Single-company use is unaffected and production-safe.
 

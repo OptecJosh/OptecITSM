@@ -54,6 +54,10 @@ let departments = [];
 let ticketTypes = [];
 let ticketOrigins = [];
 let ticketStatuses = [];
+// Multi-tenancy: companies this analyst can move tickets into. Empty / length<=1 on a
+// single-company install, so the "Company" picker + wrong-company warning stay hidden.
+let moveCompanies = [];
+let isMultiCompany = false;
 let ticketPriorities = [];   // loaded once at init from get_ticket_priorities.php
 let analysts = [];
 let currentEmail = null;
@@ -167,6 +171,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadTicketStatuses();
     loadTicketPriorities();
     loadAnalysts();
+    loadMoveCompanies();
     loadFolderGroupingPreference().then(loadFolderCounts);
     initTinyMCE();
     initAttachmentHandlers();
@@ -356,6 +361,50 @@ async function loadTicketOrigins() {
         }
     } catch (error) {
         console.error('Error loading ticket origins:', error);
+    }
+}
+
+// Load the companies this analyst can move tickets into (multi-company installs only).
+async function loadMoveCompanies() {
+    try {
+        const response = await fetch('../api/system/get_tenants.php?accessible=1');
+        const data = await response.json();
+        if (data.success) {
+            moveCompanies = data.companies || [];
+            // Multi-company UI only appears once there's more than one company in total.
+            isMultiCompany = moveCompanies.length > 1;
+        }
+    } catch (error) {
+        moveCompanies = [];
+        isMultiCompany = false;
+    }
+}
+
+// Move the current ticket to another company. targetId optional (used by the
+// wrong-company banner's quick-move); otherwise read from the Company dropdown.
+async function moveTicketCompany(targetId) {
+    if (!currentEmail) return;
+    const id = targetId || (document.getElementById('companySelect') || {}).value;
+    if (!id) return;
+    try {
+        const res = await fetch(API_BASE + 'move_ticket_to_company.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticket_id: currentEmail.ticket_id, tenant_id: parseInt(id, 10) })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.message || 'Ticket moved', 'success');
+            currentEmail.tenant_id = parseInt(id, 10);
+            // Moving may take the ticket out of the active-company view, so refresh.
+            loadFolderCounts();
+            loadEmails();
+            selectEmail(currentEmail.id); // re-open to refresh the company field + banner
+        } else {
+            showToast('Could not move ticket: ' + (data.error || 'unknown error'), 'error');
+        }
+    } catch (e) {
+        showToast('Failed to move ticket', 'error');
     }
 }
 
@@ -1091,6 +1140,36 @@ function displayEmail(email, recordings) {
         `<option value="${dept.id}" ${email.department_id == dept.id ? 'selected' : ''}>${escapeHtml(dept.name)}</option>`
     ).join('');
 
+    // Multi-company only: a Company picker (move the ticket) + a soft wrong-company
+    // warning. Both stay empty on a single-company install, so nothing changes at N=1.
+    let companyField = '';
+    let companyWarningBanner = '';
+    if (isMultiCompany) {
+        const defaultCo = moveCompanies.find(c => c.is_default) || {};
+        const currentTid = (email.tenant_id != null) ? email.tenant_id : defaultCo.id;
+        const companyOptions = moveCompanies.map(c =>
+            `<option value="${c.id}" ${String(currentTid) === String(c.id) ? 'selected' : ''}>${escapeHtml(c.name)}</option>`
+        ).join('');
+        companyField = `
+            <div class="toolbar-field">
+                <label class="toolbar-label">Company</label>
+                <select class="toolbar-select" id="companySelect" onchange="moveTicketCompany()">
+                    ${companyOptions}
+                </select>
+            </div>`;
+        if (email.company_warning) {
+            const w = email.company_warning;
+            companyWarningBanner = `
+                <div class="wrong-company-banner">
+                    <span class="wrong-company-text">⚠ Filed under <strong>${escapeHtml(email.company_name || '')}</strong>, but the requester (${escapeHtml(w.requester)}) looks like <strong>${escapeHtml(w.suggested_name)}</strong>.</span>
+                    <span class="wrong-company-actions">
+                        <button class="action-btn action-btn-primary" onclick="moveTicketCompany(${w.suggested_id})">Move to ${escapeHtml(w.suggested_name)}</button>
+                        <button class="action-btn" onclick="this.closest('.wrong-company-banner').remove()">Dismiss</button>
+                    </span>
+                </div>`;
+        }
+    }
+
     // Build ticket type dropdown
     const ticketTypeOptions = ticketTypes.map(type =>
         `<option value="${type.id}" ${email.ticket_type_id == type.id ? 'selected' : ''}>${escapeHtml(type.name)}</option>`
@@ -1225,9 +1304,11 @@ function displayEmail(email, recordings) {
                             ${ownerOptions}
                         </select>
                     </div>
+                    ${companyField}
                 </div>
             </div>
         </div>
+        ${companyWarningBanner}
         <div class="email-header">
             <div class="email-subject-line">
                 <span class="email-subject-text">Ticket ${escapeHtml(email.ticket_number || '')} - ${escapeHtml(email.subject)}</span>

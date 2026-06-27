@@ -996,6 +996,28 @@ body.ticket-popout .ticket-toolbar {
     min-height: 1.4em;
 }
 
+/* Soft wrong-company warning banner (multi-tenancy) */
+.wrong-company-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 0 0 14px 0;
+    padding: 10px 14px;
+    background: #fff8e1;
+    border: 1px solid #ffe082;
+    border-left: 4px solid #ffb300;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #6d4c00;
+}
+.wrong-company-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
 /* Inline media previews in the attachment list modal */
 .attachment-previews {
     display: flex;

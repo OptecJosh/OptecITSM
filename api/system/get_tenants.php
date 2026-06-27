@@ -31,9 +31,17 @@ try {
         $domainsByTenant = [];
     }
 
+    // ?accessible=1 → only the companies this analyst may access (for "move ticket to
+    // company" pickers). Default returns every company (unchanged behaviour).
+    $accessibleOnly = !empty($_GET['accessible']);
+    $allowed = $accessibleOnly ? getAccessibleTenantIds($conn, (int)$_SESSION['analyst_id']) : null;
+
     $companies = [];
     foreach (getAllTenants($conn) as $t) {
         $id = (int)$t['id'];
+        if ($allowed !== null && !in_array($id, $allowed, true)) {
+            continue;
+        }
         $companies[] = [
             'id'         => $id,
             'name'       => $t['name'],

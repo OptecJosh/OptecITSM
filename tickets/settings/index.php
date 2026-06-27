@@ -2753,7 +2753,11 @@ $translationNamespaces = ['common', 'tickets'];
             const original = btn ? btn.innerHTML : '';
             if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
             const out = document.getElementById('channelsResult');
-            if (out) out.innerHTML = '<div style="padding:10px 12px;color:#555;">Running channel tests…</div>';
+            showToast('Running channel tests… (reachability can take a few seconds)', 'info');
+            if (out) {
+                out.innerHTML = '<div style="padding:10px 12px;color:#555;">Running channel tests…</div>';
+                out.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
             try {
                 const res = await fetch(MSG_API + 'test_channel.php', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -2761,11 +2765,14 @@ $translationNamespaces = ['common', 'tickets'];
                 });
                 const data = await res.json();
                 if (!data.success) {
+                    showToast('Test failed: ' + (data.error || 'unknown error'), 'error');
                     if (out) out.innerHTML = `<div style="padding:10px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;color:#b91c1c;">Test failed: ${escapeHtml(data.error || 'unknown error')}</div>`;
                     return;
                 }
                 const labels = { credentials: 'Credentials', reachability: 'Webhook reachability', simulation: 'Inbound handling' };
-                const rows = Object.keys(data.results).map(k => {
+                const keys = Object.keys(data.results);
+                const failed = keys.filter(k => !data.results[k].ok).length;
+                const rows = keys.map(k => {
                     const r = data.results[k];
                     const icon = r.ok ? '✅' : '❌';
                     const color = r.ok ? '#166534' : '#b91c1c';
@@ -2774,8 +2781,13 @@ $translationNamespaces = ['common', 'tickets'];
                         <span><strong>${labels[k] || k}:</strong> <span style="color:${color};">${escapeHtml(r.detail || '')}</span></span>
                     </div>`;
                 }).join('');
-                if (out) out.innerHTML = `<div style="padding:12px 14px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;">${rows}</div>`;
+                if (out) {
+                    out.innerHTML = `<div style="padding:12px 14px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;">${rows}</div>`;
+                    out.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                showToast(failed === 0 ? 'All channel tests passed ✓' : `${failed} of ${keys.length} checks failed — see details above the table`, failed === 0 ? 'success' : 'error');
             } catch (e) {
+                showToast('Channel test request failed', 'error');
                 if (out) out.innerHTML = `<div style="padding:10px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;color:#b91c1c;">Channel test request failed.</div>`;
             } finally {
                 if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.innerHTML = original; }
@@ -2837,11 +2849,9 @@ $translationNamespaces = ['common', 'tickets'];
                 await loadMailboxCompanies();
                 const response = await fetch(API_BASE + 'get_mailboxes.php');
                 const data = await response.json();
-                console.log('Mailboxes loaded:', data);
 
                 if (data.success) {
                     mailboxes = data.mailboxes;
-                    console.log('Mailboxes array:', mailboxes);
                     renderMailboxes(mailboxes);
                 } else {
                     console.error('Error loading mailboxes:', data.error);

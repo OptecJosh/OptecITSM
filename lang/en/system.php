@@ -46,6 +46,10 @@ return [
         'topology_desc'     => 'See how companies, mailboxes, domains, sign-in and analysts fit together',
         'topology_keywords' => 'topology map overview tree relationships companies mailboxes domains analysts structure diagram graph',
 
+        'orphaned_title'    => 'Orphaned tickets',
+        'orphaned_desc'     => 'Find tickets stuck in a deleted department and reassign them',
+        'orphaned_keywords' => 'orphaned tickets department missing deleted hidden reassign fix stuck lost broken',
+
         'encryption_title'  => 'Encryption',
         'encryption_desc'   => 'Generate and manage the encryption key used to protect sensitive data such as API keys and credentials.',
         'encryption_keywords' => 'encryption key master key crypto secrets credentials api keys cipher',

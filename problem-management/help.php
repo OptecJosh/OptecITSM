@@ -12,7 +12,7 @@ $path_prefix = '../';
     <title>Service Desk - Problem Management Help</title>
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/inbox.css">
     <style>
-        .pm-help { max-width: 820px; margin: 24px auto; padding: 0 20px 60px; line-height: 1.65; color: #2a2a2a; }
+        .pm-help { height: calc(100vh - 48px); overflow-y: auto; box-sizing: border-box; padding: 28px 40px 60px; line-height: 1.65; color: #2a2a2a; }
         .pm-help h1 { font-size: 1.6rem; }
         .pm-help h2 { font-size: 1.15rem; color: #6a1b9a; margin-top: 1.6em; }
         .pm-help code { background: #f3f4f6; padding: 1px 5px; border-radius: 3px; }

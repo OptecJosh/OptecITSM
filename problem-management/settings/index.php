@@ -13,8 +13,12 @@ $path_prefix = '../../';
     <title>Service Desk - Problem Management Settings</title>
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/inbox.css">
     <style>
-        .pms-page { max-width: 960px; margin: 0 auto; padding: 24px 24px 60px; }
+        .pms-page { height: calc(100vh - 48px); overflow-y: auto; box-sizing: border-box; padding: 24px 32px 60px; }
         .pms-page h1 { font-size: 1.5rem; margin: 0 0 18px; }
+        .pms-icon-btn { background: none; border: 1px solid #d0d0d0; border-radius: 5px; padding: 5px; cursor: pointer; color: #555; vertical-align: middle; }
+        .pms-icon-btn:hover { background: #f0f0f0; color: #0078d4; border-color: #0078d4; }
+        .pms-icon-btn.delete:hover { color: #d13438; border-color: #d13438; background: #fdf3f3; }
+        .pms-icon-btn svg { width: 15px; height: 15px; display: block; }
         table.pms { width: 100%; border-collapse: collapse; }
         table.pms th, table.pms td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
         table.pms th { font-size: 12px; text-transform: uppercase; color: #6b7280; }
@@ -43,13 +47,13 @@ $path_prefix = '../../';
         </div>
 
         <div class="tab-content active" id="tab-statuses">
-            <div class="section-header"><h2>Statuses</h2><button class="add-btn pms-btn pms-btn-primary" onclick="pmsOpen('status')">Add status</button></div>
+            <div class="section-header"><h2>Statuses</h2><button class="pms-btn pms-btn-primary" onclick="pmsOpen('status')">Add</button></div>
             <table class="pms"><thead><tr><th>Name</th><th>Closed?</th><th>Default</th><th>Active</th><th></th></tr></thead>
             <tbody id="pmsStatusRows"><tr><td colspan="5">Loading…</td></tr></tbody></table>
         </div>
 
         <div class="tab-content" id="tab-priorities">
-            <div class="section-header"><h2>Priorities</h2><button class="add-btn pms-btn pms-btn-primary" onclick="pmsOpen('priority')">Add priority</button></div>
+            <div class="section-header"><h2>Priorities</h2><button class="pms-btn pms-btn-primary" onclick="pmsOpen('priority')">Add</button></div>
             <table class="pms"><thead><tr><th>Name</th><th>Default</th><th>Active</th><th></th></tr></thead>
             <tbody id="pmsPriorityRows"><tr><td colspan="4">Loading…</td></tr></tbody></table>
         </div>
@@ -81,6 +85,12 @@ $path_prefix = '../../';
     <script>
     const PMS_API = '../../api/problem-management/';
     function pmsEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+    const PMS_EDIT_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>';
+    const PMS_DEL_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>';
+    function pmsActions(kind, id){
+        return `<button class="pms-icon-btn" title="Edit" onclick='pmsEdit("${kind}",${id})'>${PMS_EDIT_SVG}</button>
+                <button class="pms-icon-btn delete" title="Delete" onclick="pmsDel('${kind}',${id})">${PMS_DEL_SVG}</button>`;
+    }
     function pmsTab(name){
         document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
         document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
@@ -93,13 +103,13 @@ $path_prefix = '../../';
         document.getElementById('pmsStatusRows').innerHTML = pmsStatuses.map(x=>`<tr>
             <td><span class="pms-swatch" style="background:${pmsEsc(x.colour||'#ccc')}"></span>${pmsEsc(x.name)}</td>
             <td>${x.is_closed==1?'Yes':'—'}</td><td>${x.is_default==1?'★':''}</td><td>${x.is_active==1?'Yes':'No'}</td>
-            <td style="text-align:right;"><span class="pms-link" onclick='pmsEdit("status",${x.id})'>Edit</span> &nbsp; <span class="pms-del" onclick="pmsDel('status',${x.id})">Delete</span></td></tr>`).join('') || '<tr><td colspan="5">None</td></tr>';
+            <td style="text-align:right;">${pmsActions('status',x.id)}</td></tr>`).join('') || '<tr><td colspan="5">None</td></tr>';
         const p=await fetch(PMS_API+'get_problem_priorities.php?manage=1').then(r=>r.json());
         pmsPriorities = p.success? p.priorities:[];
         document.getElementById('pmsPriorityRows').innerHTML = pmsPriorities.map(x=>`<tr>
             <td><span class="pms-swatch" style="background:${pmsEsc(x.colour||'#ccc')}"></span>${pmsEsc(x.name)}</td>
             <td>${x.is_default==1?'★':''}</td><td>${x.is_active==1?'Yes':'No'}</td>
-            <td style="text-align:right;"><span class="pms-link" onclick='pmsEdit("priority",${x.id})'>Edit</span> &nbsp; <span class="pms-del" onclick="pmsDel('priority',${x.id})">Delete</span></td></tr>`).join('') || '<tr><td colspan="4">None</td></tr>';
+            <td style="text-align:right;">${pmsActions('priority',x.id)}</td></tr>`).join('') || '<tr><td colspan="4">None</td></tr>';
     }
     function pmsOpen(kind, row){
         document.getElementById('pmsKind').value=kind;

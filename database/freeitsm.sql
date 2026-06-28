@@ -581,9 +581,12 @@ CREATE TABLE IF NOT EXISTS `target_mailboxes` (
     -- 'delegated' = OAuth sign-in (acts as the signed-in user, Graph /me);
     -- 'app_only'  = client-credentials (the app reads the specific /users/<target_mailbox>).
     `auth_mode`             VARCHAR(20) NOT NULL DEFAULT 'delegated',
-    -- Account actually authenticated in delegated mode (captured from Graph /me at
-    -- sign-in); compared to target_mailbox to catch "reading the wrong inbox".
+    -- Account actually authenticated in delegated mode (primary address, for display);
+    -- compared to target_mailbox to catch "reading the wrong inbox".
     `authenticated_as`      VARCHAR(255) NULL,
+    -- JSON array of every address the authenticated mailbox owns (primary + aliases);
+    -- the target matches if it's any of these, so aliases aren't falsely flagged.
+    `authenticated_addresses` TEXT NULL,
     `token_data`            LONGTEXT NULL,
     `email_folder`          VARCHAR(100) NOT NULL DEFAULT 'INBOX',
     `max_emails_per_check`  INT NOT NULL DEFAULT 10,

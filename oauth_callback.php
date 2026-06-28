@@ -45,17 +45,20 @@ try {
         // Exchange authorization code for tokens using mailbox config
         $tokens = getTokensFromAuthCodeForMailbox($authCode, $mailbox);
 
-        // Capture WHO actually signed in (Graph /me). In delegated mode the app reads
-        // this account's inbox — so we record it and compare against the configured
-        // target_mailbox to catch "you authenticated the wrong account" (issue #26).
-        $identity = getGraphSignedInEmail($tokens['access_token']);
+        // Capture WHO actually signed in, with EVERY address that account owns (primary
+        // SMTP, UPN and aliases). In delegated mode the app reads this account's inbox —
+        // so we record it and compare against the configured target_mailbox to catch
+        // "you authenticated the wrong account" (issue #26), while still accepting a
+        // target that is merely an alias of the signed-in mailbox.
+        $record = mailboxIdentityRecord($tokens['access_token']);
 
-        // Save tokens + the authenticated identity
-        saveTokensToDatabase($conn, $mailboxId, $tokens, $identity);
+        // Save tokens + the authenticated identity (primary for display, full set for matching)
+        saveTokensToDatabase($conn, $mailboxId, $tokens, $record);
 
-        // Flag an immediate mismatch warning if the signed-in account isn't the target.
+        // Flag an immediate mismatch warning if the target isn't one of the account's addresses.
         $target = strtolower(trim($mailbox['target_mailbox'] ?? ''));
-        $mismatch = ($identity && $target && $identity !== $target) ? 1 : 0;
+        $addresses = $record['addresses'] ?: ($record['primary'] ? [$record['primary']] : []);
+        $mismatch = ($addresses && $target && !in_array($target, $addresses, true)) ? 1 : 0;
 
         // Redirect back to settings page with success message
         header('Location: tickets/settings/index.php?oauth=success&mailbox_id=' . $mailboxId
@@ -157,13 +160,25 @@ function getGraphSignedInEmail($accessToken) {
 
 /**
  * Save tokens + the authenticated identity to database for a specific mailbox.
+ * $record is the ['primary' => ..., 'addresses' => [...]] from mailboxIdentityRecord():
+ * 'primary' goes in authenticated_as (display); 'addresses' (primary + aliases) in
+ * authenticated_addresses (the set we match the target against). A bare string is also
+ * accepted for backward compatibility.
  */
-function saveTokensToDatabase($conn, $mailboxId, $tokens, $identity = null) {
+function saveTokensToDatabase($conn, $mailboxId, $tokens, $record = null) {
     $jsonData = json_encode($tokens);
 
-    $sql = "UPDATE target_mailboxes SET token_data = ?, authenticated_as = ? WHERE id = ?";
+    if (is_array($record)) {
+        $primary   = $record['primary'] ?: null;
+        $addresses = !empty($record['addresses']) ? json_encode($record['addresses']) : null;
+    } else {
+        $primary   = $record ?: null;                       // legacy: a plain identity string
+        $addresses = $primary ? json_encode([$primary]) : null;
+    }
+
+    $sql = "UPDATE target_mailboxes SET token_data = ?, authenticated_as = ?, authenticated_addresses = ? WHERE id = ?";
     $stmt = $conn->prepare($sql);
-    $stmt->execute([$jsonData, $identity, $mailboxId]);
+    $stmt->execute([$jsonData, $primary, $addresses, $mailboxId]);
 
     if ($stmt->rowCount() === 0) {
         throw new Exception('Failed to save tokens to database');

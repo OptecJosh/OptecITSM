@@ -434,7 +434,7 @@ $schema = [
         'azure_client_id'         => 'TEXT NOT NULL',
         'azure_client_secret'     => 'TEXT NOT NULL',
         'oauth_redirect_uri'      => 'TEXT NOT NULL',
-        'oauth_scopes'            => 'VARCHAR(500) NOT NULL DEFAULT \'openid email offline_access Mail.Read Mail.ReadWrite Mail.Send\'',
+        'oauth_scopes'            => 'VARCHAR(500) NOT NULL DEFAULT \'openid email offline_access User.Read Mail.Read Mail.ReadWrite Mail.Send\'',
         'imap_server'             => 'TEXT NOT NULL',
         'imap_port'               => 'INT NOT NULL DEFAULT 993',
         'imap_encryption'         => 'VARCHAR(10) NOT NULL DEFAULT \'ssl\'',
@@ -442,10 +442,14 @@ $schema = [
         // 'delegated' = OAuth sign-in (acts as the signed-in user, /me); 'app_only' =
         // client-credentials (the app reads the specific /users/<target_mailbox>).
         'auth_mode'               => "VARCHAR(20) NOT NULL DEFAULT 'delegated'",
-        // The account actually authenticated in delegated mode (captured from Graph
-        // /me at sign-in). Compared against target_mailbox to catch "reading the wrong
+        // The account actually authenticated in delegated mode (the primary address,
+        // for display). Compared against target_mailbox to catch "reading the wrong
         // inbox". NULL = not yet authenticated / needs (re)authentication.
         'authenticated_as'        => 'VARCHAR(255) NULL',
+        // JSON array of EVERY address the authenticated mailbox owns (primary SMTP, UPN
+        // and aliases, from Graph proxyAddresses). The target matches if it's any of
+        // these — so an alias (e.g. ed@ on the edmozley@ mailbox) is accepted, not flagged.
+        'authenticated_addresses' => 'TEXT NULL',
         'token_data'              => 'LONGTEXT NULL',
         'email_folder'            => 'VARCHAR(100) NOT NULL DEFAULT \'INBOX\'',
         'max_emails_per_check'    => 'INT NOT NULL DEFAULT 10',

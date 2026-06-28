@@ -92,13 +92,12 @@ try {
             throw new Exception('Failed to parse token data for mailbox: ' . json_last_error_msg());
         }
 
-        // SAFETY (delegated Microsoft): don't SEND from the wrong account. If the
-        // signed-in identity isn't the configured target, refuse until re-authenticated.
+        // SAFETY (delegated Microsoft): don't SEND from the wrong account. A target that
+        // matches the signed-in mailbox's primary OR any alias is fine; a genuine
+        // mismatch is refused until re-authenticated. Unknown identity is grandfathered.
         if ($provider === 'microsoft') {
-            $authedAs = strtolower(trim((string) ($mailbox['authenticated_as'] ?? '')));
-            $target   = strtolower(trim((string) ($mailbox['target_mailbox'] ?? '')));
-            if ($authedAs !== '' && $authedAs !== $target) {
-                throw new Exception('This mailbox is set to ' . $mailbox['target_mailbox'] . ' but is authenticated as ' . $mailbox['authenticated_as'] . '. Re-authenticate as the correct account (or switch it to app-only) before sending.');
+            if ($mismatchError = mailboxIdentityMismatch($mailbox)) {
+                throw new Exception($mismatchError . ' (Cannot send until this is resolved.)');
             }
         }
 

@@ -6,6 +6,7 @@ session_start(['read_and_close' => true]);
 require_once '../../config.php';
 require_once '../../includes/functions.php';
 require_once '../../includes/encryption.php';
+require_once '../../includes/mailbox_graph.php';
 
 header('Content-Type: application/json');
 
@@ -20,7 +21,7 @@ try {
 
     $sql = "SELECT id, name, provider, azure_tenant_id, azure_client_id, azure_client_secret,
                    oauth_redirect_uri, oauth_scopes, imap_server, imap_port, imap_encryption,
-                   target_mailbox, auth_mode, authenticated_as, email_folder, max_emails_per_check, mark_as_read,
+                   target_mailbox, auth_mode, authenticated_as, authenticated_addresses, email_folder, max_emails_per_check, mark_as_read,
                    rejected_action, imported_action, imported_folder,
                    is_active, tenant_id, created_datetime, last_checked_datetime,
                    CASE WHEN token_data IS NOT NULL AND token_data != '' THEN 1 ELSE 0 END as is_authenticated
@@ -68,18 +69,19 @@ try {
 
         // Compute a clear "where is this reading from?" status for the UI so it's
         // obvious which inbox a mailbox actually pulls — and flags a wrong account.
+        // A target that matches the signed-in mailbox's primary OR any alias is "ok".
         $target  = strtolower(trim((string) ($mailbox['target_mailbox'] ?? '')));
-        $authedAs = strtolower(trim((string) ($mailbox['authenticated_as'] ?? '')));
+        $acceptedSet = mailboxAcceptedSet($mailbox);
         if ($mailbox['provider'] === 'google') {
             $mailbox['auth_status'] = $mailbox['is_authenticated'] ? 'ok' : 'unauthenticated';
         } elseif ($mailbox['auth_mode'] === 'app_only') {
             $mailbox['auth_status'] = 'app_only';            // always reads the target directly
         } elseif (!$mailbox['is_authenticated']) {
             $mailbox['auth_status'] = 'unauthenticated';     // delegated, never signed in
-        } elseif ($authedAs === '') {
+        } elseif (empty($acceptedSet)) {
             $mailbox['auth_status'] = 'unverified';           // signed in before we recorded who
-        } elseif ($authedAs === $target) {
-            $mailbox['auth_status'] = 'ok';                   // reading the right inbox
+        } elseif (in_array($target, $acceptedSet, true)) {
+            $mailbox['auth_status'] = 'ok';                   // reading the right inbox (primary or alias)
         } else {
             $mailbox['auth_status'] = 'mismatch';             // ⚠ reading the WRONG inbox
         }

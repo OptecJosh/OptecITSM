@@ -73,7 +73,7 @@ try {
     $azure_client_id = encryptValue($data['azure_client_id']);
     $azure_client_secret = $data['azure_client_secret'] ?? '';
     $oauth_redirect_uri = encryptValue($oauth_redirect_uri_plain);
-    $oauth_scopes = $data['oauth_scopes'] ?? 'openid email offline_access Mail.Read Mail.ReadWrite Mail.Send';
+    $oauth_scopes = $data['oauth_scopes'] ?? 'openid email offline_access User.Read Mail.Read Mail.ReadWrite Mail.Send';
     $imap_server = encryptValue($data['imap_server'] ?? 'outlook.office365.com');
     $imap_port = $data['imap_port'] ?? 993;
     $imap_encryption = $data['imap_encryption'] ?? 'ssl';

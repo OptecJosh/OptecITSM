@@ -67,11 +67,10 @@ try {
     }
 
     // SAFETY (delegated Microsoft): verify folders against the configured mailbox only.
+    // A target matching the signed-in mailbox's primary or any alias passes.
     if ($provider === 'microsoft') {
-        $authedAs = strtolower(trim((string) ($mailbox['authenticated_as'] ?? '')));
-        $target   = strtolower(trim((string) ($mailbox['target_mailbox'] ?? '')));
-        if ($authedAs !== '' && $authedAs !== $target) {
-            echo json_encode(['success' => false, 'error' => 'Authentication mismatch — re-authenticate this mailbox as ' . $mailbox['target_mailbox'] . ' (or switch to app-only) first.']);
+        if ($mismatchError = mailboxIdentityMismatch($mailbox)) {
+            echo json_encode(['success' => false, 'error' => $mismatchError]);
             exit;
         }
     }

@@ -1172,7 +1172,7 @@ $translationNamespaces = ['common', 'tickets'];
 
                     <div class="form-group provider-microsoft" style="grid-column: span 2;">
                         <label for="mailboxScopes"><?php echo htmlspecialchars(t('tickets.settings.modals.mailbox.oauth_scopes')); ?></label>
-                        <input type="text" id="mailboxScopes" value="openid email offline_access Mail.Read Mail.ReadWrite Mail.Send">
+                        <input type="text" id="mailboxScopes" value="openid email offline_access User.Read Mail.Read Mail.ReadWrite Mail.Send">
                     </div>
 
                     <div class="form-group">
@@ -3218,7 +3218,7 @@ $translationNamespaces = ['common', 'tickets'];
             document.getElementById('mailboxClientId').value = mailbox ? mailbox.azure_client_id : '';
             document.getElementById('mailboxClientSecret').value = '';
             document.getElementById('mailboxRedirectUri').value = mailbox ? mailbox.oauth_redirect_uri : getDefaultOAuthRedirectUri(document.getElementById('mailboxProvider').value);
-            document.getElementById('mailboxScopes').value = mailbox ? mailbox.oauth_scopes : 'openid email offline_access Mail.Read Mail.ReadWrite Mail.Send';
+            document.getElementById('mailboxScopes').value = mailbox ? mailbox.oauth_scopes : 'openid email offline_access User.Read Mail.Read Mail.ReadWrite Mail.Send';
             document.getElementById('mailboxImapServer').value = mailbox ? mailbox.imap_server : 'outlook.office365.com';
             document.getElementById('mailboxImapPort').value = mailbox ? mailbox.imap_port : 993;
             toggleProviderFields();

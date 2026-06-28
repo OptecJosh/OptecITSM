@@ -109,22 +109,14 @@ try {
         }
 
         // SAFETY (delegated Microsoft): make sure we're reading the RIGHT inbox. The
-        // token belongs to whoever signed in. For mailboxes authenticated before we
-        // recorded that, back-fill the identity from the live token now; then block
-        // only on a CONFIRMED mismatch. Correctly-set-up mailboxes pass untouched;
-        // the "wrong account" / "changed address" cases (issue #26) get caught.
+        // token belongs to whoever signed in. Back-fill the identity (primary + aliases)
+        // for mailboxes that signed in before we recorded it, then block only on a
+        // CONFIRMED mismatch. A target that matches any owned alias passes; the genuine
+        // "wrong account" / "changed address" cases (issue #26) get caught.
         if ($provider === 'microsoft') {
-            $authedAs = strtolower(trim((string) ($mailbox['authenticated_as'] ?? '')));
-            if ($authedAs === '') {
-                $authedAs = mailboxDelegatedIdentity($accessToken);
-                if ($authedAs !== '') {
-                    $conn->prepare("UPDATE target_mailboxes SET authenticated_as = ? WHERE id = ?")
-                         ->execute([$authedAs, $mailbox['id']]);
-                }
-            }
-            $target = strtolower(trim((string) ($mailbox['target_mailbox'] ?? '')));
-            if ($authedAs !== '' && $authedAs !== $target) {
-                echo json_encode(['success' => false, 'error' => 'Authentication mismatch — this mailbox is set to read ' . $mailbox['target_mailbox'] . ' but is authenticated as ' . $authedAs . '. Re-authenticate as the correct account, or switch it to app-only mode.']);
+            $mailbox = mailboxBackfillIdentity($conn, $mailbox, $accessToken);
+            if ($mismatchError = mailboxIdentityMismatch($mailbox)) {
+                echo json_encode(['success' => false, 'error' => $mismatchError]);
                 exit;
             }
         }

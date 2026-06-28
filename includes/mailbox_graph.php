@@ -116,6 +116,114 @@ if (!function_exists('mailboxAppOnlyToken')) {
     }
 
     /**
+     * Fetch ALL email addresses for the signed-in (delegated) mailbox — primary SMTP,
+     * UPN and every alias (proxyAddresses). This is how we tell that e.g. ed@ is just
+     * an alias of the edmozley@ mailbox: the token only carries the UPN, so we have to
+     * ask Graph for the alias list. Needs the lightweight User.Read scope; returns []
+     * if it isn't granted (older mailboxes) so the caller can fall back to the token claim.
+     */
+    function mailboxFetchAddresses($accessToken) {
+        $ch = curl_init('https://graph.microsoft.com/v1.0/me?$select=mail,userPrincipalName,proxyAddresses');
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $accessToken]);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, SSL_VERIFY_PEER);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, SSL_VERIFY_PEER ? 2 : 0);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($httpCode !== 200) return [];
+        $data = json_decode($response, true);
+        if (!is_array($data)) return [];
+
+        $set = [];
+        foreach ([$data['mail'] ?? '', $data['userPrincipalName'] ?? ''] as $a) {
+            if ($a && strpos($a, '@') !== false) $set[] = strtolower(trim($a));
+        }
+        foreach (($data['proxyAddresses'] ?? []) as $p) {
+            // proxyAddresses look like "SMTP:ed@x" (primary) / "smtp:alias@x" (secondary).
+            $addr = preg_replace('/^smtp:/i', '', (string) $p);
+            if ($addr && strpos($addr, '@') !== false) $set[] = strtolower(trim($addr));
+        }
+        return array_values(array_unique($set));
+    }
+
+    /**
+     * Build the identity record for a freshly-authenticated delegated token:
+     *   ['primary' => <display address>, 'addresses' => [every address this mailbox owns]].
+     * Combines the token's own claim (always available, offline) with the Graph alias
+     * list (when User.Read is granted). 'primary' is what we show; 'addresses' is what
+     * we match the configured target against.
+     */
+    function mailboxIdentityRecord($accessToken) {
+        $claim     = mailboxIdentityFromToken($accessToken);   // UPN, offline
+        $addresses = mailboxFetchAddresses($accessToken);      // full set incl. aliases
+        if ($claim !== '' && !in_array($claim, $addresses, true)) $addresses[] = $claim;
+        $primary = $claim !== '' ? $claim : ($addresses[0] ?? '');
+        return ['primary' => $primary, 'addresses' => array_values(array_unique($addresses))];
+    }
+
+    /**
+     * The set of addresses a (delegated) mailbox is known to own, read back from the
+     * stored columns (authenticated_addresses JSON + authenticated_as). Offline, lowercased.
+     * Empty means "we don't know yet" — callers treat that as grandfathered, not a mismatch.
+     */
+    function mailboxAcceptedSet($mailbox) {
+        $set = [];
+        $json = $mailbox['authenticated_addresses'] ?? '';
+        if ($json) {
+            $decoded = json_decode($json, true);
+            if (is_array($decoded)) $set = $decoded;
+        }
+        $as = strtolower(trim((string) ($mailbox['authenticated_as'] ?? '')));
+        if ($as !== '') $set[] = $as;
+        return array_values(array_unique(array_filter(array_map(
+            fn($x) => strtolower(trim((string) $x)), $set
+        ))));
+    }
+
+    /**
+     * Offline "is this reading the wrong inbox?" check for delegated Microsoft mailboxes.
+     * Returns an error message to show/throw, or null if it's fine. A configured target
+     * that matches ANY owned address (primary OR alias) passes; an unknown identity set
+     * (legacy mailboxes that predate alias capture) is grandfathered through.
+     */
+    function mailboxIdentityMismatch($mailbox) {
+        if (($mailbox['provider'] ?? 'microsoft') !== 'microsoft') return null;
+        if (($mailbox['auth_mode'] ?? 'delegated') === 'app_only') return null;
+        $target = strtolower(trim((string) ($mailbox['target_mailbox'] ?? '')));
+        if ($target === '') return null;
+        $set = mailboxAcceptedSet($mailbox);
+        if (empty($set)) return null;                       // unknown — don't block
+        if (in_array($target, $set, true)) return null;     // matches a primary or alias
+        $shown = trim((string) ($mailbox['authenticated_as'] ?? '')) ?: implode(', ', $set);
+        return 'Authentication mismatch — this mailbox is set to read ' . $mailbox['target_mailbox']
+             . ' but is authenticated as ' . $shown
+             . '. Re-authenticate as the correct account, or switch it to app-only mode.';
+    }
+
+    /**
+     * Populate authenticated_as / authenticated_addresses for a delegated Microsoft
+     * mailbox that doesn't have them yet (signed in before we recorded identity, or
+     * before alias capture). Returns the (possibly updated) $mailbox. No-op for Google
+     * and app-only.
+     */
+    function mailboxBackfillIdentity($conn, $mailbox, $accessToken) {
+        if (($mailbox['provider'] ?? 'microsoft') !== 'microsoft') return $mailbox;
+        if (($mailbox['auth_mode'] ?? 'delegated') === 'app_only') return $mailbox;
+        if (!empty($mailbox['authenticated_as']) && !empty($mailbox['authenticated_addresses'])) {
+            return $mailbox;
+        }
+        $rec = mailboxIdentityRecord($accessToken);
+        if ($rec['primary'] === '' && empty($rec['addresses'])) return $mailbox;
+        $addressesJson = json_encode($rec['addresses']);
+        $conn->prepare("UPDATE target_mailboxes SET authenticated_as = ?, authenticated_addresses = ? WHERE id = ?")
+             ->execute([$rec['primary'] ?: null, $addressesJson, $mailbox['id']]);
+        $mailbox['authenticated_as'] = $rec['primary'];
+        $mailbox['authenticated_addresses'] = $addressesJson;
+        return $mailbox;
+    }
+
+    /**
      * Per-request Graph base path: '/me' (delegated) or '/users/<addr>' (app-only).
      * Set once after the mailbox is loaded; the Graph helpers read it back.
      */

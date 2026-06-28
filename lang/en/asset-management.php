@@ -59,6 +59,7 @@ return [
         'supplier'         => 'Supplier',
         'order_number'     => 'Order number',
         'warranty_expiry'  => 'Warranty expiry',
+        'assigned_user'    => 'Assigned User',
     ],
 
     'status' => [

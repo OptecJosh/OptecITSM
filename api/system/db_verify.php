@@ -2842,6 +2842,27 @@ try {
         $conn->exec("UPDATE tickets SET priority_id = (SELECT id FROM ticket_priorities WHERE is_default = 1 LIMIT 1) WHERE priority_id IS NULL");
     }
 
+    // asset_history.field_name normalisation: legacy rows stored an English label
+    // (e.g. "Purchase date"). New writes store a stable key so the history view can
+    // localise it via t('asset-management.field.<key>'). Exact-match + idempotent.
+    if ($tableExists('asset_history') && $colExists('asset_history', 'field_name')) {
+        $assetHistoryLabelMap = [
+            'Type' => 'type', 'Status' => 'status', 'Location' => 'location',
+            'Purchase date' => 'purchase_date', 'Purchase cost' => 'purchase_cost',
+            'Supplier' => 'supplier', 'Order number' => 'order_number',
+            'Warranty expiry' => 'warranty_expiry', 'Assigned User' => 'assigned_user',
+        ];
+        $assetHistoryNormalised = 0;
+        foreach ($assetHistoryLabelMap as $old => $new) {
+            $u = $conn->prepare("UPDATE asset_history SET field_name = ? WHERE field_name = ?");
+            $u->execute([$new, $old]);
+            $assetHistoryNormalised += $u->rowCount();
+        }
+        if ($assetHistoryNormalised > 0) {
+            $results[] = ['table' => 'asset_history', 'status' => 'migrated', 'details' => ["Normalised field_name to localisable keys on $assetHistoryNormalised row(s)"]];
+        }
+    }
+
     // Backfill tickets.user_id from legacy requester_email / requester_name
     if ($tableExists('tickets') && $tableExists('users') && $colExists('tickets', 'requester_email')) {
         // Match existing users by email

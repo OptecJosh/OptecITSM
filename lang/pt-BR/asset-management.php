@@ -52,6 +52,7 @@ return [
         'supplier'         => 'Fornecedor',
         'order_number'     => 'Número do pedido',
         'warranty_expiry'  => 'Vencimento da garantia',
+        'assigned_user'    => 'Usuário atribuído',
     ],
 
     'status' => [

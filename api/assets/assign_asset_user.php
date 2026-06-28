@@ -84,8 +84,10 @@ try {
         $prevRow = $prevStmt->fetch(PDO::FETCH_ASSOC);
         $oldUserName = $prevRow ? $prevRow['display_name'] : $previousUserId;
     }
+    // Store a stable field key ('assigned_user') so the history view can localise
+    // it at render time via t('asset-management.field.assigned_user').
     $auditSql = "INSERT INTO asset_history (asset_id, analyst_id, field_name, old_value, new_value, created_datetime)
-                 VALUES (?, ?, 'Assigned User', ?, ?, UTC_TIMESTAMP())";
+                 VALUES (?, ?, 'assigned_user', ?, ?, UTC_TIMESTAMP())";
     $auditStmt = $conn->prepare($auditSql);
     $auditStmt->execute([$assetId, $_SESSION['analyst_id'], $oldUserName, $userName]);
 

@@ -57,7 +57,7 @@ try {
         // Log to asset_history (skip if this is part of a re-assign, the assign endpoint will log it)
         if (!$skipAudit) {
             $auditSql = "INSERT INTO asset_history (asset_id, analyst_id, field_name, old_value, new_value, created_datetime)
-                         VALUES (?, ?, 'Assigned User', ?, NULL, UTC_TIMESTAMP())";
+                         VALUES (?, ?, 'assigned_user', ?, NULL, UTC_TIMESTAMP())";
             $auditStmt = $conn->prepare($auditSql);
             $auditStmt->execute([$assetId, $_SESSION['analyst_id'], $userName]);
         }

@@ -1816,14 +1816,23 @@ $translationNamespaces = ['common', 'asset-management'];
                 </thead>
                 <tbody>`;
 
+            // Field names are stored as stable keys (e.g. 'purchase_date') so they
+            // localise here. Legacy rows hold an English label (with spaces/capitals)
+            // — those don't match a key, so we show them as-is.
+            const FIELD_KEYS = ['type','status','location','supplier','purchase_date',
+                'purchase_cost','order_number','warranty_expiry','assigned_user'];
+
             history.forEach(entry => {
                 const noneEm = `<em style="color:#999;">${window.t('asset-management.common.none')}</em>`;
                 const oldVal = entry.old_value ? escapeHtml(entry.old_value) : noneEm;
                 const newVal = entry.new_value ? escapeHtml(entry.new_value) : noneEm;
+                const fieldLabel = FIELD_KEYS.includes(entry.field_name)
+                    ? window.t('asset-management.field.' + entry.field_name)
+                    : entry.field_name;
 
                 html += `<tr>
                     <td class="history-meta">${formatDateTime(entry.created_datetime)}</td>
-                    <td><span class="history-field-badge">${escapeHtml(entry.field_name)}</span></td>
+                    <td><span class="history-field-badge">${escapeHtml(fieldLabel)}</span></td>
                     <td>
                         <span class="history-value-old">${oldVal}</span>
                         <span class="history-arrow">&rarr;</span>

@@ -69,13 +69,16 @@ try {
         if ($value)    { $n = $conn->prepare($nameQuery); $n->execute([$value]);    $r = $n->fetch(PDO::FETCH_ASSOC); if ($r) $newDisplay = $r['name']; }
     }
 
-    // Log the change to asset_history
-    $fieldLabels = [
-        'asset_type_id' => 'Type', 'asset_status_id' => 'Status', 'location_id' => 'Location',
-        'purchase_date' => 'Purchase date', 'purchase_cost' => 'Purchase cost', 'supplier_id' => 'Supplier',
-        'order_number' => 'Order number', 'warranty_expiry' => 'Warranty expiry',
+    // Log the change to asset_history. Store a stable field KEY (not an English
+    // label) so the history view can translate it at render time via
+    // t('asset-management.field.<key>'). Legacy rows hold English labels and are
+    // shown as-is by the renderer.
+    $fieldKeys = [
+        'asset_type_id' => 'type', 'asset_status_id' => 'status', 'location_id' => 'location',
+        'purchase_date' => 'purchase_date', 'purchase_cost' => 'purchase_cost', 'supplier_id' => 'supplier',
+        'order_number' => 'order_number', 'warranty_expiry' => 'warranty_expiry',
     ];
-    $fieldLabel = $fieldLabels[$field] ?? $field;
+    $fieldLabel = $fieldKeys[$field] ?? $field;
     $auditSql = "INSERT INTO asset_history (asset_id, analyst_id, field_name, old_value, new_value, created_datetime)
                  VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP())";
     $auditStmt = $conn->prepare($auditSql);

@@ -7,21 +7,25 @@ session_start();
 require_once '../config.php';
 require_once '../includes/functions.php';
 require_once '../includes/i18n.php';
+require_once '../includes/theme.php';
 I18n::initFromSession();
 
 $current_page = 'inbox';
+// Module id for per-module theme/palette resolution (account-menu picker).
+$theme_module = 'tickets';
 
 // Namespaces this page needs translated for the JS bridge (inbox.js will
 // gain t() calls in phase 1b; the bridge is in place ahead of time).
 $translationNamespaces = ['common', 'tickets'];
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>" data-theme="<?php echo htmlspecialchars(Theme::active($theme_module)); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars(t('tickets.title')); ?> - <?php echo htmlspecialchars(t('tickets.nav.inbox')); ?></title>
-    <link rel="stylesheet" href="../assets/css/inbox.css?v=29">
+    <link rel="stylesheet" href="../assets/css/theme.css?v=1">
+    <link rel="stylesheet" href="../assets/css/inbox.css?v=30">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <script src="../assets/js/i18n.js"></script>
     <script src="../assets/js/tinymce/tinymce.min.js"></script>

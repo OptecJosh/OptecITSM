@@ -131,6 +131,7 @@ return [
     'account' => [
         'mail_check'      => 'Check for new emails',
         'preferences'     => 'Preferences',
+        'appearance'      => 'Appearance',
         'change_password' => 'Change Password',
         'mfa'             => 'Multi-Factor Auth',
         'trusted_device'  => 'Trusted Device',

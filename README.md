@@ -521,6 +521,13 @@ lang/
 
 **Adding translations to a module**: include `includes/i18n.php`, call `I18n::initFromSession()`, set `$translationNamespaces` for the JS bridge, set `<html lang>` to `I18n::getLocale()`, and replace literal strings in PHP with `<?php echo htmlspecialchars(t('namespace.key')); ?>` and in JS with `t('namespace.key')`.
 
+### Theming / palettes (`includes/theme.php`, `assets/css/theme.css`)
+Colour theming is built on a **palette token layer**, so "light", "dark" and any future named palette (e.g. an "English Summer") are all just sets of CSS custom properties &mdash; there is no special-cased dark mode. A palette is applied via `<html data-theme="<id>">`, rendered server-side before CSS loads (no flash). Palettes are registered in `Theme::THEMES` (id + label) with a matching `[data-theme="<id>"]` block in `assets/css/theme.css`; the `:root` / `[data-theme="default"]` block is the conventional FreeITSM look.
+
+**Per-module palettes.** A page declares `$theme_module = '<module>'` and resolves its palette via `Theme::active($theme_module)`. Resolution order is **per-module preference (`theme_<module>`) → global preference (`theme`) → built-in default**, so a user can run one palette everywhere or pick a different one per module. The palette picker lives in the account menu (top-right) and saves to `user_preferences` via the generic `api/system/set_user_preference.php` endpoint, then reloads.
+
+**Module opt-in / rollout is one module at a time.** A module supports theming once its CSS consumes the tokens (`var(--text, #333)`, `var(--surface, #fff)`, …) instead of hardcoded colours. Because the default token values equal the current colours and every `var()` carries a fallback, converting a module leaves light mode pixel-identical and is safe even on pages/stylesheets that don't load `theme.css`. Core tokens: `--app-bg`, `--surface`/`--surface-2`/`--surface-3`/`--surface-hover`, `--text`/`--text-muted`/`--text-dim`/`--text-faint`, `--border`/`--border-soft`, `--accent`/`--accent-hover`/`--accent-soft`/`--on-accent`, `--shadow`. **Tickets** is the first themed module.
+
 ### Module Header Pattern
 Each module has its own `includes/header.php` that:
 1. Checks session authentication (redirects to login if not logged in)

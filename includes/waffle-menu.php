@@ -25,6 +25,7 @@ require_once __DIR__ . '/module-colors.php';
 // fall back to Accept-Language → English and ignore the user's saved locale.
 require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/i18n.php';
+require_once __DIR__ . '/theme.php';
 I18n::initFromSession();
 
 // Password expiry guard — force redirect if password is expired
@@ -573,6 +574,44 @@ function renderHeaderRight($analyst_name, $path_prefix) {
 
         .user-menu-item.logout-item svg { color: #d32f2f; }
 
+        /* Palette / theme picker in the account menu */
+        .user-menu-section-label {
+            padding: 8px 16px 2px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #999;
+        }
+        .theme-picker { padding: 2px 8px 8px; }
+        .theme-swatch {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 7px 8px;
+            border: none;
+            background: none;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #333;
+            text-align: left;
+            cursor: pointer;
+        }
+        .theme-swatch:hover { background: #f5f5f5; }
+        .theme-swatch.active { background: #e8f4fd; font-weight: 600; }
+        .theme-swatch-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 1px solid rgba(0,0,0,0.15);
+            flex-shrink: 0;
+        }
+        .theme-swatch-check { margin-left: auto; color: #0078d4; font-weight: 700; }
+        /* Per-palette preview swatch — extend as palettes are added */
+        .theme-swatch-default { background: #ffffff; }
+        .theme-swatch-dark { background: #1e2228; }
+
         .mfa-badge {
             margin-left: auto;
             font-size: 10px;
@@ -803,6 +842,21 @@ function renderHeaderRight($analyst_name, $path_prefix) {
                 <span class="mfa-badge disabled" id="trustBadgeMenu"><?php echo htmlspecialchars(t('common.account.badge_off')); ?></span>
             </button>
             <div class="user-menu-divider"></div>
+            <?php /* Picker shows only on modules that have opted into theming (declared $theme_module). */ ?>
+            <?php if (class_exists('Theme') && !empty($theme_module)): ?>
+            <div class="user-menu-section-label"><?php echo htmlspecialchars(t('common.account.appearance')); ?></div>
+            <div class="theme-picker">
+                <?php $themePickerModule = $theme_module ?? null; $themePickerActive = Theme::active($themePickerModule);
+                foreach (Theme::all() as $themeId => $themeMeta): ?>
+                <button type="button" class="theme-swatch<?php echo $themeId === $themePickerActive ? ' active' : ''; ?>" onclick="setTheme('<?php echo htmlspecialchars($themeId, ENT_QUOTES); ?>')">
+                    <span class="theme-swatch-dot theme-swatch-<?php echo htmlspecialchars($themeId); ?>"></span>
+                    <span><?php echo htmlspecialchars($themeMeta['label']); ?></span>
+                    <?php if ($themeId === $themePickerActive): ?><span class="theme-swatch-check">&#10003;</span><?php endif; ?>
+                </button>
+                <?php endforeach; ?>
+            </div>
+            <div class="user-menu-divider"></div>
+            <?php endif; ?>
             <button class="user-menu-item logout-item" onclick="showConfirm({title:<?php echo htmlspecialchars(json_encode(t('common.account.logout')), ENT_QUOTES); ?>,message:<?php echo htmlspecialchars(json_encode(t('common.account.logout_confirm')), ENT_QUOTES); ?>,okLabel:<?php echo htmlspecialchars(json_encode(t('common.account.logout')), ENT_QUOTES); ?>,okClass:'primary',onConfirm:()=>{window.location.href='<?php echo BASE_URL; ?>analyst_logout.php';}});">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                 <span><?php echo htmlspecialchars(t('common.account.logout')); ?></span>
@@ -876,6 +930,19 @@ function renderHeaderRight($analyst_name, $path_prefix) {
     function closeUserMenu() {
         document.getElementById('userMenu').classList.remove('active');
         document.getElementById('userMenuOverlay').classList.remove('active');
+    }
+
+    /* --- Theme / palette picker ---
+       Saves the palette for this module (or globally if the page didn't declare a
+       module) and reloads so the server re-renders <html data-theme>. */
+    function setTheme(themeId) {
+        fetch(_pathPrefix + 'api/system/set_user_preference.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: <?php echo json_encode(isset($theme_module) && $theme_module ? ('theme_' . $theme_module) : 'theme'); ?>, value: themeId })
+        }).then(function (r) { return r.json(); }).then(function (d) {
+            if (d && d.success) { location.reload(); }
+        }).catch(function () {});
     }
 
     /* --- Password Modal --- */

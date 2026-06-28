@@ -127,6 +127,7 @@ return [
         'badge_off'       => 'Desligado',
         'badge_on'        => 'Ligado',
         'preferences'     => 'Preferências',
+        'appearance'      => 'Aparência',
     ],
 
     // Change-password modal

@@ -1,0 +1,73 @@
+/**
+ * Theme tokens — the palette layer.
+ *
+ * Every palette is just a set of CSS custom properties. Module stylesheets use
+ * the tokens (var(--…)) instead of hardcoded colours; the active palette is set
+ * by <html data-theme="<id>">. The :root / [data-theme="default"] block IS the
+ * conventional FreeITSM look, so converting a module to tokens leaves light mode
+ * pixel-identical and dark (or any future palette) "just works".
+ *
+ * To add a palette: add a [data-theme="<id>"] block here + an entry in
+ * includes/theme.php. Tokens that a palette doesn't override inherit :root.
+ */
+
+:root,
+[data-theme="default"] {
+    color-scheme: light;
+
+    /* Surfaces */
+    --app-bg:        #f5f5f5;   /* page / app background          */
+    --surface:       #ffffff;   /* panels, cards, reading pane    */
+    --surface-2:     #fafafa;   /* subtle raised/striped surface  */
+    --surface-3:     #f8f8f8;   /* slightly deeper subtle surface */
+    --surface-hover: #f0f0f0;   /* row / item hover               */
+
+    /* Text */
+    --text:        #333333;     /* primary body text   */
+    --text-muted:  #666666;     /* labels, secondary   */
+    --text-dim:    #888888;     /* tertiary            */
+    --text-faint:  #999999;     /* placeholders, hints */
+
+    /* Lines */
+    --border:      #e0e0e0;     /* default borders/dividers */
+    --border-soft: #eeeeee;     /* faint dividers           */
+
+    /* Accent (brand blue) */
+    --accent:        #0078d4;
+    --accent-hover:  #005a9e;
+    --accent-soft:   #e8f4fd;   /* tinted accent background */
+    --on-accent:     #ffffff;   /* text/icons on accent     */
+
+    /* Effects */
+    --shadow:        rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] {
+    color-scheme: dark;
+
+    /* Surfaces */
+    --app-bg:        #14171c;
+    --surface:       #1e2228;
+    --surface-2:     #232830;
+    --surface-3:     #20242b;
+    --surface-hover: #2a3039;
+
+    /* Text */
+    --text:        #e6e8eb;
+    --text-muted:  #aab2bd;
+    --text-dim:    #8d95a0;
+    --text-faint:  #79818b;
+
+    /* Lines */
+    --border:      #343b45;
+    --border-soft: #2b313a;
+
+    /* Accent — nudged lighter so it reads on dark surfaces */
+    --accent:        #2b88d8;
+    --accent-hover:  #4a9ee0;
+    --accent-soft:   #1d3346;
+    --on-accent:     #ffffff;
+
+    /* Effects */
+    --shadow:        rgba(0, 0, 0, 0.45);
+}

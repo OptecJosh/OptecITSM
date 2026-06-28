@@ -915,10 +915,10 @@ $translationNamespaces = ['common', 'tickets'];
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('tickets.settings.headings.reply_cleanup_ai')); ?></h2>
             </div>
-            <p style="color: #555;">
+            <p style="color: var(--text-muted, #555);">
                 <?php echo t('tickets.settings.reply_cleanup.intro1'); ?>
             </p>
-            <p style="color: #555;">
+            <p style="color: var(--text-muted, #555);">
                 <?php echo t('tickets.settings.reply_cleanup.intro2'); ?>
             </p>
 
@@ -958,7 +958,7 @@ $translationNamespaces = ['common', 'tickets'];
                 <aside class="reply-cleanup-prompt-panel">
                     <details open>
                         <summary><?php echo htmlspecialchars(t('tickets.settings.reply_cleanup.prompt_summary')); ?></summary>
-                        <div style="padding: 0 16px 16px 16px; color: #555;">
+                        <div style="padding: 0 16px 16px 16px; color: var(--text-muted, #555);">
                             <p style="margin: 0 0 12px 0; font-size: 13px;">
                                 <?php echo htmlspecialchars(t('tickets.settings.reply_cleanup.prompt_panel_intro')); ?>
                             </p>
@@ -974,10 +974,10 @@ $translationNamespaces = ['common', 'tickets'];
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('tickets.settings.headings.csat')); ?></h2>
             </div>
-            <p style="color: #555;">
+            <p style="color: var(--text-muted, #555);">
                 <?php echo t('tickets.settings.csat_tab.intro1'); ?>
             </p>
-            <p style="color: #555;">
+            <p style="color: var(--text-muted, #555);">
                 <?php echo t('tickets.settings.csat_tab.intro2'); ?>
             </p>
 
@@ -2842,7 +2842,7 @@ $translationNamespaces = ['common', 'tickets'];
             const out = document.getElementById('channelsResult');
             showToast('Running channel tests… (reachability can take a few seconds)', 'info');
             if (out) {
-                out.innerHTML = '<div style="padding:10px 12px;color:#555;">Running channel tests…</div>';
+                out.innerHTML = '<div style="padding:10px 12px;color:var(--text-muted, #555);">Running channel tests…</div>';
                 out.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
             try {
@@ -4950,7 +4950,7 @@ $translationNamespaces = ['common', 'tickets'];
             container.innerHTML = slaModalHolidays.map((h, i) => `
                 <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;padding:6px 10px;background:#f5f5f5;border-radius:4px;">
                     <code style="font-size:12px;">${escapeHtml(h.holiday_date)}</code>
-                    ${h.name ? `<span style="color:#555;flex:1;">${escapeHtml(h.name)}</span>` : '<span style="flex:1;color:var(--text-faint, #999);font-style:italic;">(no name)</span>'}
+                    ${h.name ? `<span style="color:var(--text-muted, #555);flex:1;">${escapeHtml(h.name)}</span>` : '<span style="flex:1;color:var(--text-faint, #999);font-style:italic;">(no name)</span>'}
                     <button type="button" class="action-btn delete" onclick="removeSlaHoliday(${i})" title="${escapeHtml(t('common.delete'))}" style="padding:2px 8px;">&times;</button>
                 </div>
             `).join('');

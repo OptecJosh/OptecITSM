@@ -850,11 +850,11 @@ function renderHeaderRight($analyst_name, $path_prefix) {
                 <span class="mfa-badge disabled" id="trustBadgeMenu"><?php echo htmlspecialchars(t('common.account.badge_off')); ?></span>
             </button>
             <div class="user-menu-divider"></div>
-            <?php /* Picker shows only on modules that have opted into theming (declared $theme_module). */ ?>
-            <?php if (class_exists('Theme') && !empty($theme_module)): ?>
+            <?php /* Appearance picker — always shown in the account menu (global theme). */ ?>
+            <?php if (class_exists('Theme')): ?>
             <div class="user-menu-section-label"><?php echo htmlspecialchars(t('common.account.appearance')); ?></div>
             <div class="theme-picker">
-                <?php $themePickerModule = $theme_module ?? null; $themePickerActive = Theme::active($themePickerModule);
+                <?php $themePickerActive = Theme::active($theme_module ?? null);
                 foreach (Theme::all() as $themeId => $themeMeta): ?>
                 <button type="button" class="theme-swatch<?php echo $themeId === $themePickerActive ? ' active' : ''; ?>" onclick="setTheme('<?php echo htmlspecialchars($themeId, ENT_QUOTES); ?>')">
                     <span class="theme-swatch-dot theme-swatch-<?php echo htmlspecialchars($themeId); ?>"></span>
@@ -947,7 +947,7 @@ function renderHeaderRight($analyst_name, $path_prefix) {
         fetch(_pathPrefix + 'api/system/set_user_preference.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key: <?php echo json_encode(isset($theme_module) && $theme_module ? ('theme_' . $theme_module) : 'theme'); ?>, value: themeId })
+            body: JSON.stringify({ key: 'theme', value: themeId })
         }).then(function (r) { return r.json(); }).then(function (d) {
             if (d && d.success) { location.reload(); }
         }).catch(function () {});

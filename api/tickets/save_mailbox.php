@@ -98,6 +98,27 @@ try {
     if (!in_array($rejected_action, $allowedRejectedActions)) $rejected_action = 'delete';
     if (!in_array($imported_action, $allowedImportedActions)) $imported_action = 'delete';
 
+    // Authentication mode: 'delegated' (interactive sign-in, reads /me) or 'app_only'
+    // (client credentials, reads /users/<target_mailbox>). App-only is Microsoft only.
+    $auth_mode = (($data['auth_mode'] ?? 'delegated') === 'app_only' && $provider === 'microsoft') ? 'app_only' : 'delegated';
+
+    // On edit: if the target address OR auth mode changed, the previously-authenticated
+    // identity no longer applies. We clear it so a stale token can't keep reading the OLD
+    // inbox (the exact "changed address but didn't re-auth" trap) — it forces re-auth /
+    // surfaces the mismatch banner.
+    $invalidateAuth = false;
+    if ($id) {
+        $oldStmt = $conn->prepare("SELECT target_mailbox, auth_mode FROM target_mailboxes WHERE id = ?");
+        $oldStmt->execute([$id]);
+        if ($old = $oldStmt->fetch(PDO::FETCH_ASSOC)) {
+            $oldTarget = strtolower(trim((string) decryptValue($old['target_mailbox'])));
+            $newTarget = strtolower(trim((string) ($data['target_mailbox'] ?? '')));
+            if ($oldTarget !== $newTarget || ($old['auth_mode'] ?? 'delegated') !== $auth_mode) {
+                $invalidateAuth = true;
+            }
+        }
+    }
+
     if ($id) {
         // Update existing mailbox
         // If azure_client_secret is empty or just asterisks, don't update it
@@ -108,7 +129,7 @@ try {
                         imap_port = ?, imap_encryption = ?, target_mailbox = ?,
                         email_folder = ?, max_emails_per_check = ?, mark_as_read = ?,
                         rejected_action = ?, imported_action = ?, imported_folder = ?,
-                        is_active = ?, tenant_id = ?
+                        is_active = ?, tenant_id = ?, auth_mode = ?
                     WHERE id = ?";
             $params = [
                 $name, $provider, $azure_tenant_id, $azure_client_id,
@@ -116,7 +137,7 @@ try {
                 $imap_port, $imap_encryption, $target_mailbox,
                 $email_folder, $max_emails_per_check, $mark_as_read,
                 $rejected_action, $imported_action, $imported_folder,
-                $is_active, $tenant_id, $id
+                $is_active, $tenant_id, $auth_mode, $id
             ];
         } else {
             $azure_client_secret = encryptValue($azure_client_secret);
@@ -126,7 +147,7 @@ try {
                         imap_server = ?, imap_port = ?, imap_encryption = ?,
                         target_mailbox = ?, email_folder = ?, max_emails_per_check = ?,
                         mark_as_read = ?, rejected_action = ?, imported_action = ?,
-                        imported_folder = ?, is_active = ?, tenant_id = ?
+                        imported_folder = ?, is_active = ?, tenant_id = ?, auth_mode = ?
                     WHERE id = ?";
             $params = [
                 $name, $provider, $azure_tenant_id, $azure_client_id,
@@ -134,17 +155,23 @@ try {
                 $imap_server, $imap_port, $imap_encryption,
                 $target_mailbox, $email_folder, $max_emails_per_check,
                 $mark_as_read, $rejected_action, $imported_action,
-                $imported_folder, $is_active, $tenant_id, $id
+                $imported_folder, $is_active, $tenant_id, $auth_mode, $id
             ];
         }
 
         $stmt = $conn->prepare($sql);
         $stmt->execute($params);
 
+        // Drop the stale authenticated identity if the address / auth mode changed.
+        if ($invalidateAuth) {
+            $conn->prepare("UPDATE target_mailboxes SET authenticated_as = NULL WHERE id = ?")->execute([$id]);
+        }
+
         echo json_encode([
             'success' => true,
             'message' => 'Mailbox updated successfully',
-            'id' => $id
+            'id' => $id,
+            'reauth_required' => $invalidateAuth
         ]);
     } else {
         // Insert new mailbox
@@ -160,8 +187,8 @@ try {
                     oauth_redirect_uri, oauth_scopes, imap_server, imap_port,
                     imap_encryption, target_mailbox, email_folder, max_emails_per_check,
                     mark_as_read, rejected_action, imported_action, imported_folder,
-                    is_active, tenant_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    is_active, tenant_id, auth_mode
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         $stmt = $conn->prepare($sql);
         $stmt->execute([
@@ -169,7 +196,7 @@ try {
             $oauth_redirect_uri, $oauth_scopes, $imap_server, $imap_port,
             $imap_encryption, $target_mailbox, $email_folder, $max_emails_per_check,
             $mark_as_read, $rejected_action, $imported_action, $imported_folder,
-            $is_active, $tenant_id
+            $is_active, $tenant_id, $auth_mode
         ]);
 
         $newId = $conn->lastInsertId();

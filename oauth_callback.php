@@ -44,11 +44,21 @@ try {
         // Exchange authorization code for tokens using mailbox config
         $tokens = getTokensFromAuthCodeForMailbox($authCode, $mailbox);
 
-        // Save tokens to database
-        saveTokensToDatabase($conn, $mailboxId, $tokens);
+        // Capture WHO actually signed in (Graph /me). In delegated mode the app reads
+        // this account's inbox — so we record it and compare against the configured
+        // target_mailbox to catch "you authenticated the wrong account" (issue #26).
+        $identity = getGraphSignedInEmail($tokens['access_token']);
+
+        // Save tokens + the authenticated identity
+        saveTokensToDatabase($conn, $mailboxId, $tokens, $identity);
+
+        // Flag an immediate mismatch warning if the signed-in account isn't the target.
+        $target = strtolower(trim($mailbox['target_mailbox'] ?? ''));
+        $mismatch = ($identity && $target && $identity !== $target) ? 1 : 0;
 
         // Redirect back to settings page with success message
-        header('Location: tickets/settings/index.php?oauth=success&mailbox_id=' . $mailboxId);
+        header('Location: tickets/settings/index.php?oauth=success&mailbox_id=' . $mailboxId
+            . ($mismatch ? '&auth_mismatch=1' : ''));
         exit;
     } else {
         // Legacy: File-based authentication (for backwards compatibility)
@@ -134,14 +144,36 @@ function getTokensFromAuthCodeForMailbox($authCode, $mailbox) {
 }
 
 /**
- * Save tokens to database for specific mailbox
+ * Ask Graph who the freshly-issued token belongs to (the account the user signed
+ * in as). Returns the lowercased email, or null if it can't be determined.
  */
-function saveTokensToDatabase($conn, $mailboxId, $tokens) {
+function getGraphSignedInEmail($accessToken) {
+    $ch = curl_init('https://graph.microsoft.com/v1.0/me?$select=mail,userPrincipalName');
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $accessToken]);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, SSL_VERIFY_PEER);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, SSL_VERIFY_PEER ? 2 : 0);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode !== 200) {
+        return null;
+    }
+    $data = json_decode($response, true);
+    $email = $data['mail'] ?? $data['userPrincipalName'] ?? null;
+    return $email ? strtolower(trim($email)) : null;
+}
+
+/**
+ * Save tokens + the authenticated identity to database for a specific mailbox.
+ */
+function saveTokensToDatabase($conn, $mailboxId, $tokens, $identity = null) {
     $jsonData = json_encode($tokens);
 
-    $sql = "UPDATE target_mailboxes SET token_data = ? WHERE id = ?";
+    $sql = "UPDATE target_mailboxes SET token_data = ?, authenticated_as = ? WHERE id = ?";
     $stmt = $conn->prepare($sql);
-    $stmt->execute([$jsonData, $mailboxId]);
+    $stmt->execute([$jsonData, $identity, $mailboxId]);
 
     if ($stmt->rowCount() === 0) {
         throw new Exception('Failed to save tokens to database');

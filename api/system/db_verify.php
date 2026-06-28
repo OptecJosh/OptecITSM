@@ -439,6 +439,13 @@ $schema = [
         'imap_port'               => 'INT NOT NULL DEFAULT 993',
         'imap_encryption'         => 'VARCHAR(10) NOT NULL DEFAULT \'ssl\'',
         'target_mailbox'          => 'TEXT NOT NULL',
+        // 'delegated' = OAuth sign-in (acts as the signed-in user, /me); 'app_only' =
+        // client-credentials (the app reads the specific /users/<target_mailbox>).
+        'auth_mode'               => "VARCHAR(20) NOT NULL DEFAULT 'delegated'",
+        // The account actually authenticated in delegated mode (captured from Graph
+        // /me at sign-in). Compared against target_mailbox to catch "reading the wrong
+        // inbox". NULL = not yet authenticated / needs (re)authentication.
+        'authenticated_as'        => 'VARCHAR(255) NULL',
         'token_data'              => 'LONGTEXT NULL',
         'email_folder'            => 'VARCHAR(100) NOT NULL DEFAULT \'INBOX\'',
         'max_emails_per_check'    => 'INT NOT NULL DEFAULT 10',

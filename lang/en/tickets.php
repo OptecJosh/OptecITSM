@@ -77,6 +77,10 @@ return [
         'search_btn'      => 'Search tickets',
         'refresh_btn'     => 'Refresh',
         'select_folder'   => 'Select a folder to view tickets',
+        // Left-panel folder labels + matching list titles
+        'unassigned'         => 'Unassigned',
+        'unassigned_tickets' => 'Unassigned Tickets',
+        'trash'              => 'Trash',
     ],
 
     'reading_pane' => [
@@ -132,6 +136,11 @@ return [
         'attach_inline_badge' => 'Inline',
         'attach_click_download'=> 'Click to download',
         'attach_click_fullsize'=> 'Click to open full size',
+
+        // Problem strip (grey bar linking a ticket to a Problem record)
+        'problem_label'    => 'Problem:',
+        'problem_unlinked' => 'not linked',
+        'problem_link'     => 'Link to problem',
     ],
 
     // Right-click (context) menu on a ticket — top-level items live as static

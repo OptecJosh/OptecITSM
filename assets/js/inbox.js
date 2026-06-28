@@ -145,7 +145,7 @@ async function setFolderGrouping(mode) {
 
     // Reset selection back to "All Tickets" so we don't leave a stale dept/analyst filter active
     currentFilter = { type: 'all' };
-    document.getElementById('emailListTitle').textContent = 'All Tickets';
+    document.getElementById('emailListTitle').textContent = t('tickets.list.all_tickets');
 
     // Update the toggle UI
     document.querySelectorAll('.folder-group-btn').forEach(b => {
@@ -476,7 +476,7 @@ function renderFolders() {
         <div class="folder-item ${currentFilter.type === 'all' ? 'active' : ''}" data-folder-key="all" onclick="selectFolder('all')">
             <div class="folder-name">
                 <span class="folder-icon">📬</span>
-                <span>All Tickets</span>
+                <span>${escapeHtml(t('tickets.list.all_tickets'))}</span>
             </div>
             <span class="folder-count">${folderCounts.total_count || 0}</span>
         </div>
@@ -491,7 +491,7 @@ function renderFolders() {
              data-drop-type="unassigned" onclick="selectFolder('unassigned')">
             <div class="folder-name">
                 <span class="folder-icon">⚠️</span>
-                <span>Unassigned</span>
+                <span>${escapeHtml(t('tickets.list.unassigned'))}</span>
             </div>
             <span class="folder-count">${unassignedCount}</span>
         </div>
@@ -577,7 +577,7 @@ function renderFolders() {
              onclick="selectFolder('trash')" oncontextmenu="openTrashContextMenu(event)">
             <div class="folder-name">
                 <span class="folder-icon">🗑️</span>
-                <span>Trash</span>
+                <span>${escapeHtml(t('tickets.list.trash'))}</span>
             </div>
             <span class="folder-count">${folderCounts.trash_count || 0}</span>
         </div>
@@ -661,17 +661,17 @@ function toggleFolder(folderId, groupId, opts = {}) {
 function selectFolder(type, id = null) {
     if (type === 'all') {
         currentFilter = { type: 'all' };
-        document.getElementById('emailListTitle').textContent = 'All Tickets';
+        document.getElementById('emailListTitle').textContent = t('tickets.list.all_tickets');
     } else if (type === 'unassigned') {
         currentFilter = { type: 'unassigned' };
-        document.getElementById('emailListTitle').textContent = 'Unassigned Tickets';
+        document.getElementById('emailListTitle').textContent = t('tickets.list.unassigned_tickets');
     } else if (type === 'department') {
         currentFilter = { type: 'department', id: id };
         const dept = folderCounts.departments.find(d => d.id == id);
-        document.getElementById('emailListTitle').textContent = dept ? dept.name : 'Department';
+        document.getElementById('emailListTitle').textContent = dept ? dept.name : t('tickets.folders.group_department');
     } else if (type === 'trash') {
         currentFilter = { type: 'trash' };
-        document.getElementById('emailListTitle').textContent = 'Trash';
+        document.getElementById('emailListTitle').textContent = t('tickets.list.trash');
     }
 
     updateActiveFolderClasses();
@@ -1415,9 +1415,9 @@ function buildProblemStrip(email) {
             <span class="pm-ticket-unlink" onclick="event.preventDefault();event.stopPropagation();unlinkTicketFromProblem(${p.id});">✕</span>
         </a>`).join('');
     return `<div class="problem-strip">
-        <span class="problem-strip-label">Problem:</span>
-        ${badges || '<span style="color:#9ca3af;font-size:13px;">not linked</span>'}
-        <button class="problem-link-btn" onclick="linkTicketToProblem()">Link to problem</button>
+        <span class="problem-strip-label">${escapeHtml(t('tickets.reading_pane.problem_label'))}</span>
+        ${badges || `<span style="color:#9ca3af;font-size:13px;">${escapeHtml(t('tickets.reading_pane.problem_unlinked'))}</span>`}
+        <button class="problem-link-btn" onclick="linkTicketToProblem()">${escapeHtml(t('tickets.reading_pane.problem_link'))}</button>
     </div>`;
 }
 

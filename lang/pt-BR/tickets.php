@@ -61,6 +61,10 @@ return [
         'search_btn' => 'Pesquisar tickets',
         'refresh_btn' => 'Atualizar',
         'select_folder' => 'Selecione uma pasta para ver os tickets',
+        // Rótulos das pastas do painel esquerdo + títulos de lista correspondentes
+        'unassigned'         => 'Não atribuídos',
+        'unassigned_tickets' => 'Tickets não atribuídos',
+        'trash'              => 'Lixeira',
     ],
     'reading_pane' => [
         'select_ticket' => 'Selecione um ticket para ver os detalhes',
@@ -115,6 +119,11 @@ return [
         'attach_inline_badge' => 'Incorporado',
         'attach_click_download'=> 'Clique para baixar',
         'attach_click_fullsize'=> 'Clique para abrir em tamanho real',
+
+        // Faixa de problema (barra cinza que vincula um ticket a um registro de Problema)
+        'problem_label'    => 'Problema:',
+        'problem_unlinked' => 'não vinculado',
+        'problem_link'     => 'Vincular a um problema',
     ],
 
     // Menu de contexto (clique direito) em um ticket — os itens de nível superior

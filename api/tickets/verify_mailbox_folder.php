@@ -7,6 +7,7 @@ session_start(['read_and_close' => true]);
 require_once '../../config.php';
 require_once '../../includes/functions.php';
 require_once '../../includes/encryption.php';
+require_once '../../includes/mailbox_graph.php';
 
 header('Content-Type: application/json');
 
@@ -39,6 +40,19 @@ try {
 
     $mailbox = decryptMailboxRow($mailbox);
 
+    $provider = $mailbox['provider'] ?? 'microsoft';
+    $authMode = $mailbox['auth_mode'] ?? 'delegated';
+    mailboxResolveGraphBase($mailbox); // /me (delegated) or /users/<target> (app-only)
+
+    if ($provider === 'microsoft' && $authMode === 'app_only') {
+        // App-only: authenticate the app and verify the folder on the target mailbox.
+        try {
+            $accessToken = mailboxAppOnlyToken($conn, $mailbox);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => 'App-only authentication failed: ' . $e->getMessage()]);
+            exit;
+        }
+    } else {
     if (empty($mailbox['token_data'])) {
         echo json_encode(['success' => false, 'error' => 'Mailbox is not authenticated']);
         exit;
@@ -50,6 +64,16 @@ try {
     if (!$tokenData || !isset($tokenData['access_token'])) {
         echo json_encode(['success' => false, 'error' => 'Invalid token data']);
         exit;
+    }
+
+    // SAFETY (delegated Microsoft): verify folders against the configured mailbox only.
+    if ($provider === 'microsoft') {
+        $authedAs = strtolower(trim((string) ($mailbox['authenticated_as'] ?? '')));
+        $target   = strtolower(trim((string) ($mailbox['target_mailbox'] ?? '')));
+        if ($authedAs !== '' && $authedAs !== $target) {
+            echo json_encode(['success' => false, 'error' => 'Authentication mismatch — re-authenticate this mailbox as ' . $mailbox['target_mailbox'] . ' (or switch to app-only) first.']);
+            exit;
+        }
     }
 
     // Refresh token if expired
@@ -95,10 +119,11 @@ try {
         $saveStmt->execute([json_encode($tokenData), $mailboxId]);
     }
 
-    $accessToken = $tokenData['access_token'];
+        $accessToken = $tokenData['access_token'];
+    }
 
     // Query Graph API for the folder
-    $graphUrl = 'https://graph.microsoft.com/v1.0/me/mailFolders?'
+    $graphUrl = 'https://graph.microsoft.com/v1.0' . mailboxGraphBase() . '/mailFolders?'
         . http_build_query(['$filter' => "displayName eq '" . str_replace("'", "''", $folderName) . "'"]);
 
     $ch = curl_init();

@@ -18,6 +18,7 @@ require_once '../../config.php';
 require_once '../../includes/functions.php';
 require_once '../../includes/encryption.php';
 require_once '../../includes/tenancy.php';
+require_once '../../includes/mailbox_graph.php';
 
 header('Content-Type: application/json');
 
@@ -70,27 +71,44 @@ try {
         throw new Exception('Could not determine mailbox for this ticket. Please ensure the ticket has associated emails.');
     }
 
-    if (empty($mailbox['token_data'])) {
-        throw new Exception('Mailbox "' . $mailbox['target_mailbox'] . '" is not authenticated. Please authenticate in Settings.');
-    }
-
-    // Determine provider
+    // Determine provider + auth mode, and point Graph at the right mailbox
+    // (delegated → /me; app-only → /users/<target_mailbox>).
     $provider = $mailbox['provider'] ?? 'microsoft';
+    $authMode = $mailbox['auth_mode'] ?? 'delegated';
+    mailboxResolveGraphBase($mailbox);
 
-    // Parse token data (clean any control characters)
-    $cleanedTokenData = preg_replace('/[\x00-\x1F\x7F]/', '', $mailbox['token_data']);
-    $tokenData = json_decode($cleanedTokenData, true);
-
-    if ($tokenData === null) {
-        throw new Exception('Failed to parse token data for mailbox: ' . json_last_error_msg());
-    }
-
-    // Get valid access token (will refresh if needed)
-    if ($provider === 'google') {
-        require_once dirname(dirname(__DIR__)) . '/includes/gmail.php';
-        $accessToken = gmailGetValidAccessToken($conn, $mailbox, $tokenData);
+    if ($provider === 'microsoft' && $authMode === 'app_only') {
+        // App-only: the app authenticates itself; we send as /users/<target_mailbox>.
+        $accessToken = mailboxAppOnlyToken($conn, $mailbox);
     } else {
-        $accessToken = getValidAccessToken($conn, $mailbox, $tokenData);
+        if (empty($mailbox['token_data'])) {
+            throw new Exception('Mailbox "' . $mailbox['target_mailbox'] . '" is not authenticated. Please authenticate in Settings.');
+        }
+
+        // Parse token data (clean any control characters)
+        $cleanedTokenData = preg_replace('/[\x00-\x1F\x7F]/', '', $mailbox['token_data']);
+        $tokenData = json_decode($cleanedTokenData, true);
+        if ($tokenData === null) {
+            throw new Exception('Failed to parse token data for mailbox: ' . json_last_error_msg());
+        }
+
+        // SAFETY (delegated Microsoft): don't SEND from the wrong account. If the
+        // signed-in identity isn't the configured target, refuse until re-authenticated.
+        if ($provider === 'microsoft') {
+            $authedAs = strtolower(trim((string) ($mailbox['authenticated_as'] ?? '')));
+            $target   = strtolower(trim((string) ($mailbox['target_mailbox'] ?? '')));
+            if ($authedAs !== '' && $authedAs !== $target) {
+                throw new Exception('This mailbox is set to ' . $mailbox['target_mailbox'] . ' but is authenticated as ' . $mailbox['authenticated_as'] . '. Re-authenticate as the correct account (or switch it to app-only) before sending.');
+            }
+        }
+
+        // Get valid access token (will refresh if needed)
+        if ($provider === 'google') {
+            require_once dirname(dirname(__DIR__)) . '/includes/gmail.php';
+            $accessToken = gmailGetValidAccessToken($conn, $mailbox, $tokenData);
+        } else {
+            $accessToken = getValidAccessToken($conn, $mailbox, $tokenData);
+        }
     }
 
     if (!$accessToken) {
@@ -448,7 +466,7 @@ function parseRecipients($recipientString) {
  * Send email via Microsoft Graph API
  */
 function sendEmailViaGraph($accessToken, $message) {
-    $graphUrl = 'https://graph.microsoft.com/v1.0/me/sendMail';
+    $graphUrl = 'https://graph.microsoft.com/v1.0' . mailboxGraphBase() . '/sendMail';
 
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $graphUrl);

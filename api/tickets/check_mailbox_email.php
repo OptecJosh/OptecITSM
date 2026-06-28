@@ -9,6 +9,7 @@ require_once '../../config.php';
 require_once '../../includes/functions.php';
 require_once '../../includes/encryption.php';
 require_once '../../includes/tenancy.php';
+require_once '../../includes/mailbox_graph.php';
 
 header('Content-Type: application/json');
 
@@ -43,55 +44,90 @@ try {
         exit;
     }
 
-    // Check if mailbox is authenticated
-    if (empty($mailbox['token_data'])) {
-        echo json_encode(['success' => false, 'error' => 'Mailbox is not authenticated. Please authenticate first.']);
-        exit;
-    }
-
-    // Determine provider
+    // Determine provider + auth mode
     $provider = $mailbox['provider'] ?? 'microsoft';
+    $authMode = $mailbox['auth_mode'] ?? 'delegated';
 
-    // Get valid access token
-    // Clean token data by removing any null bytes or control characters
-    $rawTokenData = $mailbox['token_data'];
-    $cleanedTokenData = preg_replace('/[\x00-\x1F\x7F]/', '', $rawTokenData);
+    // Point every Graph call at the right mailbox for this request: delegated reads
+    // /me (whoever signed in); app-only reads the specific /users/<target_mailbox>.
+    mailboxResolveGraphBase($mailbox);
 
-    $tokenData = json_decode($cleanedTokenData, true);
-
-    // Check if JSON parsing failed
-    if ($tokenData === null && json_last_error() !== JSON_ERROR_NONE) {
-        echo json_encode([
-            'success' => false,
-            'error' => 'Failed to parse token data: ' . json_last_error_msg(),
-            'debug' => [
-                'raw_length' => strlen($rawTokenData),
-                'cleaned_length' => strlen($cleanedTokenData),
-                'first_50' => substr($cleanedTokenData, 0, 50)
-            ]
-        ]);
-        exit;
-    }
-
-    try {
-        if ($provider === 'google') {
-            require_once dirname(dirname(__DIR__)) . '/includes/gmail.php';
-            $accessToken = gmailGetValidAccessToken($conn, $mailbox, $tokenData);
-        } else {
-            $accessToken = getValidAccessToken($conn, $mailbox, $tokenData);
+    if ($provider === 'microsoft' && $authMode === 'app_only') {
+        // App-only (client credentials): no interactive sign-in / stored token needed —
+        // the app authenticates itself and reads the exact target mailbox.
+        try {
+            $accessToken = mailboxAppOnlyToken($conn, $mailbox);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => 'App-only authentication failed: ' . $e->getMessage()]);
+            exit;
         }
-    } catch (Exception $e) {
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'debug' => [
-                'has_access_token' => isset($tokenData['access_token']),
-                'has_refresh_token' => isset($tokenData['refresh_token']),
-                'expires_at' => $tokenData['expires_at'] ?? 'not set',
-                'current_time' => time()
-            ]
-        ]);
-        exit;
+    } else {
+        // Delegated (Microsoft sign-in) or Google: requires a stored token.
+        if (empty($mailbox['token_data'])) {
+            echo json_encode(['success' => false, 'error' => 'Mailbox is not authenticated. Please authenticate first.']);
+            exit;
+        }
+
+        // Clean token data by removing any null bytes or control characters
+        $rawTokenData = $mailbox['token_data'];
+        $cleanedTokenData = preg_replace('/[\x00-\x1F\x7F]/', '', $rawTokenData);
+        $tokenData = json_decode($cleanedTokenData, true);
+
+        // Check if JSON parsing failed
+        if ($tokenData === null && json_last_error() !== JSON_ERROR_NONE) {
+            echo json_encode([
+                'success' => false,
+                'error' => 'Failed to parse token data: ' . json_last_error_msg(),
+                'debug' => [
+                    'raw_length' => strlen($rawTokenData),
+                    'cleaned_length' => strlen($cleanedTokenData),
+                    'first_50' => substr($cleanedTokenData, 0, 50)
+                ]
+            ]);
+            exit;
+        }
+
+        try {
+            if ($provider === 'google') {
+                require_once dirname(dirname(__DIR__)) . '/includes/gmail.php';
+                $accessToken = gmailGetValidAccessToken($conn, $mailbox, $tokenData);
+            } else {
+                $accessToken = getValidAccessToken($conn, $mailbox, $tokenData);
+            }
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'debug' => [
+                    'has_access_token' => isset($tokenData['access_token']),
+                    'has_refresh_token' => isset($tokenData['refresh_token']),
+                    'expires_at' => $tokenData['expires_at'] ?? 'not set',
+                    'current_time' => time()
+                ]
+            ]);
+            exit;
+        }
+
+        // SAFETY (delegated Microsoft): make sure we're reading the RIGHT inbox. The
+        // token belongs to whoever signed in. For mailboxes authenticated before we
+        // recorded that, back-fill the identity from the live token now; then block
+        // only on a CONFIRMED mismatch. Correctly-set-up mailboxes pass untouched;
+        // the "wrong account" / "changed address" cases (issue #26) get caught.
+        if ($provider === 'microsoft') {
+            $authedAs = strtolower(trim((string) ($mailbox['authenticated_as'] ?? '')));
+            if ($authedAs === '') {
+                $authedAs = mailboxDelegatedIdentity($accessToken);
+                if ($authedAs !== '') {
+                    $conn->prepare("UPDATE target_mailboxes SET authenticated_as = ? WHERE id = ?")
+                         ->execute([$authedAs, $mailbox['id']]);
+                }
+            }
+            $target = strtolower(trim((string) ($mailbox['target_mailbox'] ?? '')));
+            if ($authedAs !== '' && $authedAs !== $target) {
+                echo json_encode(['success' => false, 'error' => 'Authentication mismatch — this mailbox is set to read ' . $mailbox['target_mailbox'] . ' but is authenticated as ' . $authedAs . '. Re-authenticate as the correct account, or switch it to app-only mode.']);
+                exit;
+            }
+        }
     }
 
     if (!$accessToken) {
@@ -388,6 +424,9 @@ function saveTokenData($conn, $mailboxId, $tokenData) {
     $stmt->execute([$jsonData, $mailboxId]);
 }
 
+// App-only token + Graph base path now live in includes/mailbox_graph.php
+// (shared with send_email.php and verify_mailbox_folder.php).
+
 /**
  * Update last checked datetime
  */
@@ -401,7 +440,7 @@ function updateLastChecked($conn, $mailboxId) {
  * Retrieve emails from Microsoft Graph API
  */
 function getEmails($accessToken, $mailbox) {
-    $graphUrl = 'https://graph.microsoft.com/v1.0/me/mailFolders/' . $mailbox['email_folder'] . '/messages';
+    $graphUrl = 'https://graph.microsoft.com/v1.0' . mailboxGraphBase() . '/mailFolders/' . $mailbox['email_folder'] . '/messages';
 
     $params = [
         '$top' => $mailbox['max_emails_per_check'],
@@ -443,7 +482,7 @@ function getEmails($accessToken, $mailbox) {
  * Delete an email from the mailbox via Microsoft Graph API
  */
 function deleteEmailFromMailbox($accessToken, $messageId) {
-    $graphUrl = 'https://graph.microsoft.com/v1.0/me/messages/' . $messageId;
+    $graphUrl = 'https://graph.microsoft.com/v1.0' . mailboxGraphBase() . '/messages/' . $messageId;
 
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $graphUrl);
@@ -507,7 +546,7 @@ function resolveMailFolderId($accessToken, $folderName) {
     }
 
     // Query Graph API by displayName
-    $graphUrl = 'https://graph.microsoft.com/v1.0/me/mailFolders?'
+    $graphUrl = 'https://graph.microsoft.com/v1.0' . mailboxGraphBase() . '/mailFolders?'
         . http_build_query(['$filter' => "displayName eq '" . str_replace("'", "''", $folderName) . "'"]);
 
     $ch = curl_init();
@@ -552,7 +591,7 @@ function resolveMailFolderId($accessToken, $folderName) {
 function moveEmailToFolder($accessToken, $messageId, $folderName) {
     $destinationId = resolveMailFolderId($accessToken, $folderName);
 
-    $graphUrl = 'https://graph.microsoft.com/v1.0/me/messages/' . $messageId . '/move';
+    $graphUrl = 'https://graph.microsoft.com/v1.0' . mailboxGraphBase() . '/messages/' . $messageId . '/move';
 
     $body = json_encode(['destinationId' => $destinationId]);
 
@@ -589,7 +628,7 @@ function moveEmailToFolder($accessToken, $messageId, $folderName) {
  * Mark an email as read via Microsoft Graph API
  */
 function markEmailAsRead($accessToken, $messageId) {
-    $graphUrl = 'https://graph.microsoft.com/v1.0/me/messages/' . $messageId;
+    $graphUrl = 'https://graph.microsoft.com/v1.0' . mailboxGraphBase() . '/messages/' . $messageId;
 
     $body = json_encode(['isRead' => true]);
 
@@ -748,7 +787,7 @@ function getOrCreateUser($conn, $email, $displayName) {
  * Fetch attachments from Graph API
  */
 function fetchEmailAttachments($accessToken, $emailId) {
-    $graphUrl = 'https://graph.microsoft.com/v1.0/me/messages/' . $emailId . '/attachments';
+    $graphUrl = 'https://graph.microsoft.com/v1.0' . mailboxGraphBase() . '/messages/' . $emailId . '/attachments';
 
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $graphUrl);

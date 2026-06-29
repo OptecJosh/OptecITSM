@@ -10,6 +10,7 @@
 session_start();
 require_once '../config.php';
 require_once '../includes/i18n.php';
+require_once '../includes/theme.php';
 I18n::initFromSession();
 
 if (!isset($_SESSION['analyst_id'])) {
@@ -23,13 +24,14 @@ $dtShowPdf = true;
 $translationNamespaces = ['common', 'asset-management'];
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>" data-theme="<?php echo htmlspecialchars(Theme::active()); ?>" data-theme-mode="<?php echo htmlspecialchars(Theme::mode()); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('asset-management.table.title')); ?></title>
+    <link rel="stylesheet" href="../assets/css/theme.css?v=4">
     <link rel="stylesheet" href="../assets/css/inbox.css?v=22">
-    <link rel="stylesheet" href="../assets/css/data-table.css?v=1">
+    <link rel="stylesheet" href="../assets/css/data-table.css?v=2">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <script src="../assets/js/i18n.js"></script>
     <!-- jsPDF + autotable (same versions as morning-checks) for PDF export -->

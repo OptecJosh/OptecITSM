@@ -369,6 +369,11 @@ return [
 
         'tab_asset_types'      => 'Tipos de ativo',
         'tab_asset_statuses'   => 'Status de ativo',
+
+        // Tab intros
+        'asset_types_intro'    => 'As categorias usadas para classificar os ativos &mdash; notebook, desktop, servidor, monitor, telefone e assim por diante. Todo ativo recebe um tipo, que define como a lista é agrupada e filtrada.',
+        'asset_statuses_intro' => 'Os estados do ciclo de vida que um ativo pode ter &mdash; por exemplo Em uso, Em estoque, Em reparo ou Desativado. Cada ativo recebe um status para você ver rapidamente em que fase ele está.',
+
         'tab_locations'        => 'Localizações',
         'tab_suppliers'        => 'Fornecedores',
         'tab_warranty'         => 'Alertas de garantia',

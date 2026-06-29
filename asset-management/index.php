@@ -5,6 +5,7 @@
 session_start();
 require_once '../config.php';
 require_once '../includes/i18n.php';
+require_once '../includes/theme.php';
 I18n::initFromSession();
 
 $current_page = 'assets';
@@ -12,11 +13,12 @@ $path_prefix = '../';
 $translationNamespaces = ['common', 'asset-management'];
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>" data-theme="<?php echo htmlspecialchars(Theme::active()); ?>" data-theme-mode="<?php echo htmlspecialchars(Theme::mode()); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('asset-management.title')); ?></title>
+    <link rel="stylesheet" href="../assets/css/theme.css?v=4">
     <link rel="stylesheet" href="../assets/css/inbox.css">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <script src="../assets/js/i18n.js"></script>
@@ -26,13 +28,13 @@ $translationNamespaces = ['common', 'asset-management'];
             flex: 1;
             overflow: hidden;
             gap: 1px;
-            background-color: #e0e0e0;
+            background-color: var(--border, #e0e0e0);
         }
 
         .assets-list-container {
             width: 400px;
             min-width: 300px;
-            background-color: #fff;
+            background-color: var(--surface, #fff);
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -40,20 +42,20 @@ $translationNamespaces = ['common', 'asset-management'];
 
         .assets-list-header {
             padding: 15px;
-            border-bottom: 1px solid #e0e0e0;
-            background-color: #f8f9fa;
+            border-bottom: 1px solid var(--border, #e0e0e0);
+            background-color: var(--surface-3, #f8f9fa);
         }
 
         .assets-list-header h3 {
             margin: 0 0 10px 0;
             font-size: 16px;
-            color: #333;
+            color: var(--text, #333);
         }
 
         .search-box {
             width: 100%;
             padding: 10px 12px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border, #ddd);
             border-radius: 4px;
             font-size: 14px;
             box-sizing: border-box;
@@ -61,7 +63,7 @@ $translationNamespaces = ['common', 'asset-management'];
 
         .search-box:focus {
             outline: none;
-            border-color: #0078d4;
+            border-color: var(--accent, #0078d4);
             box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.1);
         }
 
@@ -72,23 +74,23 @@ $translationNamespaces = ['common', 'asset-management'];
 
         .asset-item {
             padding: 12px 15px;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border-soft, #eee);
             cursor: pointer;
             transition: background-color 0.15s;
         }
 
         .asset-item:hover {
-            background-color: #f5f5f5;
+            background-color: var(--app-bg, #f5f5f5);
         }
 
         .asset-item.selected {
-            background-color: #e8f4fc;
-            border-left: 3px solid #0078d4;
+            background-color: var(--accent-soft, #e8f4fc);
+            border-left: 3px solid var(--accent, #0078d4);
         }
 
         .asset-hostname {
             font-weight: 600;
-            color: #333;
+            color: var(--text, #333);
             margin-bottom: 4px;
             font-family: monospace;
             font-size: 14px;
@@ -96,7 +98,7 @@ $translationNamespaces = ['common', 'asset-management'];
 
         .asset-meta {
             font-size: 12px;
-            color: #888;
+            color: var(--text-dim, #888);
             display: flex;
             gap: 15px;
         }
@@ -106,12 +108,12 @@ $translationNamespaces = ['common', 'asset-management'];
         }
 
         .asset-unassigned {
-            color: #888;
+            color: var(--text-dim, #888);
         }
 
         .asset-detail-container {
             flex: 1;
-            background-color: #fff;
+            background-color: var(--surface, #fff);
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -128,20 +130,20 @@ $translationNamespaces = ['common', 'asset-management'];
 
         .asset-detail-header {
             padding: 20px;
-            border-bottom: 1px solid #e0e0e0;
-            background-color: #f8f9fa;
+            border-bottom: 1px solid var(--border, #e0e0e0);
+            background-color: var(--surface-3, #f8f9fa);
         }
 
         .asset-detail-hostname {
             font-size: 22px;
             font-weight: 600;
-            color: #333;
+            color: var(--text, #333);
             margin: 0 0 4px 0;
         }
 
         .asset-detail-subtitle {
             font-size: 14px;
-            color: #666;
+            color: var(--text-muted, #666);
             margin: 0;
         }
 
@@ -151,7 +153,7 @@ $translationNamespaces = ['common', 'asset-management'];
             gap: 15px;
             margin-top: 12px;
             padding-top: 12px;
-            border-top: 1px solid #e0e0e0;
+            border-top: 1px solid var(--border, #e0e0e0);
         }
 
         .asset-assigned-info {
@@ -164,22 +166,22 @@ $translationNamespaces = ['common', 'asset-management'];
 
         .asset-assigned-info .user-name {
             font-weight: 600;
-            color: #333;
+            color: var(--text, #333);
             font-size: 14px;
         }
 
         .asset-assigned-info .user-email {
-            color: #666;
+            color: var(--text-muted, #666);
             font-size: 13px;
         }
 
         .asset-assigned-info .user-assigned-date {
-            color: #999;
+            color: var(--text-faint, #999);
             font-size: 12px;
         }
 
         .asset-assigned-info .unassigned-text {
-            color: #999;
+            color: var(--text-faint, #999);
             font-size: 13px;
             font-style: italic;
         }
@@ -195,7 +197,7 @@ $translationNamespaces = ['common', 'asset-management'];
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
             padding: 20px;
-            border-bottom: 1px solid #e0e0e0;
+            border-bottom: 1px solid var(--border, #e0e0e0);
         }
 
         .info-item {
@@ -205,23 +207,23 @@ $translationNamespaces = ['common', 'asset-management'];
 
         .info-label {
             font-size: 12px;
-            color: #888;
+            color: var(--text-dim, #888);
             margin-bottom: 4px;
             text-transform: uppercase;
         }
 
         .info-value {
             font-size: 14px;
-            color: #333;
+            color: var(--text, #333);
         }
 
         .info-value-select {
             font-size: 14px;
-            color: #333;
+            color: var(--text, #333);
             padding: 4px 8px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border, #ddd);
             border-radius: 4px;
-            background-color: #fff;
+            background-color: var(--surface, #fff);
             cursor: pointer;
             max-width: 200px;
         }
@@ -234,11 +236,11 @@ $translationNamespaces = ['common', 'asset-management'];
 
         .info-value-input {
             font-size: 14px;
-            color: #333;
+            color: var(--text, #333);
             padding: 4px 8px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border, #ddd);
             border-radius: 4px;
-            background-color: #fff;
+            background-color: var(--surface, #fff);
             max-width: 200px;
             width: 100%;
             box-sizing: border-box;
@@ -258,8 +260,8 @@ $translationNamespaces = ['common', 'asset-management'];
 
         .section-header {
             padding: 15px 20px;
-            border-bottom: 1px solid #e0e0e0;
-            background-color: #f8f9fa;
+            border-bottom: 1px solid var(--border, #e0e0e0);
+            background-color: var(--surface-3, #f8f9fa);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -267,7 +269,7 @@ $translationNamespaces = ['common', 'asset-management'];
 
         .section-title {
             font-weight: 600;
-            color: #333;
+            color: var(--text, #333);
         }
 
         .btn {
@@ -280,12 +282,12 @@ $translationNamespaces = ['common', 'asset-management'];
         }
 
         .btn-primary {
-            background-color: #0078d4;
+            background-color: var(--accent, #0078d4);
             color: white;
         }
 
         .btn-primary:hover {
-            background-color: #106ebe;
+            background-color: var(--accent-hover, #106ebe);
         }
 
         .btn-danger {
@@ -312,11 +314,11 @@ $translationNamespaces = ['common', 'asset-management'];
             justify-content: space-between;
             align-items: center;
             padding: 12px 20px;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border-soft, #eee);
         }
 
         .user-row:hover {
-            background-color: #f5f5f5;
+            background-color: var(--app-bg, #f5f5f5);
         }
 
         .user-info {
@@ -326,17 +328,17 @@ $translationNamespaces = ['common', 'asset-management'];
 
         .user-name {
             font-weight: 500;
-            color: #333;
+            color: var(--text, #333);
         }
 
         .user-email {
             font-size: 13px;
-            color: #666;
+            color: var(--text-muted, #666);
         }
 
         .user-assigned-date {
             font-size: 12px;
-            color: #888;
+            color: var(--text-dim, #888);
             margin-top: 2px;
         }
 
@@ -345,7 +347,7 @@ $translationNamespaces = ['common', 'asset-management'];
             align-items: center;
             justify-content: center;
             flex: 1;
-            color: #888;
+            color: var(--text-dim, #888);
             font-size: 14px;
             padding: 40px;
             text-align: center;
@@ -362,7 +364,7 @@ $translationNamespaces = ['common', 'asset-management'];
             width: 30px;
             height: 30px;
             border: 3px solid #f3f3f3;
-            border-top: 3px solid #0078d4;
+            border-top: 3px solid var(--accent, #0078d4);
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
@@ -374,7 +376,7 @@ $translationNamespaces = ['common', 'asset-management'];
 
         .asset-count {
             font-size: 12px;
-            color: #888;
+            color: var(--text-dim, #888);
             margin-top: 8px;
         }
 
@@ -397,19 +399,19 @@ $translationNamespaces = ['common', 'asset-management'];
         }
 
         .modal-content {
-            background: white;
+            background: var(--surface, #fff);
             border-radius: 8px;
             width: 500px;
             max-width: 90%;
             max-height: 80vh;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 20px var(--shadow, rgba(0, 0, 0, 0.2));
         }
 
         .modal-header {
             padding: 16px 20px;
-            border-bottom: 1px solid #e0e0e0;
+            border-bottom: 1px solid var(--border, #e0e0e0);
             font-weight: 600;
             font-size: 16px;
             display: flex;
@@ -422,12 +424,12 @@ $translationNamespaces = ['common', 'asset-management'];
             border: none;
             font-size: 24px;
             cursor: pointer;
-            color: #666;
+            color: var(--text-muted, #666);
             line-height: 1;
         }
 
         .modal-close:hover {
-            color: #333;
+            color: var(--text, #333);
         }
 
         .modal-body {
@@ -438,7 +440,7 @@ $translationNamespaces = ['common', 'asset-management'];
 
         .modal-footer {
             padding: 16px 20px;
-            border-top: 1px solid #e0e0e0;
+            border-top: 1px solid var(--border, #e0e0e0);
             display: flex;
             justify-content: flex-end;
             gap: 10px;
@@ -452,26 +454,26 @@ $translationNamespaces = ['common', 'asset-management'];
             display: block;
             margin-bottom: 5px;
             font-weight: 500;
-            color: #333;
+            color: var(--text, #333);
         }
 
         .form-select {
             width: 100%;
             padding: 10px 12px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border, #ddd);
             border-radius: 4px;
             font-size: 14px;
         }
 
         .form-select:focus {
             outline: none;
-            border-color: #0078d4;
+            border-color: var(--accent, #0078d4);
         }
 
         .user-search-results {
             height: 300px;
             overflow-y: auto;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border, #ddd);
             border-radius: 4px;
             margin-top: 10px;
         }
@@ -479,7 +481,7 @@ $translationNamespaces = ['common', 'asset-management'];
         .user-search-item {
             padding: 10px 12px;
             cursor: pointer;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border-soft, #eee);
         }
 
         .user-search-item:last-child {
@@ -487,11 +489,11 @@ $translationNamespaces = ['common', 'asset-management'];
         }
 
         .user-search-item:hover {
-            background-color: #f5f5f5;
+            background-color: var(--app-bg, #f5f5f5);
         }
 
         .user-search-item.selected {
-            background-color: #e8f4fc;
+            background-color: var(--accent-soft, #e8f4fc);
         }
 
         .user-search-name {
@@ -500,7 +502,7 @@ $translationNamespaces = ['common', 'asset-management'];
 
         .user-search-email {
             font-size: 13px;
-            color: #666;
+            color: var(--text-muted, #666);
         }
 
         .btn-secondary {
@@ -533,27 +535,27 @@ $translationNamespaces = ['common', 'asset-management'];
         }
 
         .history-table thead th {
-            background-color: #f8f9fa;
+            background-color: var(--surface-3, #f8f9fa);
             padding: 10px 14px;
             text-align: left;
             font-size: 11px;
             font-weight: 600;
-            color: #666;
+            color: var(--text-muted, #666);
             text-transform: uppercase;
             letter-spacing: 0.3px;
-            border-bottom: 2px solid #e0e0e0;
+            border-bottom: 2px solid var(--border, #e0e0e0);
         }
 
         .history-table tbody td {
             padding: 9px 14px;
             font-size: 13px;
-            color: #333;
-            border-bottom: 1px solid #f0f0f0;
+            color: var(--text, #333);
+            border-bottom: 1px solid var(--surface-hover, #f0f0f0);
             vertical-align: top;
         }
 
         .history-table tbody tr:hover {
-            background-color: #f9f9f9;
+            background-color: var(--surface-3, #f9f9f9);
         }
 
         .history-field-badge {
@@ -567,7 +569,7 @@ $translationNamespaces = ['common', 'asset-management'];
         }
 
         .history-value-old {
-            color: #999;
+            color: var(--text-faint, #999);
             text-decoration: line-through;
         }
 
@@ -577,18 +579,18 @@ $translationNamespaces = ['common', 'asset-management'];
         }
 
         .history-arrow {
-            color: #999;
+            color: var(--text-faint, #999);
             margin: 0 4px;
         }
 
         .history-meta {
             font-size: 12px;
-            color: #888;
+            color: var(--text-dim, #888);
         }
 
         /* Disk Usage Section */
         .disks-section {
-            border-top: 1px solid #e0e0e0;
+            border-top: 1px solid var(--border, #e0e0e0);
         }
 
         .disks-grid {
@@ -599,7 +601,7 @@ $translationNamespaces = ['common', 'asset-management'];
         }
 
         .disk-card {
-            background: #f8f9fa;
+            background: var(--surface-3, #f8f9fa);
             border: 1px solid #e8e8e8;
             border-radius: 8px;
             padding: 14px 16px;
@@ -615,13 +617,13 @@ $translationNamespaces = ['common', 'asset-management'];
         .disk-drive {
             font-weight: 600;
             font-size: 14px;
-            color: #333;
+            color: var(--text, #333);
             font-family: monospace;
         }
 
         .disk-label {
             font-size: 12px;
-            color: #888;
+            color: var(--text-dim, #888);
             max-width: 120px;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -629,7 +631,7 @@ $translationNamespaces = ['common', 'asset-management'];
         }
 
         .disk-bar-container {
-            background: #e0e0e0;
+            background: var(--border, #e0e0e0);
             border-radius: 4px;
             height: 8px;
             overflow: hidden;
@@ -651,7 +653,7 @@ $translationNamespaces = ['common', 'asset-management'];
             display: flex;
             justify-content: space-between;
             font-size: 12px;
-            color: #666;
+            color: var(--text-muted, #666);
         }
 
         .disk-percent {
@@ -676,12 +678,12 @@ $translationNamespaces = ['common', 'asset-management'];
         .software-table thead th {
             position: sticky;
             top: 0;
-            background-color: #f0f0f0;
+            background-color: var(--surface-hover, #f0f0f0);
             padding: 8px 20px;
             text-align: left;
             font-size: 11px;
             font-weight: 600;
-            color: #666;
+            color: var(--text-muted, #666);
             text-transform: uppercase;
             letter-spacing: 0.3px;
             z-index: 1;
@@ -690,12 +692,12 @@ $translationNamespaces = ['common', 'asset-management'];
         .software-table tbody td {
             padding: 7px 20px;
             font-size: 13px;
-            color: #333;
-            border-bottom: 1px solid #f0f0f0;
+            color: var(--text, #333);
+            border-bottom: 1px solid var(--surface-hover, #f0f0f0);
         }
 
         .software-table tbody tr:hover {
-            background-color: #f9f9f9;
+            background-color: var(--surface-3, #f9f9f9);
         }
 
         .software-count-badge {
@@ -713,15 +715,15 @@ $translationNamespaces = ['common', 'asset-management'];
             display: flex;
             gap: 0;
             padding: 0 20px;
-            border-bottom: 1px solid #e0e0e0;
-            background-color: #fff;
+            border-bottom: 1px solid var(--border, #e0e0e0);
+            background-color: var(--surface, #fff);
         }
 
         .sw-filter-tab {
             padding: 8px 16px;
             font-size: 12px;
             font-weight: 500;
-            color: #666;
+            color: var(--text-muted, #666);
             cursor: pointer;
             border: none;
             background: none;
@@ -730,7 +732,7 @@ $translationNamespaces = ['common', 'asset-management'];
         }
 
         .sw-filter-tab:hover {
-            color: #333;
+            color: var(--text, #333);
         }
 
         .sw-filter-tab.active {
@@ -740,8 +742,8 @@ $translationNamespaces = ['common', 'asset-management'];
 
         .sw-filter-tab .sw-tab-count {
             display: inline-block;
-            background-color: #eee;
-            color: #666;
+            background-color: var(--border-soft, #eee);
+            color: var(--text-muted, #666);
             padding: 1px 6px;
             border-radius: 10px;
             font-size: 10px;
@@ -757,16 +759,16 @@ $translationNamespaces = ['common', 'asset-management'];
         .detail-tabs {
             display: flex;
             gap: 0;
-            border-top: 1px solid #e0e0e0;
-            border-bottom: 1px solid #e0e0e0;
-            background-color: #f8f9fa;
+            border-top: 1px solid var(--border, #e0e0e0);
+            border-bottom: 1px solid var(--border, #e0e0e0);
+            background-color: var(--surface-3, #f8f9fa);
         }
 
         .detail-tab {
             padding: 10px 20px;
             font-size: 13px;
             font-weight: 500;
-            color: #666;
+            color: var(--text-muted, #666);
             cursor: pointer;
             border: none;
             background: none;
@@ -775,18 +777,18 @@ $translationNamespaces = ['common', 'asset-management'];
         }
 
         .detail-tab:hover {
-            color: #333;
+            color: var(--text, #333);
         }
 
         .detail-tab.active {
-            color: #0078d4;
-            border-bottom-color: #0078d4;
+            color: var(--accent, #0078d4);
+            border-bottom-color: var(--accent, #0078d4);
         }
 
         .detail-tab .tab-count {
             display: inline-block;
-            background-color: #eee;
-            color: #666;
+            background-color: var(--border-soft, #eee);
+            color: var(--text-muted, #666);
             padding: 1px 6px;
             border-radius: 10px;
             font-size: 10px;
@@ -794,8 +796,8 @@ $translationNamespaces = ['common', 'asset-management'];
         }
 
         .detail-tab.active .tab-count {
-            background-color: #e0ecf8;
-            color: #0078d4;
+            background-color: var(--accent-soft, #e0ecf8);
+            color: var(--accent, #0078d4);
         }
 
         .detail-tab-panel {
@@ -809,13 +811,13 @@ $translationNamespaces = ['common', 'asset-management'];
         /* Devices Section */
         .devices-search {
             padding: 10px 20px;
-            border-bottom: 1px solid #f0f0f0;
+            border-bottom: 1px solid var(--surface-hover, #f0f0f0);
         }
 
         .devices-search input {
             width: 100%;
             padding: 7px 10px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border, #ddd);
             border-radius: 4px;
             font-size: 13px;
             outline: none;
@@ -823,7 +825,7 @@ $translationNamespaces = ['common', 'asset-management'];
         }
 
         .devices-search input:focus {
-            border-color: #0078d4;
+            border-color: var(--accent, #0078d4);
         }
 
         .devices-list {
@@ -838,12 +840,12 @@ $translationNamespaces = ['common', 'asset-management'];
         .devices-table thead th {
             position: sticky;
             top: 0;
-            background-color: #f0f0f0;
+            background-color: var(--surface-hover, #f0f0f0);
             padding: 8px 20px;
             text-align: left;
             font-size: 11px;
             font-weight: 600;
-            color: #666;
+            color: var(--text-muted, #666);
             text-transform: uppercase;
             letter-spacing: 0.3px;
             z-index: 1;
@@ -852,25 +854,25 @@ $translationNamespaces = ['common', 'asset-management'];
         .devices-table tbody td {
             padding: 7px 20px;
             font-size: 13px;
-            color: #333;
-            border-bottom: 1px solid #f0f0f0;
+            color: var(--text, #333);
+            border-bottom: 1px solid var(--surface-hover, #f0f0f0);
         }
 
         .devices-table tbody tr:hover {
-            background-color: #f9f9f9;
+            background-color: var(--surface-3, #f9f9f9);
         }
 
         .device-class-row td {
-            background-color: #f8f9fa;
+            background-color: var(--surface-3, #f8f9fa);
             font-weight: 600;
             font-size: 12px;
-            color: #555;
+            color: var(--text-muted, #555);
             padding: 6px 20px !important;
-            border-bottom: 1px solid #e0e0e0;
+            border-bottom: 1px solid var(--border, #e0e0e0);
         }
 
         .device-class-row:hover td {
-            background-color: #f8f9fa !important;
+            background-color: var(--surface-3, #f8f9fa) !important;
         }
 
         .device-status {

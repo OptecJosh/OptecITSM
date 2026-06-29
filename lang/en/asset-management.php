@@ -372,6 +372,10 @@ return [
 
         'tab_asset_types'      => 'Asset types',
         'tab_asset_statuses'   => 'Asset statuses',
+
+        // Tab intros
+        'asset_types_intro'    => 'The categories you sort assets into &mdash; laptop, desktop, server, monitor, phone and so on. Every asset is given a type, which drives how the list is grouped and filtered.',
+        'asset_statuses_intro' => 'The lifecycle states an asset can be in &mdash; for example In use, In stock, In repair or Retired. Each asset is set to one status so you can see at a glance where it is in its life.',
         'tab_locations'        => 'Locations',
         'tab_suppliers'        => 'Suppliers',
         'tab_warranty'         => 'Warranty alerts',

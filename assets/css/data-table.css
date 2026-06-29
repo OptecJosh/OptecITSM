@@ -8,6 +8,9 @@
  * config), so this file carries zero per-module colour — only a sensible blue
  * fallback. Soft tints derive from the accent with color-mix (Chrome/Edge,
  * which is the platform target).
+ *
+ * Colours use var(--token, #original) so the table themes (dark mode) on pages
+ * that load theme.css, and stays pixel-identical on those that don't.
  */
 
 :root { --dt-accent: #0078d4; }
@@ -35,15 +38,15 @@
     align-items: center;
     flex-wrap: wrap;
     padding: 10px 16px;
-    background: #fff;
-    border-bottom: 1px solid #e0e0e0;
+    background: var(--surface, #fff);
+    border-bottom: 1px solid var(--border, #e0e0e0);
     flex-shrink: 0;
 }
 .dt-toolbar .dt-search {
     flex: 1 1 240px;
     max-width: 320px;
     padding: 7px 10px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border, #ddd);
     border-radius: 4px;
     font-size: 13px;
 }
@@ -54,10 +57,10 @@
 }
 .dt-toolbar .dt-btn {
     padding: 7px 12px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border, #ddd);
     border-radius: 4px;
-    background: #fff;
-    color: #333;
+    background: var(--surface, #fff);
+    color: var(--text, #333);
     font-size: 13px;
     font-weight: 500;
     cursor: pointer;
@@ -68,16 +71,16 @@
 }
 .dt-toolbar .dt-btn:hover { border-color: var(--dt-accent); color: var(--dt-accent); }
 .dt-toolbar .dt-btn svg { flex-shrink: 0; }
-.dt-toolbar .dt-count { color: #666; font-size: 13px; margin-left: auto; }
+.dt-toolbar .dt-count { color: var(--text-muted, #666); font-size: 13px; margin-left: auto; }
 
 /* ── Table ────────────────────────────────────────────────────────── */
 .dt-wrap {
     flex: 1;
     min-height: 0;
     overflow: auto;
-    background: #fff;
+    background: var(--surface, #fff);
     margin: 12px 16px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--border, #e0e0e0);
     border-radius: 6px;
 }
 table.dt-table {
@@ -89,13 +92,13 @@ table.dt-table {
 .dt-table thead th {
     position: sticky;
     top: 0;
-    background: #f5f7fa;
+    background: var(--surface-3, #f5f7fa);
     z-index: 2;
-    border-bottom: 2px solid #e0e0e0;
-    border-right: 1px solid #e0e0e0;
+    border-bottom: 2px solid var(--border, #e0e0e0);
+    border-right: 1px solid var(--border, #e0e0e0);
     padding: 0;
     text-align: left;
-    color: #333;
+    color: var(--text, #333);
     font-weight: 600;
     white-space: nowrap;
 }
@@ -106,9 +109,9 @@ table.dt-table {
     cursor: pointer;
     user-select: none;
 }
-.dt-th-content:hover { background: #eef2f7; }
+.dt-th-content:hover { background: var(--surface-hover, #eef2f7); }
 .dt-th-label { flex: 1; }
-.dt-sort-arrow { font-size: 11px; color: #999; line-height: 1; }
+.dt-sort-arrow { font-size: 11px; color: var(--text-faint, #999); line-height: 1; }
 .dt-th-content.sorted .dt-sort-arrow { color: var(--dt-accent); }
 
 .dt-filter-btn {
@@ -116,19 +119,19 @@ table.dt-table {
     border: none;
     background: transparent;
     cursor: pointer;
-    color: #999;
+    color: var(--text-faint, #999);
     padding: 0;
     display: flex; align-items: center; justify-content: center;
     border-radius: 3px;
 }
-.dt-filter-btn:hover { background: #dde4ee; color: #333; }
+.dt-filter-btn:hover { background: var(--surface-hover, #dde4ee); color: var(--text, #333); }
 .dt-filter-btn.active { color: var(--dt-accent); }
 
 .dt-table tbody td {
     padding: 8px 10px;
-    border-bottom: 1px solid #f0f0f0;
-    border-right: 1px solid #f5f5f5;
-    color: #333;
+    border-bottom: 1px solid var(--border-soft, #f0f0f0);
+    border-right: 1px solid var(--border-soft, #f5f5f5);
+    color: var(--text, #333);
     vertical-align: middle;
     max-width: 320px;
     white-space: nowrap;
@@ -138,12 +141,12 @@ table.dt-table {
 /* Tighter rows when cells carry inline-edit controls. */
 .dt-table.dt-editable tbody td { padding: 4px 6px; }
 .dt-table tbody td:last-child { border-right: none; }
-.dt-table tbody tr:hover { background: #fafbfc; }
+.dt-table tbody tr:hover { background: var(--surface-2, #fafbfc); }
 .dt-table tbody tr.dt-clickable { cursor: pointer; }
 
 /* Drag-reorder affordance on header cells */
 .dt-table thead th.dt-dragging { opacity: 0.4; }
-.dt-table thead th.dt-drag-over { background: color-mix(in srgb, var(--dt-accent) 14%, #fff); }
+.dt-table thead th.dt-drag-over { background: color-mix(in srgb, var(--dt-accent) 14%, var(--surface, #fff)); }
 
 /* ── Inline edit controls ─────────────────────────────────────────── */
 .dt-cell-input,
@@ -155,22 +158,22 @@ table.dt-table {
     padding: 4px 6px;
     border-radius: 3px;
     font-size: 13px;
-    color: #333;
+    color: var(--text, #333);
     font-family: inherit;
     box-sizing: border-box;
 }
 .dt-cell-input:hover,
 .dt-cell-date:hover,
 .dt-cell-select:hover {
-    border-color: #ddd;
-    background: #fafbfc;
+    border-color: var(--border, #ddd);
+    background: var(--surface-2, #fafbfc);
 }
 .dt-cell-input:focus,
 .dt-cell-date:focus,
 .dt-cell-select:focus {
     outline: none;
     border-color: var(--dt-accent);
-    background: #fff;
+    background: var(--surface, #fff);
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--dt-accent) 14%, transparent);
 }
 .dt-cell-wrap { display: flex; align-items: center; gap: 6px; }
@@ -184,17 +187,17 @@ table.dt-table {
 .dt-empty {
     padding: 60px 20px;
     text-align: center;
-    color: #888;
+    color: var(--text-dim, #888);
 }
 
 /* ── Popovers (filter + columns drawer) ───────────────────────────── */
 .dt-pop {
     position: absolute;
     z-index: 1000;
-    background: #fff;
-    border: 1px solid #d0d7e1;
+    background: var(--surface, #fff);
+    border: 1px solid var(--border, #d0d7e1);
     border-radius: 6px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 8px 24px var(--shadow, rgba(0, 0, 0, 0.12));
     font-size: 13px;
 }
 .dt-filter-pop {
@@ -205,7 +208,7 @@ table.dt-table {
 .dt-filter-pop .dt-pop-search {
     width: 100%;
     padding: 6px 8px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border, #ddd);
     border-radius: 4px;
     font-size: 12px;
     margin-bottom: 8px;
@@ -226,7 +229,7 @@ table.dt-table {
     max-height: 280px;
     overflow-y: auto;
     margin-bottom: 10px;
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--border-soft, #eee);
     padding-top: 6px;
 }
 .dt-filter-pop .dt-pop-item {
@@ -234,7 +237,7 @@ table.dt-table {
     padding: 4px 2px;
     cursor: pointer;
 }
-.dt-filter-pop .dt-pop-item:hover { background: #f5f7fa; }
+.dt-filter-pop .dt-pop-item:hover { background: var(--surface-3, #f5f7fa); }
 .dt-filter-pop .dt-pop-item input { margin: 0; }
 .dt-filter-pop .dt-pop-value {
     white-space: nowrap;
@@ -245,20 +248,20 @@ table.dt-table {
     display: flex;
     justify-content: flex-end;
     gap: 6px;
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--border-soft, #eee);
     padding-top: 8px;
 }
 .dt-filter-pop .dt-pop-buttons button {
     padding: 5px 12px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border, #ddd);
     border-radius: 4px;
-    background: #fff;
+    background: var(--surface, #fff);
     font-size: 12px;
     cursor: pointer;
 }
 .dt-filter-pop .dt-pop-buttons .dt-pop-apply {
     background: var(--dt-accent);
-    color: #fff;
+    color: var(--on-accent, #fff);
     border-color: var(--dt-accent);
 }
 
@@ -272,20 +275,20 @@ table.dt-table {
     margin: 0 0 8px;
     font-size: 13px;
     font-weight: 600;
-    color: #333;
+    color: var(--text, #333);
 }
-.dt-cols-hint { color: #888; font-size: 11px; margin-bottom: 10px; }
+.dt-cols-hint { color: var(--text-dim, #888); font-size: 11px; margin-bottom: 10px; }
 .dt-cols-item {
     display: flex; align-items: center; gap: 8px;
     padding: 5px 6px;
     border-radius: 3px;
     cursor: grab;
 }
-.dt-cols-item:hover { background: #f5f7fa; }
+.dt-cols-item:hover { background: var(--surface-3, #f5f7fa); }
 .dt-cols-item.dragging { opacity: 0.4; }
-.dt-cols-item.drag-over { background: color-mix(in srgb, var(--dt-accent) 14%, #fff); }
+.dt-cols-item.drag-over { background: color-mix(in srgb, var(--dt-accent) 14%, var(--surface, #fff)); }
 .dt-cols-drag {
-    color: #aaa;
+    color: var(--text-faint, #aaa);
     cursor: grab;
     font-size: 14px;
     line-height: 1;

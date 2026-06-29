@@ -5,6 +5,7 @@
 session_start();
 require_once '../../config.php';
 require_once '../../includes/i18n.php';
+require_once '../../includes/theme.php';
 I18n::initFromSession();
 
 $current_page = 'settings';
@@ -12,11 +13,12 @@ $path_prefix = '../../';
 $translationNamespaces = ['common', 'asset-management'];
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>" data-theme="<?php echo htmlspecialchars(Theme::active()); ?>" data-theme-mode="<?php echo htmlspecialchars(Theme::mode()); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('asset-management.settings.title')); ?></title>
+    <link rel="stylesheet" href="../../assets/css/theme.css?v=4">
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <script src="../../assets/js/i18n.js"></script>
@@ -34,8 +36,8 @@ $translationNamespaces = ['common', 'asset-management'];
 
         .tab-content .action-btn {
             background: none;
-            border: 1px solid #ddd;
-            color: #666;
+            border: 1px solid var(--border, #ddd);
+            color: var(--text-muted, #666);
             cursor: pointer;
             padding: 6px;
             margin-right: 4px;
@@ -47,19 +49,19 @@ $translationNamespaces = ['common', 'asset-management'];
         }
 
         .tab-content .action-btn:hover {
-            background: #f0f0f0;
+            background: var(--surface-hover, #f0f0f0);
             border-color: #107c10;
             color: #107c10;
         }
 
         .tab-content .action-btn.delete {
-            color: #d13438;
+            color: var(--danger-accent, #d13438);
         }
 
         .tab-content .action-btn.delete:hover {
-            background: #fdf3f3;
-            border-color: #d13438;
-            color: #a00;
+            background: var(--danger-bg, #fdf3f3);
+            border-color: var(--danger-accent, #d13438);
+            color: var(--danger-text, #a00);
         }
 
         .tab-content .action-btn svg {
@@ -72,35 +74,35 @@ $translationNamespaces = ['common', 'asset-management'];
 
         /* vCenter section styles */
         .settings-section {
-            background: #fff;
+            background: var(--surface, #fff);
             border-radius: 8px;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+            box-shadow: var(--shadow, 0 1px 4px rgba(0, 0, 0, 0.08));
             margin-bottom: 25px;
             overflow: hidden;
         }
 
         .settings-section-header {
             padding: 20px 25px;
-            border-bottom: 1px solid #e0e0e0;
-            background-color: #f8f9fa;
+            border-bottom: 1px solid var(--border, #e0e0e0);
+            background-color: var(--surface-3, #f8f9fa);
             display: flex;
             align-items: center;
             gap: 12px;
         }
 
         .settings-section-header svg { color: #107c10; flex-shrink: 0; }
-        .settings-section-header h2 { margin: 0; font-size: 16px; font-weight: 600; color: #333; }
+        .settings-section-header h2 { margin: 0; font-size: 16px; font-weight: 600; color: var(--text, #333); }
         .settings-section-body { padding: 25px; }
-        .settings-description { font-size: 13px; color: #666; margin: 0 0 20px 0; line-height: 1.5; }
+        .settings-description { font-size: 13px; color: var(--text-muted, #666); margin: 0 0 20px 0; line-height: 1.5; }
 
         .form-group { margin-bottom: 18px; }
         .form-group:last-child { margin-bottom: 0; }
-        .form-label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 13px; color: #333; }
+        .form-label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 13px; color: var(--text, #333); }
 
         .form-input {
             width: 100%;
             padding: 10px 12px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border, #ddd);
             border-radius: 4px;
             font-size: 14px;
             box-sizing: border-box;
@@ -108,11 +110,11 @@ $translationNamespaces = ['common', 'asset-management'];
         }
 
         .form-input:focus { outline: none; border-color: #107c10; box-shadow: 0 0 0 2px rgba(16, 124, 16, 0.1); }
-        .form-hint { font-size: 12px; color: #888; margin-top: 4px; }
+        .form-hint { font-size: 12px; color: var(--text-dim, #888); margin-top: 4px; }
 
         .form-actions {
             display: flex; align-items: center; gap: 12px;
-            margin-top: 25px; padding-top: 20px; border-top: 1px solid #eee;
+            margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--border-soft, #eee);
         }
 
         .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500; transition: background-color 0.15s; }
@@ -124,34 +126,34 @@ $translationNamespaces = ['common', 'asset-management'];
         .btn-secondary:disabled { background-color: #b0b6bb; cursor: not-allowed; }
 
         .intune-progress { margin-top: 18px; }
-        .intune-progress-bar { background: #e0e0e0; border-radius: 4px; height: 10px; overflow: hidden; }
+        .intune-progress-bar { background: var(--border, #e0e0e0); border-radius: 4px; height: 10px; overflow: hidden; }
         .intune-progress-fill { background: #107c10; height: 100%; width: 0; transition: width 0.3s ease-out; }
-        .intune-progress-meta { font-size: 12px; color: #666; margin-top: 6px; }
+        .intune-progress-meta { font-size: 12px; color: var(--text-muted, #666); margin-top: 6px; }
         .intune-progress.intune-error .intune-progress-fill { background: #d13438; }
 
         .intune-ssl-warning {
             margin-top: 10px;
             padding: 10px 14px;
-            background: #fdecea;
+            background: var(--danger-bg, #fdecea);
             border: 1px solid #f5c2c0;
-            border-left: 4px solid #d13438;
+            border-left: 4px solid var(--danger-accent, #d13438);
             border-radius: 4px;
             font-size: 13px;
             line-height: 1.5;
-            color: #5a1c1c;
+            color: var(--danger-text, #5a1c1c);
         }
-        .intune-ssl-warning strong { color: #b71c1c; }
+        .intune-ssl-warning strong { color: var(--danger-text, #b71c1c); }
 
-        .intune-software-section { margin-top: 30px; padding-top: 25px; border-top: 1px solid #eee; }
-        .intune-subsection-title { font-size: 15px; font-weight: 600; color: #333; margin: 0 0 8px 0; }
-        .intune-freshness-wrap { margin-top: 22px; padding: 14px 16px; background: #fafbfc; border: 1px solid #eee; border-radius: 6px; }
-        .intune-freshness-title { font-size: 12px; color: #666; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 8px; }
+        .intune-software-section { margin-top: 30px; padding-top: 25px; border-top: 1px solid var(--border-soft, #eee); }
+        .intune-subsection-title { font-size: 15px; font-weight: 600; color: var(--text, #333); margin: 0 0 8px 0; }
+        .intune-freshness-wrap { margin-top: 22px; padding: 14px 16px; background: var(--surface-3, #fafbfc); border: 1px solid var(--border-soft, #eee); border-radius: 6px; }
+        .intune-freshness-title { font-size: 12px; color: var(--text-muted, #666); font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 8px; }
         .intune-freshness-canvas-wrap { position: relative; height: 180px; }
         .intune-jobs-list { margin-top: 18px; }
         .intune-jobs-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .intune-jobs-table th { text-align: left; padding: 8px 10px; background: #f8f9fa; color: #666; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 1px solid #e0e0e0; }
-        .intune-jobs-table td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; color: #333; }
-        .intune-jobs-table tbody tr:hover { background: #fafafa; }
+        .intune-jobs-table th { text-align: left; padding: 8px 10px; background: var(--surface-3, #f8f9fa); color: var(--text-muted, #666); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 1px solid var(--border, #e0e0e0); }
+        .intune-jobs-table td { padding: 8px 10px; border-bottom: 1px solid var(--surface-hover, #f0f0f0); color: var(--text, #333); }
+        .intune-jobs-table tbody tr:hover { background: var(--surface-2, #fafafa); }
         .intune-job-status { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
         .intune-job-status.pending { background: #fff3e0; color: #e65100; }
         .intune-job-status.running { background: #e3f2fd; color: #1565c0; }
@@ -161,8 +163,8 @@ $translationNamespaces = ['common', 'asset-management'];
 
         .password-wrapper { position: relative; }
         .password-wrapper .form-input { padding-right: 45px; }
-        .password-toggle { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #888; font-size: 13px; padding: 4px; }
-        .password-toggle:hover { color: #333; }
+        .password-toggle { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-dim, #888); font-size: 13px; padding: 4px; }
+        .password-toggle:hover { color: var(--text, #333); }
 
         .modal-content {
             padding: 20px;
@@ -173,7 +175,7 @@ $translationNamespaces = ['common', 'asset-management'];
             font-size: 20px;
             font-weight: 600;
             margin-bottom: 20px;
-            color: #333;
+            color: var(--text, #333);
             padding: 0;
             border-bottom: none;
         }
@@ -183,15 +185,15 @@ $translationNamespaces = ['common', 'asset-management'];
 
         /* ── Location tree ─────────────────────────────────────────── */
         .loc-tree {
-            background: #fff;
-            border: 1px solid #e0e0e0;
+            background: var(--surface, #fff);
+            border: 1px solid var(--border, #e0e0e0);
             border-radius: 8px;
             padding: 8px 4px;
             max-width: 760px;
         }
         .loc-tree ul { list-style: none; margin: 0; padding: 0; }
         /* Children indent + a guide line down the branch. */
-        .loc-children { margin-left: 22px; border-left: 1px solid #eee; padding-left: 4px; }
+        .loc-children { margin-left: 22px; border-left: 1px solid var(--border-soft, #eee); padding-left: 4px; }
         .loc-children.collapsed { display: none; }
 
         .loc-row {
@@ -201,7 +203,7 @@ $translationNamespaces = ['common', 'asset-management'];
             padding: 6px 8px;
             border-radius: 5px;
         }
-        .loc-row:hover { background: #f6f8f6; }
+        .loc-row:hover { background: var(--surface-hover, #f6f8f6); }
 
         .loc-caret {
             width: 18px;
@@ -211,23 +213,23 @@ $translationNamespaces = ['common', 'asset-management'];
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            color: #888;
+            color: var(--text-dim, #888);
             border-radius: 3px;
             user-select: none;
             font-size: 11px;
             transition: transform 0.12s;
         }
-        .loc-caret:hover { background: #e8efe8; color: #333; }
+        .loc-caret:hover { background: var(--surface-hover, #e8efe8); color: var(--text, #333); }
         .loc-caret.collapsed { transform: rotate(-90deg); }
         .loc-caret.leaf { cursor: default; visibility: hidden; }
 
-        .loc-name { flex: 1; font-size: 14px; color: #222; }
-        .loc-name .loc-count { color: #999; font-size: 12px; margin-left: 6px; }
+        .loc-name { flex: 1; font-size: 14px; color: var(--text, #222); }
+        .loc-name .loc-count { color: var(--text-faint, #999); font-size: 12px; margin-left: 6px; }
 
         .loc-actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.12s; }
         .loc-row:hover .loc-actions { opacity: 1; }
 
-        .loc-empty { color: #999; padding: 16px 12px; }
+        .loc-empty { color: var(--text-faint, #999); padding: 16px 12px; }
 
         /* ── Suppliers tab ─────────────────────────────────────────── */
         .supplier-toolbar {
@@ -258,22 +260,22 @@ $translationNamespaces = ['common', 'asset-management'];
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('common.left_panel.tab')); ?></h2>
             </div>
-            <p style="color: #666; margin-bottom: 20px;"><?php echo htmlspecialchars(t('asset-management.settings.left_panel_intro')); ?></p>
+            <p style="color: var(--text-muted, #666); margin-bottom: 20px;"><?php echo htmlspecialchars(t('asset-management.settings.left_panel_intro')); ?></p>
 
             <form id="leftPanelForm" autocomplete="off" onsubmit="event.preventDefault();">
                 <div class="form-group">
-                    <label style="display: block; margin-bottom: 10px; font-weight: 500; color: #333;"><?php echo htmlspecialchars(t('common.left_panel.visibility')); ?></label>
-                    <label style="display: block; padding: 10px 14px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px; cursor: pointer;">
+                    <label style="display: block; margin-bottom: 10px; font-weight: 500; color: var(--text, #333);"><?php echo htmlspecialchars(t('common.left_panel.visibility')); ?></label>
+                    <label style="display: block; padding: 10px 14px; border: 1px solid var(--border, #ddd); border-radius: 6px; margin-bottom: 8px; cursor: pointer;">
                         <input type="radio" name="assetsSidebarMode" value="always" onchange="saveSidebarMode(this.value)">
                         <strong><?php echo htmlspecialchars(t('common.left_panel.always')); ?></strong>
-                        <span style="display: block; font-size: 12px; color: #777; margin-top: 4px; margin-left: 22px;">
+                        <span style="display: block; font-size: 12px; color: var(--text-dim, #777); margin-top: 4px; margin-left: 22px;">
                             <?php echo htmlspecialchars(t('asset-management.settings.left_panel_always_desc')); ?>
                         </span>
                     </label>
-                    <label style="display: block; padding: 10px 14px; border: 1px solid #ddd; border-radius: 6px; cursor: pointer;">
+                    <label style="display: block; padding: 10px 14px; border: 1px solid var(--border, #ddd); border-radius: 6px; cursor: pointer;">
                         <input type="radio" name="assetsSidebarMode" value="hover" onchange="saveSidebarMode(this.value)">
                         <strong><?php echo htmlspecialchars(t('common.left_panel.hover')); ?></strong>
-                        <span style="display: block; font-size: 12px; color: #777; margin-top: 4px; margin-left: 22px;">
+                        <span style="display: block; font-size: 12px; color: var(--text-dim, #777); margin-top: 4px; margin-left: 22px;">
                             <?php echo htmlspecialchars(t('asset-management.settings.left_panel_hover_desc')); ?>
                         </span>
                     </label>
@@ -287,6 +289,9 @@ $translationNamespaces = ['common', 'asset-management'];
                 <h2><?php echo htmlspecialchars(t('asset-management.settings.tab_asset_types')); ?></h2>
                 <button class="add-btn" onclick="openAddModal('asset-type')"><?php echo htmlspecialchars(t('asset-management.common.add')); ?></button>
             </div>
+            <p class="settings-description" style="margin-bottom: 16px;">
+                <?php echo t('asset-management.settings.asset_types_intro'); ?>
+            </p>
             <table>
                 <thead>
                     <tr>
@@ -309,6 +314,9 @@ $translationNamespaces = ['common', 'asset-management'];
                 <h2><?php echo htmlspecialchars(t('asset-management.settings.tab_asset_statuses')); ?></h2>
                 <button class="add-btn" onclick="openAddModal('asset-status')"><?php echo htmlspecialchars(t('asset-management.common.add')); ?></button>
             </div>
+            <p class="settings-description" style="margin-bottom: 16px;">
+                <?php echo t('asset-management.settings.asset_statuses_intro'); ?>
+            </p>
             <table>
                 <thead>
                     <tr>

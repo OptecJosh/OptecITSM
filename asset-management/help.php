@@ -68,13 +68,13 @@ $translationNamespaces = ['common', 'asset-management'];
         }
 
         .am-help-nav-link:hover {
-            background: var(--app-bg, #f5f5f5);
+            background: var(--surface-hover, #f5f5f5);
             color: var(--text, #333);
         }
 
         .am-help-nav-link.active {
-            background: #e8f5e9;
-            color: #1b5e20;
+            background: var(--success-bg, #e8f5e9);
+            color: var(--success-text, #1b5e20);
             font-weight: 600;
         }
 
@@ -93,7 +93,7 @@ $translationNamespaces = ['common', 'asset-management'];
         }
 
         .am-help-nav-link.active .am-help-nav-num {
-            background: #2e7d32;
+            background: var(--success-accent, #2e7d32);
             color: white;
         }
 
@@ -110,6 +110,10 @@ $translationNamespaces = ['common', 'asset-management'];
             color: white;
             padding: 40px 48px 36px;
             text-align: center;
+        }
+        /* Darken the hero in dark mode so it recedes instead of glowing bright green. */
+        [data-theme-mode="dark"] .am-help-hero {
+            background: linear-gradient(135deg, #1c4a20 0%, #133416 50%, #08200b 100%);
         }
 
         .am-help-hero h2 {
@@ -177,8 +181,8 @@ $translationNamespaces = ['common', 'asset-management'];
             min-width: 32px;
             height: 32px;
             border-radius: 50%;
-            background: #e8f5e9;
-            color: #1b5e20;
+            background: var(--success-bg, #e8f5e9);
+            color: var(--success-text, #1b5e20);
             font-weight: 700;
             font-size: 14px;
             flex-shrink: 0;
@@ -280,6 +284,12 @@ $translationNamespaces = ['common', 'asset-management'];
             padding: 28px 48px !important;
             border-bottom: none !important;
             border-top: 2px solid #c5e1a5;
+        }
+        /* In dark mode the pale-green highlight band would glow bright — sink it to a
+           deep-green tint so it still reads as "highlighted" without lighting up. */
+        [data-theme-mode="dark"] .am-help-section-highlight {
+            background: var(--success-bg, #16331f);
+            border-top-color: var(--success-accent, #22c55e);
         }
 
         .am-help-intro {

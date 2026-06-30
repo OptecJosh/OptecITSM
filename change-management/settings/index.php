@@ -5,6 +5,7 @@
 session_start();
 require_once '../../config.php';
 require_once '../../includes/i18n.php';
+require_once '../../includes/theme.php';
 I18n::initFromSession();
 
 if (!isset($_SESSION['analyst_id'])) {
@@ -18,11 +19,12 @@ $path_prefix = '../../';
 $translationNamespaces = ['common', 'change-management'];
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>" data-theme="<?php echo htmlspecialchars(Theme::active()); ?>" data-theme-mode="<?php echo htmlspecialchars(Theme::mode()); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('change-management.page.settings')); ?></title>
+    <link rel="stylesheet" href="../../assets/css/theme.css?v=6">
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <style>
         .container {
@@ -34,13 +36,13 @@ $translationNamespaces = ['common', 'change-management'];
         }
 
         /* Teal theme for tabs */
-        .tab:hover { color: #00897b; }
-        .tab.active { color: #00897b; border-bottom-color: #00897b; }
+        .tab:hover { color: var(--cm-accent, #00897b); }
+        .tab.active { color: var(--cm-accent, #00897b); border-bottom-color: var(--cm-accent, #00897b); }
 
         .section-header h2 {
             margin: 0 0 8px;
             font-size: 18px;
-            color: #333;
+            color: var(--text, #333);
         }
 
         /* Form fields tab: section cards + draggable field rows. */
@@ -52,7 +54,7 @@ $translationNamespaces = ['common', 'change-management'];
         }
         .field-toolbar .field-save-status {
             font-size: 12px;
-            color: #16a34a;
+            color: var(--success-accent, #16a34a);
             opacity: 0;
             transition: opacity 0.2s;
         }
@@ -60,14 +62,14 @@ $translationNamespaces = ['common', 'change-management'];
             opacity: 1;
         }
         .section-card {
-            background: #fff;
-            border: 1px solid #e0e0e0;
+            background: var(--surface, #fff);
+            border: 1px solid var(--border, #e0e0e0);
             border-radius: 6px;
             margin-bottom: 12px;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+            box-shadow: 0 1px 2px var(--shadow, rgba(0, 0, 0, 0.03));
         }
         .section-card.drop-target-section {
-            border-color: #00897b;
+            border-color: var(--cm-accent, #00897b);
             box-shadow: 0 0 0 2px rgba(0, 137, 123, 0.15);
         }
         .section-card.dragging {
@@ -78,13 +80,13 @@ $translationNamespaces = ['common', 'change-management'];
             align-items: center;
             gap: 10px;
             padding: 10px 14px;
-            border-bottom: 1px solid #f0f0f0;
-            background: #fafafa;
+            border-bottom: 1px solid var(--border-soft, #f0f0f0);
+            background: var(--surface-2, #fafafa);
             border-radius: 6px 6px 0 0;
         }
         .section-card-header .drag-handle {
             cursor: grab;
-            color: #999;
+            color: var(--text-faint, #999);
             font-size: 14px;
             user-select: none;
             padding: 4px;
@@ -94,26 +96,26 @@ $translationNamespaces = ['common', 'change-management'];
             flex: 1;
             font-size: 15px;
             font-weight: 600;
-            color: #00897b;
+            color: var(--cm-accent, #00897b);
             border: 1px solid transparent;
             background: transparent;
             padding: 6px 10px;
             border-radius: 4px;
         }
         .section-name-input:hover {
-            border-color: #e0e0e0;
-            background: #fff;
+            border-color: var(--border, #e0e0e0);
+            background: var(--surface, #fff);
         }
         .section-name-input:focus {
             outline: none;
-            border-color: #00897b;
-            background: #fff;
+            border-color: var(--cm-accent, #00897b);
+            background: var(--surface, #fff);
             box-shadow: 0 0 0 2px rgba(0, 137, 123, 0.1);
         }
         .section-delete-btn {
             background: none;
             border: 1px solid transparent;
-            color: #999;
+            color: var(--text-faint, #999);
             cursor: pointer;
             padding: 4px 8px;
             border-radius: 4px;
@@ -121,9 +123,9 @@ $translationNamespaces = ['common', 'change-management'];
             line-height: 1;
         }
         .section-delete-btn:hover {
-            color: #c62828;
-            border-color: #fce4e4;
-            background: #fff5f5;
+            color: var(--danger-text, #c62828);
+            border-color: var(--danger-bg, #fce4e4);
+            background: var(--danger-bg, #fff5f5);
         }
         .section-fields {
             padding: 4px 14px 8px;
@@ -134,7 +136,7 @@ $translationNamespaces = ['common', 'change-management'];
             display: block;
             padding: 16px;
             text-align: center;
-            color: #aaa;
+            color: var(--text-faint, #aaa);
             font-style: italic;
             font-size: 13px;
         }
@@ -143,7 +145,7 @@ $translationNamespaces = ['common', 'change-management'];
             align-items: center;
             gap: 10px;
             padding: 8px 6px;
-            border-bottom: 1px solid #f3f3f3;
+            border-bottom: 1px solid var(--border-soft, #f3f3f3);
         }
         .field-row:last-child {
             border-bottom: none;
@@ -152,11 +154,11 @@ $translationNamespaces = ['common', 'change-management'];
             opacity: 0.4;
         }
         .field-row.drop-target-field {
-            border-top: 2px solid #00897b;
+            border-top: 2px solid var(--cm-accent, #00897b);
         }
         .field-row .drag-handle {
             cursor: grab;
-            color: #bbb;
+            color: var(--text-faint, #bbb);
             font-size: 13px;
             user-select: none;
             padding: 2px 4px;
@@ -165,12 +167,12 @@ $translationNamespaces = ['common', 'change-management'];
         .field-row-label {
             flex: 1;
             font-size: 14px;
-            color: #333;
+            color: var(--text, #333);
         }
         .unplaced-fields {
             margin-top: 20px;
-            border: 1px dashed #e0a800;
-            background: #fffbe6;
+            border: 1px dashed var(--warning-border, #e0a800);
+            background: var(--warning-bg, #fffbe6);
             border-radius: 6px;
             padding: 10px 14px;
         }
@@ -178,16 +180,16 @@ $translationNamespaces = ['common', 'change-management'];
             margin: 0 0 8px;
             font-size: 13px;
             font-weight: 600;
-            color: #856404;
+            color: var(--warning-text, #856404);
         }
         .unplaced-fields p.hint {
             margin: 0 0 8px;
             font-size: 12px;
-            color: #856404;
+            color: var(--warning-text, #856404);
         }
         .add-section-btn {
-            background: #00897b;
-            color: white;
+            background: var(--cm-accent, #00897b);
+            color: var(--cm-on-accent, white);
             border: none;
             padding: 8px 14px;
             border-radius: 4px;
@@ -195,18 +197,18 @@ $translationNamespaces = ['common', 'change-management'];
             cursor: pointer;
         }
         .add-section-btn:hover {
-            background: #00695c;
+            background: var(--cm-accent-hover, #00695c);
         }
 
         /* Toggle switch — base styles in inbox.css; just pin the accent. */
-        body { --accent: #00897b; }
+        body { --accent: var(--cm-accent, #00897b); }
 
         .form-actions {
             display: flex;
             gap: 12px;
             margin-top: 30px;
             padding-top: 20px;
-            border-top: 1px solid #e0e0e0;
+            border-top: 1px solid var(--border, #e0e0e0);
         }
 
         .btn {
@@ -218,20 +220,20 @@ $translationNamespaces = ['common', 'change-management'];
             transition: all 0.2s;
         }
 
-        .btn-primary { background: #00897b; color: white; }
-        .btn-primary:hover { background: #00695c; }
-        .btn-secondary { background: #e0e0e0; color: #333; }
-        .btn-secondary:hover { background: #bdbdbd; }
+        .btn-primary { background: var(--cm-accent, #00897b); color: var(--cm-on-accent, white); }
+        .btn-primary:hover { background: var(--cm-accent-hover, #00695c); }
+        .btn-secondary { background: var(--border, #e0e0e0); color: var(--text, #333); }
+        .btn-secondary:hover { background: var(--surface-hover, #bdbdbd); }
 
         /* Lookup tab tables */
         .lookup-table { width: 100%; border-collapse: collapse; }
-        .lookup-table th, .lookup-table td { padding: 10px 8px; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
-        .lookup-table th { font-weight: 600; color: #666; background: #fafafa; }
-        .badge-yes { display: inline-block; padding: 2px 8px; border-radius: 10px; background: #e0f2f1; color: #00695c; font-size: 11px; font-weight: 600; }
-        .badge-no  { color: #999; }
+        .lookup-table th, .lookup-table td { padding: 10px 8px; text-align: left; border-bottom: 1px solid var(--border-soft, #f0f0f0); font-size: 14px; }
+        .lookup-table th { font-weight: 600; color: var(--text-muted, #666); background: var(--surface-2, #fafafa); }
+        .badge-yes { display: inline-block; padding: 2px 8px; border-radius: 10px; background: var(--cm-accent-soft, #e0f2f1); color: var(--cm-accent-hover, #00695c); font-size: 11px; font-weight: 600; }
+        .badge-no  { color: var(--text-faint, #999); }
         /* Active/Inactive uses the shared .status-badge / .status-active / .status-inactive classes from inbox.css (canonical green/red). */
-        .swatch { display: inline-block; width: 18px; height: 18px; border-radius: 3px; vertical-align: middle; border: 1px solid #ddd; margin-right: 6px; }
-        .action-btn { background: none; border: none; cursor: pointer; padding: 4px; color: #666; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; }
+        .swatch { display: inline-block; width: 18px; height: 18px; border-radius: 3px; vertical-align: middle; border: 1px solid var(--border, #ddd); margin-right: 6px; }
+        .action-btn { background: none; border: none; cursor: pointer; padding: 4px; color: var(--text-muted, #666); display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; }
         /* Force the Actions column to size to its content (width: 1%) and
            never wrap the icon buttons. width:1% + white-space:nowrap is the
            classic trick to collapse a table cell to exactly its content
@@ -241,15 +243,15 @@ $translationNamespaces = ['common', 'change-management'];
             white-space: nowrap;
             width: 1%;
         }
-        .action-btn:hover { color: #00897b; }
-        .action-btn.delete:hover { color: #c62828; }
-        .add-btn { background: #00897b; color: white; padding: 8px 16px; border: none; border-radius: 4px; font-size: 13px; cursor: pointer; }
-        .add-btn:hover { background: #00695c; }
+        .action-btn:hover { color: var(--cm-accent, #00897b); }
+        .action-btn.delete:hover { color: var(--danger-text, #c62828); }
+        .add-btn { background: var(--cm-accent, #00897b); color: var(--cm-on-accent, white); padding: 8px 16px; border: none; border-radius: 4px; font-size: 13px; cursor: pointer; }
+        .add-btn:hover { background: var(--cm-accent-hover, #00695c); }
         .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 
         /* Modal sizing — base modal / form CSS lives in inbox.css. */
         .modal-content { padding: 20px; max-width: 500px; }
-        .modal-header { padding: 0; border-bottom: none; margin-bottom: 20px; font-size: 20px; font-weight: 600; color: #333; }
+        .modal-header { padding: 0; border-bottom: none; margin-bottom: 20px; font-size: 20px; font-weight: 600; color: var(--text, #333); }
         .modal-actions { margin-top: 20px; }
     </style>
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
@@ -273,7 +275,7 @@ $translationNamespaces = ['common', 'change-management'];
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('change-management.settings.fields_heading')); ?></h2>
             </div>
-            <p style="color: #666; margin-bottom: 16px;"><?php echo htmlspecialchars(t('change-management.settings.fields_intro')); ?></p>
+            <p style="color: var(--text-muted, #666); margin-bottom: 16px;"><?php echo htmlspecialchars(t('change-management.settings.fields_intro')); ?></p>
 
             <div class="field-toolbar">
                 <button type="button" class="add-section-btn" onclick="addSection()"><?php echo htmlspecialchars(t('change-management.settings.add_section')); ?></button>
@@ -289,7 +291,7 @@ $translationNamespaces = ['common', 'change-management'];
                 <h2><?php echo htmlspecialchars(t('change-management.settings.statuses_heading')); ?></h2>
                 <button class="add-btn" onclick="openLookupModal('status')"><?php echo htmlspecialchars(t('change-management.settings.add')); ?></button>
             </div>
-            <p style="color: #666; margin-bottom: 16px;"><?php echo t('change-management.settings.statuses_intro'); ?></p>
+            <p style="color: var(--text-muted, #666); margin-bottom: 16px;"><?php echo t('change-management.settings.statuses_intro'); ?></p>
             <table class="lookup-table">
                 <thead><tr><th><?php echo htmlspecialchars(t('change-management.settings.col_name')); ?></th><th><?php echo htmlspecialchars(t('change-management.settings.col_colour')); ?></th><th><?php echo htmlspecialchars(t('change-management.settings.col_closed')); ?></th><th><?php echo htmlspecialchars(t('change-management.settings.col_default')); ?></th><th><?php echo htmlspecialchars(t('change-management.settings.col_order')); ?></th><th><?php echo htmlspecialchars(t('change-management.settings.col_status')); ?></th><th><?php echo htmlspecialchars(t('change-management.settings.col_actions')); ?></th></tr></thead>
                 <tbody id="statuses-list"><tr><td colspan="7" style="text-align:center;"><?php echo htmlspecialchars(t('change-management.settings.loading')); ?></td></tr></tbody>
@@ -302,7 +304,7 @@ $translationNamespaces = ['common', 'change-management'];
                 <h2><?php echo htmlspecialchars(t('change-management.settings.priorities_heading')); ?></h2>
                 <button class="add-btn" onclick="openLookupModal('priority')"><?php echo htmlspecialchars(t('change-management.settings.add')); ?></button>
             </div>
-            <p style="color: #666; margin-bottom: 16px;"><?php echo htmlspecialchars(t('change-management.settings.priorities_intro')); ?></p>
+            <p style="color: var(--text-muted, #666); margin-bottom: 16px;"><?php echo htmlspecialchars(t('change-management.settings.priorities_intro')); ?></p>
             <table class="lookup-table">
                 <thead><tr><th><?php echo htmlspecialchars(t('change-management.settings.col_name')); ?></th><th><?php echo htmlspecialchars(t('change-management.settings.col_colour')); ?></th><th><?php echo htmlspecialchars(t('change-management.settings.col_default')); ?></th><th><?php echo htmlspecialchars(t('change-management.settings.col_order')); ?></th><th><?php echo htmlspecialchars(t('change-management.settings.col_status')); ?></th><th><?php echo htmlspecialchars(t('change-management.settings.col_actions')); ?></th></tr></thead>
                 <tbody id="priorities-list"><tr><td colspan="6" style="text-align:center;"><?php echo htmlspecialchars(t('change-management.settings.loading')); ?></td></tr></tbody>
@@ -315,7 +317,7 @@ $translationNamespaces = ['common', 'change-management'];
                 <h2><?php echo htmlspecialchars(t('change-management.settings.types_heading')); ?></h2>
                 <button class="add-btn" onclick="openLookupModal('type')"><?php echo htmlspecialchars(t('change-management.settings.add')); ?></button>
             </div>
-            <p style="color: #666; margin-bottom: 16px;"><?php echo htmlspecialchars(t('change-management.settings.types_intro')); ?></p>
+            <p style="color: var(--text-muted, #666); margin-bottom: 16px;"><?php echo htmlspecialchars(t('change-management.settings.types_intro')); ?></p>
             <table class="lookup-table">
                 <thead><tr><th><?php echo htmlspecialchars(t('change-management.settings.col_name')); ?></th><th><?php echo htmlspecialchars(t('change-management.settings.col_colour')); ?></th><th><?php echo htmlspecialchars(t('change-management.settings.col_default')); ?></th><th><?php echo htmlspecialchars(t('change-management.settings.col_order')); ?></th><th><?php echo htmlspecialchars(t('change-management.settings.col_status')); ?></th><th><?php echo htmlspecialchars(t('change-management.settings.col_actions')); ?></th></tr></thead>
                 <tbody id="types-list"><tr><td colspan="6" style="text-align:center;"><?php echo htmlspecialchars(t('change-management.settings.loading')); ?></td></tr></tbody>
@@ -328,7 +330,7 @@ $translationNamespaces = ['common', 'change-management'];
                 <h2><?php echo htmlspecialchars(t('change-management.settings.impacts_heading')); ?></h2>
                 <button class="add-btn" onclick="openLookupModal('impact')"><?php echo htmlspecialchars(t('change-management.settings.add')); ?></button>
             </div>
-            <p style="color: #666; margin-bottom: 16px;"><?php echo htmlspecialchars(t('change-management.settings.impacts_intro')); ?></p>
+            <p style="color: var(--text-muted, #666); margin-bottom: 16px;"><?php echo htmlspecialchars(t('change-management.settings.impacts_intro')); ?></p>
             <table class="lookup-table">
                 <thead><tr><th><?php echo htmlspecialchars(t('change-management.settings.col_name')); ?></th><th><?php echo htmlspecialchars(t('change-management.settings.col_colour')); ?></th><th><?php echo htmlspecialchars(t('change-management.settings.col_default')); ?></th><th><?php echo htmlspecialchars(t('change-management.settings.col_order')); ?></th><th><?php echo htmlspecialchars(t('change-management.settings.col_status')); ?></th><th><?php echo htmlspecialchars(t('change-management.settings.col_actions')); ?></th></tr></thead>
                 <tbody id="impacts-list"><tr><td colspan="6" style="text-align:center;"><?php echo htmlspecialchars(t('change-management.settings.loading')); ?></td></tr></tbody>
@@ -340,22 +342,22 @@ $translationNamespaces = ['common', 'change-management'];
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('common.left_panel.tab')); ?></h2>
             </div>
-            <p style="color: #666; margin-bottom: 16px;"><?php echo htmlspecialchars(t('change-management.settings.left_panel_intro')); ?></p>
+            <p style="color: var(--text-muted, #666); margin-bottom: 16px;"><?php echo htmlspecialchars(t('change-management.settings.left_panel_intro')); ?></p>
 
             <form id="leftPanelForm" autocomplete="off" onsubmit="event.preventDefault();">
                 <div class="form-group">
-                    <label style="display: block; margin-bottom: 10px; font-weight: 500; color: #333;"><?php echo htmlspecialchars(t('common.left_panel.visibility')); ?></label>
-                    <label style="display: block; padding: 10px 14px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px; cursor: pointer;">
+                    <label style="display: block; margin-bottom: 10px; font-weight: 500; color: var(--text, #333);"><?php echo htmlspecialchars(t('common.left_panel.visibility')); ?></label>
+                    <label style="display: block; padding: 10px 14px; border: 1px solid var(--border, #ddd); border-radius: 6px; margin-bottom: 8px; cursor: pointer;">
                         <input type="radio" name="cmSidebarMode" value="always" onchange="saveSidebarMode(this.value)">
                         <strong><?php echo htmlspecialchars(t('common.left_panel.always')); ?></strong>
-                        <span style="display: block; font-size: 12px; color: #777; margin-top: 4px; margin-left: 22px;">
+                        <span style="display: block; font-size: 12px; color: var(--text-muted, #777); margin-top: 4px; margin-left: 22px;">
                             <?php echo htmlspecialchars(t('change-management.settings.left_panel_always_desc')); ?>
                         </span>
                     </label>
-                    <label style="display: block; padding: 10px 14px; border: 1px solid #ddd; border-radius: 6px; cursor: pointer;">
+                    <label style="display: block; padding: 10px 14px; border: 1px solid var(--border, #ddd); border-radius: 6px; cursor: pointer;">
                         <input type="radio" name="cmSidebarMode" value="hover" onchange="saveSidebarMode(this.value)">
                         <strong><?php echo htmlspecialchars(t('common.left_panel.hover')); ?></strong>
-                        <span style="display: block; font-size: 12px; color: #777; margin-top: 4px; margin-left: 22px;">
+                        <span style="display: block; font-size: 12px; color: var(--text-muted, #777); margin-top: 4px; margin-left: 22px;">
                             <?php echo htmlspecialchars(t('change-management.settings.left_panel_hover_desc')); ?>
                         </span>
                     </label>

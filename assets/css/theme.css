@@ -52,6 +52,10 @@
     --kb-accent:       #8764b8;  --kb-accent-hover: #6b4fa2;
     --kb-accent-soft:  #f3eef8;  --kb-on-accent:    #ffffff;
 
+    /* Change Management module (teal) accents — buttons, filters, CAB */
+    --cm-accent:       #00897b;  --cm-accent-hover: #00695c;
+    --cm-accent-soft:  #e0f2f1;  --cm-on-accent:    #ffffff;
+
     /* Messaging-channel (WhatsApp etc.) composer — green-tinted surface */
     --channel-bg:        #f7fdf9;  --channel-border: #d6e9d8;
 
@@ -98,6 +102,10 @@
     /* Knowledge module (purple) — accent nudged lighter to read on dark */
     --kb-accent:       #a98cd8;  --kb-accent-hover: #bda3e4;
     --kb-accent-soft:  #2a2238;  --kb-on-accent:    #ffffff;
+
+    /* Change Management module (teal) — accent nudged lighter to read on dark */
+    --cm-accent:       #26a69a;  --cm-accent-hover: #4db6ac;
+    --cm-accent-soft:  #16302d;  --cm-on-accent:    #ffffff;
 
     /* Messaging-channel (WhatsApp etc.) composer — dark green-tinted surface */
     --channel-bg:        #15231b;  --channel-border: #2b3d31;

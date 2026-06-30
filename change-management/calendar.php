@@ -5,6 +5,7 @@
 session_start();
 require_once '../config.php';
 require_once '../includes/i18n.php';
+require_once '../includes/theme.php';
 I18n::initFromSession();
 
 if (!isset($_SESSION['analyst_id'])) {
@@ -17,41 +18,42 @@ $path_prefix = '../';
 $translationNamespaces = ['common', 'change-management'];
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>" data-theme="<?php echo htmlspecialchars(Theme::active()); ?>" data-theme-mode="<?php echo htmlspecialchars(Theme::mode()); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('change-management.page.calendar')); ?></title>
+    <link rel="stylesheet" href="../assets/css/theme.css?v=6">
     <link rel="stylesheet" href="../assets/css/inbox.css">
-    <link rel="stylesheet" href="../assets/css/itsm_calendar.css">
+    <link rel="stylesheet" href="../assets/css/itsm_calendar.css?v=2">
     <style>
         /* Teal theme overrides for change management */
         .calendar-container .btn-primary {
-            background: #00897b;
-            border-color: #00897b;
+            background: var(--cm-accent, #00897b);
+            border-color: var(--cm-accent, #00897b);
         }
         .calendar-container .btn-primary:hover {
-            background: #00695c;
-            border-color: #00695c;
+            background: var(--cm-accent-hover, #00695c);
+            border-color: var(--cm-accent-hover, #00695c);
         }
         .month-day.today .day-number {
-            background: #00897b;
+            background: var(--cm-accent, #00897b);
         }
         .view-btn.active {
-            background: #00897b;
-            border-color: #00897b;
+            background: var(--cm-accent, #00897b);
+            border-color: var(--cm-accent, #00897b);
         }
         .week-header-day.today .week-day-number {
-            background: #00897b;
+            background: var(--cm-accent, #00897b);
         }
 
         /* Change popup styling */
         .change-popup {
             display: none;
             position: fixed;
-            background: white;
+            background: var(--surface, white);
             border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 20px var(--shadow, rgba(0,0,0,0.2));
             padding: 16px;
             z-index: 500;
             max-width: 320px;
@@ -66,10 +68,10 @@ $translationNamespaces = ['common', 'change-management'];
             border: none;
             font-size: 18px;
             cursor: pointer;
-            color: #999;
+            color: var(--text-faint, #999);
             line-height: 1;
         }
-        .change-popup-close:hover { color: #333; }
+        .change-popup-close:hover { color: var(--text, #333); }
         .change-popup-badges {
             display: flex;
             gap: 6px;
@@ -100,11 +102,11 @@ $translationNamespaces = ['common', 'change-management'];
         .change-popup-title {
             margin: 0 0 10px;
             font-size: 15px;
-            color: #333;
+            color: var(--text, #333);
             padding-right: 20px;
         }
         .change-popup-details {
-            border-top: 1px solid #eee;
+            border-top: 1px solid var(--border-soft, #eee);
             padding-top: 8px;
             margin-bottom: 12px;
         }
@@ -114,18 +116,18 @@ $translationNamespaces = ['common', 'change-management'];
             gap: 12px;
             padding: 4px 0;
             font-size: 12px;
-            color: #555;
+            color: var(--text-muted, #555);
         }
         .change-popup-label {
             font-weight: 600;
-            color: #888;
+            color: var(--text-dim, #888);
             white-space: nowrap;
         }
         .change-popup-row > span:last-child {
             text-align: right;
         }
         .change-popup-actions {
-            border-top: 1px solid #eee;
+            border-top: 1px solid var(--border-soft, #eee);
             padding-top: 10px;
             text-align: right;
         }

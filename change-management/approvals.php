@@ -5,6 +5,7 @@
 session_start();
 require_once '../config.php';
 require_once '../includes/i18n.php';
+require_once '../includes/theme.php';
 I18n::initFromSession();
 
 if (!isset($_SESSION['analyst_id'])) {
@@ -17,24 +18,25 @@ $path_prefix = '../';
 $translationNamespaces = ['common', 'change-management'];
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>" data-theme="<?php echo htmlspecialchars(Theme::active()); ?>" data-theme-mode="<?php echo htmlspecialchars(Theme::mode()); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('change-management.page.approvals')); ?></title>
+    <link rel="stylesheet" href="../assets/css/theme.css?v=6">
     <link rel="stylesheet" href="../assets/css/inbox.css">
-    <link rel="stylesheet" href="../assets/css/change-management.css">
+    <link rel="stylesheet" href="../assets/css/change-management.css?v=5">
     <style>
         .approvals-container {
             display: flex;
             height: calc(100vh - 48px);
-            background: #f5f5f5;
+            background: var(--app-bg, #f5f5f5);
         }
 
         .approvals-sidebar {
             width: 260px;
-            background: white;
-            border-right: 1px solid #ddd;
+            background: var(--surface, white);
+            border-right: 1px solid var(--border, #ddd);
             padding: 20px;
             display: flex;
             flex-direction: column;
@@ -44,7 +46,7 @@ $translationNamespaces = ['common', 'change-management'];
         .approvals-sidebar h3 {
             font-size: 12px;
             font-weight: 600;
-            color: #888;
+            color: var(--text-dim, #888);
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin: 0 0 10px;
@@ -58,22 +60,22 @@ $translationNamespaces = ['common', 'change-management'];
             border-radius: 6px;
             cursor: pointer;
             font-size: 14px;
-            color: #333;
+            color: var(--text, #333);
             transition: background 0.15s;
         }
 
-        .approval-filter:hover { background: #f5f5f5; }
+        .approval-filter:hover { background: var(--surface-hover, #f5f5f5); }
 
         .approval-filter.active {
-            background: #e0f2f1;
-            color: #00897b;
+            background: var(--cm-accent-soft, #e0f2f1);
+            color: var(--cm-accent, #00897b);
             font-weight: 600;
         }
 
         .approval-filter .filter-count {
             font-size: 12px;
-            background: #eee;
-            color: #666;
+            background: var(--border-soft, #eee);
+            color: var(--text-muted, #666);
             padding: 2px 8px;
             border-radius: 10px;
             font-weight: 600;
@@ -82,8 +84,8 @@ $translationNamespaces = ['common', 'change-management'];
         }
 
         .approval-filter.active .filter-count {
-            background: #00897b;
-            color: white;
+            background: var(--cm-accent, #00897b);
+            color: var(--cm-on-accent, white);
         }
 
         .approvals-main {
@@ -102,22 +104,22 @@ $translationNamespaces = ['common', 'change-management'];
         .approvals-header h2 {
             margin: 0;
             font-size: 20px;
-            color: #333;
+            color: var(--text, #333);
         }
 
         .approval-card {
-            background: white;
+            background: var(--surface, white);
             border-radius: 8px;
             padding: 16px 20px;
             margin-bottom: 10px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            box-shadow: 0 1px 3px var(--shadow, rgba(0,0,0,0.06));
             cursor: pointer;
             transition: box-shadow 0.15s;
             border-left: 4px solid #e65100;
         }
 
         .approval-card:hover {
-            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 3px 10px var(--shadow, rgba(0,0,0,0.1));
         }
 
         .approval-card-top {
@@ -130,7 +132,7 @@ $translationNamespaces = ['common', 'change-management'];
         .approval-card-ref {
             font-size: 12px;
             font-weight: 600;
-            color: #888;
+            color: var(--text-dim, #888);
             font-family: monospace;
         }
 
@@ -142,7 +144,7 @@ $translationNamespaces = ['common', 'change-management'];
         .approval-card-title {
             font-size: 15px;
             font-weight: 600;
-            color: #333;
+            color: var(--text, #333);
             margin-bottom: 10px;
         }
 
@@ -151,7 +153,7 @@ $translationNamespaces = ['common', 'change-management'];
             flex-wrap: wrap;
             gap: 16px;
             font-size: 12px;
-            color: #888;
+            color: var(--text-dim, #888);
         }
 
         .approval-card-meta span {
@@ -162,23 +164,23 @@ $translationNamespaces = ['common', 'change-management'];
 
         .meta-label {
             font-weight: 600;
-            color: #999;
+            color: var(--text-faint, #999);
         }
 
         .approval-empty {
             text-align: center;
             padding: 60px 20px;
-            color: #999;
+            color: var(--text-faint, #999);
         }
 
         .approval-empty svg {
             margin-bottom: 16px;
-            color: #ccc;
+            color: var(--border, #ccc);
         }
 
         .approval-empty h3 {
             font-size: 16px;
-            color: #666;
+            color: var(--text-muted, #666);
             margin: 0 0 6px;
         }
 

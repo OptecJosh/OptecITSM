@@ -1454,12 +1454,21 @@ function initEditors(callback) {
     let initialized = 0;
     const total = editorIds.length;
 
+    // Match the editor chrome + content area to the active palette. TinyMCE
+    // renders in an iframe, so we swap its bundled oxide-dark UI skin + dark
+    // content CSS by the palette's declared mode (data-theme-mode on <html>) —
+    // same approach as the tickets reply editor (inbox.js). Any new palette
+    // works with no change here.
+    const isDark = (document.documentElement.getAttribute('data-theme-mode') || 'light') === 'dark';
+
     editorIds.forEach(id => {
         tinymce.init({
             selector: '#' + id,
             license_key: 'gpl',
             height: 300,
             menubar: false,
+            skin: isDark ? 'oxide-dark' : 'oxide',
+            content_css: isDark ? 'dark' : 'default',
             plugins: ['advlist', 'autolink', 'lists', 'link', 'table', 'wordcount'],
             toolbar: 'undo redo | blocks | bold italic underline | bullist numlist | link table | removeformat',
             content_style: 'body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; font-size: 14px; }',

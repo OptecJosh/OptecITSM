@@ -391,6 +391,12 @@
     display: flex;
     flex-grow: 1;
     overflow-y: scroll;
+    /* align-items: flex-start stops the time + day columns being stretched to
+       the visible height; instead they grow to their full content height (24 x
+       60px slots). Without this the day-column background (today highlight) and
+       the column border-lines only cover the initially-visible area and stop
+       part-way down when you scroll. */
+    align-items: flex-start;
     /* The first hour label is nudged up 8px (top: -8px) to straddle its
        gridline; without this padding it sits above the scroll area and gets
        clipped — you "can't quite scroll to the top". The pad gives it room. */
@@ -520,6 +526,9 @@
     display: flex;
     flex-grow: 1;
     overflow-y: scroll;
+    /* Grow columns to their full content height, not just the visible area
+       (see .week-body). */
+    align-items: flex-start;
     /* Room for the first hour label's -8px nudge (see .week-body) so it isn't
        clipped at the top of the scroll area. */
     padding-top: 8px;

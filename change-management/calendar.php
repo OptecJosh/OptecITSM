@@ -25,7 +25,8 @@ $translationNamespaces = ['common', 'change-management'];
     <title>Service Desk - <?php echo htmlspecialchars(t('change-management.page.calendar')); ?></title>
     <link rel="stylesheet" href="../assets/css/theme.css?v=9">
     <link rel="stylesheet" href="../assets/css/inbox.css">
-    <link rel="stylesheet" href="../assets/css/itsm_calendar.css?v=5">
+    <link rel="stylesheet" href="../assets/css/calendar-grid.css?v=1">
+    <link rel="stylesheet" href="../assets/css/itsm_calendar.css?v=6">
     <style>
         /* Teal theme overrides for change management */
         .calendar-container .btn-primary {

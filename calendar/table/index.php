@@ -29,7 +29,8 @@ $translationNamespaces = ['common', 'calendar'];
     <title>Service Desk - <?php echo htmlspecialchars(t('calendar.title') . ' ' . t('calendar.nav.table')); ?></title>
     <link rel="stylesheet" href="../../assets/css/theme.css?v=9">
     <link rel="stylesheet" href="../../assets/css/inbox.css?v=37">
-    <link rel="stylesheet" href="../../assets/css/itsm_calendar.css?v=5">
+    <link rel="stylesheet" href="../../assets/css/calendar-grid.css?v=1">
+    <link rel="stylesheet" href="../../assets/css/itsm_calendar.css?v=6">
     <link rel="stylesheet" href="../../assets/css/data-table.css?v=2">
     <style>body { --accent: var(--cal-accent, #ef6c00); --accent-hover: var(--cal-accent-hover, #e65100); }</style>
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>

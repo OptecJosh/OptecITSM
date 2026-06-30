@@ -313,44 +313,8 @@
     color: #ef6c00;
 }
 
-/* Week view */
-.week-grid {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-}
-
-.week-header {
-    display: flex;
-    border-bottom: 1px solid var(--border, #e0e0e0);
-    flex-shrink: 0;
-    overflow-y: scroll;
-    scrollbar-color: transparent transparent;
-}
-
-.week-header::-webkit-scrollbar {
-    width: 17px;
-    background: transparent;
-}
-
-.week-header::-webkit-scrollbar-thumb {
-    background: transparent;
-}
-
-.week-header::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.week-header-time {
-    width: 60px;
-    flex-shrink: 0;
-}
-
-.week-header-days {
-    display: flex;
-    flex-grow: 1;
-}
-
+/* Week view — themed bits only; the inner-body structure (.week-grid,
+   .week-header layout, .week-body, columns, slots) is in calendar-grid.css. */
 .week-header-day {
     flex: 1;
     text-align: center;
@@ -387,77 +351,15 @@
     justify-content: center;
 }
 
-.week-body {
-    display: flex;
-    flex-grow: 1;
-    overflow-y: scroll;
-    /* align-items: flex-start stops the time + day columns being stretched to
-       the visible height; instead they grow to their full content height (24 x
-       60px slots). Without this the day-column background (today highlight) and
-       the column border-lines only cover the initially-visible area and stop
-       part-way down when you scroll. */
-    align-items: flex-start;
-    /* The first hour label is nudged up 8px (top: -8px) to straddle its
-       gridline; without this padding it sits above the scroll area and gets
-       clipped — you "can't quite scroll to the top". The pad gives it room. */
-    padding-top: 8px;
-}
-
-.week-body::-webkit-scrollbar {
-    width: 17px;
-}
-
-.week-body::-webkit-scrollbar-track {
-    background: var(--app-bg, #f5f5f5);
-}
-
-.week-body::-webkit-scrollbar-thumb {
-    background: var(--border, #ccc);
-    border-radius: 8px;
-    border: 4px solid var(--app-bg, #f5f5f5);
-}
-
-.week-body::-webkit-scrollbar-thumb:hover {
-    background: var(--text-faint, #aaa);
-}
-
-.week-time-column {
-    width: 60px;
-    flex-shrink: 0;
-}
-
-.week-time-slot-label {
-    height: 60px;
-    font-size: 11px;
-    color: var(--text-muted, #666);
-    text-align: right;
-    padding-right: 8px;
-    position: relative;
-    top: -8px;
-}
-
-.week-days-container {
-    display: flex;
-    flex-grow: 1;
-    position: relative;
-}
-
-.week-day-column {
-    flex: 1;
-    border-left: 1px solid var(--border, #e0e0e0);
-    position: relative;
-}
-
+/* Today-column tint (light orange); dark-mode override lives near the top of
+   this file with the other [data-theme-mode="dark"] today rules. */
 .week-day-column.today {
     background: #fffaf5;
 }
 
-.week-time-slot {
-    height: 60px;
-    border-bottom: 1px solid var(--border-soft, #f0f0f0);
-    cursor: pointer;
-}
-
+/* The slots are clickable here (create an event) — the base height/border is
+   in calendar-grid.css. */
+.week-time-slot { cursor: pointer; }
 .week-time-slot:hover {
     background: var(--surface-3, #f9f9f9);
 }
@@ -491,13 +393,7 @@
     opacity: 0.9;
 }
 
-/* Day view */
-.day-grid {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-}
-
+/* Day view — themed bits only; the inner-body structure is in calendar-grid.css. */
 .day-header {
     display: flex;
     border-bottom: 1px solid var(--border, #e0e0e0);
@@ -522,53 +418,8 @@
     margin-top: 4px;
 }
 
-.day-body {
-    display: flex;
-    flex-grow: 1;
-    overflow-y: scroll;
-    /* Grow columns to their full content height, not just the visible area
-       (see .week-body). */
-    align-items: flex-start;
-    /* Room for the first hour label's -8px nudge (see .week-body) so it isn't
-       clipped at the top of the scroll area. */
-    padding-top: 8px;
-}
-
-.day-body::-webkit-scrollbar {
-    width: 17px;
-}
-
-.day-body::-webkit-scrollbar-track {
-    background: var(--app-bg, #f5f5f5);
-}
-
-.day-body::-webkit-scrollbar-thumb {
-    background: var(--border, #ccc);
-    border-radius: 8px;
-    border: 4px solid var(--app-bg, #f5f5f5);
-}
-
-.day-body::-webkit-scrollbar-thumb:hover {
-    background: var(--text-faint, #aaa);
-}
-
-.day-time-column {
-    width: 60px;
-    flex-shrink: 0;
-}
-
-.day-events-column {
-    flex-grow: 1;
-    border-left: 1px solid var(--border, #e0e0e0);
-    position: relative;
-}
-
-.day-time-slot {
-    height: 60px;
-    border-bottom: 1px solid var(--border-soft, #f0f0f0);
-    cursor: pointer;
-}
-
+/* Clickable slots (create an event) — base height/border in calendar-grid.css. */
+.day-time-slot { cursor: pointer; }
 .day-time-slot:hover {
     background: var(--surface-3, #f9f9f9);
 }

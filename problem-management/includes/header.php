@@ -16,7 +16,7 @@ $current_page = $current_page ?? '';
 
 require_once __DIR__ . '/../../includes/waffle-menu.php';
 ?>
-<div class="header">
+<div class="header problems-header">
     <div class="waffle-menu-container">
         <?php renderWaffleMenuButton(); ?>
         <?php renderWaffleMenuPanel($modules, $current_module, $path_prefix); ?>

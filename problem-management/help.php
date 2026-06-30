@@ -16,7 +16,7 @@ $path_prefix = '../';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Problem Management Help</title>
-    <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/theme.css?v=7">
+    <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/theme.css?v=8">
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/inbox.css">
     <style>
         .tk-help-container { display: flex; height: calc(100vh - 48px); background: var(--app-bg, #f5f5f5); }
@@ -28,9 +28,9 @@ $path_prefix = '../';
         .tk-help-nav-num { display: flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; border-radius: 50%; background: var(--border-soft, #eee); color: var(--text-dim, #888); font-weight: 700; font-size: 11px; flex-shrink: 0; }
         .tk-help-nav-link.active .tk-help-nav-num { background: var(--pm-accent, #6a1b9a); color: var(--pm-on-accent, #fff); }
         .tk-help-main { flex: 1; overflow-y: auto; }
-        .tk-help-hero { background: linear-gradient(135deg, #6a1b9a 0%, #4a148c 50%, #311b92 100%); color: #fff; padding: 40px 48px 36px; text-align: center; }
-        /* Darken the hero in dark mode so it recedes instead of glowing bright purple. */
-        [data-theme-mode="dark"] .tk-help-hero { background: linear-gradient(135deg, #3a1456 0%, #2a0f50 50%, #1d1259 100%); }
+        .tk-help-hero { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 50%, #7f1d1d 100%); color: #fff; padding: 40px 48px 36px; text-align: center; }
+        /* Darken the hero in dark mode so it recedes instead of glowing bright red. */
+        [data-theme-mode="dark"] .tk-help-hero { background: linear-gradient(135deg, #4a1515 0%, #3a0f0f 50%, #2a0c0c 100%); }
         .tk-help-hero h2 { margin: 0 0 8px; font-size: 26px; font-weight: 700; }
         .tk-help-hero p { margin: 0; font-size: 15px; opacity: .85; }
         .tk-help-content { padding: 10px 48px 48px; }

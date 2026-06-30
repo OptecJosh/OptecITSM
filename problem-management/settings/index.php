@@ -12,9 +12,12 @@ $path_prefix = '../../';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - Problem Management Settings</title>
-    <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/theme.css?v=7">
+    <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/theme.css?v=8">
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/inbox.css">
     <style>
+        /* Pin the shared accent to the module red so the tabs, Add buttons,
+           toggles, modal primary button and focus rings read on-brand. */
+        body { --accent: var(--pm-accent, #dc2626); --accent-hover: var(--pm-accent-hover, #b91c1c); }
         /* Same shell pattern as tickets/settings: header pinned, .container scrolls,
            full width (no max-width cap). */
         .settings-shell { display: flex; flex-direction: column; height: 100vh; }

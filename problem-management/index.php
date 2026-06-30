@@ -15,13 +15,14 @@ $path_prefix = '../';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - Problem Management</title>
-    <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/theme.css?v=7">
+    <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/theme.css?v=8">
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/inbox.css">
     <style>
-        /* Pin the shared accent to the module purple so shared components used
-           on this page (the editor modal's .btn-primary + input focus rings,
-           confirm dialog) read on-brand instead of the default blue. */
-        body { --accent: var(--pm-accent, #6a1b9a); --accent-hover: var(--pm-accent-hover, #581580); }
+        /* Pin the shared accent to the module red so shared components on this
+           page (the editor modal's .btn-primary + input focus rings, confirm
+           dialog) read on-brand. The red header gradient (.header.problems-header)
+           is explicit and unaffected. */
+        body { --accent: var(--pm-accent, #dc2626); --accent-hover: var(--pm-accent-hover, #b91c1c); }
         .pm-container { display: flex; height: calc(100vh - 48px); width: 100%; }
         .pm-sidebar { width: 250px; min-width: 250px; border-right: 1px solid var(--border, #e5e7eb); background: var(--surface-2, #fafbfc); padding: 16px; overflow-y: auto; box-sizing: border-box; }
         .pm-sidebar h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-dim, #6b7280); margin: 18px 0 8px; }
@@ -90,10 +91,10 @@ $path_prefix = '../';
         .pm-btn { padding: 9px 18px; border-radius: 6px; border: 1px solid var(--border, #cfd8dc); background: var(--surface, #fff); cursor: pointer; font-weight: 600; }
         .pm-btn-primary { background: var(--pm-accent, #6a1b9a); color: var(--pm-on-accent, #fff); border-color: var(--pm-accent, #6a1b9a); }
         .pm-btn-danger { color: var(--danger-accent, #c62828); border-color: var(--danger-accent, #e0a3a3); }
-        .pm-ai-out { background: var(--problem-bg, #f7f3fb); border: 1px dashed var(--problem-border, #c9a8e0); border-radius: 6px; padding: 10px 12px; margin-top: 8px; white-space: pre-wrap; font-size: 13px; display: none; }
+        .pm-ai-out { background: var(--pm-accent-soft, #fde8e8); border: 1px dashed var(--pm-accent, #dc2626); border-radius: 6px; padding: 10px 12px; margin-top: 8px; white-space: pre-wrap; font-size: 13px; display: none; }
         /* Incident picker */
         .pm-pick-row { display: flex; gap: 12px; align-items: flex-start; padding: 10px 14px; border-bottom: 1px solid var(--border-soft, #f0f0f0); cursor: pointer; }
-        .pm-pick-row:hover { background: var(--problem-bg, #faf7fd); }
+        .pm-pick-row:hover { background: var(--pm-accent-soft, #fde8e8); }
         .pm-pick-row input { margin-top: 3px; }
         .pm-pick-main { flex: 1; min-width: 0; }
         .pm-pick-title { font-weight: 600; color: var(--text, #1a1a1a); }

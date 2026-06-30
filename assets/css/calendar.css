@@ -326,6 +326,11 @@
     flex-grow: 1;
     overflow-y: scroll;
     min-height: 0;
+    /* Grow the time + day columns to their full content height (24 x 60px
+       slots) instead of being stretched only to the visible scroll area —
+       otherwise the today/weekend column shading and the vertical gridlines
+       stop part-way down when you scroll. */
+    align-items: flex-start;
 }
 
 .week-body::-webkit-scrollbar {
@@ -463,6 +468,9 @@
     flex-grow: 1;
     overflow-y: scroll;
     min-height: 0;
+    /* Grow columns to full content height, not just the visible area
+       (see .week-body). */
+    align-items: flex-start;
 }
 
 .day-body::-webkit-scrollbar {

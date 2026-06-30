@@ -30,8 +30,10 @@ $path_prefix = '../';
         .pm-new-btn { display: block; width: 100%; box-sizing: border-box; text-align: center; margin-top: 14px; padding: 10px; background: var(--pm-accent, #6a1b9a); color: var(--pm-on-accent, #fff); border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
         .pm-new-btn:hover { background: var(--pm-accent-hover, #581580); }
         /* Status list styled like the help guide's left-nav headings: rounded
-           rows with a leading circular count badge, grey hover, accent-soft
-           active state with a filled-accent badge. */
+           rows with a circular count badge, grey hover, accent-soft active
+           state with a filled-accent badge. A small gap keeps a hovered row's
+           highlight from touching the active (red) row above/below it. */
+        #pmStatusFilters { display: flex; flex-direction: column; gap: 3px; }
         .pm-filter { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; color: var(--text-muted, #374151); transition: background .15s, color .15s; }
         .pm-filter:hover { background: var(--surface-hover, #f5f5f5); color: var(--text, #333); }
         .pm-filter.active { background: var(--pm-accent-soft, #fde8e8); color: var(--pm-accent, #dc2626); font-weight: 600; }

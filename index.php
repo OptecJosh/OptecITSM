@@ -241,7 +241,7 @@ $allowed_modules = $_SESSION['allowed_modules'] ?? null;
                         <line x1="12" y1="17" x2="12.01" y2="17"></line>
                     </svg>
                 </div>
-                <div class="module-name"><?php echo htmlspecialchars(t('common.modules.problems.name')); ?></div>
+                <div class="module-name"><?php echo htmlspecialchars(t('common.modules.problems.name_short')); ?></div>
             </a>
             <?php endif; ?>
 

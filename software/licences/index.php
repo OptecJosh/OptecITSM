@@ -5,6 +5,7 @@
 session_start();
 require_once '../../config.php';
 require_once '../../includes/i18n.php';
+require_once '../../includes/theme.php';
 I18n::initFromSession();
 
 $current_page = 'licences';
@@ -12,27 +13,30 @@ $path_prefix = '../../';
 $translationNamespaces = ['common', 'software'];
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>" data-theme="<?php echo htmlspecialchars(Theme::active()); ?>" data-theme-mode="<?php echo htmlspecialchars(Theme::mode()); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars(t('software.licences.page_title')); ?></title>
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <script src="../../assets/js/i18n.js"></script>
+    <link rel="stylesheet" href="../../assets/css/theme.css?v=12">
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <style>
+        /* Module accent (indigo). */
+        body { --accent: var(--sw-accent, #5c6bc0); --accent-hover: var(--sw-accent-hover, #3f51b5); }
         .licence-container {
             display: flex;
             flex-direction: column;
             flex: 1;
             overflow: hidden;
-            background-color: #fff;
+            background-color: var(--surface, #fff);
         }
 
         .licence-toolbar {
             padding: 15px 20px;
-            border-bottom: 1px solid #e0e0e0;
-            background-color: #f8f9fa;
+            border-bottom: 1px solid var(--border, #e0e0e0);
+            background-color: var(--surface-2, #f8f9fa);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -41,7 +45,7 @@ $translationNamespaces = ['common', 'software'];
         .licence-toolbar h3 {
             margin: 0;
             font-size: 16px;
-            color: #333;
+            color: var(--text, #333);
         }
 
         .toolbar-right {
@@ -53,7 +57,7 @@ $translationNamespaces = ['common', 'software'];
         .search-box {
             width: 300px;
             padding: 8px 12px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border, #ddd);
             border-radius: 4px;
             font-size: 14px;
             box-sizing: border-box;
@@ -61,13 +65,13 @@ $translationNamespaces = ['common', 'software'];
 
         .search-box:focus {
             outline: none;
-            border-color: #5c6bc0;
+            border-color: var(--sw-accent, #5c6bc0);
             box-shadow: 0 0 0 2px rgba(92, 107, 192, 0.15);
         }
 
         .licence-count {
             font-size: 13px;
-            color: #888;
+            color: var(--text-dim, #888);
             white-space: nowrap;
         }
 
@@ -85,22 +89,22 @@ $translationNamespaces = ['common', 'software'];
         }
 
         .btn-primary {
-            background: #5c6bc0;
+            background: var(--sw-accent, #5c6bc0);
             color: #fff;
         }
 
         .btn-primary:hover {
-            background: #3f51b5;
+            background: var(--sw-accent-hover, #3f51b5);
         }
 
         .btn-secondary {
-            background: #f5f5f5;
-            color: #333;
-            border: 1px solid #ddd;
+            background: var(--surface-hover, #f5f5f5);
+            color: var(--text, #333);
+            border: 1px solid var(--border, #ddd);
         }
 
         .btn-secondary:hover {
-            background: #eee;
+            background: var(--border-soft, #eee);
         }
 
         .btn-danger {
@@ -113,14 +117,14 @@ $translationNamespaces = ['common', 'software'];
         }
 
         .btn-export {
-            background: #5c6bc0;
+            background: var(--sw-accent, #5c6bc0);
             color: white;
             font-size: 13px;
             padding: 8px 14px;
         }
 
         .btn-export:hover {
-            background: #3f51b5;
+            background: var(--sw-accent-hover, #3f51b5);
         }
 
         .licence-table-container {
@@ -136,13 +140,13 @@ $translationNamespaces = ['common', 'software'];
         .licence-table thead th {
             position: sticky;
             top: 0;
-            background-color: #f8f9fa;
+            background-color: var(--surface-2, #f8f9fa);
             padding: 12px 20px;
             text-align: left;
             font-weight: 600;
             font-size: 12px;
-            color: #555;
-            border-bottom: 2px solid #e0e0e0;
+            color: var(--text-muted, #555);
+            border-bottom: 2px solid var(--border, #e0e0e0);
             text-transform: uppercase;
             letter-spacing: 0.5px;
             cursor: pointer;
@@ -151,11 +155,11 @@ $translationNamespaces = ['common', 'software'];
         }
 
         .licence-table thead th:hover {
-            background-color: #eee;
+            background-color: var(--border-soft, #eee);
         }
 
         .licence-table thead th.sort-active {
-            color: #5c6bc0;
+            color: var(--sw-accent, #5c6bc0);
         }
 
         .licence-table thead th .sort-icon {
@@ -169,20 +173,20 @@ $translationNamespaces = ['common', 'software'];
         }
 
         .licence-table tbody tr:hover {
-            background-color: #f5f5f5;
+            background-color: var(--surface-hover, #f5f5f5);
         }
 
         .licence-table tbody td {
             padding: 10px 20px;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border-soft, #eee);
             font-size: 14px;
-            color: #333;
+            color: var(--text, #333);
         }
 
         .type-badge {
             display: inline-block;
-            background-color: #e8eaf6;
-            color: #3f51b5;
+            background-color: var(--sw-accent-soft, #e8eaf6);
+            color: var(--sw-accent-hover, #3f51b5);
             padding: 2px 10px;
             border-radius: 12px;
             font-size: 12px;
@@ -253,14 +257,14 @@ $translationNamespaces = ['common', 'software'];
         }
 
         .detail-box {
-            background: #fff;
+            background: var(--surface, #fff);
             border-radius: 8px;
             width: 100%;
             max-width: 650px;
             max-height: 80vh;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 8px 30px var(--shadow, rgba(0, 0, 0, 0.2));
         }
 
         .detail-header {
@@ -268,8 +272,8 @@ $translationNamespaces = ['common', 'software'];
             justify-content: space-between;
             align-items: center;
             padding: 20px 24px;
-            border-bottom: 1px solid #e0e0e0;
-            background: linear-gradient(135deg, #5c6bc0, #3f51b5);
+            border-bottom: 1px solid var(--border, #e0e0e0);
+            background: linear-gradient(135deg, var(--sw-accent, #5c6bc0), var(--sw-accent-hover, #3f51b5));
             border-radius: 8px 8px 0 0;
             color: white;
         }
@@ -321,7 +325,7 @@ $translationNamespaces = ['common', 'software'];
             display: block;
             font-size: 13px;
             font-weight: 500;
-            color: #333;
+            color: var(--text, #333);
             margin-bottom: 6px;
         }
 
@@ -329,7 +333,7 @@ $translationNamespaces = ['common', 'software'];
         .form-textarea {
             width: 100%;
             padding: 9px 12px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border, #ddd);
             border-radius: 4px;
             font-size: 14px;
             box-sizing: border-box;
@@ -339,7 +343,7 @@ $translationNamespaces = ['common', 'software'];
         .form-input:focus,
         .form-textarea:focus {
             outline: none;
-            border-color: #5c6bc0;
+            border-color: var(--sw-accent, #5c6bc0);
             box-shadow: 0 0 0 2px rgba(92, 107, 192, 0.15);
         }
 
@@ -350,11 +354,11 @@ $translationNamespaces = ['common', 'software'];
 
         .modal-footer {
             padding: 15px 24px;
-            border-top: 1px solid #e0e0e0;
+            border-top: 1px solid var(--border, #e0e0e0);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: #f8f9fa;
+            background: var(--surface-2, #f8f9fa);
             border-radius: 0 0 8px 8px;
         }
 
@@ -373,8 +377,8 @@ $translationNamespaces = ['common', 'software'];
         .spinner {
             width: 30px;
             height: 30px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #5c6bc0;
+            border: 3px solid var(--border-soft, #f3f3f3);
+            border-top: 3px solid var(--sw-accent, #5c6bc0);
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
         }
@@ -390,18 +394,18 @@ $translationNamespaces = ['common', 'software'];
             align-items: center;
             justify-content: center;
             padding: 60px;
-            color: #888;
+            color: var(--text-dim, #888);
             font-size: 14px;
             gap: 12px;
         }
 
         .empty-state svg {
-            color: #ccc;
+            color: var(--text-faint, #ccc);
         }
 
         .publisher-text {
             font-size: 12px;
-            color: #888;
+            color: var(--text-dim, #888);
         }
 
         .cost-text {

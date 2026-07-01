@@ -5,6 +5,7 @@
 session_start();
 require_once '../config.php';
 require_once '../includes/i18n.php';
+require_once '../includes/theme.php';
 I18n::initFromSession();
 
 $current_page = 'software';
@@ -12,27 +13,31 @@ $path_prefix = '../';
 $translationNamespaces = ['common', 'software'];
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>" data-theme="<?php echo htmlspecialchars(Theme::active()); ?>" data-theme-mode="<?php echo htmlspecialchars(Theme::mode()); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars(t('software.inventory.page_title')); ?></title>
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <script src="../assets/js/i18n.js"></script>
+    <link rel="stylesheet" href="../assets/css/theme.css?v=12">
     <link rel="stylesheet" href="../assets/css/inbox.css">
     <style>
+        /* Module accent (indigo). */
+        body { --accent: var(--sw-accent, #5c6bc0); --accent-hover: var(--sw-accent-hover, #3f51b5); }
+
         .software-container {
             display: flex;
             flex-direction: column;
             flex: 1;
             overflow: hidden;
-            background-color: #fff;
+            background-color: var(--surface, #fff);
         }
 
         .software-toolbar {
             padding: 15px 20px;
-            border-bottom: 1px solid #e0e0e0;
-            background-color: #f8f9fa;
+            border-bottom: 1px solid var(--border, #e0e0e0);
+            background-color: var(--surface-2, #f8f9fa);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -41,7 +46,7 @@ $translationNamespaces = ['common', 'software'];
         .software-toolbar h3 {
             margin: 0;
             font-size: 16px;
-            color: #333;
+            color: var(--text, #333);
         }
 
         .toolbar-right {
@@ -53,7 +58,7 @@ $translationNamespaces = ['common', 'software'];
         .search-box {
             width: 350px;
             padding: 8px 12px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border, #ddd);
             border-radius: 4px;
             font-size: 14px;
             box-sizing: border-box;
@@ -61,13 +66,13 @@ $translationNamespaces = ['common', 'software'];
 
         .search-box:focus {
             outline: none;
-            border-color: #5c6bc0;
+            border-color: var(--sw-accent, #5c6bc0);
             box-shadow: 0 0 0 2px rgba(92, 107, 192, 0.15);
         }
 
         .software-count {
             font-size: 13px;
-            color: #888;
+            color: var(--text-dim, #888);
             white-space: nowrap;
         }
 
@@ -75,15 +80,15 @@ $translationNamespaces = ['common', 'software'];
             display: flex;
             gap: 0;
             padding: 0 20px;
-            border-bottom: 1px solid #e0e0e0;
-            background-color: #fff;
+            border-bottom: 1px solid var(--border, #e0e0e0);
+            background-color: var(--surface, #fff);
         }
 
         .filter-tab {
             padding: 10px 20px;
             font-size: 13px;
             font-weight: 500;
-            color: #666;
+            color: var(--text-muted, #666);
             cursor: pointer;
             border: none;
             background: none;
@@ -92,18 +97,18 @@ $translationNamespaces = ['common', 'software'];
         }
 
         .filter-tab:hover {
-            color: #333;
+            color: var(--text, #333);
         }
 
         .filter-tab.active {
-            color: #5c6bc0;
-            border-bottom-color: #5c6bc0;
+            color: var(--sw-accent, #5c6bc0);
+            border-bottom-color: var(--sw-accent, #5c6bc0);
         }
 
         .filter-tab .tab-count {
             display: inline-block;
-            background-color: #eee;
-            color: #666;
+            background-color: var(--border-soft, #eee);
+            color: var(--text-muted, #666);
             padding: 1px 7px;
             border-radius: 10px;
             font-size: 11px;
@@ -111,8 +116,8 @@ $translationNamespaces = ['common', 'software'];
         }
 
         .filter-tab.active .tab-count {
-            background-color: #e8eaf6;
-            color: #5c6bc0;
+            background-color: var(--sw-accent-soft, #e8eaf6);
+            color: var(--sw-accent, #5c6bc0);
         }
 
         .software-table-container {
@@ -128,13 +133,13 @@ $translationNamespaces = ['common', 'software'];
         .software-table thead th {
             position: sticky;
             top: 0;
-            background-color: #f8f9fa;
+            background-color: var(--surface-2, #f8f9fa);
             padding: 12px 20px;
             text-align: left;
             font-weight: 600;
             font-size: 12px;
-            color: #555;
-            border-bottom: 2px solid #e0e0e0;
+            color: var(--text-muted, #555);
+            border-bottom: 2px solid var(--border, #e0e0e0);
             text-transform: uppercase;
             letter-spacing: 0.5px;
             cursor: pointer;
@@ -143,11 +148,11 @@ $translationNamespaces = ['common', 'software'];
         }
 
         .software-table thead th:hover {
-            background-color: #eee;
+            background-color: var(--surface-hover, #eee);
         }
 
         .software-table thead th.sort-active {
-            color: #5c6bc0;
+            color: var(--sw-accent, #5c6bc0);
         }
 
         .software-table thead th .sort-icon {
@@ -161,25 +166,25 @@ $translationNamespaces = ['common', 'software'];
         }
 
         .software-table tbody tr.app-row:hover {
-            background-color: #f5f5f5;
+            background-color: var(--surface-hover, #f5f5f5);
         }
 
         .software-table tbody tr.app-row.expanded {
-            background-color: #e8eaf6;
-            border-left: 3px solid #5c6bc0;
+            background-color: var(--sw-accent-soft, #e8eaf6);
+            border-left: 3px solid var(--sw-accent, #5c6bc0);
         }
 
         .software-table tbody td {
             padding: 10px 20px;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border-soft, #eee);
             font-size: 14px;
-            color: #333;
+            color: var(--text, #333);
         }
 
         .install-count-badge {
             display: inline-block;
-            background-color: #e8eaf6;
-            color: #3f51b5;
+            background-color: var(--sw-accent-soft, #e8eaf6);
+            color: var(--sw-accent-hover, #3f51b5);
             padding: 2px 10px;
             border-radius: 12px;
             font-weight: 600;
@@ -208,14 +213,14 @@ $translationNamespaces = ['common', 'software'];
         }
 
         .detail-box {
-            background: #fff;
+            background: var(--surface, #fff);
             border-radius: 8px;
             width: 100%;
             max-width: 800px;
             max-height: 80vh;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 8px 30px var(--shadow, rgba(0, 0, 0, 0.2));
         }
 
         .detail-header {
@@ -223,8 +228,8 @@ $translationNamespaces = ['common', 'software'];
             justify-content: space-between;
             align-items: center;
             padding: 20px 24px;
-            border-bottom: 1px solid #e0e0e0;
-            background: linear-gradient(135deg, #5c6bc0, #3f51b5);
+            border-bottom: 1px solid var(--border, #e0e0e0);
+            background: linear-gradient(135deg, var(--sw-accent, #5c6bc0), var(--sw-accent-hover, #3f51b5));
             border-radius: 8px 8px 0 0;
             color: white;
         }
@@ -258,17 +263,17 @@ $translationNamespaces = ['common', 'software'];
             justify-content: space-between;
             align-items: center;
             padding: 12px 24px;
-            border-bottom: 1px solid #f0f0f0;
-            background: #f8f9fa;
+            border-bottom: 1px solid var(--border-soft, #f0f0f0);
+            background: var(--surface-2, #f8f9fa);
         }
 
         .detail-toolbar .machine-count {
             font-size: 13px;
-            color: #666;
+            color: var(--text-muted, #666);
         }
 
         .export-btn {
-            background: #5c6bc0;
+            background: var(--sw-accent, #5c6bc0);
             color: white;
             border: none;
             padding: 6px 14px;
@@ -281,7 +286,7 @@ $translationNamespaces = ['common', 'software'];
         }
 
         .export-btn:hover {
-            background: #3f51b5;
+            background: var(--sw-accent-hover, #3f51b5);
         }
 
         .detail-body {
@@ -293,19 +298,19 @@ $translationNamespaces = ['common', 'software'];
         .machine-table {
             width: 100%;
             border-collapse: collapse;
-            background: #fff;
+            background: var(--surface, #fff);
             border-radius: 4px;
             overflow: hidden;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            box-shadow: 0 1px 3px var(--shadow, rgba(0,0,0,0.08));
         }
 
         .machine-table thead th {
-            background-color: #f0f0f0;
+            background-color: var(--surface-2, #f0f0f0);
             padding: 8px 15px;
             text-align: left;
             font-size: 11px;
             font-weight: 600;
-            color: #666;
+            color: var(--text-muted, #666);
             text-transform: uppercase;
             letter-spacing: 0.3px;
         }
@@ -313,8 +318,8 @@ $translationNamespaces = ['common', 'software'];
         .machine-table tbody td {
             padding: 8px 15px;
             font-size: 13px;
-            color: #333;
-            border-bottom: 1px solid #eee;
+            color: var(--text, #333);
+            border-bottom: 1px solid var(--border-soft, #eee);
         }
 
         .machine-table tbody tr:last-child td {
@@ -322,7 +327,7 @@ $translationNamespaces = ['common', 'software'];
         }
 
         .machine-table tbody tr:hover {
-            background-color: #f9f9f9;
+            background-color: var(--surface-hover, #f9f9f9);
         }
 
         .machine-hostname {
@@ -333,7 +338,7 @@ $translationNamespaces = ['common', 'software'];
         .detail-loading {
             padding: 20px;
             text-align: center;
-            color: #888;
+            color: var(--text-dim, #888);
             font-size: 13px;
         }
 
@@ -347,8 +352,8 @@ $translationNamespaces = ['common', 'software'];
         .spinner {
             width: 30px;
             height: 30px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #5c6bc0;
+            border: 3px solid var(--surface-2, #f3f3f3);
+            border-top: 3px solid var(--sw-accent, #5c6bc0);
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
         }
@@ -363,7 +368,7 @@ $translationNamespaces = ['common', 'software'];
             align-items: center;
             justify-content: center;
             padding: 60px;
-            color: #888;
+            color: var(--text-dim, #888);
             font-size: 14px;
         }
     </style>

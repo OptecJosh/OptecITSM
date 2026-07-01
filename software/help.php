@@ -5,6 +5,7 @@
 session_start();
 require_once '../config.php';
 require_once '../includes/i18n.php';
+require_once '../includes/theme.php';
 I18n::initFromSession();
 
 if (!isset($_SESSION['analyst_id'])) {
@@ -17,26 +18,30 @@ $path_prefix = '../';
 $translationNamespaces = ['common', 'software'];
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>" data-theme="<?php echo htmlspecialchars(Theme::active()); ?>" data-theme-mode="<?php echo htmlspecialchars(Theme::mode()); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars(t('software.help.page_title')); ?></title>
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <script src="../assets/js/i18n.js"></script>
+    <link rel="stylesheet" href="../assets/css/theme.css?v=12">
     <link rel="stylesheet" href="../assets/css/inbox.css">
     <style>
+        /* Module accent (indigo). */
+        body { --accent: var(--sw-accent, #5c6bc0); --accent-hover: var(--sw-accent-hover, #3f51b5); }
+
         .sw-help-container {
             display: flex;
             height: calc(100vh - 48px);
-            background: #f5f5f5;
+            background: var(--app-bg, #f5f5f5);
         }
 
         /* Left sidebar navigation */
         .sw-help-sidebar {
             width: 260px;
-            background: white;
-            border-right: 1px solid #ddd;
+            background: var(--surface, white);
+            border-right: 1px solid var(--border, #ddd);
             padding: 20px;
             display: flex;
             flex-direction: column;
@@ -47,7 +52,7 @@ $translationNamespaces = ['common', 'software'];
         .sw-help-sidebar h3 {
             font-size: 12px;
             font-weight: 600;
-            color: #888;
+            color: var(--text-dim, #888);
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin: 0 0 12px;
@@ -60,19 +65,19 @@ $translationNamespaces = ['common', 'software'];
             padding: 10px 12px;
             border-radius: 6px;
             font-size: 13px;
-            color: #555;
+            color: var(--text-muted, #555);
             text-decoration: none;
             transition: background 0.15s, color 0.15s;
         }
 
         .sw-help-nav-link:hover {
-            background: #f5f5f5;
-            color: #333;
+            background: var(--surface-hover, #f5f5f5);
+            color: var(--text, #333);
         }
 
         .sw-help-nav-link.active {
-            background: #e8eaf6;
-            color: #283593;
+            background: var(--sw-accent-soft, #e8eaf6);
+            color: var(--sw-accent-hover, #283593);
             font-weight: 600;
         }
 
@@ -83,15 +88,15 @@ $translationNamespaces = ['common', 'software'];
             min-width: 24px;
             height: 24px;
             border-radius: 50%;
-            background: #eee;
-            color: #888;
+            background: var(--border-soft, #eee);
+            color: var(--text-dim, #888);
             font-weight: 700;
             font-size: 11px;
             flex-shrink: 0;
         }
 
         .sw-help-nav-link.active .sw-help-nav-num {
-            background: #283593;
+            background: var(--sw-accent-hover, #283593);
             color: white;
         }
 
@@ -131,7 +136,7 @@ $translationNamespaces = ['common', 'software'];
         /* Sections */
         .sw-help-section {
             padding: 28px 0;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border-soft, #eee);
             scroll-margin-top: 20px;
         }
 
@@ -150,19 +155,19 @@ $translationNamespaces = ['common', 'software'];
         .sw-help-section-header h3 {
             margin: 0;
             font-size: 18px;
-            color: #333;
+            color: var(--text, #333);
         }
 
         .sw-help-section-header p {
             margin: 6px 0 0;
             font-size: 14px;
-            color: #666;
+            color: var(--text-muted, #666);
             line-height: 1.6;
         }
 
         .sw-help-section > p {
             font-size: 14px;
-            color: #555;
+            color: var(--text-muted, #555);
             line-height: 1.7;
             margin: 0 0 14px;
         }
@@ -174,15 +179,15 @@ $translationNamespaces = ['common', 'software'];
             min-width: 32px;
             height: 32px;
             border-radius: 50%;
-            background: #e8eaf6;
-            color: #283593;
+            background: var(--sw-accent-soft, #e8eaf6);
+            color: var(--sw-accent-hover, #283593);
             font-weight: 700;
             font-size: 14px;
             flex-shrink: 0;
         }
 
         .sw-help-section-num.highlight {
-            background: #3f51b5;
+            background: var(--sw-accent-hover, #3f51b5);
             color: white;
         }
 
@@ -196,14 +201,14 @@ $translationNamespaces = ['common', 'software'];
         .sw-help-feature-card {
             padding: 20px;
             border-radius: 10px;
-            border: 1px solid #e0e0e0;
-            background: white;
+            border: 1px solid var(--border, #e0e0e0);
+            background: var(--surface, white);
             transition: transform 0.15s, box-shadow 0.15s;
         }
 
         .sw-help-feature-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 15px var(--shadow, rgba(0,0,0,0.08));
         }
 
         .sw-help-feature-icon {
@@ -224,13 +229,13 @@ $translationNamespaces = ['common', 'software'];
         .sw-help-feature-card h4 {
             margin: 0 0 6px;
             font-size: 15px;
-            color: #333;
+            color: var(--text, #333);
         }
 
         .sw-help-feature-card p {
             margin: 0;
             font-size: 12.5px;
-            color: #666;
+            color: var(--text-muted, #666);
             line-height: 1.5;
         }
 
@@ -248,9 +253,9 @@ $translationNamespaces = ['common', 'software'];
             gap: 14px;
             padding: 10px 14px;
             border-radius: 8px;
-            background: #fafafa;
+            background: var(--surface-2, #fafafa);
             font-size: 14px;
-            color: #444;
+            color: var(--text-muted, #444);
             line-height: 1.5;
         }
 
@@ -261,7 +266,7 @@ $translationNamespaces = ['common', 'software'];
             min-width: 28px;
             height: 28px;
             border-radius: 50%;
-            background: #5c6bc0;
+            background: var(--sw-accent, #5c6bc0);
             color: white;
             font-weight: 700;
             font-size: 13px;
@@ -270,16 +275,16 @@ $translationNamespaces = ['common', 'software'];
 
         /* Highlighted section */
         .sw-help-section-highlight {
-            background: #e8eaf6;
+            background: var(--sw-accent-soft, #e8eaf6);
             margin: 0 -48px;
             padding: 28px 48px !important;
             border-bottom: none !important;
-            border-top: 2px solid #9fa8da;
+            border-top: 2px solid #9fa8da;   /* dark override below tones this */
         }
 
         .sw-help-intro {
             font-size: 14px;
-            color: #555;
+            color: var(--text-muted, #555);
             line-height: 1.7;
             margin-bottom: 20px !important;
         }
@@ -294,10 +299,10 @@ $translationNamespaces = ['common', 'software'];
 
         .sw-help-fields div {
             padding: 8px 14px;
-            background: #fafafa;
+            background: var(--surface-2, #fafafa);
             border-radius: 6px;
             font-size: 13px;
-            color: #555;
+            color: var(--text-muted, #555);
         }
 
         /* Flow diagram */
@@ -328,18 +333,18 @@ $translationNamespaces = ['common', 'software'];
 
         .sw-help-flow-arrow {
             padding: 0 8px;
-            color: #bbb;
+            color: var(--text-faint, #bbb);
             font-size: 18px;
         }
 
         /* Tip callout */
         .sw-help-tip {
             font-size: 13px !important;
-            color: #283593 !important;
-            background: #e8eaf6;
+            color: var(--sw-accent-hover, #283593) !important;
+            background: var(--sw-accent-soft, #e8eaf6);
             padding: 10px 14px;
             border-radius: 8px;
-            border-left: 3px solid #5c6bc0;
+            border-left: 3px solid var(--sw-accent, #5c6bc0);
             margin-top: 10px;
         }
 
@@ -353,21 +358,21 @@ $translationNamespaces = ['common', 'software'];
 
         .sw-help-data-card {
             padding: 12px 14px;
-            background: #fafafa;
+            background: var(--surface-2, #fafafa);
             border-radius: 8px;
-            border-left: 3px solid #5c6bc0;
+            border-left: 3px solid var(--sw-accent, #5c6bc0);
         }
 
         .sw-help-data-card strong {
             display: block;
             font-size: 13px;
-            color: #333;
+            color: var(--text, #333);
             margin-bottom: 4px;
         }
 
         .sw-help-data-card span {
             font-size: 12px;
-            color: #777;
+            color: var(--text-muted, #777);
             line-height: 1.4;
         }
 
@@ -382,10 +387,10 @@ $translationNamespaces = ['common', 'software'];
             display: flex;
             gap: 12px;
             padding: 14px;
-            background: #fafafa;
+            background: var(--surface-2, #fafafa);
             border-radius: 8px;
             font-size: 13px;
-            color: #555;
+            color: var(--text-muted, #555);
             line-height: 1.5;
         }
 
@@ -395,7 +400,7 @@ $translationNamespaces = ['common', 'software'];
         }
 
         .sw-help-tip-card strong {
-            color: #333;
+            color: var(--text, #333);
         }
 
         /* Responsive */
@@ -410,6 +415,16 @@ $translationNamespaces = ['common', 'software'];
             .sw-help-features-grid { grid-template-columns: 1fr; }
             .sw-help-data-grid { grid-template-columns: 1fr; }
             .sw-help-tips-grid { grid-template-columns: 1fr; }
+        }
+
+        /* Dark mode: darken the indigo hero gradient (light mode untouched). */
+        [data-theme-mode="dark"] .sw-help-hero {
+            background: linear-gradient(135deg, #2a3060 0%, #1e2347 100%);
+        }
+
+        /* Dark mode: tone the highlight band's bright indigo top border. */
+        [data-theme-mode="dark"] .sw-help-section-highlight {
+            border-top-color: #363e6b;
         }
     </style>
 </head>
@@ -679,7 +694,7 @@ $translationNamespaces = ['common', 'software'];
                         </div>
                     </div>
 
-                    <p class="sw-help-tip"><?php echo htmlspecialchars(t('software.help.collection_tip_before')); ?><a href="../asset-management/help.php" style="color: #283593; font-weight: 600;"><?php echo htmlspecialchars(t('software.help.collection_tip_link')); ?></a><?php echo htmlspecialchars(t('software.help.collection_tip_after')); ?></p>
+                    <p class="sw-help-tip"><?php echo htmlspecialchars(t('software.help.collection_tip_before')); ?><a href="../asset-management/help.php" style="color: var(--sw-accent-hover, #283593); font-weight: 600;"><?php echo htmlspecialchars(t('software.help.collection_tip_link')); ?></a><?php echo htmlspecialchars(t('software.help.collection_tip_after')); ?></p>
                 </div>
 
                 <!-- Section 6: Settings -->

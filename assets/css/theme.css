@@ -78,6 +78,11 @@
     --rep-accent:      #ca5010;  --rep-accent-hover: #a5410a;
     --rep-accent-soft: #fdeee6;  --rep-on-accent:    #ffffff;
 
+    /* Software module (indigo) accents — cards, links, charts, badges.
+       Indigo is the module's registered brand colour (module-colors.php). */
+    --sw-accent:       #5c6bc0;  --sw-accent-hover: #3f51b5;
+    --sw-accent-soft:  #e8eaf6;  --sw-on-accent:    #ffffff;
+
     /* Messaging-channel (WhatsApp etc.) composer — green-tinted surface */
     --channel-bg:        #f7fdf9;  --channel-border: #d6e9d8;
 
@@ -144,6 +149,10 @@
     /* Reporting module (rust-orange) — accent nudged lighter to read on dark */
     --rep-accent:      #e8703a;  --rep-accent-hover: #f08a5a;
     --rep-accent-soft: #3a2416;  --rep-on-accent:    #ffffff;
+
+    /* Software module (indigo) — accent nudged lighter to read on dark */
+    --sw-accent:       #7986cb;  --sw-accent-hover: #9fa8da;
+    --sw-accent-soft:  #262b45;  --sw-on-accent:    #ffffff;
 
     /* Messaging-channel (WhatsApp etc.) composer — dark green-tinted surface */
     --channel-bg:        #15231b;  --channel-border: #2b3d31;

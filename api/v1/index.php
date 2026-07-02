@@ -17,6 +17,7 @@ require_once __DIR__ . '/lib/bootstrap.php';
 require_once __DIR__ . '/resources/tickets.php';
 require_once __DIR__ . '/resources/users.php';
 require_once __DIR__ . '/resources/reference.php';
+require_once __DIR__ . '/resources/assets.php';
 
 // --- Resolve the request path ---------------------------------------------
 $path = $_SERVER['PATH_INFO'] ?? '';
@@ -56,6 +57,24 @@ $routes = [
     ['GET',    '#^/tickets/(\d+)/time-entries$#',          ['ticket_time_entries', 'read'],   'apiTicketTimeEntriesList'],
     ['POST',   '#^/tickets/(\d+)/time-entries$#',          ['ticket_time_entries', 'create'], 'apiTicketTimeEntriesCreate'],
     ['DELETE', '#^/tickets/(\d+)/time-entries/(\d+)$#',    ['ticket_time_entries', 'delete'], 'apiTicketTimeEntriesDelete'],
+
+    ['GET',    '#^/assets$#',                              ['assets', 'read'],                'apiAssetsList'],
+    ['POST',   '#^/assets$#',                              ['assets', 'create'],              'apiAssetsCreate'],
+    ['GET',    '#^/assets/(\d+)$#',                        ['assets', 'read'],                'apiAssetsGet'],
+    ['PATCH',  '#^/assets/(\d+)$#',                        ['assets', 'update'],              'apiAssetsUpdate'],
+    ['GET',    '#^/assets/(\d+)/assignments$#',            ['asset_assignments', 'read'],     'apiAssetAssignmentsList'],
+    ['POST',   '#^/assets/(\d+)/assignments$#',            ['asset_assignments', 'create'],   'apiAssetAssignmentsCreate'],
+    ['DELETE', '#^/assets/(\d+)/assignments/(\d+)$#',      ['asset_assignments', 'delete'],   'apiAssetAssignmentsDelete'],
+    ['GET',    '#^/assets/(\d+)/history$#',                ['asset_history', 'read'],         'apiAssetHistoryList'],
+    ['GET',    '#^/assets/(\d+)/custody$#',                ['asset_history', 'read'],         'apiAssetCustodyList'],
+    ['GET',    '#^/assets/(\d+)/disks$#',                  ['asset_inventory', 'read'],       'apiAssetDisksList'],
+    ['GET',    '#^/assets/(\d+)/network-adapters$#',       ['asset_inventory', 'read'],       'apiAssetNetworkAdaptersList'],
+    ['GET',    '#^/assets/(\d+)/devices$#',                ['asset_inventory', 'read'],       'apiAssetDevicesList'],
+    ['GET',    '#^/assets/(\d+)/software$#',               ['asset_inventory', 'read'],       'apiAssetSoftwareList'],
+    ['GET',    '#^/asset-types$#',                         ['reference', 'read'],             'apiAssetTypesList'],
+    ['GET',    '#^/asset-statuses$#',                      ['reference', 'read'],             'apiAssetStatusesList'],
+    ['GET',    '#^/asset-locations$#',                     ['reference', 'read'],             'apiAssetLocationsList'],
+    ['GET',    '#^/suppliers$#',                           ['reference', 'read'],             'apiSuppliersList'],
 
     ['GET',    '#^/users$#',                               ['users', 'read'],                 'apiUsersList'],
     ['POST',   '#^/users$#',                               ['users', 'create'],               'apiUsersCreate'],
@@ -120,9 +139,16 @@ function apiHandleRoot(PDO $conn, array $apiKey, array $params, array $body): vo
             'DELETE /tickets/{id}', 'POST /tickets/{id}/restore', 'GET /tickets/{id}/notes',
             'POST /tickets/{id}/notes', 'GET /tickets/{id}/thread', 'GET /tickets/{id}/audit',
             'GET /tickets/{id}/sla', 'GET /tickets/{id}/time-entries', 'POST /tickets/{id}/time-entries',
-            'DELETE /tickets/{id}/time-entries/{entry_id}', 'GET /users', 'POST /users', 'GET /users/{id}',
+            'DELETE /tickets/{id}/time-entries/{entry_id}',
+            'GET /assets', 'POST /assets', 'GET /assets/{id}', 'PATCH /assets/{id}',
+            'GET /assets/{id}/assignments', 'POST /assets/{id}/assignments',
+            'DELETE /assets/{id}/assignments/{user_id}', 'GET /assets/{id}/history',
+            'GET /assets/{id}/custody', 'GET /assets/{id}/disks', 'GET /assets/{id}/network-adapters',
+            'GET /assets/{id}/devices', 'GET /assets/{id}/software',
+            'GET /users', 'POST /users', 'GET /users/{id}',
             'PATCH /users/{id}', 'GET /analysts', 'GET /companies', 'GET /statuses', 'GET /priorities',
             'GET /ticket-types', 'GET /origins', 'GET /departments',
+            'GET /asset-types', 'GET /asset-statuses', 'GET /asset-locations', 'GET /suppliers',
         ],
     ]);
 }

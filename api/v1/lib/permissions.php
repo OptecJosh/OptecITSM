@@ -57,6 +57,34 @@ function apiV1PermissionCatalog(): array {
                 'delete' => 'Remove a time entry (soft delete)',
             ],
         ],
+        'assets' => [
+            'label'   => 'Assets',
+            'actions' => [
+                'read'   => 'List and view assets (including hardware, lifecycle and warranty filters)',
+                'create' => 'Create new assets',
+                'update' => 'Update asset fields (classification, lifecycle, hardware)',
+            ],
+        ],
+        'asset_assignments' => [
+            'label'   => 'Asset assignments',
+            'actions' => [
+                'read'   => 'See who an asset is assigned to',
+                'create' => 'Assign an asset to a requester (check out)',
+                'delete' => 'Unassign an asset from a requester (check in)',
+            ],
+        ],
+        'asset_history' => [
+            'label'   => 'Asset history',
+            'actions' => [
+                'read' => 'Read an asset\'s change history and custody (check-out/in) log',
+            ],
+        ],
+        'asset_inventory' => [
+            'label'   => 'Asset inventory',
+            'actions' => [
+                'read' => 'Read agent-collected inventory: disks, network adapters, devices, software',
+            ],
+        ],
         'users' => [
             'label'   => 'Requesters',
             'actions' => [
@@ -80,7 +108,7 @@ function apiV1PermissionCatalog(): array {
         'reference' => [
             'label'   => 'Reference data',
             'actions' => [
-                'read' => 'Read statuses, priorities, ticket types, origins and departments',
+                'read' => 'Read lookups: statuses, priorities, ticket types, origins, departments, asset types/statuses/locations, suppliers',
             ],
         ],
     ];

@@ -19,6 +19,7 @@ require_once __DIR__ . '/resources/users.php';
 require_once __DIR__ . '/resources/reference.php';
 require_once __DIR__ . '/resources/assets.php';
 require_once __DIR__ . '/resources/problems.php';
+require_once __DIR__ . '/resources/changes.php';
 
 // --- Resolve the request path ---------------------------------------------
 $path = $_SERVER['PATH_INFO'] ?? '';
@@ -91,6 +92,24 @@ $routes = [
     ['DELETE', '#^/problems/(\d+)/changes/(\d+)$#',        ['problem_links', 'delete'],       'apiProblemChangesUnlink'],
     ['GET',    '#^/problem-statuses$#',                    ['reference', 'read'],             'apiProblemStatusesList'],
     ['GET',    '#^/problem-priorities$#',                  ['reference', 'read'],             'apiProblemPrioritiesList'],
+
+    ['GET',    '#^/changes$#',                             ['changes', 'read'],               'apiChangesList'],
+    ['POST',   '#^/changes$#',                             ['changes', 'create'],             'apiChangesCreate'],
+    ['GET',    '#^/changes/(\d+)$#',                       ['changes', 'read'],               'apiChangesGet'],
+    ['PATCH',  '#^/changes/(\d+)$#',                       ['changes', 'update'],             'apiChangesUpdate'],
+    ['DELETE', '#^/changes/(\d+)$#',                       ['changes', 'delete'],             'apiChangesDelete'],
+    ['GET',    '#^/changes/(\d+)/comments$#',              ['change_comments', 'read'],       'apiChangeCommentsList'],
+    ['POST',   '#^/changes/(\d+)/comments$#',              ['change_comments', 'create'],     'apiChangeCommentsCreate'],
+    ['DELETE', '#^/changes/(\d+)/comments/(\d+)$#',        ['change_comments', 'delete'],     'apiChangeCommentsDelete'],
+    ['GET',    '#^/changes/(\d+)/audit$#',                 ['change_audit', 'read'],          'apiChangeAuditList'],
+    ['GET',    '#^/changes/(\d+)/cab$#',                   ['change_cab', 'read'],            'apiChangeCabGet'],
+    ['POST',   '#^/changes/(\d+)/cab$#',                   ['change_cab', 'manage'],          'apiChangeCabSave'],
+    ['POST',   '#^/changes/(\d+)/cab/vote$#',              ['change_cab', 'vote'],            'apiChangeCabVote'],
+    ['GET',    '#^/change-statuses$#',                     ['reference', 'read'],             'apiChangeStatusesList'],
+    ['GET',    '#^/change-types$#',                        ['reference', 'read'],             'apiChangeTypesList'],
+    ['GET',    '#^/change-priorities$#',                   ['reference', 'read'],             'apiChangePrioritiesList'],
+    ['GET',    '#^/change-impacts$#',                      ['reference', 'read'],             'apiChangeImpactsList'],
+    ['GET',    '#^/change-categories$#',                   ['reference', 'read'],             'apiChangeCategoriesList'],
 
     ['GET',    '#^/users$#',                               ['users', 'read'],                 'apiUsersList'],
     ['POST',   '#^/users$#',                               ['users', 'create'],               'apiUsersCreate'],
@@ -167,6 +186,12 @@ function apiHandleRoot(PDO $conn, array $apiKey, array $params, array $body): vo
             'DELETE /problems/{id}/tickets/{ticket_id}', 'POST /problems/{id}/changes',
             'DELETE /problems/{id}/changes/{change_id}',
             'GET /problem-statuses', 'GET /problem-priorities',
+            'GET /changes', 'POST /changes', 'GET /changes/{id}', 'PATCH /changes/{id}',
+            'DELETE /changes/{id}', 'GET /changes/{id}/comments', 'POST /changes/{id}/comments',
+            'DELETE /changes/{id}/comments/{comment_id}', 'GET /changes/{id}/audit',
+            'GET /changes/{id}/cab', 'POST /changes/{id}/cab', 'POST /changes/{id}/cab/vote',
+            'GET /change-statuses', 'GET /change-types', 'GET /change-priorities',
+            'GET /change-impacts', 'GET /change-categories',
             'GET /users', 'POST /users', 'GET /users/{id}',
             'PATCH /users/{id}', 'GET /analysts', 'GET /companies', 'GET /statuses', 'GET /priorities',
             'GET /ticket-types', 'GET /origins', 'GET /departments',

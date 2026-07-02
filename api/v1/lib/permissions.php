@@ -114,6 +114,37 @@ function apiV1PermissionCatalog(): array {
                 'delete' => 'Unlink incidents and changes from a problem',
             ],
         ],
+        'changes' => [
+            'label'   => 'Changes',
+            'actions' => [
+                'read'   => 'List and view changes (including risk, schedule, PIR, attachments list)',
+                'create' => 'Create new changes',
+                'update' => 'Update change fields (status, schedule, risk, plans, CAB settings, …)',
+                'delete' => 'Permanently delete a change and its attachments/comments/history',
+            ],
+        ],
+        'change_comments' => [
+            'label'   => 'Change comments',
+            'actions' => [
+                'read'   => 'Read the comments on a change',
+                'create' => 'Add a comment to a change',
+                'delete' => 'Delete a comment from a change',
+            ],
+        ],
+        'change_audit' => [
+            'label'   => 'Change audit log',
+            'actions' => [
+                'read' => 'Read the change history of a change record',
+            ],
+        ],
+        'change_cab' => [
+            'label'   => 'Change CAB',
+            'actions' => [
+                'read'   => 'See the CAB roster, votes and approval progress',
+                'manage' => 'Set the CAB member roster for a change',
+                'vote'   => 'Cast a CAB vote as the analyst this key acts as',
+            ],
+        ],
         'users' => [
             'label'   => 'Requesters',
             'actions' => [
@@ -137,7 +168,7 @@ function apiV1PermissionCatalog(): array {
         'reference' => [
             'label'   => 'Reference data',
             'actions' => [
-                'read' => 'Read lookups: ticket statuses/priorities/types/origins, departments, asset types/statuses/locations, suppliers, problem statuses/priorities',
+                'read' => 'Read lookups: ticket statuses/priorities/types/origins, departments, asset types/statuses/locations, suppliers, problem statuses/priorities, change statuses/types/priorities/impacts/categories',
             ],
         ],
     ];

@@ -3437,6 +3437,18 @@ try {
         try { $conn->exec($sql); } catch (Exception $e) {}
     }
 
+    // Calendar foreign keys (db_verify $schema only builds columns + PK) —
+    // names + rules match freeitsm.sql. The category FK has no delete rule
+    // (RESTRICT), backstopping delete_category.php's in-use guard.
+    $calendarFks = [
+        ['calendar_events', 'fk_calendar_events_category', "ALTER TABLE calendar_events ADD CONSTRAINT fk_calendar_events_category FOREIGN KEY (category_id) REFERENCES calendar_categories (id)"],
+        ['calendar_events', 'fk_calendar_events_contract', "ALTER TABLE calendar_events ADD CONSTRAINT fk_calendar_events_contract FOREIGN KEY (contract_id) REFERENCES contracts (id) ON DELETE SET NULL"],
+    ];
+    foreach ($calendarFks as [$tbl, $name, $sql]) {
+        if (!$tableExists($tbl) || $fkExists($tbl, $name)) continue;
+        try { $conn->exec($sql); } catch (Exception $e) {}
+    }
+
     // Contracts-domain foreign keys (db_verify $schema only builds columns +
     // PK; this domain historically had NO FKs anywhere — not even in
     // freeitsm.sql — so contract deletes orphaned term values). Names + rules

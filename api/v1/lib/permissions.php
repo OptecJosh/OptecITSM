@@ -242,6 +242,15 @@ function apiV1PermissionCatalog(): array {
                 'delete' => 'Remove a supplier\'s contacts',
             ],
         ],
+        'calendar_events' => [
+            'label'   => 'Calendar events',
+            'actions' => [
+                'read'   => 'List and view team-calendar events (including generated warranty events)',
+                'create' => 'Create calendar events',
+                'update' => 'Update manual calendar events (generated events are read-only)',
+                'delete' => 'Delete manual calendar events (generated events are read-only)',
+            ],
+        ],
         'users' => [
             'label'   => 'Requesters',
             'actions' => [
@@ -265,7 +274,7 @@ function apiV1PermissionCatalog(): array {
         'reference' => [
             'label'   => 'Reference data',
             'actions' => [
-                'read' => 'Read lookups: ticket statuses/priorities/types/origins, departments, asset types/statuses/locations, suppliers (lite list), problem statuses/priorities, change statuses/types/priorities/impacts/categories, knowledge tags, task statuses/priorities/tags, CMDB relationship types, contract statuses/term tabs, payment schedules, supplier types/statuses',
+                'read' => 'Read lookups: ticket statuses/priorities/types/origins, departments, asset types/statuses/locations, suppliers (lite list), problem statuses/priorities, change statuses/types/priorities/impacts/categories, knowledge tags, task statuses/priorities/tags, CMDB relationship types, contract statuses/term tabs, payment schedules, supplier types/statuses, calendar categories',
             ],
         ],
     ];

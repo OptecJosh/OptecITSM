@@ -24,6 +24,7 @@ require_once __DIR__ . '/resources/knowledge.php';
 require_once __DIR__ . '/resources/tasks.php';
 require_once __DIR__ . '/resources/cmdb.php';
 require_once __DIR__ . '/resources/contracts.php';
+require_once __DIR__ . '/resources/calendar.php';
 
 // --- Resolve the request path ---------------------------------------------
 $path = $_SERVER['PATH_INFO'] ?? '';
@@ -174,6 +175,13 @@ $routes = [
     ['GET',    '#^/supplier-statuses$#',                   ['reference', 'read'],             'apiSupplierStatusesList'],
     ['GET',    '#^/contract-term-tabs$#',                  ['reference', 'read'],             'apiContractTermTabsList'],
 
+    ['GET',    '#^/calendar/events$#',                     ['calendar_events', 'read'],       'apiCalendarEventsList'],
+    ['POST',   '#^/calendar/events$#',                     ['calendar_events', 'create'],     'apiCalendarEventsCreate'],
+    ['GET',    '#^/calendar/events/(\d+)$#',               ['calendar_events', 'read'],       'apiCalendarEventsGet'],
+    ['PATCH',  '#^/calendar/events/(\d+)$#',               ['calendar_events', 'update'],     'apiCalendarEventsUpdate'],
+    ['DELETE', '#^/calendar/events/(\d+)$#',               ['calendar_events', 'delete'],     'apiCalendarEventsDelete'],
+    ['GET',    '#^/calendar-categories$#',                 ['reference', 'read'],             'apiCalendarCategoriesList'],
+
     ['GET',    '#^/users$#',                               ['users', 'read'],                 'apiUsersList'],
     ['POST',   '#^/users$#',                               ['users', 'create'],               'apiUsersCreate'],
     ['GET',    '#^/users/(\d+)$#',                         ['users', 'read'],                 'apiUsersGet'],
@@ -276,6 +284,8 @@ function apiHandleRoot(PDO $conn, array $apiKey, array $params, array $body): vo
             'PATCH /suppliers/{id}/contacts/{contact_id}', 'DELETE /suppliers/{id}/contacts/{contact_id}',
             'GET /contract-statuses', 'GET /payment-schedules', 'GET /supplier-types',
             'GET /supplier-statuses', 'GET /contract-term-tabs',
+            'GET /calendar/events', 'POST /calendar/events', 'GET /calendar/events/{id}',
+            'PATCH /calendar/events/{id}', 'DELETE /calendar/events/{id}', 'GET /calendar-categories',
             'GET /users', 'POST /users', 'GET /users/{id}',
             'PATCH /users/{id}', 'GET /analysts', 'GET /companies', 'GET /statuses', 'GET /priorities',
             'GET /ticket-types', 'GET /origins', 'GET /departments',

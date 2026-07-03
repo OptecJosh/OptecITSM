@@ -32,9 +32,9 @@ if ($formId <= 0) {
 try {
     $conn = connectToDatabase();
 
-    // Validate form exists and is active (grab the name too — the workflow
-    // payload carries it so conditions / templates can read form.name).
-    $stmt = $conn->prepare("SELECT id, name FROM forms WHERE id = ? AND is_active = 1");
+    // Validate form exists and is active (grab the title too — the workflow
+    // payload carries it as form.name so conditions / templates can read it).
+    $stmt = $conn->prepare("SELECT id, title AS name FROM forms WHERE id = ? AND is_active = 1");
     $stmt->execute([$formId]);
     $formRow = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$formRow) {
@@ -91,8 +91,10 @@ try {
 
     $conn->beginTransaction();
 
-    // Create submission
-    $stmt = $conn->prepare("INSERT INTO form_submissions (form_id, submitted_by) VALUES (?, ?)");
+    // Create submission. submitted_date written explicitly in UTC — the
+    // column's DEFAULT CURRENT_TIMESTAMP is server-local, which drifts an
+    // hour from every other timestamp in summer.
+    $stmt = $conn->prepare("INSERT INTO form_submissions (form_id, submitted_by, submitted_date) VALUES (?, ?, UTC_TIMESTAMP())");
     $stmt->execute([$formId, $_SESSION['analyst_id']]);
     $submissionId = (int)$conn->lastInsertId();
 

@@ -102,10 +102,12 @@ try {
         }
     } else {
         // Create new form — author + initial modified_by both default
-        // to the current analyst; version_number starts at 1.
+        // to the current analyst; version_number starts at 1. Dates are
+        // written explicitly in UTC (the columns' DEFAULT CURRENT_TIMESTAMP
+        // is server-local, which drifts from the UTC updates in summer).
         $stmt = $conn->prepare(
-            "INSERT INTO forms (title, description, created_by, modified_by, version_number)
-             VALUES (?, ?, ?, ?, 1)"
+            "INSERT INTO forms (title, description, created_by, modified_by, version_number, created_date, modified_date)
+             VALUES (?, ?, ?, ?, 1, UTC_TIMESTAMP(), UTC_TIMESTAMP())"
         );
         $stmt->execute([$title, $description, $_SESSION['analyst_id'], $_SESSION['analyst_id']]);
         $formId = (int)$conn->lastInsertId();

@@ -3527,6 +3527,39 @@ try {
         try { $conn->exec($sql); } catch (Exception $e) {}
     }
 
+    // Forms-module foreign keys (db_verify $schema only builds columns + PK;
+    // grown installs had NONE of the four freeitsm.sql constraints, and
+    // parent_form_id — the #442 version chain — never had one anywhere).
+    // Orphans are cleaned first so the constraints can attach: fields /
+    // submissions / data of deleted parents go, dangling version-chain
+    // pointers become chain roots (SET NULL).
+    if ($tableExists('forms')) {
+        try {
+            if ($tableExists('form_fields')) {
+                $conn->exec("DELETE ff FROM form_fields ff LEFT JOIN forms f ON f.id = ff.form_id WHERE f.id IS NULL");
+            }
+            if ($tableExists('form_submission_data')) {
+                $conn->exec("DELETE sd FROM form_submission_data sd LEFT JOIN form_submissions s ON s.id = sd.submission_id WHERE s.id IS NULL");
+                $conn->exec("DELETE sd FROM form_submission_data sd LEFT JOIN form_fields ff ON ff.id = sd.field_id WHERE ff.id IS NULL");
+            }
+            if ($tableExists('form_submissions')) {
+                $conn->exec("DELETE s FROM form_submissions s LEFT JOIN forms f ON f.id = s.form_id WHERE f.id IS NULL");
+            }
+            $conn->exec("UPDATE forms c LEFT JOIN forms p ON p.id = c.parent_form_id SET c.parent_form_id = NULL WHERE c.parent_form_id IS NOT NULL AND p.id IS NULL");
+        } catch (Exception $e) { /* shrug */ }
+    }
+    $formsFks = [
+        ['forms',                'fk_forms_parent',              "ALTER TABLE forms ADD CONSTRAINT fk_forms_parent FOREIGN KEY (parent_form_id) REFERENCES forms (id)"],
+        ['form_fields',          'fk_form_fields_form',          "ALTER TABLE form_fields ADD CONSTRAINT fk_form_fields_form FOREIGN KEY (form_id) REFERENCES forms (id) ON DELETE CASCADE"],
+        ['form_submissions',     'fk_form_submissions_form',     "ALTER TABLE form_submissions ADD CONSTRAINT fk_form_submissions_form FOREIGN KEY (form_id) REFERENCES forms (id)"],
+        ['form_submission_data', 'fk_submission_data_submission', "ALTER TABLE form_submission_data ADD CONSTRAINT fk_submission_data_submission FOREIGN KEY (submission_id) REFERENCES form_submissions (id) ON DELETE CASCADE"],
+        ['form_submission_data', 'fk_submission_data_field',     "ALTER TABLE form_submission_data ADD CONSTRAINT fk_submission_data_field FOREIGN KEY (field_id) REFERENCES form_fields (id)"],
+    ];
+    foreach ($formsFks as [$tbl, $name, $sql]) {
+        if (!$tableExists($tbl) || $fkExists($tbl, $name)) continue;
+        try { $conn->exec($sql); } catch (Exception $e) {}
+    }
+
     // REST API v1 key foreign keys (db_verify $schema only builds columns + PK)
     $apiKeyFks = [
         ['api_keys',            'fk_api_keys_analyst',        "ALTER TABLE api_keys ADD CONSTRAINT fk_api_keys_analyst FOREIGN KEY (analyst_id) REFERENCES analysts (id)"],

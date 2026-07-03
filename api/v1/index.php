@@ -28,6 +28,7 @@ require_once __DIR__ . '/resources/calendar.php';
 require_once __DIR__ . '/resources/software.php';
 require_once __DIR__ . '/resources/service_status.php';
 require_once __DIR__ . '/resources/morning_checks.php';
+require_once __DIR__ . '/resources/forms.php';
 
 // --- Resolve the request path ---------------------------------------------
 $path = $_SERVER['PATH_INFO'] ?? '';
@@ -218,6 +219,18 @@ $routes = [
     ['POST',   '#^/morning-checks/results$#',              ['morning_check_results', 'record'], 'apiMorningCheckResultsRecord'],
     ['GET',    '#^/morning-check-statuses$#',              ['reference', 'read'],             'apiMorningCheckStatusesList'],
 
+    ['GET',    '#^/forms$#',                               ['forms', 'read'],                 'apiFormsList'],
+    ['POST',   '#^/forms$#',                               ['forms', 'create'],               'apiFormsCreate'],
+    ['GET',    '#^/forms/(\d+)$#',                         ['forms', 'read'],                 'apiFormsGet'],
+    ['PATCH',  '#^/forms/(\d+)$#',                         ['forms', 'update'],               'apiFormsUpdate'],
+    ['DELETE', '#^/forms/(\d+)$#',                         ['forms', 'delete'],               'apiFormsDelete'],
+    ['GET',    '#^/forms/(\d+)/versions$#',                ['forms', 'read'],                 'apiFormVersionsList'],
+    ['POST',   '#^/forms/(\d+)/versions$#',                ['forms', 'create'],               'apiFormVersionsCreate'],
+    ['GET',    '#^/forms/(\d+)/submissions$#',             ['form_submissions', 'read'],      'apiFormSubmissionsList'],
+    ['POST',   '#^/forms/(\d+)/submissions$#',             ['form_submissions', 'create'],    'apiFormSubmissionsCreate'],
+    ['GET',    '#^/forms/(\d+)/submissions/(\d+)$#',       ['form_submissions', 'read'],      'apiFormSubmissionsGet'],
+    ['DELETE', '#^/forms/(\d+)/submissions/(\d+)$#',       ['form_submissions', 'delete'],    'apiFormSubmissionsDelete'],
+
     ['GET',    '#^/users$#',                               ['users', 'read'],                 'apiUsersList'],
     ['POST',   '#^/users$#',                               ['users', 'create'],               'apiUsersCreate'],
     ['GET',    '#^/users/(\d+)$#',                         ['users', 'read'],                 'apiUsersGet'],
@@ -336,6 +349,10 @@ function apiHandleRoot(PDO $conn, array $apiKey, array $params, array $body): vo
             'DELETE /morning-checks/checks/{id}', 'GET /morning-checks/board',
             'GET /morning-checks/results', 'POST /morning-checks/results',
             'GET /morning-checks/results/{id}', 'GET /morning-check-statuses',
+            'GET /forms', 'POST /forms', 'GET /forms/{id}', 'PATCH /forms/{id}', 'DELETE /forms/{id}',
+            'GET /forms/{id}/versions', 'POST /forms/{id}/versions',
+            'GET /forms/{id}/submissions', 'POST /forms/{id}/submissions',
+            'GET /forms/{id}/submissions/{submission_id}', 'DELETE /forms/{id}/submissions/{submission_id}',
             'GET /users', 'POST /users', 'GET /users/{id}',
             'PATCH /users/{id}', 'GET /analysts', 'GET /companies', 'GET /statuses', 'GET /priorities',
             'GET /ticket-types', 'GET /origins', 'GET /departments',

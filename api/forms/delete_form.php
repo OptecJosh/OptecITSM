@@ -24,6 +24,10 @@ if ($formId <= 0) {
 try {
     $conn = connectToDatabase();
 
+    // Three dependent deletes — transactional so a mid-way failure can't
+    // strand submissions without their data (or a form without either).
+    $conn->beginTransaction();
+
     // Delete submission data first (FK constraint)
     $stmt = $conn->prepare("DELETE sd FROM form_submission_data sd
                             INNER JOIN form_submissions s ON sd.submission_id = s.id
@@ -38,9 +42,12 @@ try {
     $stmt = $conn->prepare("DELETE FROM forms WHERE id = ?");
     $stmt->execute([$formId]);
 
+    $conn->commit();
+
     echo json_encode(['success' => true, 'message' => 'Form deleted']);
 
 } catch (Exception $e) {
+    if (isset($conn) && $conn->inTransaction()) $conn->rollBack();
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
 }
 ?>

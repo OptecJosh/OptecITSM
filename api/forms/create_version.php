@@ -48,12 +48,13 @@ try {
 
     $conn->beginTransaction();
 
-    // Insert the new version row
+    // Insert the new version row. Dates written explicitly in UTC — the
+    // columns' DEFAULT CURRENT_TIMESTAMP is server-local.
     $ins = $conn->prepare(
         "INSERT INTO forms
             (title, description, is_active, created_by, modified_by,
-             parent_form_id, version_number)
-         VALUES (?, ?, ?, ?, ?, ?, ?)"
+             parent_form_id, version_number, created_date, modified_date)
+         VALUES (?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())"
     );
     $ins->execute([
         $src['title'],

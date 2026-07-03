@@ -2053,7 +2053,10 @@ CREATE TABLE IF NOT EXISTS `forms` (
     -- in-place saves.
     `parent_form_id` INT NULL,
     `version_number` INT NOT NULL DEFAULT 1,
-    PRIMARY KEY (`id`)
+    PRIMARY KEY (`id`),
+    -- RESTRICT (no delete rule): a frozen version can't be deleted while
+    -- newer versions chain off it — delete leaf-first (or the whole chain).
+    CONSTRAINT `fk_forms_parent` FOREIGN KEY (`parent_form_id`) REFERENCES `forms` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `form_fields` (

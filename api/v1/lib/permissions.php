@@ -300,6 +300,23 @@ function apiV1PermissionCatalog(): array {
                 'record' => 'Record a result — one per check per day, overwriting any earlier result for that day',
             ],
         ],
+        'forms' => [
+            'label'   => 'Forms',
+            'actions' => [
+                'read'   => 'List and view forms with their fields and version chains',
+                'create' => 'Create forms and fork new versions',
+                'update' => 'Update the current version in place (title, description, fields, active flag)',
+                'delete' => 'Delete a form version (or a whole chain with its submissions)',
+            ],
+        ],
+        'form_submissions' => [
+            'label'   => 'Form submissions',
+            'actions' => [
+                'read'   => 'List and view submissions with their answers',
+                'create' => 'Submit a form (validation + the form.submitted workflow event, like the UI)',
+                'delete' => 'Delete a submission and its answers',
+            ],
+        ],
         'users' => [
             'label'   => 'Requesters',
             'actions' => [

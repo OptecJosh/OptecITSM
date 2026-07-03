@@ -3605,10 +3605,20 @@ try {
         } catch (Exception $e) { /* leave the legacy column in place if migration fails */ }
     }
 
-    // FKs and indexes for tasks
+    // FKs and indexes for tasks (full set matching freeitsm.sql — grown
+    // installs were missing the parent/comments cascades, which orphaned
+    // subtasks and comments on delete)
     foreach ([
         ['tasks', 'fk_tasks_status',   "ALTER TABLE tasks ADD CONSTRAINT fk_tasks_status FOREIGN KEY (status_id) REFERENCES task_statuses (id)"],
         ['tasks', 'fk_tasks_priority', "ALTER TABLE tasks ADD CONSTRAINT fk_tasks_priority FOREIGN KEY (priority_id) REFERENCES task_priorities (id)"],
+        ['tasks', 'fk_tasks_analyst',  "ALTER TABLE tasks ADD CONSTRAINT fk_tasks_analyst FOREIGN KEY (assigned_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"],
+        ['tasks', 'fk_tasks_team',     "ALTER TABLE tasks ADD CONSTRAINT fk_tasks_team FOREIGN KEY (assigned_team_id) REFERENCES teams (id) ON DELETE SET NULL"],
+        ['tasks', 'fk_tasks_parent',   "ALTER TABLE tasks ADD CONSTRAINT fk_tasks_parent FOREIGN KEY (parent_task_id) REFERENCES tasks (id) ON DELETE CASCADE"],
+        ['tasks', 'fk_tasks_ticket',   "ALTER TABLE tasks ADD CONSTRAINT fk_tasks_ticket FOREIGN KEY (ticket_id) REFERENCES tickets (id) ON DELETE SET NULL"],
+        ['tasks', 'fk_tasks_change',   "ALTER TABLE tasks ADD CONSTRAINT fk_tasks_change FOREIGN KEY (change_id) REFERENCES changes (id) ON DELETE SET NULL"],
+        ['tasks', 'fk_tasks_created_by', "ALTER TABLE tasks ADD CONSTRAINT fk_tasks_created_by FOREIGN KEY (created_by_id) REFERENCES analysts (id)"],
+        ['task_comments', 'fk_task_comments_task',    "ALTER TABLE task_comments ADD CONSTRAINT fk_task_comments_task FOREIGN KEY (task_id) REFERENCES tasks (id) ON DELETE CASCADE"],
+        ['task_comments', 'fk_task_comments_analyst', "ALTER TABLE task_comments ADD CONSTRAINT fk_task_comments_analyst FOREIGN KEY (analyst_id) REFERENCES analysts (id)"],
         ['task_tag_map', 'fk_task_tag_map_task', "ALTER TABLE task_tag_map ADD CONSTRAINT fk_task_tag_map_task FOREIGN KEY (task_id) REFERENCES tasks (id) ON DELETE CASCADE"],
         ['task_tag_map', 'fk_task_tag_map_tag',  "ALTER TABLE task_tag_map ADD CONSTRAINT fk_task_tag_map_tag FOREIGN KEY (tag_id) REFERENCES task_tags (id) ON DELETE CASCADE"],
     ] as [$tbl, $name, $sql]) {

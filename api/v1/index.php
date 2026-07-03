@@ -21,6 +21,7 @@ require_once __DIR__ . '/resources/assets.php';
 require_once __DIR__ . '/resources/problems.php';
 require_once __DIR__ . '/resources/changes.php';
 require_once __DIR__ . '/resources/knowledge.php';
+require_once __DIR__ . '/resources/tasks.php';
 
 // --- Resolve the request path ---------------------------------------------
 $path = $_SERVER['PATH_INFO'] ?? '';
@@ -123,6 +124,18 @@ $routes = [
     ['GET',    '#^/knowledge/articles/(\d+)/versions/(\d+)$#', ['knowledge_versions', 'read'], 'apiKnowledgeVersionsGet'],
     ['GET',    '#^/knowledge/tags$#',                      ['reference', 'read'],             'apiKnowledgeTagsList'],
 
+    ['GET',    '#^/tasks$#',                               ['tasks', 'read'],                 'apiTasksList'],
+    ['POST',   '#^/tasks$#',                               ['tasks', 'create'],               'apiTasksCreate'],
+    ['GET',    '#^/tasks/(\d+)$#',                         ['tasks', 'read'],                 'apiTasksGet'],
+    ['PATCH',  '#^/tasks/(\d+)$#',                         ['tasks', 'update'],               'apiTasksUpdate'],
+    ['DELETE', '#^/tasks/(\d+)$#',                         ['tasks', 'delete'],               'apiTasksDelete'],
+    ['POST',   '#^/tasks/(\d+)/move$#',                    ['tasks', 'update'],               'apiTasksMove'],
+    ['GET',    '#^/tasks/(\d+)/comments$#',                ['task_comments', 'read'],         'apiTaskCommentsList'],
+    ['POST',   '#^/tasks/(\d+)/comments$#',                ['task_comments', 'create'],       'apiTaskCommentsCreate'],
+    ['GET',    '#^/task-statuses$#',                       ['reference', 'read'],             'apiTaskStatusesList'],
+    ['GET',    '#^/task-priorities$#',                     ['reference', 'read'],             'apiTaskPrioritiesList'],
+    ['GET',    '#^/task-tags$#',                           ['reference', 'read'],             'apiTaskTagsList'],
+
     ['GET',    '#^/users$#',                               ['users', 'read'],                 'apiUsersList'],
     ['POST',   '#^/users$#',                               ['users', 'create'],               'apiUsersCreate'],
     ['GET',    '#^/users/(\d+)$#',                         ['users', 'read'],                 'apiUsersGet'],
@@ -209,6 +222,9 @@ function apiHandleRoot(PDO $conn, array $apiKey, array $params, array $body): vo
             'POST /knowledge/articles/{id}/restore', 'DELETE /knowledge/articles/{id}/permanent',
             'GET /knowledge/articles/{id}/versions', 'GET /knowledge/articles/{id}/versions/{version}',
             'GET /knowledge/tags',
+            'GET /tasks', 'POST /tasks', 'GET /tasks/{id}', 'PATCH /tasks/{id}', 'DELETE /tasks/{id}',
+            'POST /tasks/{id}/move', 'GET /tasks/{id}/comments', 'POST /tasks/{id}/comments',
+            'GET /task-statuses', 'GET /task-priorities', 'GET /task-tags',
             'GET /users', 'POST /users', 'GET /users/{id}',
             'PATCH /users/{id}', 'GET /analysts', 'GET /companies', 'GET /statuses', 'GET /priorities',
             'GET /ticket-types', 'GET /origins', 'GET /departments',

@@ -162,6 +162,22 @@ function apiV1PermissionCatalog(): array {
                 'read' => 'Read an article\'s version history and snapshots',
             ],
         ],
+        'tasks' => [
+            'label'   => 'Tasks',
+            'actions' => [
+                'read'   => 'List and view tasks (board order, subtasks, links, comments inline)',
+                'create' => 'Create tasks and subtasks',
+                'update' => 'Update task fields, move cards on the board, replace tags',
+                'delete' => 'Permanently delete a task (subtasks and comments go with it)',
+            ],
+        ],
+        'task_comments' => [
+            'label'   => 'Task comments',
+            'actions' => [
+                'read'   => 'Read the comments on a task',
+                'create' => 'Add a comment to a task',
+            ],
+        ],
         'users' => [
             'label'   => 'Requesters',
             'actions' => [
@@ -185,7 +201,7 @@ function apiV1PermissionCatalog(): array {
         'reference' => [
             'label'   => 'Reference data',
             'actions' => [
-                'read' => 'Read lookups: ticket statuses/priorities/types/origins, departments, asset types/statuses/locations, suppliers, problem statuses/priorities, change statuses/types/priorities/impacts/categories, knowledge tags',
+                'read' => 'Read lookups: ticket statuses/priorities/types/origins, departments, asset types/statuses/locations, suppliers, problem statuses/priorities, change statuses/types/priorities/impacts/categories, knowledge tags, task statuses/priorities/tags',
             ],
         ],
     ];

@@ -88,5 +88,33 @@ $walkN($doc['components']['schemas']);
 $line($bareNullable === 0, "nullable: $bareNullable schema node(s) use `nullable` without a `type`");
 if ($bareNullable) $fail++;
 
+// --- 7. spec.json catalogue is well-formed (safe hand-editing) ---------------
+// spec.json is the single source read by both the docs page and this generator,
+// so a malformed entry would break both. Check each item and every extras key.
+$catErrs = [];
+$validMethods = ['GET', 'POST', 'PATCH', 'DELETE'];
+$specKeys = [];
+foreach ($spec['spec'] as $si => $sec) {
+    if (!isset($sec['section']) || !isset($sec['items']) || !is_array($sec['items'])) { $catErrs[] = "section[$si] missing 'section' or 'items'"; continue; }
+    foreach ($sec['items'] as $ii => $it) {
+        $where = "'{$sec['section']}'[$ii]";
+        if (!isset($it['m']) || !in_array($it['m'], $validMethods, true)) $catErrs[] = "$where: bad or missing method 'm'";
+        if (!isset($it['p']) || $it['p'] === '' || $it['p'][0] !== '/') $catErrs[] = "$where: 'p' must be a path starting with '/'";
+        if (!isset($it['s']) || trim((string)$it['s']) === '') $catErrs[] = "$where ({$it['p']}): missing summary 's'";
+        if (!array_key_exists('perm', $it)) $catErrs[] = "$where ({$it['p']}): missing 'perm'";
+        foreach ($it['params'] ?? [] as $pi => $p) {
+            if (!isset($p['name']) || $p['name'] === '') $catErrs[] = "$where ({$it['p']}) param[$pi]: missing 'name'";
+            if (!isset($p['in']) || !in_array($p['in'], ['path', 'query', 'body'], true)) $catErrs[] = "$where ({$it['p']}) param[$pi]: 'in' must be path|query|body";
+        }
+        if (isset($it['m'], $it['p'])) $specKeys[$it['m'] . ' ' . $it['p']] = true;
+    }
+}
+foreach (array_keys($spec['extras'] ?? []) as $k) {
+    if (!preg_match('/^(GET|POST|PATCH|DELETE) \//', $k)) { $catErrs[] = "extras key '$k' is not \"METHOD /path\""; continue; }
+    if (!isset($specKeys[$k])) $catErrs[] = "extras key '$k' has no matching endpoint in the catalogue";
+}
+$line(!$catErrs, "catalogue: " . count($specKeys) . " endpoints well-formed" . ($catErrs ? " — " . count($catErrs) . " problem(s): " . implode('; ', array_slice($catErrs, 0, 5)) : ", extras keys all resolve"));
+if ($catErrs) $fail++;
+
 echo $fail === 0 ? "\nOpenAPI self-check: PASS\n" : "\nOpenAPI self-check: $fail FAILURE(S)\n";
 exit($fail === 0 ? 0 : 1);

@@ -67,7 +67,9 @@ function webhookAttemptDelivery(PDO $conn, array $row): string {
     curl_close($ch);
 
     $ok      = ($respBody !== false && $err === '' && $status >= 200 && $status < 300);
-    $snippet = $respBody === false ? null : mb_substr((string)$respBody, 0, 500);
+    // Store the response body in full (capped only to stay within the TEXT column's
+    // ~64KB limit) so the delivery log can show exactly what the endpoint returned.
+    $snippet = $respBody === false ? null : mb_substr((string)$respBody, 0, 60000);
     $error   = $ok ? null : mb_substr($err !== '' ? $err : ('HTTP ' . $status), 0, 500);
 
     if ($ok) {

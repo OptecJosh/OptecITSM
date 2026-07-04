@@ -2817,7 +2817,7 @@ CREATE TABLE IF NOT EXISTS `webhook_deliveries` (
     `next_attempt_at`    DATETIME NULL,                  -- earliest time to (re)try; NULL = asap
     `last_status_code`   INT NULL,
     `last_error`         VARCHAR(500) NULL,
-    `response_snippet`   TEXT NULL,                      -- first bytes of the last response, for debugging
+    `response_snippet`   MEDIUMTEXT NULL,                 -- full response body from the endpoint, for the delivery log
     `created_datetime`   DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_datetime`   DATETIME NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `delivered_datetime` DATETIME NULL,

@@ -1453,7 +1453,7 @@ $schema = [
         'next_attempt_at'    => 'DATETIME NULL',
         'last_status_code'   => 'INT NULL',
         'last_error'         => 'VARCHAR(500) NULL',
-        'response_snippet'   => 'TEXT NULL',
+        'response_snippet'   => 'MEDIUMTEXT NULL',
         'created_datetime'   => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
         'updated_datetime'   => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
         'delivered_datetime' => 'DATETIME NULL',
@@ -3621,6 +3621,17 @@ try {
         try {
             $conn->exec("UPDATE webhook_deliveries wd LEFT JOIN workflows w ON w.id = wd.workflow_id
                          SET wd.workflow_id = NULL WHERE wd.workflow_id IS NOT NULL AND w.id IS NULL");
+        } catch (Exception $e) { /* shrug */ }
+    }
+    // response_snippet was originally TEXT (64KB). We now store the full endpoint
+    // response for the Webhooks queue log, so widen it to MEDIUMTEXT (matching
+    // request_body). MODIFY is a no-op if it's already MEDIUMTEXT.
+    if ($tableExists('webhook_deliveries')) {
+        try {
+            $col = $conn->query("SHOW COLUMNS FROM webhook_deliveries LIKE 'response_snippet'")->fetch(PDO::FETCH_ASSOC);
+            if ($col && stripos($col['Type'], 'mediumtext') === false) {
+                $conn->exec("ALTER TABLE webhook_deliveries MODIFY `response_snippet` MEDIUMTEXT NULL");
+            }
         } catch (Exception $e) { /* shrug */ }
     }
     $workflowFks = [

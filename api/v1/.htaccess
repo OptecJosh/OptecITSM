@@ -3,6 +3,10 @@
 # the API is still fully usable at /api/v1/index.php/<path> (PATH_INFO).
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    # Pretty URLs for the OpenAPI document (served by openapi.php, not the
+    # front controller). Must come before the catch-all below.
+    RewriteRule ^openapi\.json$ openapi.php?format=json [QSA,L]
+    RewriteRule ^openapi\.ya?ml$ openapi.php?format=yaml [QSA,L]
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^(.*)$ index.php/$1 [QSA,L]

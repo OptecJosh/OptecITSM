@@ -123,6 +123,23 @@ $apiBaseUrl = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . BASE_UR
                 <button class="btn btn-secondary" id="copyBaseBtn">Copy</button>
                 <a class="btn btn-primary" href="docs.php">Documentation</a>
             </div>
+            <p class="card-desc" style="margin-top:14px;">
+                <strong>Documentation</strong> is the interactive reference — browse every endpoint, try live calls, and copy ready-made code in seven languages.
+            </p>
+        </div>
+
+        <div class="settings-card">
+            <h3>OpenAPI specification</h3>
+            <p class="card-desc">
+                A machine-readable description of the whole API. Import it into <strong>Postman</strong> or <strong>Insomnia</strong>,
+                generate a client library, or feed it to any OpenAPI tool &mdash; so you don't have to wire up each endpoint by hand.
+                New to this? See <a href="https://github.com/edmozley/freeitsm/wiki/REST-API-OpenAPI" target="_blank" rel="noopener">the guide</a>.
+            </p>
+            <div class="base-url-box">
+                <code><?php echo htmlspecialchars($apiBaseUrl); ?>/openapi.json</code>
+                <a class="btn btn-secondary" href="<?php echo htmlspecialchars($apiBaseUrl); ?>/openapi.json" target="_blank" rel="noopener">View JSON</a>
+                <a class="btn btn-secondary" href="<?php echo htmlspecialchars($apiBaseUrl); ?>/openapi.yaml" target="_blank" rel="noopener">View YAML</a>
+            </div>
         </div>
 
         <div class="settings-card">

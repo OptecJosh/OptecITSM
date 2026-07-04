@@ -44,17 +44,19 @@ function webhookEnqueue(PDO $conn, array $d): int {
 }
 
 /**
- * Attempt to deliver one already-claimed row (status must be 'delivering').
- * Updates the row with the outcome and returns 'delivered' | 'failed' | 'dead'.
+ * Perform the outbound HTTP request for a webhook and return the raw outcome.
+ * Shared by the delivery worker and the editor's "Send test" preview so both
+ * use identical transport (method, timeouts, TLS verification) — the test can
+ * never behave differently from a real delivery.
+ *
+ * @return array{body:string|false,status:int,error:string,ms:int}
  */
-function webhookAttemptDelivery(PDO $conn, array $row): string {
-    $headers = json_decode($row['request_headers'] ?: '[]', true) ?: [];
-    $attemptNo = (int)$row['attempts'] + 1;
-
-    $ch = curl_init($row['url']);
+function webhookHttpSend(string $url, array $headers, string $body, string $method = 'POST'): array {
+    $start = microtime(true);
+    $ch = curl_init($url);
     curl_setopt_array($ch, [
-        CURLOPT_CUSTOMREQUEST  => $row['method'] ?: 'POST',
-        CURLOPT_POSTFIELDS     => $row['request_body'] ?? '',
+        CURLOPT_CUSTOMREQUEST  => $method ?: 'POST',
+        CURLOPT_POSTFIELDS     => $body,
         CURLOPT_HTTPHEADER     => $headers,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_CONNECTTIMEOUT => 5,
@@ -65,6 +67,21 @@ function webhookAttemptDelivery(PDO $conn, array $row): string {
     $status   = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $err      = curl_error($ch);
     curl_close($ch);
+    return ['body' => $respBody, 'status' => $status, 'error' => $err, 'ms' => (int)round((microtime(true) - $start) * 1000)];
+}
+
+/**
+ * Attempt to deliver one already-claimed row (status must be 'delivering').
+ * Updates the row with the outcome and returns 'delivered' | 'failed' | 'dead'.
+ */
+function webhookAttemptDelivery(PDO $conn, array $row): string {
+    $headers = json_decode($row['request_headers'] ?: '[]', true) ?: [];
+    $attemptNo = (int)$row['attempts'] + 1;
+
+    $res      = webhookHttpSend($row['url'], $headers, (string)($row['request_body'] ?? ''), $row['method'] ?: 'POST');
+    $respBody = $res['body'];
+    $status   = $res['status'];
+    $err      = $res['error'];
 
     $ok      = ($respBody !== false && $err === '' && $status >= 200 && $status < 300);
     // Store the response body in full (capped only to stay within the TEXT column's

@@ -770,6 +770,97 @@ const WFE = (() => {
             if (!(argName in n.args) && norm.default != null) n.args[argName] = norm.default;
         });
         applyArgVisibility(host, n);
+
+        // The send_webhook action gets a "Send test" button: fire the current
+        // config at the URL now and show the endpoint's real response, before
+        // saving. Detected by its args, so any future URL-posting action with a
+        // `url` arg + a `preset` selector inherits it for free.
+        if (host.querySelector('[data-arg-name="url"]') && n.type === 'send_webhook') {
+            appendWebhookTest(host, n);
+        }
+    }
+
+    /**
+     * Append the "Send test" control + result panel for the webhook action.
+     * Sends n.args (the live config) to webhook_test.php, which renders the
+     * templates against a sample payload and delivers synchronously.
+     */
+    function appendWebhookTest(host, n) {
+        const wrap = document.createElement('div');
+        wrap.className = 'form-group';
+        wrap.style.cssText = 'border-top: 1px solid #eceff1; margin-top: 14px; padding-top: 14px;';
+        wrap.innerHTML =
+            '<button type="button" class="add-btn" id="wfWebhookTestBtn" style="margin:0;">Send test</button>'
+            + '<small style="display:block; color:#6b7280; margin-top:6px; font-size:11.5px;">Sends this webhook now, with sample ticket data, and shows what the endpoint returns. Nothing is saved.</small>'
+            + '<div id="wfWebhookTestResult" style="margin-top:12px;"></div>';
+        host.appendChild(wrap);
+
+        const btn = wrap.querySelector('#wfWebhookTestBtn');
+        const out = wrap.querySelector('#wfWebhookTestResult');
+        btn.addEventListener('click', () => runWebhookTest(n, btn, out));
+    }
+
+    async function runWebhookTest(n, btn, out) {
+        const a = n.args || {};
+        if (!a.url) { out.innerHTML = webhookTestError('Enter a URL first.'); return; }
+        btn.disabled = true;
+        const original = btn.textContent;
+        btn.textContent = 'Sending…';
+        out.innerHTML = '<em style="color:#6b7280; font-size:12.5px;">Sending…</em>';
+        try {
+            const r = await fetch(window.WF_API + 'webhook_test.php', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    url: a.url || '', preset: a.preset || 'custom',
+                    message: a.message || '', body: a.body || '', secret: a.secret || '',
+                    trigger_event: (typeof triggerEvent !== 'undefined') ? (triggerEvent || '') : ''
+                })
+            });
+            const d = await r.json();
+            if (!d.success) { out.innerHTML = webhookTestError(d.error || 'Test failed', d.stage === 'build' ? 'Could not build the request' : null); return; }
+            out.innerHTML = renderWebhookTestResult(d);
+        } catch (e) {
+            out.innerHTML = webhookTestError('Could not reach the test endpoint.');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = original;
+        }
+    }
+
+    // Local HTML escaper (escHtml elsewhere is function-scoped, not shared).
+    function wfEsc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+
+    function webhookTestError(msg, heading) {
+        const esc = wfEsc;
+        return '<div style="border-left:3px solid #c0392b; background:#fdf0f0; padding:10px 12px; border-radius:4px; font-size:12.5px; color:#8a2020;">'
+            + (heading ? '<strong>' + esc(heading) + '</strong><br>' : '') + esc(msg) + '</div>';
+    }
+
+    function renderWebhookTestResult(d) {
+        const esc = wfEsc;
+        const ok = d.delivered;
+        const resp = d.response || {};
+        const req = d.request || {};
+        const barColor = ok ? '#1e7e34' : '#b26a00';
+        const pill = ok
+            ? '<span style="background:#e6f4ea; color:#1e7e34; padding:2px 9px; border-radius:10px; font-size:11px; font-weight:600;">Delivered</span>'
+            : '<span style="background:#fdf0e2; color:#b26a00; padding:2px 9px; border-radius:10px; font-size:11px; font-weight:600;">Not delivered</span>';
+        const statusLine = resp.error
+            ? 'Transport error: ' + esc(resp.error)
+            : 'HTTP ' + esc(resp.status) + ' · ' + esc(resp.ms) + ' ms' + (req.signed ? ' · signed' : '');
+        let html = '<div style="border-left:3px solid ' + barColor + '; background:#f8fafb; padding:10px 12px; border-radius:4px;">';
+        html += '<div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">' + pill
+            + '<span style="font-size:12px; color:#55606a;">' + statusLine + '</span></div>';
+        html += '<div style="font-size:11px; color:#78909c; text-transform:uppercase; letter-spacing:.4px; margin:8px 0 3px;">Sent (sample data)</div>';
+        html += '<pre style="background:#263238; color:#eceff1; border-radius:5px; padding:10px; font-size:11px; overflow:auto; max-height:160px; white-space:pre-wrap; word-break:break-word; margin:0;">' + esc(req.body || '') + '</pre>';
+        if (resp.body) {
+            html += '<div style="font-size:11px; color:#78909c; text-transform:uppercase; letter-spacing:.4px; margin:10px 0 3px;">Response</div>';
+            html += '<pre style="background:#263238; color:#eceff1; border-radius:5px; padding:10px; font-size:11px; overflow:auto; max-height:160px; white-space:pre-wrap; word-break:break-word; margin:0;">' + esc(resp.body) + '</pre>';
+        }
+        html += '</div>';
+        return html;
     }
 
     /**

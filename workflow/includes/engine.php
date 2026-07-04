@@ -1131,6 +1131,49 @@ class WorkflowEngine
      */
     private static function action_send_webhook(array $args, array $payload): array
     {
+        $req = self::buildWebhookRequest($args, $payload);
+
+        // ENQUEUE, don't send — the cron worker delivers asynchronously with
+        // retries, so a slow or dead endpoint never blocks this run.
+        require_once dirname(__DIR__, 2) . '/includes/webhook_delivery.php';
+        $conn = connectToDatabase();
+        $deliveryId = webhookEnqueue($conn, [
+            'workflow_id'  => self::$ctxWorkflowId,
+            'execution_id' => self::$ctxExecutionId,
+            'preset'       => $req['preset'],
+            'url'          => $req['url'],
+            'method'       => 'POST',
+            'headers'      => $req['headers'],
+            'body'         => $req['body'],
+        ]);
+        // Never log the secret or the full body; enough to audit the queueing.
+        return [
+            'queued'      => true,
+            'delivery_id' => $deliveryId,
+            'preset'      => $req['preset'],
+            'url'         => preg_replace('#(https?://[^/]+).*#i', '$1/…', $req['url']),
+            'signed'      => $req['signed'],
+            'bytes'       => strlen($req['body']),
+        ];
+    }
+
+    /**
+     * Build the outbound-webhook HTTP request (url, headers incl. any HMAC
+     * signature, and the rendered/validated JSON body) from the action's args
+     * and the trigger payload. Shared by the live action (action_send_webhook,
+     * which then enqueues the result) and the editor's "Send test" preview
+     * endpoint (which sends it synchronously) — so the test can never drift
+     * from a real send. Throws on any validation failure (bad url, empty
+     * message, invalid JSON).
+     *
+     * The optional HMAC-SHA256 signature is computed here so the secret itself
+     * is never stored — only the resulting X-FreeITSM-Signature header travels
+     * on (retries reuse it: same body → same signature).
+     *
+     * @return array{preset:string,url:string,body:string,headers:array<int,string>,signed:bool}
+     */
+    public static function buildWebhookRequest(array $args, array $payload): array
+    {
         $preset = strtolower(trim((string)($args['preset'] ?? 'custom'))) ?: 'custom';
         $url    = self::argString($args, 'url', $payload);
         if ($url === '') throw new Exception('url is required');
@@ -1164,36 +1207,12 @@ class WorkflowEngine
         }
 
         $headers = ['Content-Type: application/json', 'User-Agent: FreeITSM-Webhook/1'];
-        // Optional HMAC-SHA256 signature over the exact bytes sent. Signed HERE
-        // (at enqueue time) so the secret is never stored — the queue keeps only
-        // the resulting header, and retries reuse it (same body → same signature).
         $secret = trim((string)($args['secret'] ?? ''));
         if ($secret !== '') {
             $headers[] = 'X-FreeITSM-Signature: sha256=' . hash_hmac('sha256', $bodyJson, $secret);
         }
 
-        // ENQUEUE, don't send — the cron worker delivers asynchronously with
-        // retries, so a slow or dead endpoint never blocks this run.
-        require_once dirname(__DIR__, 2) . '/includes/webhook_delivery.php';
-        $conn = connectToDatabase();
-        $deliveryId = webhookEnqueue($conn, [
-            'workflow_id'  => self::$ctxWorkflowId,
-            'execution_id' => self::$ctxExecutionId,
-            'preset'       => $preset,
-            'url'          => $url,
-            'method'       => 'POST',
-            'headers'      => $headers,
-            'body'         => $bodyJson,
-        ]);
-        // Never log the secret or the full body; enough to audit the queueing.
-        return [
-            'queued'      => true,
-            'delivery_id' => $deliveryId,
-            'preset'      => $preset,
-            'url'         => preg_replace('#(https?://[^/]+).*#i', '$1/…', $url),
-            'signed'      => $secret !== '',
-            'bytes'       => strlen($bodyJson),
-        ];
+        return ['preset' => $preset, 'url' => $url, 'body' => $bodyJson, 'headers' => $headers, 'signed' => $secret !== ''];
     }
 
     // -----------------------------------------------------------------

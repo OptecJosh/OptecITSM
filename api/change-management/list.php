@@ -38,6 +38,7 @@ try {
 
     $sql = "SELECT
                 c.id,
+                c.tenant_id,
                 c.title,
                 ct.name AS change_type,
                 cs.name AS status,

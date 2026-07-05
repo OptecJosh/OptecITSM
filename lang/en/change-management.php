@@ -438,6 +438,26 @@ return [
         'delete_failed'   => 'Failed to delete',
     ],
 
+    // Right-click context menu on the change list cards. Mirrors tickets.context.*
+    'context' => [
+        'set_status'    => 'Set status',
+        'set_priority'  => 'Set priority',
+        'set_type'      => 'Set type',
+        'set_impact'    => 'Set impact',
+        'move_company'  => 'Move to company',
+        'no_statuses'   => 'No statuses configured',
+        'no_priorities' => 'No priorities configured',
+        'no_types'      => 'No types configured',
+        'no_impacts'    => 'No impacts configured',
+        'no_companies'  => 'No companies available',
+        'status_set'    => 'Status updated',
+        'priority_set'  => 'Priority updated',
+        'type_set'      => 'Type updated',
+        'impact_set'    => 'Impact updated',
+        'update_error'  => 'Could not update change',
+        'move_error'    => 'Could not move change',
+    ],
+
     'help' => [
         'guide'   => 'Guide',
         'nav_what'      => 'What is a change?',

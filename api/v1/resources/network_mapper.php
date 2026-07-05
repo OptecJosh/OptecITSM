@@ -49,6 +49,12 @@
 const API_NM_NODE_SIZES_PX = ['small' => 40, 'medium' => 56, 'large' => 80];
 const API_NM_LINE_STYLES   = ['solid', 'dashed'];
 
+// Diagram-level WRITES (create/save/delete/version) are delegated to
+// NetworkMapperService. The incremental node/connector endpoints below are
+// API-only and keep their own handlers here; the read handlers + serializers do too.
+require_once dirname(__DIR__, 3) . '/includes/service_context.php';
+require_once dirname(__DIR__, 3) . '/includes/services/network_mapper.php';
+
 // ---------------------------------------------------------------------------
 // Loaders + guards
 // ---------------------------------------------------------------------------
@@ -515,164 +521,11 @@ function apiNmObjectProperties(PDO $conn, array $nodeRows): array {
 
 // POST /network-diagrams — create, optionally with initial contents in one call.
 function apiNmDiagramsCreate(PDO $conn, array $apiKey, array $params, array $body): void {
-    $title = trim((string)($body['title'] ?? ''));
-    if ($title === '') {
-        apiError(422, 'missing_field', "'title' is required.");
-    }
-    [$paperSize, $paperOrientation] = apiNmValidatePaper($body, null);
-
-    $conn->beginTransaction();
     try {
-        $conn->prepare(
-            "INSERT INTO network_diagrams
-             (parent_diagram_id, title, description, version_label, created_by_analyst_id,
-              paper_size, paper_orientation,
-              header_left, header_center, header_right, footer_left, footer_center, footer_right,
-              created_datetime, updated_datetime)
-             VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())"
-        )->execute([
-            $title,
-            ($v = trim((string)($body['description'] ?? ''))) !== '' ? $v : null,
-            ($v = trim((string)($body['version_label'] ?? 'v1'))) !== '' ? substr($v, 0, 50) : null,
-            (int)$apiKey['analyst_id'],
-            $paperSize,
-            $paperOrientation,
-            apiNmBrandingSlot($body, 'header', 'left', null),
-            apiNmBrandingSlot($body, 'header', 'center', null),
-            apiNmBrandingSlot($body, 'header', 'right', null),
-            apiNmBrandingSlot($body, 'footer', 'left', null),
-            apiNmBrandingSlot($body, 'footer', 'center', null),
-            apiNmBrandingSlot($body, 'footer', 'right', null),
-        ]);
-        $diagramId = (int)$conn->lastInsertId();
-
-        if ((isset($body['nodes']) && is_array($body['nodes'])) || (isset($body['connectors']) && is_array($body['connectors']))) {
-            apiNmReplaceContents($conn, $diagramId, $body['nodes'] ?? [], $body['connectors'] ?? []);
-        }
-        $conn->commit();
-    } catch (Exception $e) {
-        if ($conn->inTransaction()) {
-            $conn->rollBack();
-        }
-        throw $e;
-    }
-
-    $params[0] = $diagramId;
-    $_GET['include_properties'] = 'false';
-    apiNmRespondFull($conn, $diagramId, 201);
-}
-
-/** paper_size / paper_orientation whitelists (save_diagram.php's). */
-function apiNmValidatePaper(array $body, ?array $current): array {
-    $sizes = ['A4', 'A3', 'A2', 'Letter', 'Tabloid'];
-    $size = array_key_exists('paper_size', $body)
-        ? (($v = trim((string)($body['paper_size'] ?? ''))) !== '' ? $v : null)
-        : ($current['paper_size'] ?? null);
-    if ($size !== null && !in_array($size, $sizes, true)) {
-        apiError(422, 'invalid_field', "Unknown paper_size '{$size}'. Valid: " . implode(', ', $sizes) . ' (null = no paper overlay).');
-    }
-    $orientation = array_key_exists('paper_orientation', $body)
-        ? (($v = trim((string)($body['paper_orientation'] ?? ''))) !== '' ? $v : null)
-        : ($current['paper_orientation'] ?? null);
-    if ($orientation !== null && !in_array($orientation, ['portrait', 'landscape'], true)) {
-        apiError(422, 'invalid_field', "paper_orientation must be 'portrait' or 'landscape'.");
-    }
-    return [$size, $orientation];
-}
-
-/**
- * Read a branding slot from body.branding.header/footer.{left,center,right}.
- * NULL = inherit org default, '' = explicit blank — both are meaningful, so
- * the fallback only applies when the key is absent entirely.
- */
-function apiNmBrandingSlot(array $body, string $band, string $slot, ?string $current): ?string {
-    if (!isset($body['branding']) || !is_array($body['branding'])
-        || !isset($body['branding'][$band]) || !is_array($body['branding'][$band])
-        || !array_key_exists($slot, $body['branding'][$band])) {
-        return $current;
-    }
-    $v = $body['branding'][$band][$slot];
-    return $v === null ? null : substr((string)$v, 0, 200);
-}
-
-/**
- * Full contents replace (create-with-contents + PATCH replace mode).
- * Nodes may carry a 'ref' (any string) that connectors reference via
- * from_ref/to_ref; from_object_id/to_object_id also work when the object
- * appears exactly once in the incoming set. Strict 422s where the UI's
- * save_diagram.php silently skips.
- */
-function apiNmReplaceContents(PDO $conn, int $diagramId, array $nodesIn, array $connectorsIn): void {
-    $conn->prepare("DELETE FROM network_diagram_connectors WHERE diagram_id = ?")->execute([$diagramId]);
-    $conn->prepare("DELETE FROM network_diagram_nodes WHERE diagram_id = ?")->execute([$diagramId]);
-
-    $place = null;
-    $refMap = [];       // ref -> new node id
-    $objectMap = [];    // object id -> [new node ids]
-    $insertNode = $conn->prepare(
-        "INSERT INTO network_diagram_nodes (diagram_id, cmdb_object_id, x, y, size, icon_override) VALUES (?, ?, ?, ?, ?, ?)"
-    );
-    foreach (array_values($nodesIn) as $i => $n) {
-        if (!is_array($n)) {
-            apiError(422, 'invalid_field', "nodes[{$i}] must be an object.");
-        }
-        [$objectId, $x, $y, $size, $icon, $ref] = apiNmValidateNodeInput($conn, $n, $i);
-        if ($x === null || $y === null) {
-            if ($place === null) {
-                $place = apiNmAutoPlacer($conn, $diagramId);
-            }
-            [$ax, $ay] = $place();
-            $x = $x ?? $ax;
-            $y = $y ?? $ay;
-        }
-        $insertNode->execute([$diagramId, $objectId, $x, $y, $size, $icon]);
-        $newId = (int)$conn->lastInsertId();
-        if ($ref !== null) {
-            $refMap[$ref] = $newId;
-        }
-        $objectMap[$objectId][] = $newId;
-    }
-
-    $insertConn = $conn->prepare(
-        "INSERT INTO network_diagram_connectors (diagram_id, from_node_id, to_node_id, cmdb_relationship_id, label, line_style) VALUES (?, ?, ?, ?, ?, ?)"
-    );
-    foreach (array_values($connectorsIn) as $i => $k) {
-        if (!is_array($k)) {
-            apiError(422, 'invalid_field', "connectors[{$i}] must be an object.");
-        }
-        $resolve = function (string $prefix) use ($k, $refMap, $objectMap, $i): int {
-            if (isset($k["{$prefix}_ref"]) && $k["{$prefix}_ref"] !== '') {
-                $ref = (string)$k["{$prefix}_ref"];
-                if (!isset($refMap[$ref])) {
-                    apiError(422, 'invalid_field', "connectors[{$i}]: '{$prefix}_ref' \"{$ref}\" doesn't match any node's 'ref' in this payload.");
-                }
-                return $refMap[$ref];
-            }
-            if (isset($k["{$prefix}_object_id"]) && (int)$k["{$prefix}_object_id"] > 0) {
-                $objectId = (int)$k["{$prefix}_object_id"];
-                $nodeIds = $objectMap[$objectId] ?? [];
-                if (count($nodeIds) === 0) {
-                    apiError(422, 'invalid_field', "connectors[{$i}]: object {$objectId} isn't among the nodes in this payload.");
-                }
-                if (count($nodeIds) > 1) {
-                    apiError(422, 'invalid_field', "connectors[{$i}]: object {$objectId} appears " . count($nodeIds) . " times — use '{$prefix}_ref' instead.");
-                }
-                return $nodeIds[0];
-            }
-            apiError(422, 'missing_field', "connectors[{$i}]: needs '{$prefix}_ref' or '{$prefix}_object_id'.");
-        };
-        $fromId = $resolve('from');
-        $toId   = $resolve('to');
-        if ($fromId === $toId) {
-            apiError(422, 'invalid_field', "connectors[{$i}]: cannot connect a node to itself.");
-        }
-        $relId = apiNmResolveRelationshipId($conn, $k['cmdb_relationship_id'] ?? null, $fromId, $toId);
-        $insertConn->execute([
-            $diagramId, $fromId, $toId, $relId,
-            ($v = trim((string)($k['label'] ?? ''))) !== '' ? substr($v, 0, 255) : null,
-            apiNmValidateLineStyle(trim((string)($k['line_style'] ?? 'solid')) ?: 'solid'),
-        ]);
-    }
+        $id = NetworkMapperService::createDiagram($conn, ActorContext::fromApiKey($apiKey), $body);
+        $_GET['include_properties'] = 'false';
+        apiNmRespondFull($conn, $id, 201);
+    } catch (ServiceError $e) { apiFailFromService($e); }
 }
 
 /** Respond with the full hydrated diagram (shared by create/update/version). */
@@ -687,92 +540,19 @@ function apiNmRespondFull(PDO $conn, int $diagramId, int $status = 200): void {
 
 // PATCH /network-diagrams/{id} — partial metadata; sending nodes/connectors = full contents replace.
 function apiNmDiagramsUpdate(PDO $conn, array $apiKey, array $params, array $body): void {
-    $current = apiNmLoadDiagram($conn, $params[0]);
-    apiNmRequireLeaf($current);
-    if (!$body) {
-        apiError(422, 'missing_field', 'No fields to update.');
-    }
-
-    $title = array_key_exists('title', $body) ? trim((string)$body['title']) : $current['title'];
-    if ($title === '') {
-        apiError(422, 'invalid_field', "'title' cannot be empty.");
-    }
-    [$paperSize, $paperOrientation] = apiNmValidatePaper($body, $current);
-
-    $conn->beginTransaction();
     try {
-        $conn->prepare(
-            "UPDATE network_diagrams
-             SET title = ?, description = ?, version_label = ?, paper_size = ?, paper_orientation = ?,
-                 header_left = ?, header_center = ?, header_right = ?,
-                 footer_left = ?, footer_center = ?, footer_right = ?,
-                 updated_datetime = UTC_TIMESTAMP()
-             WHERE id = ?"
-        )->execute([
-            $title,
-            array_key_exists('description', $body)
-                ? (($v = trim((string)($body['description'] ?? ''))) !== '' ? $v : null)
-                : $current['description'],
-            array_key_exists('version_label', $body)
-                ? (($v = trim((string)($body['version_label'] ?? ''))) !== '' ? substr($v, 0, 50) : null)
-                : $current['version_label'],
-            $paperSize,
-            $paperOrientation,
-            apiNmBrandingSlot($body, 'header', 'left',   $current['header_left']),
-            apiNmBrandingSlot($body, 'header', 'center', $current['header_center']),
-            apiNmBrandingSlot($body, 'header', 'right',  $current['header_right']),
-            apiNmBrandingSlot($body, 'footer', 'left',   $current['footer_left']),
-            apiNmBrandingSlot($body, 'footer', 'center', $current['footer_center']),
-            apiNmBrandingSlot($body, 'footer', 'right',  $current['footer_right']),
-            $params[0],
-        ]);
-
-        // Contents replace mode: either key present replaces BOTH sets (a
-        // node replace regenerates every node id, so old connectors can't
-        // survive it — send both, or use the incremental endpoints).
-        if ((isset($body['nodes']) && is_array($body['nodes'])) || (isset($body['connectors']) && is_array($body['connectors']))) {
-            apiNmReplaceContents($conn, $params[0], $body['nodes'] ?? [], $body['connectors'] ?? []);
-        }
-        $conn->commit();
-    } catch (Exception $e) {
-        if ($conn->inTransaction()) {
-            $conn->rollBack();
-        }
-        throw $e;
-    }
-
-    apiNmRespondFull($conn, $params[0]);
+        NetworkMapperService::saveDiagram($conn, ActorContext::fromApiKey($apiKey), (int)$params[0], $body);
+        apiNmRespondFull($conn, $params[0]);
+    } catch (ServiceError $e) { apiFailFromService($e); }
 }
 
 // DELETE /network-diagrams/{id} — leaf-only (parent resurfaces as current); ?chain=true deletes the whole chain.
 function apiNmDiagramsDelete(PDO $conn, array $apiKey, array $params, array $body): void {
-    $diagram = apiNmLoadDiagram($conn, $params[0]);
-    $chain = isset($_GET['chain']) && $_GET['chain'] === 'true';
-
-    if (!$chain && (int)$diagram['child_count'] > 0) {
-        apiError(409, 'conflict', 'This version has newer versions after it — deleting it would corrupt the chain. Delete the current (leaf) version, or pass ?chain=true to delete the whole chain.');
-    }
-
-    $ids = $chain ? apiNmChainIds($conn, $params[0]) : [$params[0]];
-    $ph = implode(',', array_fill(0, count($ids), '?'));
-
-    $conn->beginTransaction();
     try {
-        $conn->prepare("DELETE FROM network_diagram_connectors WHERE diagram_id IN ($ph)")->execute($ids);
-        $conn->prepare("DELETE FROM network_diagram_nodes WHERE diagram_id IN ($ph)")->execute($ids);
-        // Leaf-to-root so the parent self-FK never blocks.
-        foreach (array_reverse($ids) as $id) {
-            $conn->prepare("DELETE FROM network_diagrams WHERE id = ?")->execute([$id]);
-        }
-        $conn->commit();
-    } catch (Exception $e) {
-        if ($conn->inTransaction()) {
-            $conn->rollBack();
-        }
-        throw $e;
-    }
-
-    apiRespond(['id' => $params[0], 'deleted' => true, 'versions_deleted' => count($ids)]);
+        $chain = isset($_GET['chain']) && $_GET['chain'] === 'true';
+        $res = NetworkMapperService::deleteDiagram($conn, ActorContext::fromApiKey($apiKey), (int)$params[0], $chain);
+        apiRespond(['id' => $params[0], 'deleted' => true, 'versions_deleted' => $res['versions_deleted']]);
+    } catch (ServiceError $e) { apiFailFromService($e); }
 }
 
 // ---------------------------------------------------------------------------
@@ -793,67 +573,10 @@ function apiNmVersionsList(PDO $conn, array $apiKey, array $params, array $body)
 
 // POST /network-diagrams/{id}/versions — clone the leaf forward (the editor's "New version").
 function apiNmVersionsCreate(PDO $conn, array $apiKey, array $params, array $body): void {
-    $parent = apiNmLoadDiagram($conn, $params[0]);
-    apiNmRequireLeaf($parent); // can only version forward from the current version
-
-    $title = trim((string)($body['title'] ?? '')) ?: $parent['title'];
-    $conn->beginTransaction();
     try {
-        $conn->prepare(
-            "INSERT INTO network_diagrams
-             (parent_diagram_id, title, description, version_label, created_by_analyst_id,
-              paper_size, paper_orientation,
-              header_left, header_center, header_right, footer_left, footer_center, footer_right,
-              created_datetime, updated_datetime)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())"
-        )->execute([
-            $params[0],
-            $title,
-            array_key_exists('description', $body)
-                ? (($v = trim((string)($body['description'] ?? ''))) !== '' ? $v : null)
-                : $parent['description'],
-            array_key_exists('version_label', $body)
-                ? (($v = trim((string)($body['version_label'] ?? ''))) !== '' ? substr($v, 0, 50) : null)
-                : $parent['version_label'],
-            (int)$apiKey['analyst_id'],
-            $parent['paper_size'], $parent['paper_orientation'],
-            $parent['header_left'], $parent['header_center'], $parent['header_right'],
-            $parent['footer_left'], $parent['footer_center'], $parent['footer_right'],
-        ]);
-        $newId = (int)$conn->lastInsertId();
-
-        // Clone nodes with an old->new id map, then connectors remapped.
-        $nodeMap = [];
-        $nodes = $conn->prepare("SELECT * FROM network_diagram_nodes WHERE diagram_id = ? ORDER BY id");
-        $nodes->execute([$params[0]]);
-        $insertNode = $conn->prepare(
-            "INSERT INTO network_diagram_nodes (diagram_id, cmdb_object_id, x, y, size, icon_override) VALUES (?, ?, ?, ?, ?, ?)"
-        );
-        foreach ($nodes->fetchAll(PDO::FETCH_ASSOC) as $n) {
-            $insertNode->execute([$newId, (int)$n['cmdb_object_id'], (int)$n['x'], (int)$n['y'], $n['size'], $n['icon_override']]);
-            $nodeMap[(int)$n['id']] = (int)$conn->lastInsertId();
-        }
-        $conns = $conn->prepare("SELECT * FROM network_diagram_connectors WHERE diagram_id = ? ORDER BY id");
-        $conns->execute([$params[0]]);
-        $insertConn = $conn->prepare(
-            "INSERT INTO network_diagram_connectors (diagram_id, from_node_id, to_node_id, cmdb_relationship_id, label, line_style) VALUES (?, ?, ?, ?, ?, ?)"
-        );
-        foreach ($conns->fetchAll(PDO::FETCH_ASSOC) as $k) {
-            $insertConn->execute([
-                $newId, $nodeMap[(int)$k['from_node_id']], $nodeMap[(int)$k['to_node_id']],
-                $k['cmdb_relationship_id'] !== null ? (int)$k['cmdb_relationship_id'] : null,
-                $k['label'], $k['line_style'],
-            ]);
-        }
-        $conn->commit();
-    } catch (Exception $e) {
-        if ($conn->inTransaction()) {
-            $conn->rollBack();
-        }
-        throw $e;
-    }
-
-    apiNmRespondFull($conn, $newId, 201);
+        $newId = NetworkMapperService::createVersion($conn, ActorContext::fromApiKey($apiKey), (int)$params[0], $body);
+        apiNmRespondFull($conn, $newId, 201);
+    } catch (ServiceError $e) { apiFailFromService($e); }
 }
 
 // ---------------------------------------------------------------------------

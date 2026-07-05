@@ -38,9 +38,11 @@
  * The module's AI form-generation endpoints stay UI-only.
  */
 
-require_once dirname(__DIR__, 3) . '/workflow/includes/engine.php';
-
-const API_FORM_FIELD_TYPES = ['text', 'textarea', 'email', 'number', 'checkbox', 'checkboxes', 'dropdown', 'radio'];
+// Form WRITES (save/version/delete/submit) are delegated to FormsService
+// (includes/services/forms.php), which also pulls in the workflow engine for
+// the form.submitted dispatch. The read handlers + serializers stay here.
+require_once dirname(__DIR__, 3) . '/includes/service_context.php';
+require_once dirname(__DIR__, 3) . '/includes/services/forms.php';
 
 // ---------------------------------------------------------------------------
 // Serializers + loaders
@@ -161,47 +163,6 @@ function apiLoadFormSubmission(PDO $conn, int $formId, int $submissionId): array
     return $row;
 }
 
-/**
- * Validate an incoming fields array — 422s where save_form.php silently
- * drops or blindly stores. Returns rows ready for the positional sync.
- */
-function apiValidateFormFields(array $fields): array {
-    $out = [];
-    foreach ($fields as $i => $field) {
-        if (!is_array($field)) {
-            apiError(422, 'invalid_field', "fields[{$i}] must be an object.");
-        }
-        $label = trim((string)($field['label'] ?? ''));
-        if ($label === '') {
-            apiError(422, 'invalid_field', "fields[{$i}] needs a non-empty 'label'.");
-        }
-        $type = (string)($field['field_type'] ?? 'text');
-        if (!in_array($type, API_FORM_FIELD_TYPES, true)) {
-            apiError(422, 'invalid_field', "fields[{$i}]: unknown field_type '{$type}'. One of: " . implode(', ', API_FORM_FIELD_TYPES) . '.');
-        }
-        $options = $field['options'] ?? null;
-        if (is_array($options)) {
-            $options = json_encode(array_values($options));
-        } elseif ($options !== null && !is_string($options)) {
-            apiError(422, 'invalid_field', "fields[{$i}]: 'options' must be an array.");
-        }
-        $out[] = [
-            'field_type'  => $type,
-            'label'       => $label,
-            'options'     => $options,
-            'is_required' => (int)(bool)($field['is_required'] ?? false),
-        ];
-    }
-    return $out;
-}
-
-/** 409 unless the form is the chain leaf (the current editable version). */
-function apiRequireLeafForm(PDO $conn, array $formRow): void {
-    if (((int)$formRow['child_count']) > 0) {
-        apiError(409, 'conflict', 'This is a frozen historical version. Use the current (leaf) version of the chain.');
-    }
-}
-
 // ---------------------------------------------------------------------------
 // Forms
 // ---------------------------------------------------------------------------
@@ -233,165 +194,28 @@ function apiFormsGet(PDO $conn, array $apiKey, array $params, array $body): void
 
 // POST /forms — mirrors save_form.php's create branch (version_number 1).
 function apiFormsCreate(PDO $conn, array $apiKey, array $params, array $body): void {
-    $title = trim((string)($body['title'] ?? ''));
-    if ($title === '') {
-        apiError(422, 'missing_field', "'title' is required.");
-    }
-    $fields = apiValidateFormFields(is_array($body['fields'] ?? null) ? $body['fields'] : []);
-
-    $conn->beginTransaction();
     try {
-        $conn->prepare(
-            "INSERT INTO forms (title, description, is_active, created_by, modified_by, version_number, created_date, modified_date)
-             VALUES (?, ?, ?, ?, ?, 1, UTC_TIMESTAMP(), UTC_TIMESTAMP())"
-        )->execute([
-            $title,
-            trim((string)($body['description'] ?? '')),
-            isset($body['is_active']) ? (int)(bool)$body['is_active'] : 1,
-            (int)$apiKey['analyst_id'],
-            (int)$apiKey['analyst_id'],
-        ]);
-        $formId = (int)$conn->lastInsertId();
-
-        $ins = $conn->prepare(
-            "INSERT INTO form_fields (form_id, field_type, label, options, is_required, sort_order) VALUES (?, ?, ?, ?, ?, ?)"
-        );
-        foreach ($fields as $i => $f) {
-            $ins->execute([$formId, $f['field_type'], $f['label'], $f['options'], $f['is_required'], $i]);
-        }
-        $conn->commit();
-    } catch (Exception $e) {
-        if ($conn->inTransaction()) {
-            $conn->rollBack();
-        }
-        throw $e;
-    }
-    apiRespond(apiSerializeForm($conn, apiLoadForm($conn, $formId)), 201);
+        $res = FormsService::saveForm($conn, ActorContext::fromApiKey($apiKey), $body);
+        apiRespond(apiSerializeForm($conn, apiLoadForm($conn, $res['id'])), 201);
+    } catch (ServiceError $e) { apiFailFromService($e); }
 }
 
-// PATCH /forms/{id} — save_form.php's in-place save. Fields, when sent,
-// go through the UI's exact positional sync so existing field ids (and the
-// submission data keyed on them) survive edits.
+// PATCH /forms/{id} — save_form.php's in-place save (positional field sync).
 function apiFormsUpdate(PDO $conn, array $apiKey, array $params, array $body): void {
-    $current = apiLoadForm($conn, $params[0]);
-    apiRequireLeafForm($conn, $current);
-    if (!$body) {
-        apiError(422, 'missing_field', 'No fields to update.');
-    }
-    $title = array_key_exists('title', $body) ? trim((string)$body['title']) : $current['title'];
-    if ($title === '') {
-        apiError(422, 'invalid_field', "'title' cannot be empty.");
-    }
-    $fields = null;
-    if (array_key_exists('fields', $body)) {
-        if (!is_array($body['fields'])) {
-            apiError(422, 'invalid_field', "'fields' must be an array.");
-        }
-        $fields = apiValidateFormFields($body['fields']);
-    }
-
-    $conn->beginTransaction();
     try {
-        $conn->prepare(
-            "UPDATE forms SET title = ?, description = ?, is_active = ?, modified_by = ?, modified_date = UTC_TIMESTAMP()
-             WHERE id = ?"
-        )->execute([
-            $title,
-            array_key_exists('description', $body) ? trim((string)$body['description']) : $current['description'],
-            array_key_exists('is_active', $body) ? (int)(bool)$body['is_active'] : (int)$current['is_active'],
-            (int)$apiKey['analyst_id'],
-            $params[0],
-        ]);
-
-        if ($fields !== null) {
-            // The UI's positional sync: update existing ids in sort order,
-            // append extras, delete trailing leftovers (+ their data).
-            $stmt = $conn->prepare("SELECT id FROM form_fields WHERE form_id = ? ORDER BY sort_order");
-            $stmt->execute([$params[0]]);
-            $existingIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
-
-            $upd = $conn->prepare("UPDATE form_fields SET field_type = ?, label = ?, options = ?, is_required = ?, sort_order = ? WHERE id = ?");
-            $ins = $conn->prepare("INSERT INTO form_fields (form_id, field_type, label, options, is_required, sort_order) VALUES (?, ?, ?, ?, ?, ?)");
-            foreach ($fields as $i => $f) {
-                if ($i < count($existingIds)) {
-                    $upd->execute([$f['field_type'], $f['label'], $f['options'], $f['is_required'], $i, $existingIds[$i]]);
-                } else {
-                    $ins->execute([$params[0], $f['field_type'], $f['label'], $f['options'], $f['is_required'], $i]);
-                }
-            }
-            foreach (array_slice($existingIds, count($fields)) as $removeId) {
-                $conn->prepare("DELETE FROM form_submission_data WHERE field_id = ?")->execute([$removeId]);
-                $conn->prepare("DELETE FROM form_fields WHERE id = ?")->execute([$removeId]);
-            }
-        }
-        $conn->commit();
-    } catch (Exception $e) {
-        if ($conn->inTransaction()) {
-            $conn->rollBack();
-        }
-        throw $e;
-    }
-    apiRespond(apiSerializeForm($conn, apiLoadForm($conn, $params[0])));
+        $res = FormsService::saveForm($conn, ActorContext::fromApiKey($apiKey), array_merge($body, ['id' => (int)$params[0]]));
+        apiRespond(apiSerializeForm($conn, apiLoadForm($conn, $res['id'])));
+    } catch (ServiceError $e) { apiFailFromService($e); }
 }
 
 // DELETE /forms/{id} — one version (leaf only), or the whole chain with
 // ?chain=true. Always transactional, submissions + data removed explicitly.
 function apiFormsDelete(PDO $conn, array $apiKey, array $params, array $body): void {
-    $current = apiLoadForm($conn, $params[0]);
-    $chain = isset($_GET['chain']) && $_GET['chain'] === 'true';
-
-    if ($chain) {
-        // Walk to the root, then collect the whole chain (list_versions.php's walk).
-        $rootId = (int)$current['id'];
-        $hops = 0;
-        while ($hops < 500) {
-            $stmt = $conn->prepare("SELECT parent_form_id FROM forms WHERE id = ?");
-            $stmt->execute([$rootId]);
-            $parent = $stmt->fetchColumn();
-            if (!$parent) break;
-            $rootId = (int)$parent;
-            $hops++;
-        }
-        $ids   = [$rootId];
-        $queue = [$rootId];
-        while ($queue) {
-            $place = implode(',', array_fill(0, count($queue), '?'));
-            $stmt = $conn->prepare("SELECT id FROM forms WHERE parent_form_id IN ($place)");
-            $stmt->execute($queue);
-            $children = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
-            if (!$children) break;
-            $ids   = array_merge($ids, $children);
-            $queue = $children;
-        }
-    } else {
-        if (((int)$current['child_count']) > 0) {
-            apiError(409, 'conflict', 'This version has newer versions built on it. Delete the whole chain with ?chain=true, or delete the current (leaf) version.');
-        }
-        $ids = [(int)$current['id']];
-    }
-
-    $place = implode(',', array_fill(0, count($ids), '?'));
-    $conn->beginTransaction();
     try {
-        $conn->prepare(
-            "DELETE sd FROM form_submission_data sd
-             INNER JOIN form_submissions s ON sd.submission_id = s.id
-             WHERE s.form_id IN ($place)"
-        )->execute($ids);
-        $conn->prepare("DELETE FROM form_submissions WHERE form_id IN ($place)")->execute($ids);
-        $conn->prepare("DELETE FROM form_fields WHERE form_id IN ($place)")->execute($ids);
-        // Children before parents so fk_forms_parent never blocks.
-        foreach (array_reverse($ids) as $id) {
-            $conn->prepare("DELETE FROM forms WHERE id = ?")->execute([$id]);
-        }
-        $conn->commit();
-    } catch (Exception $e) {
-        if ($conn->inTransaction()) {
-            $conn->rollBack();
-        }
-        throw $e;
-    }
-    apiRespond(['id' => $params[0], 'deleted' => true, 'versions_deleted' => count($ids)]);
+        $chain = isset($_GET['chain']) && $_GET['chain'] === 'true';
+        $res = FormsService::deleteForm($conn, ActorContext::fromApiKey($apiKey), (int)$params[0], $chain);
+        apiRespond(['id' => $params[0], 'deleted' => true, 'versions_deleted' => $res['versions_deleted']]);
+    } catch (ServiceError $e) { apiFailFromService($e); }
 }
 
 // ---------------------------------------------------------------------------
@@ -434,39 +258,10 @@ function apiFormVersionsList(PDO $conn, array $apiKey, array $params, array $bod
 
 // POST /forms/{id}/versions — fork the leaf (create_version.php).
 function apiFormVersionsCreate(PDO $conn, array $apiKey, array $params, array $body): void {
-    $src = apiLoadForm($conn, $params[0]);
-    apiRequireLeafForm($conn, $src);
-
-    $conn->beginTransaction();
     try {
-        $conn->prepare(
-            "INSERT INTO forms (title, description, is_active, created_by, modified_by, parent_form_id, version_number, created_date, modified_date)
-             VALUES (?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())"
-        )->execute([
-            $src['title'],
-            $src['description'],
-            (int)$src['is_active'],
-            (int)$apiKey['analyst_id'],
-            (int)$apiKey['analyst_id'],
-            $params[0],
-            (int)$src['version_number'] + 1,
-        ]);
-        $newId = (int)$conn->lastInsertId();
-
-        $conn->prepare(
-            "INSERT INTO form_fields (form_id, field_type, label, options, is_required, sort_order)
-             SELECT ?, field_type, label, options, is_required, sort_order
-             FROM form_fields WHERE form_id = ? ORDER BY sort_order, id"
-        )->execute([$newId, $params[0]]);
-
-        $conn->commit();
-    } catch (Exception $e) {
-        if ($conn->inTransaction()) {
-            $conn->rollBack();
-        }
-        throw $e;
-    }
-    apiRespond(apiSerializeForm($conn, apiLoadForm($conn, $newId)), 201);
+        $res = FormsService::createVersion($conn, ActorContext::fromApiKey($apiKey), (int)$params[0]);
+        apiRespond(apiSerializeForm($conn, apiLoadForm($conn, $res['id'])), 201);
+    } catch (ServiceError $e) { apiFailFromService($e); }
 }
 
 // ---------------------------------------------------------------------------
@@ -521,138 +316,18 @@ function apiFormSubmissionsGet(PDO $conn, array $apiKey, array $params, array $b
 // POST /forms/{id}/submissions — submit_form.php: per-type validation, then
 // the form.submitted workflow dispatch (after commit, errors swallowed).
 function apiFormSubmissionsCreate(PDO $conn, array $apiKey, array $params, array $body): void {
-    $form = apiLoadForm($conn, $params[0]);
-    if (!(int)$form['is_active']) {
-        apiError(409, 'conflict', 'This form is inactive and cannot accept submissions.');
-    }
-
-    $data = (isset($body['data']) && is_array($body['data'])) ? $body['data'] : [];
-
-    $stmt = $conn->prepare("SELECT id, label, field_type, is_required FROM form_fields WHERE form_id = ?");
-    $stmt->execute([$params[0]]);
-    $fields = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    $fieldsById = [];
-    foreach ($fields as $f) {
-        $fieldsById[(int)$f['id']] = $f;
-    }
-
-    // Unknown field ids are a 422 (the UI inserts them blindly → FK error).
-    foreach (array_keys($data) as $fieldId) {
-        if (!isset($fieldsById[(int)$fieldId])) {
-            apiError(422, 'invalid_field', "Unknown field id for this form: {$fieldId}");
-        }
-    }
-
-    // Normalise values first (bools and arrays are accepted natively —
-    // the UI frontend pre-encodes, but machines shouldn't have to).
-    $normalised = [];
-    foreach ($data as $fieldId => $value) {
-        if (is_bool($value)) {
-            $value = $value ? '1' : '0';
-        }
-        if (is_array($value)) {
-            $value = json_encode(array_values($value));
-        }
-        $normalised[(int)$fieldId] = (string)$value;
-    }
-
-    // submit_form.php's exact per-type validation.
-    foreach ($fields as $field) {
-        $fid  = (int)$field['id'];
-        $val  = array_key_exists($fid, $normalised) ? $normalised[$fid] : '';
-        $type = $field['field_type'];
-
-        if ($field['is_required']) {
-            $isEmpty = false;
-            if ($val === '' || $val === null) {
-                $isEmpty = true;
-            } elseif ($type === 'checkbox' && (string)$val === '0') {
-                $isEmpty = true;
-            } elseif ($type === 'checkboxes') {
-                $decoded = json_decode((string)$val, true);
-                $isEmpty = !is_array($decoded) || count($decoded) === 0;
-            }
-            if ($isEmpty) {
-                apiError(422, 'missing_field', '"' . $field['label'] . '" is required.');
-            }
-        }
-        if ($val !== '' && $val !== null) {
-            if ($type === 'email' && !filter_var((string)$val, FILTER_VALIDATE_EMAIL)) {
-                apiError(422, 'invalid_field', '"' . $field['label'] . '" must be a valid email address.');
-            }
-            if ($type === 'number' && !is_numeric((string)$val)) {
-                apiError(422, 'invalid_field', '"' . $field['label'] . '" must be a number.');
-            }
-        }
-    }
-
-    $conn->beginTransaction();
     try {
-        $conn->prepare(
-            "INSERT INTO form_submissions (form_id, submitted_by, submitted_date) VALUES (?, ?, UTC_TIMESTAMP())"
-        )->execute([$params[0], (int)$apiKey['analyst_id']]);
-        $submissionId = (int)$conn->lastInsertId();
-
-        $ins = $conn->prepare("INSERT INTO form_submission_data (submission_id, field_id, field_value) VALUES (?, ?, ?)");
-        foreach ($normalised as $fieldId => $value) {
-            $ins->execute([$submissionId, $fieldId, $value]);
-        }
-        $conn->commit();
-    } catch (Exception $e) {
-        if ($conn->inTransaction()) {
-            $conn->rollBack();
-        }
-        throw $e;
-    }
-
-    // Workflow: form.submitted with the label-keyed answers map + the first
-    // email-type answer surfaced — submit_form.php's exact payload. The
-    // engine must never break the submission, so errors are swallowed.
-    try {
-        $submissionFields = [];
-        $submissionEmail  = '';
-        foreach ($normalised as $fieldId => $value) {
-            if (!isset($fieldsById[$fieldId])) continue;
-            $label = $fieldsById[$fieldId]['label'];
-            $decoded = json_decode($value, true);
-            $flat = is_array($decoded) ? implode(', ', $decoded) : $value;
-            $submissionFields[$label] = $flat;
-            if ($submissionEmail === '' && $fieldsById[$fieldId]['field_type'] === 'email' && $flat !== '') {
-                $submissionEmail = $flat;
-            }
-        }
-        WorkflowEngine::dispatch('form.submitted', [
-            'form' => [
-                'id'   => $params[0],
-                'name' => $form['title'],
-            ],
-            'submission' => [
-                'id'     => $submissionId,
-                'email'  => $submissionEmail,
-                'fields' => $submissionFields,
-            ],
-        ]);
-    } catch (Exception $wfEx) {
-        error_log('Workflow dispatch error in API form submission: ' . $wfEx->getMessage());
-    }
-
-    apiRespond(apiSerializeFormSubmission($conn, apiLoadFormSubmission($conn, $params[0], $submissionId)), 201);
+        $data = (isset($body['data']) && is_array($body['data'])) ? $body['data'] : [];
+        $submissionId = FormsService::submitForm($conn, ActorContext::fromApiKey($apiKey), (int)$params[0], $data);
+        apiRespond(apiSerializeFormSubmission($conn, apiLoadFormSubmission($conn, $params[0], $submissionId)), 201);
+    } catch (ServiceError $e) { apiFailFromService($e); }
 }
 
 // DELETE /forms/{id}/submissions/{sid} — delete_submission.php, but with the
 // data rows removed explicitly (grown installs may lack the cascade FK).
 function apiFormSubmissionsDelete(PDO $conn, array $apiKey, array $params, array $body): void {
-    apiLoadFormSubmission($conn, $params[0], $params[1]);
-    $conn->beginTransaction();
     try {
-        $conn->prepare("DELETE FROM form_submission_data WHERE submission_id = ?")->execute([$params[1]]);
-        $conn->prepare("DELETE FROM form_submissions WHERE id = ?")->execute([$params[1]]);
-        $conn->commit();
-    } catch (Exception $e) {
-        if ($conn->inTransaction()) {
-            $conn->rollBack();
-        }
-        throw $e;
-    }
-    apiRespond(['id' => $params[1], 'deleted' => true]);
+        FormsService::deleteSubmission($conn, ActorContext::fromApiKey($apiKey), (int)$params[1], (int)$params[0]);
+        apiRespond(['id' => $params[1], 'deleted' => true]);
+    } catch (ServiceError $e) { apiFailFromService($e); }
 }

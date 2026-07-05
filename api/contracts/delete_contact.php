@@ -20,9 +20,11 @@ try {
 
     $conn = connectToDatabase();
 
+    $row = $conn->query("SELECT CONCAT_WS(' ', first_name, surname) FROM contacts WHERE id = " . (int)$id)->fetchColumn();
     $stmt = $conn->prepare("DELETE FROM contacts WHERE id = ?");
     $stmt->execute([$id]);
 
+    wf_emit('supplier_contact', 'deleted', (int)$id, $row ?: null);
     echo json_encode(['success' => true]);
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);

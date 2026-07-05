@@ -27,9 +27,11 @@ try {
     $stmt = $conn->prepare("UPDATE contracts SET contract_status_id = NULL WHERE contract_status_id = ?");
     $stmt->execute([$id]);
 
+    $name = $conn->query("SELECT name FROM contract_statuses WHERE id = " . (int)$id)->fetchColumn() ?: null;
     $stmt = $conn->prepare("DELETE FROM contract_statuses WHERE id = ?");
     $stmt->execute([$id]);
 
+    wf_emit('contract_status', 'deleted', (int)$id, $name);
     echo json_encode(['success' => true]);
 
 } catch (Exception $e) {

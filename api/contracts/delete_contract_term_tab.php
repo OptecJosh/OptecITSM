@@ -27,9 +27,11 @@ try {
     $stmt = $conn->prepare("DELETE FROM contract_term_values WHERE term_tab_id = ?");
     $stmt->execute([$id]);
 
+    $name = $conn->query("SELECT name FROM contract_term_tabs WHERE id = " . (int)$id)->fetchColumn() ?: null;
     $stmt = $conn->prepare("DELETE FROM contract_term_tabs WHERE id = ?");
     $stmt->execute([$id]);
 
+    wf_emit('contract_term_tab', 'deleted', (int)$id, $name);
     echo json_encode(['success' => true]);
 
 } catch (Exception $e) {

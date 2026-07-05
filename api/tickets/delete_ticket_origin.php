@@ -66,9 +66,11 @@ try {
         }
     }
 
+    $name = $conn->query("SELECT name FROM ticket_origins WHERE id = " . (int)$id)->fetchColumn() ?: null;
     $stmt = $conn->prepare("DELETE FROM ticket_origins WHERE id = ?");
     $stmt->execute([$id]);
 
+    wf_emit('ticket_origin', 'deleted', (int)$id, $name);
     echo json_encode(['success' => true, 'message' => 'Ticket origin deleted successfully']);
 
 } catch (Exception $e) {

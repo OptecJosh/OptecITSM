@@ -28,9 +28,11 @@ try {
         throw new Exception("Cannot delete: $useCount relationship(s) currently use this type.");
     }
 
+    $name = $conn->query("SELECT verb FROM cmdb_relationship_types WHERE id = " . (int)$id)->fetchColumn() ?: null;
     $stmt = $conn->prepare("DELETE FROM cmdb_relationship_types WHERE id = ?");
     $stmt->execute([$id]);
 
+    wf_emit('cmdb_relationship_type', 'deleted', (int)$id, $name);
     echo json_encode(['success' => true]);
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);

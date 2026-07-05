@@ -27,9 +27,11 @@ try {
     $stmt = $conn->prepare("UPDATE assets SET asset_type_id = NULL WHERE asset_type_id = ?");
     $stmt->execute([$id]);
 
+    $name = $conn->query("SELECT name FROM asset_types WHERE id = " . (int)$id)->fetchColumn() ?: null;
     $stmt = $conn->prepare("DELETE FROM asset_types WHERE id = ?");
     $stmt->execute([$id]);
 
+    wf_emit('asset_type', 'deleted', (int)$id, $name);
     echo json_encode(['success' => true]);
 
 } catch (Exception $e) {

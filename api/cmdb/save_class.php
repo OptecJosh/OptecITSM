@@ -64,6 +64,7 @@ try {
         );
         $stmt->execute([$key, $name, $description ?: null, $iconId, $displayOrder, $isActive]);
         $newId = (int)$conn->lastInsertId();
+        wf_emit('cmdb_class', 'created', $newId, $name);
         echo json_encode(['success' => true, 'id' => $newId, 'class_key' => $key]);
     } else {
         // Refuse a key change that would collide with another class
@@ -79,6 +80,7 @@ try {
               WHERE id = ?"
         );
         $stmt->execute([$key, $name, $description ?: null, $iconId, $displayOrder, $isActive, $id]);
+        wf_emit('cmdb_class', 'updated', $id, $name);
         echo json_encode(['success' => true, 'id' => $id]);
     }
 } catch (Exception $e) {

@@ -38,6 +38,7 @@ try {
         $stmt->execute([$name, $description, $display_order, $is_active]);
     }
 
+    wf_emit('asset_type', $id ? 'updated' : 'created', $id ? (int)$id : (int)$conn->lastInsertId(), $name);
     echo json_encode(['success' => true]);
 
 } catch (Exception $e) {

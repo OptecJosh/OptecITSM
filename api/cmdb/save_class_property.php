@@ -118,6 +118,7 @@ try {
     }
 
     $conn->commit();
+    wf_emit('cmdb_property', $id === null ? 'created' : 'updated', $newId, $label);
     echo json_encode(['success' => true, 'id' => $newId, 'property_key' => $key]);
 } catch (Exception $e) {
     if (isset($conn) && $conn->inTransaction()) $conn->rollBack();

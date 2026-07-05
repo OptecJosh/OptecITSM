@@ -39,8 +39,10 @@ try {
         $stmt = $conn->prepare($sql);
         $stmt->execute([$supplier_id ?: null, $first_name, $surname, $email ?: null, $mobile ?: null, $job_title, $direct_dial, $switchboard, $is_active]);
         $id = $conn->lastInsertId();
+        $isNew = true;
     }
 
+    wf_emit('supplier_contact', empty($isNew) ? 'updated' : 'created', (int)$id, trim("$first_name $surname"));
     echo json_encode(['success' => true, 'id' => $id]);
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);

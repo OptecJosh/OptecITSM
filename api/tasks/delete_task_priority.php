@@ -34,9 +34,11 @@ try {
         throw new Exception("Cannot delete: this priority is used by $count task(s). Reassign them or set the priority to inactive instead.");
     }
 
+    $name = $conn->query("SELECT name FROM task_priorities WHERE id = " . (int)$id)->fetchColumn() ?: null;
     $stmt = $conn->prepare("DELETE FROM task_priorities WHERE id = ?");
     $stmt->execute([$id]);
 
+    wf_emit('task_priority', 'deleted', (int)$id, $name);
     echo json_encode(['success' => true]);
 
 } catch (Exception $e) {

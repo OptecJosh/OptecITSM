@@ -56,6 +56,7 @@ try {
     }
 
     $conn->commit();
+    wf_emit('task_priority', $id ? 'updated' : 'created', $id ? (int)$id : (int)$conn->lastInsertId(), $name);
     echo json_encode(['success' => true]);
 
 } catch (Exception $e) {

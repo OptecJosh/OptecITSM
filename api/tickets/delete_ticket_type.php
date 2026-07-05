@@ -62,9 +62,11 @@ try {
         }
     }
 
+    $name = $conn->query("SELECT name FROM ticket_types WHERE id = " . (int)$id)->fetchColumn() ?: null;
     $stmt = $conn->prepare("DELETE FROM ticket_types WHERE id = ?");
     $stmt->execute([$id]);
 
+    wf_emit('ticket_type', 'deleted', (int)$id, $name);
     echo json_encode(['success' => true]);
 
 } catch (Exception $e) {

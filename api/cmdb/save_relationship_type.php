@@ -42,7 +42,9 @@ try {
              VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP())"
         );
         $stmt->execute([$verb, $inverse, $description ?: null, $displayOrder, $isActive]);
-        echo json_encode(['success' => true, 'id' => (int)$conn->lastInsertId()]);
+        $newId = (int)$conn->lastInsertId();
+        wf_emit('cmdb_relationship_type', 'created', $newId, $verb);
+        echo json_encode(['success' => true, 'id' => $newId]);
     } else {
         $stmt = $conn->prepare(
             "UPDATE cmdb_relationship_types
@@ -50,6 +52,7 @@ try {
               WHERE id = ?"
         );
         $stmt->execute([$verb, $inverse, $description ?: null, $displayOrder, $isActive, $id]);
+        wf_emit('cmdb_relationship_type', 'updated', $id, $verb);
         echo json_encode(['success' => true, 'id' => $id]);
     }
 } catch (Exception $e) {

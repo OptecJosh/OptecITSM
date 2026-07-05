@@ -32,11 +32,14 @@ try {
     if ($id) {
         $stmt = $conn->prepare("UPDATE task_tags SET name = ?, colour = ?, display_order = ? WHERE id = ?");
         $stmt->execute([$name, $colour ?: null, $display_order, (int)$id]);
+        wf_emit('task_tag', 'updated', (int)$id, $name);
         echo json_encode(['success' => true, 'id' => (int)$id]);
     } else {
         $stmt = $conn->prepare("INSERT INTO task_tags (name, colour, display_order) VALUES (?, ?, ?)");
         $stmt->execute([$name, $colour ?: null, $display_order]);
-        echo json_encode(['success' => true, 'id' => (int)$conn->lastInsertId()]);
+        $newId = (int)$conn->lastInsertId();
+        wf_emit('task_tag', 'created', $newId, $name);
+        echo json_encode(['success' => true, 'id' => $newId]);
     }
 
 } catch (Exception $e) {

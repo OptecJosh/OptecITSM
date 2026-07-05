@@ -64,11 +64,14 @@ try {
         }
         $stmt = $conn->prepare("UPDATE asset_locations SET name = ?, parent_id = ?, display_order = ? WHERE id = ?");
         $stmt->execute([$name, $parentId, $displayOrder, $id]);
+        wf_emit('asset_location', 'updated', (int)$id, $name);
         echo json_encode(['success' => true, 'id' => $id]);
     } else {
         $stmt = $conn->prepare("INSERT INTO asset_locations (name, parent_id, display_order) VALUES (?, ?, ?)");
         $stmt->execute([$name, $parentId, $displayOrder]);
-        echo json_encode(['success' => true, 'id' => (int)$conn->lastInsertId()]);
+        $newId = (int)$conn->lastInsertId();
+        wf_emit('asset_location', 'created', $newId, $name);
+        echo json_encode(['success' => true, 'id' => $newId]);
     }
 
 } catch (Exception $e) {

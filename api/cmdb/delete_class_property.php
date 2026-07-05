@@ -28,9 +28,11 @@ try {
         throw new Exception("Cannot delete: $valueCount object(s) have a value set for this property. Clear those values first.");
     }
 
+    $name = $conn->query("SELECT label FROM cmdb_class_properties WHERE id = " . (int)$id)->fetchColumn() ?: null;
     $stmt = $conn->prepare("DELETE FROM cmdb_class_properties WHERE id = ?");
     $stmt->execute([$id]);
 
+    wf_emit('cmdb_property', 'deleted', (int)$id, $name);
     echo json_encode(['success' => true]);
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);

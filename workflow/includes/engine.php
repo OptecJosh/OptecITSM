@@ -142,19 +142,43 @@ class WorkflowEngine
      */
     private static function crudEntities(): array
     {
-        // NOTE: every entity here is WIRED to fire from its module's write path.
-        // The other-module settings lookups (ticket/asset/change/problem/task/cmdb
-        // statuses+priorities etc.) + supplier_contact / software_licence /
-        // network_diagram are a follow-up batch — they are intentionally NOT
-        // registered until wired, so there are no dead triggers in the picker.
+        // Every entity here is WIRED to fire from its module's write path (a
+        // service method or a settings endpoint) — no dead triggers.
         return [
             // Domain entities
             'contract'          => ['A contract', ['contract.id', 'contract.title', 'contract.status_id', 'contract.supplier_id']],
             'supplier'          => ['A supplier', ['supplier.id', 'supplier.name', 'supplier.status_id', 'supplier.type_id']],
+            'supplier_contact'  => ['A supplier contact', ['supplier_contact.id', 'supplier_contact.name', 'supplier_contact.supplier_id']],
             'calendar_event'    => ['A calendar event', ['calendar_event.id', 'calendar_event.title', 'calendar_event.category_id']],
             'status_service'    => ['A monitored service', ['status_service.id', 'status_service.name']],
             'morning_check'     => ['A morning check', ['morning_check.id', 'morning_check.name']],
-            // Settings / lookups (wired from their service)
+            'software_licence'  => ['A software licence', ['software_licence.id', 'software_licence.name']],
+            'network_diagram'   => ['A network diagram', ['network_diagram.id', 'network_diagram.name']],
+            // Settings / lookups
+            'ticket_status'     => ['A ticket status', ['ticket_status.id', 'ticket_status.name']],
+            'ticket_priority'   => ['A ticket priority', ['ticket_priority.id', 'ticket_priority.name']],
+            'ticket_type'       => ['A ticket type', ['ticket_type.id', 'ticket_type.name']],
+            'ticket_origin'     => ['A ticket origin', ['ticket_origin.id', 'ticket_origin.name']],
+            'asset_type'        => ['An asset type', ['asset_type.id', 'asset_type.name']],
+            'asset_status'      => ['An asset status', ['asset_status.id', 'asset_status.name']],
+            'asset_location'    => ['An asset location', ['asset_location.id', 'asset_location.name']],
+            'change_status'     => ['A change status', ['change_status.id', 'change_status.name']],
+            'change_type'       => ['A change type', ['change_type.id', 'change_type.name']],
+            'change_priority'   => ['A change priority', ['change_priority.id', 'change_priority.name']],
+            'change_impact'     => ['A change impact', ['change_impact.id', 'change_impact.name']],
+            'problem_status'    => ['A problem status', ['problem_status.id', 'problem_status.name']],
+            'problem_priority'  => ['A problem priority', ['problem_priority.id', 'problem_priority.name']],
+            'task_status'       => ['A task status', ['task_status.id', 'task_status.name']],
+            'task_priority'     => ['A task priority', ['task_priority.id', 'task_priority.name']],
+            'task_tag'          => ['A task tag', ['task_tag.id', 'task_tag.name']],
+            'cmdb_class'        => ['A CMDB class', ['cmdb_class.id', 'cmdb_class.name']],
+            'cmdb_property'     => ['A CMDB class property', ['cmdb_property.id', 'cmdb_property.name']],
+            'cmdb_relationship_type' => ['A CMDB relationship type', ['cmdb_relationship_type.id', 'cmdb_relationship_type.name']],
+            'contract_status'   => ['A contract status', ['contract_status.id', 'contract_status.name']],
+            'contract_term_tab' => ['A contract term tab', ['contract_term_tab.id', 'contract_term_tab.name']],
+            'payment_schedule'  => ['A payment schedule', ['payment_schedule.id', 'payment_schedule.name']],
+            'supplier_status'   => ['A supplier status', ['supplier_status.id', 'supplier_status.name']],
+            'supplier_type'     => ['A supplier type', ['supplier_type.id', 'supplier_type.name']],
             'calendar_category' => ['A calendar category', ['calendar_category.id', 'calendar_category.name']],
             'incident_status'   => ['A status-page incident status', ['incident_status.id', 'incident_status.name']],
             'impact_level'      => ['A status-page impact level', ['impact_level.id', 'impact_level.name']],

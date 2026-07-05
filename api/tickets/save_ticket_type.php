@@ -95,6 +95,7 @@ try {
         $stmt->execute([$name, $description, $display_order, $is_active, $scopeTenant]);
     }
 
+    wf_emit('ticket_type', $id ? 'updated' : 'created', $id ? (int)$id : (int)$conn->lastInsertId(), $name);
     echo json_encode(['success' => true]);
 
 } catch (Exception $e) {

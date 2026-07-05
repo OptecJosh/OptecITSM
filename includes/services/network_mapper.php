@@ -27,6 +27,7 @@
  */
 
 require_once __DIR__ . '/../service_context.php';
+require_once dirname(__DIR__, 2) . '/workflow/includes/engine.php';
 
 class NetworkMapperService
 {
@@ -79,6 +80,7 @@ class NetworkMapperService
             if ($conn->inTransaction()) $conn->rollBack();
             throw $e;
         }
+        WorkflowEngine::emitCrud('network_diagram', 'created', $diagramId, $title);
         return $diagramId;
     }
 
@@ -133,6 +135,7 @@ class NetworkMapperService
             if ($conn->inTransaction()) $conn->rollBack();
             throw $e;
         }
+        WorkflowEngine::emitCrud('network_diagram', 'updated', $diagramId, $title);
         return $diagramId;
     }
 
@@ -158,6 +161,7 @@ class NetworkMapperService
             if ($conn->inTransaction()) $conn->rollBack();
             throw $e;
         }
+        WorkflowEngine::emitCrud('network_diagram', 'deleted', $diagramId, $diagram['title'] ?? null);
         return ['id' => $diagramId, 'versions_deleted' => count($ids)];
     }
 
@@ -220,6 +224,7 @@ class NetworkMapperService
             if ($conn->inTransaction()) $conn->rollBack();
             throw $e;
         }
+        WorkflowEngine::emitCrud('network_diagram', 'created', $newId, $title);
         return $newId;
     }
 

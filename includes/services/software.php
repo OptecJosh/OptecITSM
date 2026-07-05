@@ -25,6 +25,7 @@
  */
 
 require_once __DIR__ . '/../service_context.php';
+require_once dirname(__DIR__, 2) . '/workflow/includes/engine.php';
 
 class SoftwareService
 {
@@ -52,6 +53,7 @@ class SoftwareService
                 $f['notice_period_days'], $f['portal_url'], $f['cost'], $f['currency'], $f['purchase_date'],
                 $f['vendor_contact'], $f['notes'], $f['status'], $id,
             ]);
+            WorkflowEngine::emitCrud('software_licence', 'updated', $id, $f['licence_type']);
             return ['id' => $id, 'created' => false];
         }
 
@@ -67,14 +69,17 @@ class SoftwareService
             $f['notice_period_days'], $f['portal_url'], $f['cost'], $f['currency'], $f['purchase_date'],
             $f['vendor_contact'], $f['notes'], $f['status'], $ctx->actorId,
         ]);
-        return ['id' => (int)$conn->lastInsertId(), 'created' => true];
+        $newId = (int)$conn->lastInsertId();
+        WorkflowEngine::emitCrud('software_licence', 'created', $newId, $f['licence_type']);
+        return ['id' => $newId, 'created' => true];
     }
 
     /** Delete a licence (leaf table). Returns the id. 404 if it does not exist. */
     public static function deleteLicence(PDO $conn, ActorContext $ctx, int $id): int
     {
-        self::loadLicenceRow($conn, $id);
+        $row = self::loadLicenceRow($conn, $id);
         $conn->prepare("DELETE FROM software_licences WHERE id = ?")->execute([$id]);
+        WorkflowEngine::emitCrud('software_licence', 'deleted', $id, $row['licence_type'] ?? null);
         return $id;
     }
 

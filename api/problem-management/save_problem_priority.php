@@ -18,10 +18,13 @@ try {
     if ($id > 0) {
         $conn->prepare("UPDATE problem_priorities SET name=?, colour=?, is_default=?, display_order=?, is_active=? WHERE id=?")
              ->execute([$name, $colour, $isDefault, $order, $isActive, $id]);
+        wf_emit('problem_priority', 'updated', $id, $name);
         echo json_encode(['success' => true, 'id' => $id]);
     } else {
         $conn->prepare("INSERT INTO problem_priorities (name, colour, is_default, display_order, is_active) VALUES (?, ?, ?, ?, ?)")
              ->execute([$name, $colour, $isDefault, $order, $isActive]);
-        echo json_encode(['success' => true, 'id' => (int) $conn->lastInsertId()]);
+        $newId = (int) $conn->lastInsertId();
+        wf_emit('problem_priority', 'created', $newId, $name);
+        echo json_encode(['success' => true, 'id' => $newId]);
     }
 } catch (Exception $e) { echo json_encode(['success' => false, 'error' => $e->getMessage()]); }

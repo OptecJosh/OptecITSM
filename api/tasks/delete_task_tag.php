@@ -20,9 +20,11 @@ try {
     if (!$id) throw new Exception('Tag ID is required');
 
     $conn = connectToDatabase();
+    $name = $conn->query("SELECT name FROM task_tags WHERE id = " . (int)$id)->fetchColumn() ?: null;
     $stmt = $conn->prepare("DELETE FROM task_tags WHERE id = ?");
     $stmt->execute([$id]);
 
+    wf_emit('task_tag', 'deleted', (int)$id, $name);
     echo json_encode(['success' => true]);
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);

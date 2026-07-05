@@ -37,9 +37,11 @@ try {
         throw new Exception("Cannot delete: this priority is used by $count ticket(s). Reassign them or set the priority to inactive instead.");
     }
 
+    $name = $conn->query("SELECT name FROM ticket_priorities WHERE id = " . (int)$id)->fetchColumn() ?: null;
     $stmt = $conn->prepare("DELETE FROM ticket_priorities WHERE id = ?");
     $stmt->execute([$id]);
 
+    wf_emit('ticket_priority', 'deleted', (int)$id, $name);
     echo json_encode(['success' => true]);
 
 } catch (Exception $e) {

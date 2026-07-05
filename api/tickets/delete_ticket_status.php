@@ -39,9 +39,11 @@ try {
         throw new Exception("Cannot delete: this status is used by $count ticket(s). Reassign them to a different status first.");
     }
 
+    $name = $conn->query("SELECT name FROM ticket_statuses WHERE id = " . (int)$id)->fetchColumn() ?: null;
     $stmt = $conn->prepare("DELETE FROM ticket_statuses WHERE id = ?");
     $stmt->execute([$id]);
 
+    wf_emit('ticket_status', 'deleted', (int)$id, $name);
     echo json_encode(['success' => true]);
 
 } catch (Exception $e) {

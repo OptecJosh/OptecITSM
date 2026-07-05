@@ -28,10 +28,12 @@ try {
         throw new Exception("Cannot delete: $objectCount object(s) currently use this class. Delete or reassign them first.");
     }
 
+    $name = $conn->query("SELECT name FROM cmdb_classes WHERE id = " . (int)$id)->fetchColumn() ?: null;
     // Cascade-delete the property definitions and dropdown options via FK.
     $stmt = $conn->prepare("DELETE FROM cmdb_classes WHERE id = ?");
     $stmt->execute([$id]);
 
+    wf_emit('cmdb_class', 'deleted', (int)$id, $name);
     echo json_encode(['success' => true]);
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);

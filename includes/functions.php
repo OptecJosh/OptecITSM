@@ -44,4 +44,22 @@ function getAnalystAllowedModules($conn, $analyst_id) {
 
     return $rows;
 }
+
+/**
+ * Fire a settings/CRUD workflow event ({entity}.{created|updated|deleted}) from a
+ * UI settings endpoint, without each file having to require the workflow engine.
+ * Lazily loads the engine and is fully self-safe — swallows any Throwable
+ * (including a missing engine on a minimal install) so it can NEVER affect the
+ * save it follows. Funnels into the exact same WorkflowEngine::dispatch() path as
+ * every other event, so a webhook fires identically however it was emitted.
+ */
+function wf_emit(string $entity, string $action, int $id, ?string $name = null): void
+{
+    try {
+        require_once __DIR__ . '/../workflow/includes/engine.php';
+        WorkflowEngine::emitCrud($entity, $action, $id, $name);
+    } catch (Throwable $e) {
+        error_log('wf_emit(' . $entity . '.' . $action . ') error: ' . $e->getMessage());
+    }
+}
 ?>

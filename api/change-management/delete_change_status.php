@@ -37,9 +37,11 @@ try {
         throw new Exception("Cannot delete: this status is used by $count change(s). Reassign them or set the status to inactive instead.");
     }
 
+    $name = $conn->query("SELECT name FROM change_statuses WHERE id = " . (int)$id)->fetchColumn() ?: null;
     $stmt = $conn->prepare("DELETE FROM change_statuses WHERE id = ?");
     $stmt->execute([$id]);
 
+    wf_emit('change_status', 'deleted', (int)$id, $name);
     echo json_encode(['success' => true]);
 
 } catch (Exception $e) {

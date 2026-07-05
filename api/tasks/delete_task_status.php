@@ -34,9 +34,11 @@ try {
         throw new Exception("Cannot delete: this status is used by $count task(s). Reassign them or set the status to inactive instead.");
     }
 
+    $name = $conn->query("SELECT name FROM task_statuses WHERE id = " . (int)$id)->fetchColumn() ?: null;
     $stmt = $conn->prepare("DELETE FROM task_statuses WHERE id = ?");
     $stmt->execute([$id]);
 
+    wf_emit('task_status', 'deleted', (int)$id, $name);
     echo json_encode(['success' => true]);
 
 } catch (Exception $e) {

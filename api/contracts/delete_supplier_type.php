@@ -27,9 +27,11 @@ try {
     $stmt = $conn->prepare("UPDATE suppliers SET supplier_type_id = NULL WHERE supplier_type_id = ?");
     $stmt->execute([$id]);
 
+    $name = $conn->query("SELECT name FROM supplier_types WHERE id = " . (int)$id)->fetchColumn() ?: null;
     $stmt = $conn->prepare("DELETE FROM supplier_types WHERE id = ?");
     $stmt->execute([$id]);
 
+    wf_emit('supplier_type', 'deleted', (int)$id, $name);
     echo json_encode(['success' => true]);
 
 } catch (Exception $e) {

@@ -36,9 +36,11 @@ try {
         throw new Exception("Cannot delete: this change type is used by $count change(s). Reassign them or set the type to inactive instead.");
     }
 
+    $name = $conn->query("SELECT name FROM change_types WHERE id = " . (int)$id)->fetchColumn() ?: null;
     $stmt = $conn->prepare("DELETE FROM change_types WHERE id = ?");
     $stmt->execute([$id]);
 
+    wf_emit('change_type', 'deleted', (int)$id, $name);
     echo json_encode(['success' => true]);
 
 } catch (Exception $e) {

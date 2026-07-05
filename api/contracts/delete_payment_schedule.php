@@ -27,9 +27,11 @@ try {
     $stmt = $conn->prepare("UPDATE contracts SET payment_schedule_id = NULL WHERE payment_schedule_id = ?");
     $stmt->execute([$id]);
 
+    $name = $conn->query("SELECT name FROM payment_schedules WHERE id = " . (int)$id)->fetchColumn() ?: null;
     $stmt = $conn->prepare("DELETE FROM payment_schedules WHERE id = ?");
     $stmt->execute([$id]);
 
+    wf_emit('payment_schedule', 'deleted', (int)$id, $name);
     echo json_encode(['success' => true]);
 
 } catch (Exception $e) {

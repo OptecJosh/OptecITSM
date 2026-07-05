@@ -32,9 +32,11 @@ try {
         throw new Exception('This location has sub-locations. Delete or move them first.');
     }
 
+    $name = $conn->query("SELECT name FROM asset_locations WHERE id = " . (int)$id)->fetchColumn() ?: null;
     $stmt = $conn->prepare("DELETE FROM asset_locations WHERE id = ?");
     $stmt->execute([$id]);
 
+    wf_emit('asset_location', 'deleted', (int)$id, $name);
     echo json_encode(['success' => true]);
 
 } catch (Exception $e) {

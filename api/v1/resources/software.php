@@ -20,7 +20,14 @@
  * The legacy plaintext apikeys management that lives in this module's
  * settings is NOT part of this API (v1 has its own key system).
  * Software tables are install-wide (no tenant_id — matches the UI).
+ *
+ * Licence WRITES are delegated to SoftwareService (includes/services/software.php)
+ * so the UI and this API share one code path; the read handlers + serializers
+ * below stay here and are called to re-load the affected row after a write.
  */
+
+require_once dirname(__DIR__, 3) . '/includes/service_context.php';
+require_once dirname(__DIR__, 3) . '/includes/services/software.php';
 
 // ---------------------------------------------------------------------------
 // Apps (read-only inventory catalogue)
@@ -318,103 +325,26 @@ function apiSoftwareLicencesGet(PDO $conn, array $apiKey, array $params, array $
     apiRespond(apiSerializeLicence(apiLoadLicence($conn, $params[0])));
 }
 
-/** Shared field collection/validation (mirrors save_licence.php's coercions). */
-function apiSoftwareLicenceFields(PDO $conn, array $body, array $current = []): array {
-    $get = function (string $key, $default = null) use ($body, $current) {
-        return array_key_exists($key, $body) ? $body[$key] : ($current[$key] ?? $default);
-    };
-
-    $f = [];
-    $f['app_id'] = (int)($get('app_id') ?? 0);
-    if ($f['app_id'] <= 0) {
-        apiError(422, 'missing_field', "'app_id' is required.");
-    }
-    $appCheck = $conn->prepare("SELECT id FROM software_inventory_apps WHERE id = ?");
-    $appCheck->execute([$f['app_id']]);
-    if (!$appCheck->fetchColumn()) {
-        apiError(422, 'invalid_field', "Unknown app id: {$f['app_id']}");
-    }
-    $f['licence_type'] = trim((string)($get('licence_type') ?? ''));
-    if ($f['licence_type'] === '') {
-        apiError(422, 'missing_field', "'licence_type' is required.");
-    }
-
-    $f['licence_key'] = ($v = trim((string)($get('licence_key') ?? ''))) !== '' ? $v : null;
-    $f['quantity'] = null;
-    if ($get('quantity') !== null && $get('quantity') !== '') {
-        if (!is_numeric($get('quantity')) || (int)$get('quantity') < 0) {
-            apiError(422, 'invalid_field', "'quantity' must be a non-negative integer.");
-        }
-        $f['quantity'] = (int)$get('quantity');
-    }
-    $f['renewal_date']  = apiParseDateOnly($get('renewal_date'), 'renewal_date');
-    $f['purchase_date'] = apiParseDateOnly($get('purchase_date'), 'purchase_date');
-    $f['notice_period_days'] = null;
-    if ($get('notice_period_days') !== null && $get('notice_period_days') !== '') {
-        $f['notice_period_days'] = max(0, (int)$get('notice_period_days'));
-    }
-    $f['portal_url'] = ($v = trim((string)($get('portal_url') ?? ''))) !== '' ? $v : null;
-    $f['cost'] = null;
-    if ($get('cost') !== null && $get('cost') !== '') {
-        if (!is_numeric($get('cost'))) {
-            apiError(422, 'invalid_field', "'cost' must be a number.");
-        }
-        $f['cost'] = (string)round((float)$get('cost'), 2);
-    }
-    $f['currency'] = trim((string)($get('currency') ?? '')) ?: 'GBP';
-    if (mb_strlen($f['currency']) > 10) {
-        apiError(422, 'invalid_field', "'currency' must be at most 10 characters.");
-    }
-    $f['vendor_contact'] = ($v = trim((string)($get('vendor_contact') ?? ''))) !== '' ? $v : null;
-    $f['notes']  = ($v = trim((string)($get('notes') ?? ''))) !== '' ? $v : null;
-    $f['status'] = trim((string)($get('status') ?? '')) ?: 'Active';
-
-    return $f;
-}
-
 // POST /software/licences
 function apiSoftwareLicencesCreate(PDO $conn, array $apiKey, array $params, array $body): void {
-    $f = apiSoftwareLicenceFields($conn, $body);
-    $ins = $conn->prepare(
-        "INSERT INTO software_licences
-            (app_id, licence_type, licence_key, quantity, renewal_date,
-             notice_period_days, portal_url, cost, currency, purchase_date,
-             vendor_contact, notes, status, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-    );
-    $ins->execute([
-        $f['app_id'], $f['licence_type'], $f['licence_key'], $f['quantity'], $f['renewal_date'],
-        $f['notice_period_days'], $f['portal_url'], $f['cost'], $f['currency'], $f['purchase_date'],
-        $f['vendor_contact'], $f['notes'], $f['status'], (int)$apiKey['analyst_id'],
-    ]);
-    apiRespond(apiSerializeLicence(apiLoadLicence($conn, (int)$conn->lastInsertId())), 201);
+    try {
+        $res = SoftwareService::saveLicence($conn, ActorContext::fromApiKey($apiKey), $body);
+        apiRespond(apiSerializeLicence(apiLoadLicence($conn, $res['id'])), 201);
+    } catch (ServiceError $e) { apiFailFromService($e); }
 }
 
 // PATCH /software/licences/{id}
 function apiSoftwareLicencesUpdate(PDO $conn, array $apiKey, array $params, array $body): void {
-    $current = apiLoadLicence($conn, $params[0]);
-    if (!$body) {
-        apiError(422, 'missing_field', 'No fields to update.');
-    }
-    $f = apiSoftwareLicenceFields($conn, $body, $current);
-    // created_by is never touched on update — save_licence.php parity.
-    $upd = $conn->prepare(
-        "UPDATE software_licences SET app_id=?, licence_type=?, licence_key=?, quantity=?,
-            renewal_date=?, notice_period_days=?, portal_url=?, cost=?, currency=?,
-            purchase_date=?, vendor_contact=?, notes=?, status=?, updated_at=UTC_TIMESTAMP()
-         WHERE id=?"
-    );
-    $upd->execute([
-        $f['app_id'], $f['licence_type'], $f['licence_key'], $f['quantity'], $f['renewal_date'],
-        $f['notice_period_days'], $f['portal_url'], $f['cost'], $f['currency'], $f['purchase_date'],
-        $f['vendor_contact'], $f['notes'], $f['status'], $params[0],
-    ]);
-    apiRespond(apiSerializeLicence(apiLoadLicence($conn, $params[0])));
+    try {
+        $res = SoftwareService::saveLicence($conn, ActorContext::fromApiKey($apiKey), array_merge($body, ['id' => (int)$params[0]]));
+        apiRespond(apiSerializeLicence(apiLoadLicence($conn, $res['id'])));
+    } catch (ServiceError $e) { apiFailFromService($e); }
 }
 
 // DELETE /software/licences/{id} — leaf table, mirrors delete_licence.php
 function apiSoftwareLicencesDelete(PDO $conn, array $apiKey, array $params, array $body): void {
-    apiLoadLicence($conn, $params[0]);
-    $conn->prepare("DELETE FROM software_licences WHERE id = ?")->execute([$params[0]]);
-    apiRespond(['id' => $params[0], 'deleted' => true]);
+    try {
+        SoftwareService::deleteLicence($conn, ActorContext::fromApiKey($apiKey), (int)$params[0]);
+        apiRespond(['id' => $params[0], 'deleted' => true]);
+    } catch (ServiceError $e) { apiFailFromService($e); }
 }

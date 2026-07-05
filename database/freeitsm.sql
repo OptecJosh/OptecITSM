@@ -1363,6 +1363,7 @@ INSERT IGNORE INTO `change_field_layout` (`field_key`, `section_id`, `display_or
 
 CREATE TABLE IF NOT EXISTS `changes` (
     `id`                            INT NOT NULL AUTO_INCREMENT,
+    `tenant_id`                     INT NULL,
     `title`                         VARCHAR(255) NOT NULL,
     `change_type_id`                INT NULL,
     `status_id`                     INT NULL,
@@ -1404,6 +1405,7 @@ CREATE TABLE IF NOT EXISTS `changes` (
     KEY `ix_changes_priority_id` (`priority_id`),
     KEY `ix_changes_change_type_id` (`change_type_id`),
     KEY `ix_changes_impact_id` (`impact_id`),
+    KEY `ix_changes_tenant_id` (`tenant_id`),
     CONSTRAINT `fk_changes_requester` FOREIGN KEY (`requester_id`) REFERENCES `analysts` (`id`),
     CONSTRAINT `fk_changes_assigned_to` FOREIGN KEY (`assigned_to_id`) REFERENCES `analysts` (`id`),
     CONSTRAINT `fk_changes_approver` FOREIGN KEY (`approver_id`) REFERENCES `analysts` (`id`),
@@ -1411,7 +1413,8 @@ CREATE TABLE IF NOT EXISTS `changes` (
     CONSTRAINT `fk_changes_status` FOREIGN KEY (`status_id`) REFERENCES `change_statuses` (`id`),
     CONSTRAINT `fk_changes_priority` FOREIGN KEY (`priority_id`) REFERENCES `change_priorities` (`id`),
     CONSTRAINT `fk_changes_change_type` FOREIGN KEY (`change_type_id`) REFERENCES `change_types` (`id`),
-    CONSTRAINT `fk_changes_impact` FOREIGN KEY (`impact_id`) REFERENCES `change_impacts` (`id`)
+    CONSTRAINT `fk_changes_impact` FOREIGN KEY (`impact_id`) REFERENCES `change_impacts` (`id`),
+    CONSTRAINT `fk_changes_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `change_attachments` (

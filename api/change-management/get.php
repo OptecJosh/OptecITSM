@@ -5,6 +5,7 @@
 session_start(['read_and_close' => true]);
 require_once '../../config.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/tenancy.php';
 
 header('Content-Type: application/json');
 
@@ -22,6 +23,12 @@ if (!$changeId) {
 
 try {
     $conn = connectToDatabase();
+
+    // Company isolation: a change outside the analyst's scope is "not found".
+    if (!analystCanAccessChange($conn, (int)$_SESSION['analyst_id'], $changeId)) {
+        echo json_encode(['success' => false, 'error' => 'Change not found']);
+        exit;
+    }
 
     $sql = "SELECT
                 c.*,

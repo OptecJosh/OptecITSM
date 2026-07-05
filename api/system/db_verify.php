@@ -940,6 +940,7 @@ $schema = [
 
     'changes' => [
         'id'                            => 'INT NOT NULL AUTO_INCREMENT',
+        'tenant_id'                     => 'INT NULL',
         'title'                         => 'VARCHAR(255) NOT NULL',
         'change_type_id'                => 'INT NULL',
         'status_id'                     => 'INT NULL',
@@ -3400,6 +3401,7 @@ try {
         ['changes',          'fk_changes_priority',    "ALTER TABLE changes ADD CONSTRAINT fk_changes_priority FOREIGN KEY (priority_id) REFERENCES change_priorities (id)"],
         ['changes',          'fk_changes_change_type', "ALTER TABLE changes ADD CONSTRAINT fk_changes_change_type FOREIGN KEY (change_type_id) REFERENCES change_types (id)"],
         ['changes',          'fk_changes_impact',      "ALTER TABLE changes ADD CONSTRAINT fk_changes_impact FOREIGN KEY (impact_id) REFERENCES change_impacts (id)"],
+        ['changes',          'fk_changes_tenant',      "ALTER TABLE changes ADD CONSTRAINT fk_changes_tenant FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE SET NULL"],
         ['change_templates', 'fk_template_change_type',"ALTER TABLE change_templates ADD CONSTRAINT fk_template_change_type FOREIGN KEY (change_type_id) REFERENCES change_types (id)"],
         ['change_templates', 'fk_template_priority',   "ALTER TABLE change_templates ADD CONSTRAINT fk_template_priority FOREIGN KEY (priority_id) REFERENCES change_priorities (id)"],
         ['change_templates', 'fk_template_impact',     "ALTER TABLE change_templates ADD CONSTRAINT fk_template_impact FOREIGN KEY (impact_id) REFERENCES change_impacts (id)"],
@@ -3414,6 +3416,7 @@ try {
         ['changes', 'ix_changes_priority_id',    'priority_id'],
         ['changes', 'ix_changes_change_type_id', 'change_type_id'],
         ['changes', 'ix_changes_impact_id',      'impact_id'],
+        ['changes', 'ix_changes_tenant_id',      'tenant_id'],
     ];
     foreach ($changeIndexes as [$tbl, $name, $col]) {
         if (!$tableExists($tbl) || $idxExists($tbl, $name)) continue;

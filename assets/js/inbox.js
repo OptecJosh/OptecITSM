@@ -2294,20 +2294,36 @@ function parseUTCDate(dateStr) {
     return new Date(dateStr);
 }
 
+// Merge the analyst's chosen display timezone into an Intl options object.
+// window.USER_TIMEZONE is published server-side (Tz::scriptTag). When it's
+// unset the option is omitted, so dates fall back to the browser's own zone.
+function tzOpts(extra) {
+    const o = Object.assign({}, extra || {});
+    if (window.USER_TIMEZONE) o.timeZone = window.USER_TIMEZONE;
+    return o;
+}
+
+// 'YYYY-MM-DD' for a Date, evaluated in the analyst's display zone. Used to
+// bucket into Today / Yesterday against the same zone the time is shown in.
+function ymdInZone(date) {
+    return date.toLocaleDateString('en-CA', tzOpts());
+}
+
 function formatDateTime(dateStr) {
     if (!dateStr) return '';
     const date = parseUTCDate(dateStr);
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const emailDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const todayStr = ymdInZone(now);
+    const yesterdayStr = ymdInZone(new Date(now.getTime() - 86400000));
+    const dateYmd = ymdInZone(date);
 
-    if (emailDate.getTime() === today.getTime()) {
-        return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    } else if (emailDate.getTime() === today.getTime() - 86400000) {
-        return 'Yesterday ' + date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    if (dateYmd === todayStr) {
+        return date.toLocaleTimeString('en-US', tzOpts({ hour: '2-digit', minute: '2-digit' }));
+    } else if (dateYmd === yesterdayStr) {
+        return 'Yesterday ' + date.toLocaleTimeString('en-US', tzOpts({ hour: '2-digit', minute: '2-digit' }));
     } else {
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
-               date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleDateString('en-US', tzOpts({ month: 'short', day: 'numeric' })) + ' ' +
+               date.toLocaleTimeString('en-US', tzOpts({ hour: '2-digit', minute: '2-digit' }));
     }
 }
 
@@ -2315,12 +2331,12 @@ function formatDateTime(dateStr) {
 function formatFullDateTime(dateStr) {
     if (!dateStr) return '';
     const date = parseUTCDate(dateStr);
-    return date.toLocaleDateString('en-GB', {
+    return date.toLocaleDateString('en-GB', tzOpts({
         weekday: 'short',
         day: 'numeric',
         month: 'short',
         year: 'numeric'
-    }) + ' ' + date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    })) + ' ' + date.toLocaleTimeString('en-US', tzOpts({ hour: '2-digit', minute: '2-digit' }));
 }
 
 // Toggle ticket properties panel
@@ -2574,13 +2590,16 @@ function renderAttachmentInfoBar() {
 // Format date as dd/mm/yyyy hh:mm
 function formatDateDMY(dateStr) {
     if (!dateStr) return '';
-    const date = new Date(dateStr);
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${day}/${month}/${year} ${hours}:${minutes}`;
+    const date = parseUTCDate(dateStr);
+    if (!date) return '';
+    // Parse the stored value as UTC and render DD/MM/YYYY HH:MM in the
+    // analyst's display zone (previously read browser-local components off an
+    // un-normalised Date, which mis-parsed UTC DB strings).
+    const p = new Intl.DateTimeFormat('en-GB', tzOpts({
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: false
+    })).formatToParts(date).reduce((a, part) => { a[part.type] = part.value; return a; }, {});
+    return `${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute}`;
 }
 
 // Show attachment list modal

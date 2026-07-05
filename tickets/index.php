@@ -8,7 +8,9 @@ require_once '../config.php';
 require_once '../includes/functions.php';
 require_once '../includes/i18n.php';
 require_once '../includes/theme.php';
+require_once '../includes/timezone.php';
 I18n::initFromSession();
+Tz::init();
 
 $current_page = 'inbox';
 // Module id for per-module theme/palette resolution (account-menu picker).
@@ -27,6 +29,7 @@ $translationNamespaces = ['common', 'tickets'];
     <link rel="stylesheet" href="../assets/css/theme.css?v=13">
     <link rel="stylesheet" href="../assets/css/inbox.css?v=37">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
+    <?php echo Tz::scriptTag(); ?>
     <script src="../assets/js/i18n.js"></script>
     <script src="../assets/js/tinymce/tinymce.min.js"></script>
 </head>
@@ -418,7 +421,7 @@ $translationNamespaces = ['common', 'tickets'];
         window.API_BASE = '../api/tickets/';
         window.CURRENT_ANALYST_ID = <?php echo (int)($_SESSION['analyst_id'] ?? 0); ?>;
     </script>
-    <script src="../assets/js/inbox.js?v=49"></script>
+    <script src="../assets/js/inbox.js?v=50"></script>
     <script>
     // Auto-check mailboxes every 60 seconds
     (function() {

@@ -904,14 +904,6 @@ $translationNamespaces = ['common', 'tickets'];
                     <small style="color: var(--text-muted, #666);"><?php echo htmlspecialchars(t('tickets.settings.general.system_name_help')); ?></small>
                 </div>
 
-                <div class="form-group">
-                    <label for="systemTimezone"><?php echo htmlspecialchars(t('tickets.settings.general.timezone')); ?></label>
-                    <select id="systemTimezone" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
-                        <option value=""><?php echo htmlspecialchars(t('tickets.settings.loading')); ?></option>
-                    </select>
-                    <small style="color: var(--text-muted, #666);"><?php echo htmlspecialchars(t('tickets.settings.general.timezone_help')); ?></small>
-                </div>
-
                 <div style="display: flex; gap: 10px; justify-content: flex-start; margin-top: 30px;">
                     <button type="submit" class="btn btn-primary"><?php echo htmlspecialchars(t('common.save')); ?></button>
                 </div>
@@ -4222,75 +4214,13 @@ $translationNamespaces = ['common', 'tickets'];
         // Connection testing is handled by the shared AI panel's Test button.
 
         // General Settings Functions
-        const timezones = [
-            'UTC',
-            'Europe/London',
-            'Europe/Paris',
-            'Europe/Berlin',
-            'Europe/Amsterdam',
-            'Europe/Brussels',
-            'Europe/Dublin',
-            'Europe/Madrid',
-            'Europe/Rome',
-            'Europe/Zurich',
-            'Europe/Vienna',
-            'Europe/Warsaw',
-            'Europe/Stockholm',
-            'Europe/Oslo',
-            'Europe/Copenhagen',
-            'Europe/Helsinki',
-            'Europe/Athens',
-            'Europe/Moscow',
-            'America/New_York',
-            'America/Chicago',
-            'America/Denver',
-            'America/Los_Angeles',
-            'America/Phoenix',
-            'America/Toronto',
-            'America/Vancouver',
-            'America/Mexico_City',
-            'America/Sao_Paulo',
-            'America/Buenos_Aires',
-            'Asia/Tokyo',
-            'Asia/Shanghai',
-            'Asia/Hong_Kong',
-            'Asia/Singapore',
-            'Asia/Seoul',
-            'Asia/Bangkok',
-            'Asia/Jakarta',
-            'Asia/Manila',
-            'Asia/Kolkata',
-            'Asia/Mumbai',
-            'Asia/Dubai',
-            'Asia/Jerusalem',
-            'Australia/Sydney',
-            'Australia/Melbourne',
-            'Australia/Brisbane',
-            'Australia/Perth',
-            'Pacific/Auckland',
-            'Pacific/Fiji',
-            'Africa/Cairo',
-            'Africa/Johannesburg',
-            'Africa/Lagos'
-        ];
-
-        function populateTimezoneDropdown(selectedTimezone = '') {
-            const select = document.getElementById('systemTimezone');
-            select.innerHTML = timezones.map(tz =>
-                `<option value="${tz}"${tz === selectedTimezone ? ' selected' : ''}>${tz}</option>`
-            ).join('');
-        }
-
         async function loadGeneralSettings() {
-            populateTimezoneDropdown();
-
             try {
                 const response = await fetch(API_SETTINGS + 'get_system_settings.php');
                 const data = await response.json();
 
                 if (data.success) {
                     document.getElementById('systemName').value = data.settings.system_name || '';
-                    populateTimezoneDropdown(data.settings.timezone || 'Europe/London');
                 } else {
                     console.error('Error loading settings:', data.error);
                 }
@@ -4304,8 +4234,7 @@ $translationNamespaces = ['common', 'tickets'];
             e.preventDefault();
 
             const settings = {
-                system_name: document.getElementById('systemName').value,
-                timezone: document.getElementById('systemTimezone').value
+                system_name: document.getElementById('systemName').value
             };
 
             try {

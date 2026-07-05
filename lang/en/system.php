@@ -295,6 +295,10 @@ return [
         'language_desc'    => 'The language used across the FreeITSM UI. Translations fall back to English for any strings not yet covered in your chosen language. Reloads the page on change.',
         'saving'           => 'Saving…',
 
+        'timezone_heading' => 'Timezone',
+        'timezone_desc'    => 'Dates and times across FreeITSM are shown in this timezone. Defaults to the server timezone until you choose one.',
+        'timezone_saved'   => 'Timezone saved',
+
         'position_heading' => 'Notification position',
         'position_desc'    => 'Where toast notifications appear on the screen.',
 

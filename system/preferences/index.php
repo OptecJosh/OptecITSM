@@ -19,6 +19,10 @@ $currentLocale = I18n::getLocale();
 // flicker we used to get from initial localStorage / default values
 // being replaced by AJAX-fetched values a moment later.
 $prefDefaults = [
+    // Display timezone. Defaults to the server zone (config.php) until the
+    // analyst picks one; every date across the app is stored UTC and shown
+    // in this zone (see includes/timezone.php).
+    'timezone'                   => date_default_timezone_get(),
     'toast_position'             => 'bottom-right',
     'toast_animation'            => 'slide',
     // Left-panel visibility — one key per module that has a left panel.
@@ -231,6 +235,34 @@ if (isset($_SESSION['analyst_id'])) {
             </div>
 
             <div class="pref-section">
+                <h3><?php echo htmlspecialchars(t('system.preferences.timezone_heading')); ?></h3>
+                <p><?php echo htmlspecialchars(t('system.preferences.timezone_desc')); ?></p>
+                <?php
+                    // Group IANA zones by region for the dropdown (Europe/London → "Europe").
+                    $tzGroups = [];
+                    foreach (timezone_identifiers_list() as $tzId) {
+                        $parts = explode('/', $tzId, 2);
+                        $region = count($parts) === 2 ? $parts[0] : 'Other';
+                        $tzGroups[$region][] = $tzId;
+                    }
+                    ksort($tzGroups);
+                    $currentTz = $prefs['timezone'];
+                ?>
+                <select id="timezoneSelect" class="pref-language-select">
+                    <?php foreach ($tzGroups as $region => $zones): ?>
+                        <optgroup label="<?php echo htmlspecialchars($region); ?>">
+                            <?php foreach ($zones as $tzId): ?>
+                                <option value="<?php echo htmlspecialchars($tzId); ?>" <?php echo $tzId === $currentTz ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($tzId); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </optgroup>
+                    <?php endforeach; ?>
+                </select>
+                <span class="pref-saving-hint" id="tzSavingHint"><?php echo htmlspecialchars(t('system.preferences.saving')); ?></span>
+            </div>
+
+            <div class="pref-section">
                 <h3><?php echo htmlspecialchars(t('system.preferences.position_heading')); ?></h3>
                 <p><?php echo htmlspecialchars(t('system.preferences.position_desc')); ?></p>
                 <div class="position-grid" id="toastPositionGrid"></div>
@@ -344,6 +376,20 @@ if (isset($_SESSION['analyst_id'])) {
                 } else {
                     langHint.classList.remove('show');
                 }
+            });
+        }
+
+        // ===== Display timezone (timezone) =====
+        // Saves per-analyst; takes effect on other pages via Tz::init() +
+        // window.USER_TIMEZONE. No reload needed here (this page shows no dates).
+        const tzSelect = document.getElementById('timezoneSelect');
+        const tzHint   = document.getElementById('tzSavingHint');
+        if (tzSelect) {
+            tzSelect.addEventListener('change', async function() {
+                tzHint.classList.add('show');
+                const ok = await savePref('timezone', tzSelect.value);
+                tzHint.classList.remove('show');
+                if (ok) showToast(window.t('system.preferences.timezone_saved'), 'success');
             });
         }
 

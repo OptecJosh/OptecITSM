@@ -422,9 +422,22 @@ $translationNamespaces = ['common', 'service-status'];
             }).join('');
         }
 
+        // Datetimes come from the API as naive UTC strings ("YYYY-MM-DD HH:MM:SS",
+        // stamped with UTC_TIMESTAMP()). Mark them UTC so the browser renders them
+        // in the viewer's local time — otherwise JS parses "HH:MM" as local and
+        // shows the time an hour off wherever the offset isn't zero.
+        function parseUtc(s) {
+            if (!s) return null;
+            s = String(s).trim();
+            // Already carries a timezone (Z or ±hh:mm)? Parse as-is.
+            if (/([zZ]|[+-]\d{2}:?\d{2})$/.test(s)) return new Date(s);
+            return new Date(s.replace(' ', 'T') + 'Z');
+        }
+
         function formatDate(dateStr) {
             try {
-                const d = new Date(dateStr);
+                const d = parseUtc(dateStr);
+                if (!d || isNaN(d.getTime())) return dateStr;
                 return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) +
                        ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
             } catch (e) {

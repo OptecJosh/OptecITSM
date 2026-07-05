@@ -89,23 +89,88 @@ class WorkflowEngine
      */
     public static function availableTriggers(): array
     {
-        return [
+        $t = [
+            // ---- Rich domain events (specific payloads) ----
             'ticket.created'           => 'A ticket is created',
             'ticket.status_changed'    => 'A ticket\'s status changes',
             'ticket.priority_changed'  => 'A ticket\'s priority changes',
             'ticket.assigned'          => 'A ticket is assigned to an analyst',
+            'ticket.deleted'           => 'A ticket is moved to the trash',
+            'ticket.restored'          => 'A ticket is restored from the trash',
             'form.submitted'           => 'A form submission is received',
             'task.created'             => 'A task is created',
             'task.completed'           => 'A task is marked complete',
+            'task.deleted'             => 'A task is deleted',
             'change.created'           => 'A change request is created',
             'change.approved'          => 'A change request is approved',
+            'change.deleted'           => 'A change request is deleted',
             'problem.created'          => 'A problem is created',
             'problem.status_changed'   => 'A problem\'s status changes',
+            'problem.deleted'          => 'A problem is deleted',
             'asset.assigned'           => 'An asset is assigned to a user',
             'asset.unassigned'         => 'An asset is unassigned from a user',
             'cmdb.object.created'      => 'A CMDB object is created',
+            'cmdb.object.updated'      => 'A CMDB object is updated',
+            'cmdb.object.deleted'      => 'A CMDB object is deleted',
             'knowledge.published'      => 'A knowledge article is published',
+            'knowledge.updated'        => 'A knowledge article is updated',
+            'knowledge.archived'       => 'A knowledge article is archived (recycle bin)',
+            'service_status.incident_created'  => 'A status-page incident is opened',
+            'service_status.incident_updated'  => 'A status-page incident is updated',
+            'service_status.incident_resolved' => 'A status-page incident is resolved',
+            'service_status.incident_deleted'  => 'A status-page incident is deleted',
+            'morning_check.recorded'   => 'A morning check result is recorded',
+            'software.application_discovered' => 'A new software application is discovered',
         ];
+        // ---- Explicit created / updated / deleted for every CRUD + settings
+        // entity. Generated from crudEntities() so the list stays maintainable,
+        // but every entity.action still appears as its own trigger. ----
+        foreach (self::crudEntities() as $key => $def) {
+            $t["$key.created"] = $def[0] . ' is created';
+            $t["$key.updated"] = $def[0] . ' is updated';
+            $t["$key.deleted"] = $def[0] . ' is deleted';
+        }
+        return $t;
+    }
+
+    /**
+     * CRUD + settings entities that each get explicit .created/.updated/.deleted
+     * triggers. `[label, [condition field paths]]`. Domain entities carry a few
+     * useful fields; settings/lookups carry just id + name (their own id isn't a
+     * useful filter, but name is, and the .id/.name convention keeps the editor's
+     * type inference happy).
+     */
+    private static function crudEntities(): array
+    {
+        // NOTE: every entity here is WIRED to fire from its module's write path.
+        // The other-module settings lookups (ticket/asset/change/problem/task/cmdb
+        // statuses+priorities etc.) + supplier_contact / software_licence /
+        // network_diagram are a follow-up batch — they are intentionally NOT
+        // registered until wired, so there are no dead triggers in the picker.
+        return [
+            // Domain entities
+            'contract'          => ['A contract', ['contract.id', 'contract.title', 'contract.status_id', 'contract.supplier_id']],
+            'supplier'          => ['A supplier', ['supplier.id', 'supplier.name', 'supplier.status_id', 'supplier.type_id']],
+            'calendar_event'    => ['A calendar event', ['calendar_event.id', 'calendar_event.title', 'calendar_event.category_id']],
+            'status_service'    => ['A monitored service', ['status_service.id', 'status_service.name']],
+            'morning_check'     => ['A morning check', ['morning_check.id', 'morning_check.name']],
+            // Settings / lookups (wired from their service)
+            'calendar_category' => ['A calendar category', ['calendar_category.id', 'calendar_category.name']],
+            'incident_status'   => ['A status-page incident status', ['incident_status.id', 'incident_status.name']],
+            'impact_level'      => ['A status-page impact level', ['impact_level.id', 'impact_level.name']],
+            'morning_check_status' => ['A morning check status', ['morning_check_status.id', 'morning_check_status.name']],
+        ];
+    }
+
+    /**
+     * Fire a CRUD / settings event: <entityKey>.<action> with a
+     * {entityKey: {id, name}} payload matching the entity's condition fields.
+     * $action is 'created' | 'updated' | 'deleted'. dispatch() is self-safe, so
+     * call sites need no try/catch — a workflow hiccup can't affect the write.
+     */
+    public static function emitCrud(string $entityKey, string $action, int $id, ?string $name = null): void
+    {
+        self::dispatch("{$entityKey}.{$action}", [$entityKey => ['id' => $id, 'name' => $name]]);
     }
 
     /**
@@ -160,14 +225,35 @@ class WorkflowEngine
             'asset.unassigned' => [
                 'asset.id', 'asset.hostname', 'user.id', 'user.name',
             ],
-            'cmdb.object.created' => [
-                'object.id', 'object.name', 'object.class_id', 'object.is_planned',
-            ],
-            'knowledge.published' => [
-                'article.id', 'article.title',
-            ],
+            'ticket.deleted'   => $fullTicket,
+            'ticket.restored'  => $fullTicket,
+            'task.deleted'     => ['task.id', 'task.title', 'task.priority_id', 'task.assignee_id'],
+            'change.deleted'   => ['change.id', 'change.title'],
+            'problem.deleted'  => ['problem.id', 'problem.problem_number', 'problem.title'],
+            'cmdb.object.created' => ['object.id', 'object.name', 'object.class_id', 'object.is_planned'],
+            'cmdb.object.updated' => ['object.id', 'object.name', 'object.class_id'],
+            'cmdb.object.deleted' => ['object.id', 'object.name', 'object.class_id'],
+            'knowledge.published' => ['article.id', 'article.title'],
+            'knowledge.updated'   => ['article.id', 'article.title'],
+            'knowledge.archived'  => ['article.id', 'article.title'],
+            'service_status.incident_created'  => ['incident.id', 'incident.title', 'incident.status_id'],
+            'service_status.incident_updated'  => ['incident.id', 'incident.title', 'incident.status_id'],
+            'service_status.incident_resolved' => ['incident.id', 'incident.title', 'incident.status_id'],
+            'service_status.incident_deleted'  => ['incident.id', 'incident.title'],
+            'morning_check.recorded' => ['check.id', 'check.name', 'result.status_id', 'result.status_name', 'result.date'],
+            'software.application_discovered' => ['application.id', 'application.name', 'application.publisher'],
         ];
-        return $byTrigger[$trigger] ?? [];
+        if (isset($byTrigger[$trigger])) {
+            return $byTrigger[$trigger];
+        }
+        // CRUD / settings entity fallback: <entity>.created|updated|deleted.
+        if (preg_match('/^(.+)\.(created|updated|deleted)$/', $trigger, $m)) {
+            $crud = self::crudEntities();
+            if (isset($crud[$m[1]])) {
+                return $crud[$m[1]][1];
+            }
+        }
+        return [];
     }
 
     public static function availableOperators(): array

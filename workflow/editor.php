@@ -163,7 +163,10 @@ foreach ($actionDefs as $actionKey => $def) {
                 <div class="wf-detail-body" id="wfBodyTrigger" style="display: none;">
                     <div class="form-group">
                         <label for="wfTrigger"><?php echo htmlspecialchars(t('workflow.editor.trigger_label')); ?></label>
-                        <select id="wfTrigger" onchange="WFE.updateTriggerFromDetail()">
+                        <input type="text" id="wfTriggerSearch" placeholder="Search triggers…" autocomplete="off"
+                               oninput="WFTriggerFilter(this.value)"
+                               style="width:100%; box-sizing:border-box; margin-bottom:6px; padding:6px 8px; border:1px solid #ccc; border-radius:6px;">
+                        <select id="wfTrigger" size="8" onchange="WFE.updateTriggerFromDetail()" style="width:100%;">
                             <?php foreach ($triggers as $k => $label): ?>
                             <option value="<?php echo htmlspecialchars($k); ?>"><?php echo htmlspecialchars($label); ?></option>
                             <?php endforeach; ?>
@@ -299,6 +302,29 @@ foreach ($actionDefs as $actionKey => $def) {
         window.WF_ACTION_LOOKUPS = <?php echo json_encode($actionLookupValues); ?>;
         window.WF_ID             = <?php echo (int)$id; ?>;
         window.WF_API            = '../api/workflow/';
+        // Full trigger catalogue {event: label} — drives the searchable picker.
+        window.WF_TRIGGERS       = <?php echo json_encode($triggers); ?>;
+        // Filter the trigger <select> down to matches as the user types. Keeps the
+        // currently-selected option present so its value is never lost, and only
+        // fires onchange when the selection actually changes.
+        window.WFTriggerFilter = function (query) {
+            var sel = document.getElementById('wfTrigger');
+            if (!sel) return;
+            var current = sel.value;
+            var q = (query || '').trim().toLowerCase();
+            sel.innerHTML = '';
+            Object.keys(window.WF_TRIGGERS).forEach(function (key) {
+                var label = window.WF_TRIGGERS[key];
+                if (q && key.toLowerCase().indexOf(q) === -1 && String(label).toLowerCase().indexOf(q) === -1 && key !== current) {
+                    return;
+                }
+                var opt = document.createElement('option');
+                opt.value = key;
+                opt.textContent = label;
+                if (key === current) opt.selected = true;
+                sel.appendChild(opt);
+            });
+        };
     </script>
     <script src="../assets/js/workflow-editor.js?v=12"></script>
 </body>

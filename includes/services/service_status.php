@@ -15,6 +15,7 @@
  */
 
 require_once __DIR__ . '/../service_context.php';
+require_once dirname(__DIR__, 2) . '/workflow/includes/engine.php';
 
 class ServiceStatusService
 {
@@ -41,6 +42,7 @@ class ServiceStatusService
             $desc = trim((string)($get('description', '') ?? ''));
             $conn->prepare("UPDATE status_services SET name=?, description=?, display_order=?, is_active=? WHERE id=?")
                  ->execute([$name, $desc !== '' ? $desc : null, (int)$get('display_order', 0), (int)(bool)$get('is_active', 1), $id]);
+            WorkflowEngine::emitCrud('status_service', 'updated', $id, $name);
             return $id;
         }
 
@@ -58,13 +60,15 @@ class ServiceStatusService
             isset($in['display_order']) ? (int)$in['display_order'] : 0,
             isset($in['is_active']) ? (int)(bool)$in['is_active'] : 1,
         ]);
-        return (int)$conn->lastInsertId();
+        $newId = (int)$conn->lastInsertId();
+        WorkflowEngine::emitCrud('status_service', 'created', $newId, $name);
+        return $newId;
     }
 
     /** Delete a service + its incident links, atomically. */
     public static function deleteService(PDO $conn, ActorContext $ctx, int $id): void
     {
-        self::loadServiceRow($conn, $id);                          // 404 if gone
+        $row = self::loadServiceRow($conn, $id);                   // 404 if gone
         $conn->beginTransaction();
         try {
             $conn->prepare("DELETE FROM status_incident_services WHERE service_id = ?")->execute([$id]);
@@ -74,6 +78,7 @@ class ServiceStatusService
             if ($conn->inTransaction()) $conn->rollBack();
             throw $e;
         }
+        WorkflowEngine::emitCrud('status_service', 'deleted', $id, $row['name'] ?? null);
     }
 
     private static function loadServiceRow(PDO $conn, int $id): array
@@ -117,6 +122,10 @@ class ServiceStatusService
         } catch (Exception $e) {
             if ($conn->inTransaction()) $conn->rollBack();
             throw $e;
+        }
+        WorkflowEngine::dispatch('service_status.incident_created', ['incident' => ['id' => $incidentId, 'title' => $title, 'status_id' => $status[0]]]);
+        if (!empty($status[2])) {
+            WorkflowEngine::dispatch('service_status.incident_resolved', ['incident' => ['id' => $incidentId, 'title' => $title, 'status_id' => $status[0]]]);
         }
         return $incidentId;
     }
@@ -163,13 +172,17 @@ class ServiceStatusService
             if ($conn->inTransaction()) $conn->rollBack();
             throw $e;
         }
+        WorkflowEngine::dispatch('service_status.incident_updated', ['incident' => ['id' => $id, 'title' => $title, 'status_id' => $statusId]]);
+        if ($isResolved && !(bool)$current['status_is_resolved']) {
+            WorkflowEngine::dispatch('service_status.incident_resolved', ['incident' => ['id' => $id, 'title' => $title, 'status_id' => $statusId]]);
+        }
         return $id;
     }
 
     /** Delete an incident + its service links, atomically. */
     public static function deleteIncident(PDO $conn, ActorContext $ctx, int $id): void
     {
-        self::loadIncidentRow($conn, $id);                         // 404 if gone
+        $row = self::loadIncidentRow($conn, $id);                  // 404 if gone
         $conn->beginTransaction();
         try {
             $conn->prepare("DELETE FROM status_incident_services WHERE incident_id = ?")->execute([$id]);
@@ -179,6 +192,7 @@ class ServiceStatusService
             if ($conn->inTransaction()) $conn->rollBack();
             throw $e;
         }
+        WorkflowEngine::dispatch('service_status.incident_deleted', ['incident' => ['id' => $id, 'title' => $row['title'] ?? null]]);
     }
 
     private static function loadIncidentRow(PDO $conn, int $id): array
@@ -303,6 +317,7 @@ class ServiceStatusService
             if ($conn->inTransaction()) $conn->rollBack();
             throw $e;
         }
+        WorkflowEngine::emitCrud('incident_status', !empty($in['id']) ? 'updated' : 'created', (int)$id, $name);
         return (int)$id;
     }
 
@@ -320,7 +335,9 @@ class ServiceStatusService
         if ($count > 0) {
             throw new ServiceError('conflict', 'conflict', "Cannot delete: this status is used by $count incident(s). Reassign them or set the status to inactive instead.");
         }
+        $name = $conn->query("SELECT name FROM service_incident_statuses WHERE id = " . (int)$id)->fetchColumn() ?: null;
         $conn->prepare("DELETE FROM service_incident_statuses WHERE id = ?")->execute([$id]);
+        WorkflowEngine::emitCrud('incident_status', 'deleted', $id, $name);
     }
 
     // ======================================================================
@@ -368,6 +385,7 @@ class ServiceStatusService
             if ($conn->inTransaction()) $conn->rollBack();
             throw $e;
         }
+        WorkflowEngine::emitCrud('impact_level', !empty($in['id']) ? 'updated' : 'created', (int)$id, $name);
         return (int)$id;
     }
 
@@ -385,6 +403,8 @@ class ServiceStatusService
         if ($count > 0) {
             throw new ServiceError('conflict', 'conflict', "Cannot delete: this impact level is used on $count incident-service link(s). Reassign them or set the level to inactive instead.");
         }
+        $name = $conn->query("SELECT name FROM service_impact_levels WHERE id = " . (int)$id)->fetchColumn() ?: null;
         $conn->prepare("DELETE FROM service_impact_levels WHERE id = ?")->execute([$id]);
+        WorkflowEngine::emitCrud('impact_level', 'deleted', $id, $name);
     }
 }

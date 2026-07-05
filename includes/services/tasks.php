@@ -272,7 +272,7 @@ class TasksService
     /** Hard-delete a task + its whole subtask tree (comments/tags too). Returns ['id','subtasks_deleted']. */
     public static function deleteTask(PDO $conn, ActorContext $ctx, int $taskId): array
     {
-        self::loadTaskRow($conn, $taskId);
+        $row = self::loadTaskRow($conn, $taskId);
 
         $ids = [$taskId];
         $frontier = [$taskId];
@@ -289,6 +289,12 @@ class TasksService
         foreach (array_reverse($ids) as $id) {
             $conn->prepare("DELETE FROM tasks WHERE id = ?")->execute([$id]);
         }
+        WorkflowEngine::dispatch('task.deleted', ['task' => [
+            'id'          => $taskId,
+            'title'       => $row['title'] ?? null,
+            'priority_id' => isset($row['priority_id']) ? (int)$row['priority_id'] : null,
+            'assignee_id' => isset($row['assigned_analyst_id']) ? (int)$row['assigned_analyst_id'] : null,
+        ]]);
         return ['id' => $taskId, 'subtasks_deleted' => count($ids) - 1];
     }
 

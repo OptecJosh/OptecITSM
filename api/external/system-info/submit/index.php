@@ -379,6 +379,8 @@ if (!empty($data['software']) && is_array($data['software'])) {
                     $stmt->execute([$displayName, $publisher]);
                     $appId = (int)$conn->lastInsertId();
                     $insertedApps++;
+                    require_once dirname(__DIR__, 4) . '/workflow/includes/engine.php';
+                    WorkflowEngine::dispatch('software.application_discovered', ['application' => ['id' => $appId, 'name' => $displayName, 'publisher' => $publisher]]);
                 }
 
                 $appCache[$appKey] = $appId;

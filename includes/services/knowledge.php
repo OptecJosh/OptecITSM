@@ -105,6 +105,7 @@ class KnowledgeService
                 throw $e;
             }
             $embGen = self::updateEmbedding($conn, $articleId, $newTitle, $newBody);
+            WorkflowEngine::dispatch('knowledge.updated', ['article' => ['id' => $articleId, 'title' => $newTitle]]);
             return ['id' => $articleId, 'created' => false, 'embedding_generated' => $embGen];
         }
 
@@ -158,7 +159,7 @@ class KnowledgeService
     /** Soft-archive an article (move to recycle bin). 404 if gone, 409 if already archived. */
     public static function archiveArticle(PDO $conn, ActorContext $ctx, int $id): int
     {
-        self::loadArticleRow($conn, $id);
+        $row = self::loadArticleRow($conn, $id);
         $stmt = $conn->prepare(
             "UPDATE knowledge_articles
              SET is_archived = 1, archived_datetime = UTC_TIMESTAMP(), archived_by_id = ?
@@ -168,6 +169,7 @@ class KnowledgeService
         if ($stmt->rowCount() === 0) {
             throw new ServiceError('conflict', 'conflict', 'Article is already in the recycle bin.');
         }
+        WorkflowEngine::dispatch('knowledge.archived', ['article' => ['id' => $id, 'title' => $row['title'] ?? null]]);
         return $id;
     }
 

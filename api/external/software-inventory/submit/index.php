@@ -276,6 +276,8 @@ foreach ($softwareList as $item) {
 
                 $appId = (int)$appRow2['id'];
                 $insertedApps++;
+                require_once dirname(__DIR__, 4) . '/workflow/includes/engine.php';
+                WorkflowEngine::dispatch('software.application_discovered', ['application' => ['id' => $appId, 'name' => $displayName, 'publisher' => $publisher]]);
             }
 
             // Cache for this request (case-insensitive key)

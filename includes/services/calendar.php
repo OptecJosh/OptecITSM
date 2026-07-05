@@ -24,6 +24,7 @@
  */
 
 require_once __DIR__ . '/../service_context.php';
+require_once dirname(__DIR__, 2) . '/workflow/includes/engine.php';
 
 class CalendarService
 {
@@ -61,6 +62,7 @@ class CalendarService
                 $f['end'] ?? $f['start'], $f['all_day'], $f['location'], $f['contract_id'],
                 $id,
             ]);
+            WorkflowEngine::dispatch('calendar_event.updated', ['calendar_event' => ['id' => $id, 'title' => $f['title'], 'category_id' => $f['category_id']]]);
             return ['id' => $id, 'created' => false];
         }
 
@@ -81,7 +83,9 @@ class CalendarService
             $f['end'] ?? $f['start'], $f['all_day'], $f['location'], $f['contract_id'],
             $ctx->actorId,
         ]);
-        return ['id' => (int)$conn->lastInsertId(), 'created' => true];
+        $newId = (int)$conn->lastInsertId();
+        WorkflowEngine::dispatch('calendar_event.created', ['calendar_event' => ['id' => $newId, 'title' => $f['title'], 'category_id' => $f['category_id']]]);
+        return ['id' => $newId, 'created' => true];
     }
 
     /** Delete an event. 404 if missing, 409 if generated. Returns the id. */
@@ -90,6 +94,7 @@ class CalendarService
         $current = self::loadEventRow($conn, $id);
         self::guardGenerated($current);
         $conn->prepare("DELETE FROM calendar_events WHERE id = ? AND source IS NULL")->execute([$id]);
+        WorkflowEngine::dispatch('calendar_event.deleted', ['calendar_event' => ['id' => $id, 'title' => $current['title'] ?? null, 'category_id' => isset($current['category_id']) ? (int)$current['category_id'] : null]]);
         return $id;
     }
 
@@ -117,12 +122,15 @@ class CalendarService
                 "UPDATE calendar_categories SET name = ?, color = ?, description = ?, is_active = ?, updated_at = UTC_TIMESTAMP()
                  WHERE id = ?"
             )->execute([$name, $color, $description, $isActive, $id]);
+            WorkflowEngine::emitCrud('calendar_category', 'updated', $id, $name);
             return ['id' => $id, 'created' => false];
         }
         $conn->prepare(
             "INSERT INTO calendar_categories (name, color, description, is_active) VALUES (?, ?, ?, ?)"
         )->execute([$name, $color, $description, $isActive]);
-        return ['id' => (int)$conn->lastInsertId(), 'created' => true];
+        $newId = (int)$conn->lastInsertId();
+        WorkflowEngine::emitCrud('calendar_category', 'created', $newId, $name);
+        return ['id' => $newId, 'created' => true];
     }
 
     /** Delete a category — refused (409) while events still use it. Returns the id. */
@@ -137,11 +145,13 @@ class CalendarService
         if ($count > 0) {
             throw new ServiceError('conflict', 'conflict', "Cannot delete category: {$count} event(s) are using it. Please reassign or delete those events first.");
         }
+        $name = $conn->query("SELECT name FROM calendar_categories WHERE id = " . (int)$id)->fetchColumn() ?: null;
         $del = $conn->prepare("DELETE FROM calendar_categories WHERE id = ?");
         $del->execute([$id]);
         if ($del->rowCount() === 0) {
             throw new ServiceError('not_found', 'not_found', 'Category not found');
         }
+        WorkflowEngine::emitCrud('calendar_category', 'deleted', $id, $name);
         return $id;
     }
 

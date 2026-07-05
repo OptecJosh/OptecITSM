@@ -227,12 +227,13 @@ class ProblemsService
     /** Delete a problem permanently (tidies change_relations, cascades children). */
     public static function deleteProblem(PDO $conn, ActorContext $ctx, int $problemId): void
     {
-        self::loadProblem($conn, $ctx, $problemId);   // 404 if gone / out of scope
+        $row = self::loadProblem($conn, $ctx, $problemId);   // 404 if gone / out of scope
         try {
             $conn->prepare("DELETE FROM change_relations WHERE related_type = 'problem' AND related_id = ?")
                  ->execute([$problemId]);
         } catch (Exception $e) { /* change module absent */ }
         $conn->prepare("DELETE FROM problems WHERE id = ?")->execute([$problemId]);
+        WorkflowEngine::dispatch('problem.deleted', ['problem' => ['id' => $problemId, 'problem_number' => $row['problem_number'] ?? null, 'title' => $row['title'] ?? null]]);
     }
 
     // ======================================================================

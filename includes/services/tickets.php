@@ -423,6 +423,7 @@ class TicketsService
         if ($writeAudit) {
             self::auditWrite($conn, $ticketId, $ctx->actorId, 'Trash', 'active', 'moved to trash');
         }
+        WorkflowEngine::dispatch('ticket.deleted', ['ticket' => self::eventTicket($ticket)]);
     }
 
     /** Restore a ticket from the trash. $writeAudit -> the 'Trash' audit row. */
@@ -436,6 +437,25 @@ class TicketsService
         if ($writeAudit) {
             self::auditWrite($conn, $ticketId, $ctx->actorId, 'Trash', 'in trash', 'restored');
         }
+        WorkflowEngine::dispatch('ticket.restored', ['ticket' => self::eventTicket($ticket)]);
+    }
+
+    /** The canonical ticket workflow payload, built from a loaded (joined) row. */
+    private static function eventTicket(array $r): array
+    {
+        return [
+            'id'                  => (int)$r['id'],
+            'subject'             => $r['subject'] ?? null,
+            'priority_id'         => isset($r['priority_id']) ? (int)$r['priority_id'] : null,
+            'status_id'           => isset($r['status_id']) ? (int)$r['status_id'] : null,
+            'department_id'       => isset($r['department_id']) ? (int)$r['department_id'] : null,
+            'type_id'             => isset($r['ticket_type_id']) ? (int)$r['ticket_type_id'] : null,
+            'assigned_analyst_id' => isset($r['assigned_analyst_id']) ? (int)$r['assigned_analyst_id'] : null,
+            'owner_id'            => isset($r['owner_id']) ? (int)$r['owner_id'] : null,
+            'origin_id'           => isset($r['origin_id']) ? (int)$r['origin_id'] : null,
+            'created_by'          => isset($r['user_id']) ? (int)$r['user_id'] : null,
+            'requester_email'     => $r['requester_email'] ?? null,
+        ];
     }
 
     // ======================================================================

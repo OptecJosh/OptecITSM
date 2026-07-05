@@ -19,6 +19,7 @@
  */
 
 require_once __DIR__ . '/../service_context.php';
+require_once dirname(__DIR__, 2) . '/workflow/includes/engine.php';
 
 class MorningChecksService
 {
@@ -50,6 +51,7 @@ class MorningChecksService
                 array_key_exists('is_active', $in) ? (int)(bool)$in['is_active'] : (int)$current['IsActive'],
                 $id,
             ]);
+            WorkflowEngine::emitCrud('morning_check', 'updated', $id, $name);
             return $id;
         }
 
@@ -66,13 +68,15 @@ class MorningChecksService
             isset($in['sort_order']) ? (int)$in['sort_order'] : 0,
             isset($in['is_active']) ? (int)(bool)$in['is_active'] : 1,
         ]);
-        return (int)$conn->lastInsertId();
+        $newId = (int)$conn->lastInsertId();
+        WorkflowEngine::emitCrud('morning_check', 'created', $newId, $name);
+        return $newId;
     }
 
     /** Delete a check + its results, atomically. */
     public static function deleteCheck(PDO $conn, ActorContext $ctx, int $id): void
     {
-        self::loadCheckRow($conn, $id);                            // 404 if gone
+        $row = self::loadCheckRow($conn, $id);                     // 404 if gone
         $conn->beginTransaction();
         try {
             $conn->prepare("DELETE FROM morningChecks_Results WHERE CheckID = ?")->execute([$id]);
@@ -82,6 +86,7 @@ class MorningChecksService
             if ($conn->inTransaction()) $conn->rollBack();
             throw $e;
         }
+        WorkflowEngine::emitCrud('morning_check', 'deleted', $id, $row['CheckName'] ?? null);
     }
 
     private static function loadCheckRow(PDO $conn, int $id): array
@@ -107,9 +112,10 @@ class MorningChecksService
         if ($checkId <= 0) {
             throw new ServiceError('validation', 'missing_field', "'check_id' is required.");
         }
-        $check = $conn->prepare("SELECT CheckID FROM morningChecks_Checks WHERE CheckID = ?");
+        $check = $conn->prepare("SELECT CheckName FROM morningChecks_Checks WHERE CheckID = ?");
         $check->execute([$checkId]);
-        if (!$check->fetchColumn()) {
+        $checkName = $check->fetchColumn();
+        if ($checkName === false) {
             throw new ServiceError('validation', 'invalid_field', "Unknown check id: {$checkId}");
         }
 
@@ -148,6 +154,7 @@ class MorningChecksService
                  SET StatusID = ?, Status = NULL, Notes = ?, ModifiedDate = UTC_TIMESTAMP()
                  WHERE ResultID = ?"
             )->execute([(int)$status['StatusID'], $notes, (int)$resultId]);
+            self::recordedDispatch($checkId, $checkName, (int)$status['StatusID'], $status['Label'], $date);
             return ['id' => (int)$resultId, 'created' => false];
         }
 
@@ -155,7 +162,18 @@ class MorningChecksService
             "INSERT INTO morningChecks_Results (CheckID, CheckDate, StatusID, Status, Notes, CreatedBy, CreatedDate, ModifiedDate)
              VALUES (?, ?, ?, NULL, ?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())"
         )->execute([$checkId, $date, (int)$status['StatusID'], $notes, ($ctx->actorName !== '' ? $ctx->actorName : null)]);
-        return ['id' => (int)$conn->lastInsertId(), 'created' => true];
+        $newId = (int)$conn->lastInsertId();
+        self::recordedDispatch($checkId, $checkName, (int)$status['StatusID'], $status['Label'], $date);
+        return ['id' => $newId, 'created' => true];
+    }
+
+    /** Fire morning_check.recorded (best-effort). */
+    private static function recordedDispatch(int $checkId, ?string $checkName, int $statusId, ?string $statusName, string $date): void
+    {
+        WorkflowEngine::dispatch('morning_check.recorded', [
+            'check'  => ['id' => $checkId, 'name' => $checkName],
+            'result' => ['status_id' => $statusId, 'status_name' => $statusName, 'date' => $date],
+        ]);
     }
 
     /** Strict YYYY-MM-DD — 422 on garbage (the old UI silently substituted today). */
@@ -195,7 +213,9 @@ class MorningChecksService
                 "INSERT INTO morningChecks_Statuses (Label, Colour, RequiresNotes, SortOrder, IsActive, CreatedDate, ModifiedDate)
                  VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())"
             )->execute([$label, $colour, $requiresNotes, $sortOrder, $isActive]);
-            return (int)$conn->lastInsertId();
+            $newId = (int)$conn->lastInsertId();
+            WorkflowEngine::emitCrud('morning_check_status', 'created', $newId, $label);
+            return $newId;
         }
 
         if ($sortOrder === null) {
@@ -210,6 +230,7 @@ class MorningChecksService
              SET Label = ?, Colour = ?, RequiresNotes = ?, SortOrder = ?, IsActive = ?, ModifiedDate = UTC_TIMESTAMP()
              WHERE StatusID = ?"
         )->execute([$label, $colour, $requiresNotes, $sortOrder, $isActive, $id]);
+        WorkflowEngine::emitCrud('morning_check_status', 'updated', $id, $label);
         return $id;
     }
 
@@ -240,6 +261,9 @@ class MorningChecksService
         } catch (Exception $e) {
             if ($conn->inTransaction()) $conn->rollBack();
             throw $e;
+        }
+        if ($deleted > 0) {
+            WorkflowEngine::emitCrud('morning_check_status', 'deleted', $id, ($label !== false && $label !== null) ? (string)$label : null);
         }
         return ['deleted' => $deleted, 'orphaned' => $orphaned];
     }

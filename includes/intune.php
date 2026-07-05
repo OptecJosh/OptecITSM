@@ -701,6 +701,8 @@ function intuneUpsertSoftwareForAsset(PDO $conn, int $assetId, array $apps): int
             } else {
                 $insertApp->execute([$displayName, $publisher]);
                 $appId = (int)$conn->lastInsertId();
+                require_once dirname(__DIR__) . '/workflow/includes/engine.php';
+                WorkflowEngine::dispatch('software.application_discovered', ['application' => ['id' => $appId, 'name' => $displayName, 'publisher' => $publisher]]);
             }
             $appCache[$appKey] = $appId;
         }

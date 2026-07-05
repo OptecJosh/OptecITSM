@@ -23,6 +23,7 @@
  */
 
 require_once __DIR__ . '/../service_context.php';
+require_once dirname(__DIR__, 2) . '/workflow/includes/engine.php';
 
 class ContractsService
 {
@@ -54,6 +55,7 @@ class ContractsService
                     personal_data_transferred=?, dpia_required=?, dpia_completed_date=?, dpia_dms_link=?, is_active=?
                  WHERE id=?"
             )->execute([...self::contractParams($f), $id]);
+            WorkflowEngine::dispatch('contract.updated', ['contract' => ['id' => $id, 'title' => $f['title'] ?? null, 'status_id' => $f['contract_status_id'] ?? null, 'supplier_id' => $f['supplier_id'] ?? null]]);
             return ['id' => $id, 'created' => false];
         }
 
@@ -72,13 +74,15 @@ class ContractsService
                 is_active, created_datetime)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())"
         )->execute(self::contractParams($f));
-        return ['id' => (int)$conn->lastInsertId(), 'created' => true];
+        $newId = (int)$conn->lastInsertId();
+        WorkflowEngine::dispatch('contract.created', ['contract' => ['id' => $newId, 'title' => $f['title'] ?? null, 'status_id' => $f['contract_status_id'] ?? null, 'supplier_id' => $f['supplier_id'] ?? null]]);
+        return ['id' => $newId, 'created' => true];
     }
 
     /** Delete a contract (+ its term values; nullify referrers explicitly). Returns the id. */
     public static function deleteContract(PDO $conn, ActorContext $ctx, int $id): int
     {
-        self::loadRow($conn, 'contracts', $id, 'Contract not found.');
+        $row = self::loadRow($conn, 'contracts', $id, 'Contract not found.');
         $conn->beginTransaction();
         try {
             $conn->prepare("DELETE FROM contract_term_values WHERE contract_id = ?")->execute([$id]);
@@ -93,6 +97,7 @@ class ContractsService
             if ($conn->inTransaction()) $conn->rollBack();
             throw $e;
         }
+        WorkflowEngine::dispatch('contract.deleted', ['contract' => ['id' => $id, 'title' => $row['title'] ?? null, 'status_id' => isset($row['contract_status_id']) ? (int)$row['contract_status_id'] : null, 'supplier_id' => isset($row['supplier_id']) ? (int)$row['supplier_id'] : null]]);
         return $id;
     }
 
@@ -174,6 +179,7 @@ class ContractsService
                     questionnaire_date_issued=?, questionnaire_date_received=?, comments=?, is_active=?, supplies_assets=?
                  WHERE id=?"
             )->execute(array_merge($fields, [$id]));
+            WorkflowEngine::dispatch('supplier.updated', ['supplier' => ['id' => $id, 'name' => $legalName, 'status_id' => $statusId, 'type_id' => $typeId]]);
             return ['id' => $id, 'created' => false];
         }
         $conn->prepare(
@@ -183,13 +189,15 @@ class ContractsService
                 questionnaire_date_issued, questionnaire_date_received, comments, is_active, supplies_assets, created_datetime)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())"
         )->execute($fields);
-        return ['id' => (int)$conn->lastInsertId(), 'created' => true];
+        $newId = (int)$conn->lastInsertId();
+        WorkflowEngine::dispatch('supplier.created', ['supplier' => ['id' => $newId, 'name' => $legalName, 'status_id' => $statusId, 'type_id' => $typeId]]);
+        return ['id' => $newId, 'created' => true];
     }
 
     /** Delete a supplier — nullify/clean every referrer, then delete. Returns the id. */
     public static function deleteSupplier(PDO $conn, ActorContext $ctx, int $id): int
     {
-        self::loadRow($conn, 'suppliers', $id, 'Supplier not found.');
+        $row = self::loadRow($conn, 'suppliers', $id, 'Supplier not found.');
         $conn->beginTransaction();
         try {
             $conn->prepare("UPDATE contacts SET supplier_id = NULL WHERE supplier_id = ?")->execute([$id]);
@@ -210,6 +218,7 @@ class ContractsService
             if ($conn->inTransaction()) $conn->rollBack();
             throw $e;
         }
+        WorkflowEngine::dispatch('supplier.deleted', ['supplier' => ['id' => $id, 'name' => $row['legal_name'] ?? null, 'status_id' => isset($row['supplier_status_id']) ? (int)$row['supplier_status_id'] : null, 'type_id' => isset($row['supplier_type_id']) ? (int)$row['supplier_type_id'] : null]]);
         return $id;
     }
 

@@ -363,7 +363,7 @@ class ChangesService
     /** Delete a change permanently: attachment files + rows, cascade children. */
     public static function deleteChange(PDO $conn, ActorContext $ctx, int $changeId): void
     {
-        self::loadJoined($conn, $changeId);   // 404 if gone
+        $row = self::loadJoined($conn, $changeId);   // 404 if gone
 
         $att = $conn->prepare("SELECT file_path FROM change_attachments WHERE change_id = ?");
         $att->execute([$changeId]);
@@ -379,6 +379,7 @@ class ChangesService
         if (is_dir($dir)) {
             @rmdir($dir);
         }
+        WorkflowEngine::dispatch('change.deleted', ['change' => ['id' => $changeId, 'title' => $row['title'] ?? null]]);
     }
 
     // ======================================================================

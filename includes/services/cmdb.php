@@ -148,13 +148,14 @@ class CmdbService
             if ($conn->inTransaction()) $conn->rollBack();
             throw $e;
         }
+        WorkflowEngine::dispatch('cmdb.object.updated', ['object' => ['id' => $objectId, 'name' => $newName, 'class_id' => $classId]]);
         return $objectId;
     }
 
     /** Delete an object + its whole descendant tree (explicit, not FK cascade). Returns ['id','deleted_descendants']. */
     public static function deleteObject(PDO $conn, ActorContext $ctx, int $objectId): array
     {
-        self::loadObjectRow($conn, $objectId);
+        $row = self::loadObjectRow($conn, $objectId);
 
         $descendants = self::descendantIds($conn, $objectId);
         $ids = array_merge([$objectId], $descendants);
@@ -182,6 +183,7 @@ class CmdbService
             if ($conn->inTransaction()) $conn->rollBack();
             throw $e;
         }
+        WorkflowEngine::dispatch('cmdb.object.deleted', ['object' => ['id' => $objectId, 'name' => $row['name'] ?? null, 'class_id' => isset($row['class_id']) ? (int)$row['class_id'] : null]]);
         return ['id' => $objectId, 'deleted_descendants' => count($descendants)];
     }
 

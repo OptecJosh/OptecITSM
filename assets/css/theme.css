@@ -89,6 +89,11 @@
     --forms-accent:      #00897b;  --forms-accent-hover: #00695c;
     --forms-accent-soft: #e0f2f1;  --forms-on-accent:    #ffffff;
 
+    /* CMDB module (pink/magenta) accents — object browser, relationships, hero.
+       Pink is the module's registered brand colour (module-colors.php). */
+    --cmdb-accent:      #be185d;  --cmdb-accent-hover: #9d174d;
+    --cmdb-accent-soft: #fce4ec;  --cmdb-on-accent:    #ffffff;
+
     /* Messaging-channel (WhatsApp etc.) composer — green-tinted surface */
     --channel-bg:        #f7fdf9;  --channel-border: #d6e9d8;
 
@@ -163,6 +168,10 @@
     /* Forms module (teal) — accent nudged lighter to read on dark */
     --forms-accent:      #26a69a;  --forms-accent-hover: #4db6ac;
     --forms-accent-soft: #16302d;  --forms-on-accent:    #ffffff;
+
+    /* CMDB module (pink/magenta) — accent nudged lighter to read on dark */
+    --cmdb-accent:      #ec4899;  --cmdb-accent-hover: #f472b6;
+    --cmdb-accent-soft: #3a1826;  --cmdb-on-accent:    #ffffff;
 
     /* Messaging-channel (WhatsApp etc.) composer — dark green-tinted surface */
     --channel-bg:        #15231b;  --channel-border: #2b3d31;

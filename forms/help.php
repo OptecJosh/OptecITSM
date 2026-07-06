@@ -29,7 +29,7 @@ $translationNamespaces = ['common', 'forms'];
     <script src="../assets/js/i18n.js"></script>
     <?php echo Tz::scriptTag(); ?>
     <script src="../assets/js/tz.js?v=1"></script>
-    <link rel="stylesheet" href="../assets/css/theme.css?v=13">
+    <link rel="stylesheet" href="../assets/css/theme.css?v=14">
     <link rel="stylesheet" href="../assets/css/inbox.css">
     <style>
         /* Module accent (teal). */

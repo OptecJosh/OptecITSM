@@ -5,6 +5,7 @@
 session_start();
 require_once '../config.php';
 require_once '../includes/i18n.php';
+require_once '../includes/theme.php';
 require_once '../includes/timezone.php';
 I18n::initFromSession();
 Tz::init();
@@ -19,28 +20,30 @@ $path_prefix = '../';
 $translationNamespaces = ['common', 'cmdb'];
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>" data-theme="<?php echo htmlspecialchars(Theme::active()); ?>" data-theme-mode="<?php echo htmlspecialchars(Theme::mode()); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FreeITSM - <?php echo htmlspecialchars(t('cmdb.help.title')); ?></title>
+    <link rel="stylesheet" href="../assets/css/theme.css?v=14">
     <link rel="stylesheet" href="../assets/css/inbox.css">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <?php echo Tz::scriptTag(); ?>
     <script src="../assets/js/tz.js?v=1"></script>
     <script src="../assets/js/i18n.js"></script>
     <style>
+        body { --accent: var(--cmdb-accent); }
         .cmdb-help-container {
             display: flex;
             height: calc(100vh - 48px);
-            background: #f5f5f5;
+            background: var(--app-bg, #f5f5f5);
         }
 
         /* Left sidebar navigation */
         .cmdb-help-sidebar {
             width: 260px;
-            background: white;
-            border-right: 1px solid #ddd;
+            background: var(--surface, #ffffff);
+            border-right: 1px solid var(--border, #ddd);
             padding: 20px;
             display: flex;
             flex-direction: column;
@@ -51,7 +54,7 @@ $translationNamespaces = ['common', 'cmdb'];
         .cmdb-help-sidebar h3 {
             font-size: 12px;
             font-weight: 600;
-            color: #888;
+            color: var(--text-dim, #888);
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin: 0 0 12px;
@@ -63,21 +66,23 @@ $translationNamespaces = ['common', 'cmdb'];
             padding: 9px 12px;
             border-radius: 6px;
             font-size: 13px;
-            color: #555;
+            color: var(--text-muted, #555);
             text-decoration: none;
             transition: background 0.15s, color 0.15s;
         }
-        .cmdb-help-nav-link:hover { background: #fdf2f8; color: #be185d; }
-        .cmdb-help-nav-link.active { background: #fce7f3; color: #be185d; font-weight: 600; }
+        .cmdb-help-nav-link:hover { background: #fdf2f8; color: var(--cmdb-accent, #be185d); }
+        [data-theme-mode="dark"] .cmdb-help-nav-link:hover { background: var(--surface-hover, #fdf2f8); }
+        .cmdb-help-nav-link.active { background: #fce7f3; color: var(--cmdb-accent, #be185d); font-weight: 600; }
+        [data-theme-mode="dark"] .cmdb-help-nav-link.active { background: var(--cmdb-accent-soft, #fce7f3); }
         .cmdb-help-nav-num {
             display: flex; align-items: center; justify-content: center;
             min-width: 24px; height: 24px;
             border-radius: 50%;
-            background: #eee; color: #888;
+            background: var(--surface-3, #eee); color: var(--text-dim, #888);
             font-weight: 700; font-size: 11px;
             flex-shrink: 0;
         }
-        .cmdb-help-nav-link.active .cmdb-help-nav-num { background: #be185d; color: white; }
+        .cmdb-help-nav-link.active .cmdb-help-nav-num { background: var(--cmdb-accent, #be185d); color: var(--cmdb-on-accent, #ffffff); }
 
         /* Main content area */
         .cmdb-help-main { flex: 1; overflow-y: auto; }
@@ -87,6 +92,9 @@ $translationNamespaces = ['common', 'cmdb'];
             padding: 40px 48px 36px;
             text-align: center;
         }
+        [data-theme-mode="dark"] .cmdb-help-hero {
+            background: linear-gradient(135deg, #4a1330 0%, #3a0f26 50%, #2a0b1c 100%);
+        }
         .cmdb-help-hero h2 { margin: 0 0 8px; font-size: 26px; font-weight: 700; }
         .cmdb-help-hero p { margin: 0; font-size: 15px; opacity: 0.85; max-width: 720px; margin: 0 auto; }
         .cmdb-help-content { max-width: 1120px; margin: 0 auto; padding: 10px 48px 48px; }
@@ -94,7 +102,7 @@ $translationNamespaces = ['common', 'cmdb'];
         /* Sections */
         .cmdb-help-section {
             padding: 28px 0;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border-soft, #eee);
             scroll-margin-top: 20px;
         }
         .cmdb-help-section:last-child { border-bottom: none; padding-bottom: 0; }
@@ -102,18 +110,19 @@ $translationNamespaces = ['common', 'cmdb'];
             display: flex; align-items: flex-start; gap: 14px;
             margin-bottom: 16px;
         }
-        .cmdb-help-section-header h3 { margin: 0; font-size: 18px; color: #333; }
-        .cmdb-help-section-header p { margin: 6px 0 0; font-size: 14px; color: #666; line-height: 1.6; }
-        .cmdb-help-section > p { font-size: 14px; color: #555; line-height: 1.7; margin: 0 0 14px; }
+        .cmdb-help-section-header h3 { margin: 0; font-size: 18px; color: var(--text, #333); }
+        .cmdb-help-section-header p { margin: 6px 0 0; font-size: 14px; color: var(--text-muted, #666); line-height: 1.6; }
+        .cmdb-help-section > p { font-size: 14px; color: var(--text-muted, #555); line-height: 1.7; margin: 0 0 14px; }
         .cmdb-help-section-num {
             display: flex; align-items: center; justify-content: center;
             min-width: 32px; height: 32px;
             border-radius: 50%;
-            background: #fce7f3; color: #be185d;
+            background: #fce7f3; color: var(--cmdb-accent, #be185d);
             font-weight: 700; font-size: 14px;
             flex-shrink: 0;
         }
-        .cmdb-help-section-num.highlight { background: #be185d; color: white; }
+        [data-theme-mode="dark"] .cmdb-help-section-num { background: var(--cmdb-accent-soft, #fce7f3); }
+        .cmdb-help-section-num.highlight { background: var(--cmdb-accent, #be185d); color: var(--cmdb-on-accent, #ffffff); }
 
         /* Highlighted section */
         .cmdb-help-section-highlight {
@@ -122,6 +131,10 @@ $translationNamespaces = ['common', 'cmdb'];
             padding: 28px 48px !important;
             border-bottom: none !important;
             border-top: 2px solid #fbcfe8;
+        }
+        [data-theme-mode="dark"] .cmdb-help-section-highlight {
+            background: var(--surface-2, #fdf2f8);
+            border-top-color: var(--border, #fbcfe8);
         }
 
         /* Feature cards grid */
@@ -134,18 +147,19 @@ $translationNamespaces = ['common', 'cmdb'];
         .cmdb-help-feature-card {
             padding: 16px;
             border-radius: 10px;
-            border: 1px solid #e0e0e0;
-            background: white;
+            border: 1px solid var(--border, #e0e0e0);
+            background: var(--surface, #ffffff);
         }
-        .cmdb-help-feature-card h4 { margin: 0 0 6px; font-size: 14px; color: #333; }
-        .cmdb-help-feature-card p { margin: 0; font-size: 12.5px; color: #666; line-height: 1.5; }
+        .cmdb-help-feature-card h4 { margin: 0 0 6px; font-size: 14px; color: var(--text, #333); }
+        .cmdb-help-feature-card p { margin: 0; font-size: 12.5px; color: var(--text-muted, #666); line-height: 1.5; }
         .cmdb-help-feature-icon {
             width: 36px; height: 36px;
             border-radius: 8px;
             display: flex; align-items: center; justify-content: center;
             margin-bottom: 10px;
-            background: #fce7f3; color: #be185d;
+            background: #fce7f3; color: var(--cmdb-accent, #be185d);
         }
+        [data-theme-mode="dark"] .cmdb-help-feature-icon { background: var(--cmdb-accent-soft, #fce7f3); }
 
         /* Concept callouts (Class / Object / Property / etc) */
         .concept-row {
@@ -153,24 +167,24 @@ $translationNamespaces = ['common', 'cmdb'];
             grid-template-columns: 140px 1fr;
             gap: 16px;
             padding: 12px 14px;
-            background: #fafafa;
+            background: var(--surface-2, #fafafa);
             border-radius: 8px;
-            border-left: 3px solid #be185d;
+            border-left: 3px solid var(--cmdb-accent, #be185d);
             margin-bottom: 10px;
             margin-left: 46px;
             align-items: start;
         }
         .concept-name {
             font-weight: 700;
-            color: #be185d;
+            color: var(--cmdb-accent, #be185d);
             font-size: 14px;
         }
         .concept-desc {
             font-size: 13px;
-            color: #555;
+            color: var(--text-muted, #555);
             line-height: 1.55;
         }
-        .concept-desc em { color: #be185d; font-style: normal; font-weight: 500; }
+        .concept-desc em { color: var(--cmdb-accent, #be185d); font-style: normal; font-weight: 500; }
 
         /* Numbered steps */
         .cmdb-help-steps {
@@ -181,14 +195,14 @@ $translationNamespaces = ['common', 'cmdb'];
             display: flex; align-items: flex-start; gap: 14px;
             padding: 10px 14px;
             border-radius: 8px;
-            background: #fafafa;
-            font-size: 14px; color: #444; line-height: 1.5;
+            background: var(--surface-2, #fafafa);
+            font-size: 14px; color: var(--text, #444); line-height: 1.5;
         }
         .cmdb-help-step-num {
             display: flex; align-items: center; justify-content: center;
             min-width: 26px; height: 26px;
             border-radius: 50%;
-            background: #be185d; color: white;
+            background: var(--cmdb-accent, #be185d); color: var(--cmdb-on-accent, #ffffff);
             font-weight: 700; font-size: 13px;
             flex-shrink: 0;
         }
@@ -196,38 +210,41 @@ $translationNamespaces = ['common', 'cmdb'];
         /* Tip callout */
         .cmdb-help-tip {
             font-size: 13px;
-            color: #9d174d;
+            color: var(--cmdb-accent-hover, #9d174d);
             background: #fdf2f8;
             padding: 10px 14px;
             border-radius: 8px;
-            border-left: 3px solid #be185d;
+            border-left: 3px solid var(--cmdb-accent, #be185d);
             margin-top: 14px;
             margin-left: 46px;
             line-height: 1.55;
         }
+        [data-theme-mode="dark"] .cmdb-help-tip { background: var(--surface-2, #fdf2f8); }
         .cmdb-help-tip strong { color: #831843; }
+        [data-theme-mode="dark"] .cmdb-help-tip strong { color: var(--cmdb-accent, #831843); }
 
         /* The SQL hierarchy diagram */
         .hierarchy-diagram {
             font-family: 'Consolas', 'Monaco', monospace;
-            background: #fafafa;
+            background: var(--surface-2, #fafafa);
             border-radius: 8px;
             padding: 18px 20px;
             margin: 14px 0 14px 46px;
             font-size: 13px;
-            color: #333;
+            color: var(--text, #333);
             line-height: 1.8;
         }
         .hierarchy-diagram .node {
             display: inline-block;
-            background: white;
+            background: var(--surface, #ffffff);
             padding: 3px 10px;
             border-radius: 4px;
             border: 1px solid #fbcfe8;
-            color: #be185d;
+            color: var(--cmdb-accent, #be185d);
             font-weight: 600;
         }
-        .hierarchy-diagram .arrow { color: #d1d5db; }
+        [data-theme-mode="dark"] .hierarchy-diagram .node { border-color: var(--border, #fbcfe8); }
+        .hierarchy-diagram .arrow { color: var(--text-faint, #d1d5db); }
 
         /* When to use which — three-column comparison */
         .when-table {
@@ -237,20 +254,20 @@ $translationNamespaces = ['common', 'cmdb'];
             margin: 16px 0 0 46px;
         }
         .when-card {
-            background: white;
+            background: var(--surface, #ffffff);
             border-radius: 10px;
-            border: 1px solid #e0e0e0;
+            border: 1px solid var(--border, #e0e0e0);
             padding: 16px;
         }
         .when-card h4 {
             font-size: 13px;
-            color: #be185d;
+            color: var(--cmdb-accent, #be185d);
             margin: 0 0 8px;
             text-transform: uppercase;
             letter-spacing: 0.4px;
         }
-        .when-card p { font-size: 12.5px; color: #555; margin: 0 0 6px; line-height: 1.5; }
-        .when-card .ex { font-size: 12px; color: #888; font-style: italic; }
+        .when-card p { font-size: 12.5px; color: var(--text-muted, #555); margin: 0 0 6px; line-height: 1.5; }
+        .when-card .ex { font-size: 12px; color: var(--text-dim, #888); font-style: italic; }
 
         /* Two-column tip pairs */
         .tips-grid {
@@ -260,33 +277,33 @@ $translationNamespaces = ['common', 'cmdb'];
             margin: 14px 0 0 46px;
         }
         .tip-card {
-            background: white;
+            background: var(--surface, #ffffff);
             padding: 14px 16px;
             border-radius: 8px;
-            border: 1px solid #e0e0e0;
+            border: 1px solid var(--border, #e0e0e0);
         }
         .tip-card h4 {
             font-size: 13px;
-            color: #be185d;
+            color: var(--cmdb-accent, #be185d);
             margin: 0 0 6px;
         }
         .tip-card p {
             font-size: 12.5px;
-            color: #555;
+            color: var(--text-muted, #555);
             margin: 0;
             line-height: 1.55;
         }
 
         kbd {
             display: inline-block;
-            background: white;
-            border: 1px solid #d1d5db;
+            background: var(--surface, #ffffff);
+            border: 1px solid var(--border, #d1d5db);
             border-bottom-width: 2px;
             border-radius: 3px;
             padding: 1px 5px;
             font-family: 'Consolas', 'Monaco', monospace;
             font-size: 11px;
-            color: #4b5563;
+            color: var(--text-muted, #4b5563);
         }
 
         @media (max-width: 900px) {

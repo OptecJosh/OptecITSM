@@ -11,6 +11,7 @@
 session_start();
 require_once '../config.php';
 require_once '../includes/i18n.php';
+require_once '../includes/theme.php';
 require_once '../includes/timezone.php';
 I18n::initFromSession();
 Tz::init();
@@ -19,27 +20,28 @@ $current_page = 'browse';
 $translationNamespaces = ['common', 'cmdb'];
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>" data-theme="<?php echo htmlspecialchars(Theme::active()); ?>" data-theme-mode="<?php echo htmlspecialchars(Theme::mode()); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FreeITSM - <?php echo htmlspecialchars(t('cmdb.title')); ?></title>
+    <link rel="stylesheet" href="../assets/css/theme.css?v=14">
     <link rel="stylesheet" href="../assets/css/inbox.css">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <?php echo Tz::scriptTag(); ?>
     <script src="../assets/js/tz.js?v=1"></script>
     <script src="../assets/js/i18n.js"></script>
     <style>
-        body { background: #f5f5f5; }
+        body { --accent: var(--cmdb-accent); background: var(--app-bg, #f5f5f5); }
         .obj-page { height: calc(100vh - 48px); overflow-y: auto; padding: 0 20px; }
 
-        .obj-breadcrumb { font-size: 13px; color: #6b7280; margin-bottom: 8px; }
-        .obj-breadcrumb a { color: #be185d; text-decoration: none; }
+        .obj-breadcrumb { font-size: 13px; color: var(--text-muted, #6b7280); margin-bottom: 8px; }
+        .obj-breadcrumb a { color: var(--cmdb-accent, #be185d); text-decoration: none; }
         .obj-breadcrumb a:hover { text-decoration: underline; }
-        .obj-breadcrumb .sep { margin: 0 6px; color: #d1d5db; }
+        .obj-breadcrumb .sep { margin: 0 6px; color: var(--text-faint, #d1d5db); }
 
         .obj-header {
-            background: white;
+            background: var(--surface, #ffffff);
             border-radius: 8px;
             padding: 24px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.04);
@@ -48,7 +50,7 @@ $translationNamespaces = ['common', 'cmdb'];
         .obj-name {
             font-size: 28px;
             font-weight: 600;
-            color: #111827;
+            color: var(--text, #111827);
             border: 1px solid transparent;
             padding: 4px 8px;
             margin: -4px -8px 8px -8px;
@@ -59,20 +61,20 @@ $translationNamespaces = ['common', 'cmdb'];
             background: transparent;
             font-family: inherit;
         }
-        .obj-name:hover { background: #fafafa; }
-        .obj-name:focus { background: white; border-color: #be185d; outline: none; }
+        .obj-name:hover { background: var(--surface-2, #fafafa); }
+        .obj-name:focus { background: var(--surface, #ffffff); border-color: var(--cmdb-accent, #be185d); outline: none; }
 
-        .obj-meta { display: flex; gap: 18px; flex-wrap: wrap; color: #6b7280; font-size: 13px; align-items: center; }
+        .obj-meta { display: flex; gap: 18px; flex-wrap: wrap; color: var(--text-muted, #6b7280); font-size: 13px; align-items: center; }
         .obj-meta .class-badge {
             background: linear-gradient(135deg, #fce7f3, #fbcfe8);
-            color: #be185d;
+            color: var(--cmdb-accent, #be185d);
             padding: 4px 12px;
             border-radius: 999px;
             font-weight: 600;
             font-size: 12px;
         }
-        .obj-meta strong { color: #374151; font-weight: 500; }
-        .obj-meta a { color: #be185d; text-decoration: none; }
+        .obj-meta strong { color: var(--text, #374151); font-weight: 500; }
+        .obj-meta a { color: var(--cmdb-accent, #be185d); text-decoration: none; }
         .obj-meta a:hover { text-decoration: underline; }
 
         /* Planned-state styling — used on the object header, browse rows, and
@@ -81,9 +83,9 @@ $translationNamespaces = ['common', 'cmdb'];
            the planned state read at a glance when you're on the detail page. */
         .planned-pill {
             display: inline-block;
-            background: #fef3c7;
-            color: #92400e;
-            border: 1px solid #fcd34d;
+            background: var(--warning-bg, #fef3c7);
+            color: var(--warning-text, #92400e);
+            border: 1px solid var(--warning-border, #fcd34d);
             padding: 2px 8px;
             border-radius: 999px;
             font-size: 10px;
@@ -93,7 +95,7 @@ $translationNamespaces = ['common', 'cmdb'];
             vertical-align: middle;
         }
         .obj-header.is-planned {
-            border: 2px dashed #fcd34d;
+            border: 2px dashed var(--warning-border, #fcd34d);
             background: linear-gradient(180deg, #fffbeb 0%, white 60%);
             padding: 18px 22px;
             border-radius: 8px;
@@ -104,7 +106,7 @@ $translationNamespaces = ['common', 'cmdb'];
         .obj-actions { margin-top: 16px; display: flex; gap: 10px; }
 
         .obj-section {
-            background: white;
+            background: var(--surface, #ffffff);
             border-radius: 8px;
             padding: 20px 24px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.04);
@@ -113,7 +115,7 @@ $translationNamespaces = ['common', 'cmdb'];
         .obj-section h3 {
             font-size: 14px;
             text-transform: uppercase;
-            color: #6b7280;
+            color: var(--text-muted, #6b7280);
             margin-bottom: 14px;
             font-weight: 600;
             display: flex;
@@ -123,7 +125,7 @@ $translationNamespaces = ['common', 'cmdb'];
 
         /* Properties table */
         .props-table { width: 100%; border-collapse: collapse; }
-        .props-table tr { border-bottom: 1px solid #f3f4f6; }
+        .props-table tr { border-bottom: 1px solid var(--border-soft, #f3f4f6); }
         .props-table tr:last-child { border-bottom: none; }
         .props-table td {
             padding: 10px 0;
@@ -132,18 +134,18 @@ $translationNamespaces = ['common', 'cmdb'];
         }
         .props-table td.prop-label {
             width: 220px;
-            color: #6b7280;
+            color: var(--text-muted, #6b7280);
             font-weight: 500;
             padding-right: 16px;
         }
-        .props-table td.prop-label .req { color: #be185d; margin-left: 3px; }
-        .props-table td.prop-value { color: #1f2937; }
+        .props-table td.prop-label .req { color: var(--cmdb-accent, #be185d); margin-left: 3px; }
+        .props-table td.prop-value { color: var(--text, #1f2937); }
         .props-table .prop-type-tag {
             display: inline-block;
             font-size: 10px;
             text-transform: uppercase;
-            background: #f3f4f6;
-            color: #9ca3af;
+            background: var(--surface-3, #f3f4f6);
+            color: var(--text-dim, #9ca3af);
             padding: 1px 6px;
             border-radius: 3px;
             margin-left: 8px;
@@ -159,17 +161,17 @@ $translationNamespaces = ['common', 'cmdb'];
             cursor: text;
             min-height: 22px;
         }
-        .prop-display:hover { background: #fafafa; border-color: #e5e7eb; }
-        .prop-display.empty { color: #d1d5db; font-style: italic; }
-        .prop-display.empty:hover::after { content: ' — click to set'; color: #9ca3af; font-style: normal; }
+        .prop-display:hover { background: var(--surface-2, #fafafa); border-color: var(--border, #e5e7eb); }
+        .prop-display.empty { color: var(--text-faint, #d1d5db); font-style: italic; }
+        .prop-display.empty:hover::after { content: ' — click to set'; color: var(--text-dim, #9ca3af); font-style: normal; }
         .prop-edit {
             width: 100%;
             padding: 6px 8px;
-            border: 1px solid #be185d;
+            border: 1px solid var(--cmdb-accent, #be185d);
             border-radius: 4px;
             font-size: 14px;
             font-family: inherit;
-            background: white;
+            background: var(--surface, #ffffff);
             box-shadow: 0 0 0 3px rgba(190, 24, 93, 0.1);
         }
         .prop-edit:focus { outline: none; }
@@ -189,7 +191,7 @@ $translationNamespaces = ['common', 'cmdb'];
             margin-bottom: 8px;
         }
         .ai-summary-label {
-            color: #be185d;
+            color: var(--cmdb-accent, #be185d);
             font-size: 11px;
             font-weight: 700;
             text-transform: uppercase;
@@ -199,24 +201,24 @@ $translationNamespaces = ['common', 'cmdb'];
             gap: 6px;
         }
         .ai-summary-text {
-            color: #1f2937;
+            color: var(--text, #1f2937);
             font-size: 15px;
             line-height: 1.55;
         }
         .ai-summary-empty {
-            color: #6b7280;
+            color: var(--text-muted, #6b7280);
             font-style: italic;
             font-size: 14px;
         }
         .ai-summary-meta {
-            color: #9d174d;
+            color: var(--cmdb-accent-hover, #9d174d);
             font-size: 12px;
             margin-top: 8px;
             opacity: 0.75;
         }
         .ai-summary-spinner-dot {
             display: inline-block; width: 6px; height: 6px; margin: 0 2px;
-            background: #be185d; border-radius: 50%; animation: aiblink2 1.4s infinite both;
+            background: var(--cmdb-accent, #be185d); border-radius: 50%; animation: aiblink2 1.4s infinite both;
         }
         .ai-summary-spinner-dot:nth-child(2) { animation-delay: 0.2s; }
         .ai-summary-spinner-dot:nth-child(3) { animation-delay: 0.4s; }
@@ -230,15 +232,15 @@ $translationNamespaces = ['common', 'cmdb'];
         }
         @media (max-width: 900px) { .impact-grid { grid-template-columns: 1fr; } }
         .impact-bucket {
-            background: #fafafa;
-            border: 1px solid #e5e7eb;
+            background: var(--surface-2, #fafafa);
+            border: 1px solid var(--border, #e5e7eb);
             border-radius: 6px;
             padding: 12px 14px;
         }
         .impact-bucket h4 {
             font-size: 11px;
             text-transform: uppercase;
-            color: #6b7280;
+            color: var(--text-muted, #6b7280);
             margin-bottom: 8px;
             font-weight: 600;
             letter-spacing: 0.4px;
@@ -247,8 +249,8 @@ $translationNamespaces = ['common', 'cmdb'];
             align-items: center;
         }
         .impact-bucket .count-badge {
-            background: white;
-            color: #be185d;
+            background: var(--surface, #ffffff);
+            color: var(--cmdb-accent, #be185d);
             padding: 1px 8px;
             border-radius: 999px;
             font-size: 11px;
@@ -258,13 +260,13 @@ $translationNamespaces = ['common', 'cmdb'];
         .impact-bucket li {
             padding: 5px 0;
             font-size: 13px;
-            border-bottom: 1px solid #f3f4f6;
+            border-bottom: 1px solid var(--border-soft, #f3f4f6);
         }
         .impact-bucket li:last-child { border-bottom: none; }
-        .impact-bucket a { color: #be185d; text-decoration: none; font-weight: 500; }
+        .impact-bucket a { color: var(--cmdb-accent, #be185d); text-decoration: none; font-weight: 500; }
         .impact-bucket a:hover { text-decoration: underline; }
-        .impact-bucket .meta { color: #6b7280; font-size: 11px; }
-        .impact-bucket .empty { color: #9ca3af; font-style: italic; font-size: 13px; }
+        .impact-bucket .meta { color: var(--text-muted, #6b7280); font-size: 11px; }
+        .impact-bucket .empty { color: var(--text-dim, #9ca3af); font-style: italic; font-size: 13px; }
 
         /* Activity panel — tickets that reference this object */
         .activity-bucket-head {
@@ -273,14 +275,14 @@ $translationNamespaces = ['common', 'cmdb'];
             align-items: center;
             font-size: 11px;
             text-transform: uppercase;
-            color: #6b7280;
+            color: var(--text-muted, #6b7280);
             font-weight: 600;
             letter-spacing: 0.4px;
             margin-bottom: 8px;
         }
         .activity-bucket-head .count-badge {
-            background: white;
-            color: #be185d;
+            background: var(--surface, #ffffff);
+            color: var(--cmdb-accent, #be185d);
             padding: 1px 8px;
             border-radius: 999px;
             font-size: 11px;
@@ -291,8 +293,8 @@ $translationNamespaces = ['common', 'cmdb'];
             justify-content: space-between;
             align-items: center;
             padding: 10px 12px;
-            background: #fafafa;
-            border: 1px solid #e5e7eb;
+            background: var(--surface-2, #fafafa);
+            border: 1px solid var(--border, #e5e7eb);
             border-radius: 6px;
             margin-bottom: 6px;
             text-decoration: none;
@@ -312,11 +314,11 @@ $translationNamespaces = ['common', 'cmdb'];
         .ticket-card-number {
             font-family: 'Consolas', 'Monaco', monospace;
             font-size: 11px;
-            color: #9ca3af;
+            color: var(--text-dim, #9ca3af);
             font-weight: 500;
         }
         .ticket-card-subject {
-            color: #111827;
+            color: var(--text, #111827);
             font-weight: 500;
             font-size: 14px;
             white-space: nowrap;
@@ -328,7 +330,7 @@ $translationNamespaces = ['common', 'cmdb'];
         .ticket-card-meta {
             display: flex;
             gap: 10px;
-            color: #6b7280;
+            color: var(--text-muted, #6b7280);
             font-size: 12px;
             align-items: center;
             flex-wrap: wrap;
@@ -343,7 +345,7 @@ $translationNamespaces = ['common', 'cmdb'];
         }
         .activity-empty {
             padding: 20px 12px;
-            color: #9ca3af;
+            color: var(--text-dim, #9ca3af);
             font-style: italic;
             font-size: 13px;
             text-align: center;
@@ -351,10 +353,10 @@ $translationNamespaces = ['common', 'cmdb'];
 
         /* Inline mini-graph — parent / this / children + related */
         .mini-graph {
-            background: white;
+            background: var(--surface, #ffffff);
             padding: 24px 12px;
             border-radius: 6px;
-            border: 1px dashed #e5e7eb;
+            border: 1px dashed var(--border, #e5e7eb);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -373,19 +375,19 @@ $translationNamespaces = ['common', 'cmdb'];
             align-items: center;
             gap: 6px;
             padding: 6px 12px;
-            background: #fafafa;
-            border: 1px solid #e5e7eb;
+            background: var(--surface-2, #fafafa);
+            border: 1px solid var(--border, #e5e7eb);
             border-radius: 6px;
-            color: #374151;
+            color: var(--text, #374151);
             text-decoration: none;
             font-size: 13px;
             max-width: 220px;
         }
-        .mg-node:hover { background: #fdf2f8; border-color: #fbcfe8; color: #be185d; }
+        .mg-node:hover { background: #fdf2f8; border-color: #fbcfe8; color: var(--cmdb-accent, #be185d); }
         .mg-node.this {
-            background: linear-gradient(135deg, #be185d, #9d174d);
-            color: white;
-            border-color: #9d174d;
+            background: linear-gradient(135deg, var(--cmdb-accent, #be185d), var(--cmdb-accent-hover, #9d174d));
+            color: var(--cmdb-on-accent, #ffffff);
+            border-color: var(--cmdb-accent-hover, #9d174d);
             font-weight: 600;
             cursor: default;
         }
@@ -400,7 +402,7 @@ $translationNamespaces = ['common', 'cmdb'];
         .mg-connector {
             width: 2px;
             height: 16px;
-            background: #d1d5db;
+            background: var(--border, #d1d5db);
             margin: 0 auto;
         }
         .mg-side-rels {
@@ -418,7 +420,7 @@ $translationNamespaces = ['common', 'cmdb'];
         .mg-side-label {
             font-size: 10px;
             text-transform: uppercase;
-            color: #9ca3af;
+            color: var(--text-dim, #9ca3af);
             margin-bottom: 6px;
             font-weight: 600;
             letter-spacing: 0.4px;
@@ -426,14 +428,14 @@ $translationNamespaces = ['common', 'cmdb'];
         .mg-rel-link {
             display: block;
             font-size: 12px;
-            color: #6b7280;
+            color: var(--text-muted, #6b7280);
             padding: 3px 0;
             text-decoration: none;
         }
-        .mg-rel-link:hover { color: #be185d; }
-        .mg-rel-link strong { color: #374151; }
-        .mg-rel-link:hover strong { color: #be185d; }
-        .mg-rel-verb { color: #9ca3af; font-style: italic; margin: 0 4px; }
+        .mg-rel-link:hover { color: var(--cmdb-accent, #be185d); }
+        .mg-rel-link strong { color: var(--text, #374151); }
+        .mg-rel-link:hover strong { color: var(--cmdb-accent, #be185d); }
+        .mg-rel-verb { color: var(--text-dim, #9ca3af); font-style: italic; margin: 0 4px; }
 
         /* Coloured dropdown value pill */
         .prop-display.dropdown-pill {
@@ -456,30 +458,30 @@ $translationNamespaces = ['common', 'cmdb'];
             border: 1px solid #fbcfe8;
             border-radius: 999px;
             font-size: 13px;
-            color: #be185d;
+            color: var(--cmdb-accent, #be185d);
             text-decoration: none;
             font-weight: 500;
         }
         .obj-ref-pill:hover { background: #fce7f3; }
-        .obj-ref-pill .pill-class { color: #9d174d; opacity: 0.7; font-size: 11px; }
+        .obj-ref-pill .pill-class { color: var(--cmdb-accent-hover, #9d174d); opacity: 0.7; font-size: 11px; }
 
         /* Hierarchy + relationships lists */
         .item-list { list-style: none; padding: 0; margin: 0; }
         .item-list li {
             padding: 8px 0;
-            border-bottom: 1px solid #f3f4f6;
+            border-bottom: 1px solid var(--border-soft, #f3f4f6);
             display: flex;
             justify-content: space-between;
             align-items: center;
             font-size: 14px;
         }
         .item-list li:last-child { border-bottom: none; }
-        .item-list a { color: #be185d; text-decoration: none; font-weight: 500; }
+        .item-list a { color: var(--cmdb-accent, #be185d); text-decoration: none; font-weight: 500; }
         .item-list a:hover { text-decoration: underline; }
-        .item-list .meta { color: #6b7280; font-size: 12px; }
-        .item-list .verb { color: #4b5563; font-style: italic; padding: 0 8px; }
+        .item-list .meta { color: var(--text-muted, #6b7280); font-size: 12px; }
+        .item-list .verb { color: var(--text-muted, #4b5563); font-style: italic; padding: 0 8px; }
 
-        .empty-row { color: #9ca3af; font-style: italic; padding: 8px 0; font-size: 14px; }
+        .empty-row { color: var(--text-dim, #9ca3af); font-style: italic; padding: 8px 0; font-size: 14px; }
 
         /* Relationships split into outgoing + incoming columns */
         .rel-split { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
@@ -487,7 +489,7 @@ $translationNamespaces = ['common', 'cmdb'];
         .rel-col h4 {
             font-size: 12px;
             text-transform: uppercase;
-            color: #6b7280;
+            color: var(--text-muted, #6b7280);
             margin-bottom: 8px;
             font-weight: 600;
         }
@@ -495,7 +497,7 @@ $translationNamespaces = ['common', 'cmdb'];
         /* Add buttons */
         .btn-mini {
             background: #fdf2f8;
-            color: #be185d;
+            color: var(--cmdb-accent, #be185d);
             border: 1px solid #fbcfe8;
             padding: 5px 12px;
             border-radius: 4px;
@@ -507,38 +509,38 @@ $translationNamespaces = ['common', 'cmdb'];
         .x-btn {
             background: none;
             border: none;
-            color: #d1d5db;
+            color: var(--text-faint, #d1d5db);
             cursor: pointer;
             font-size: 16px;
             padding: 0 4px;
             line-height: 1;
         }
-        .x-btn:hover { color: #b91c1c; }
+        .x-btn:hover { color: var(--danger-accent, #b91c1c); }
 
         .btn { padding: 9px 18px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500; border: 1px solid transparent; }
-        .btn-primary { background: #be185d; color: white; }
-        .btn-primary:hover { background: #9d174d; }
-        .btn-secondary { background: white; color: #374151; border-color: #d1d5db; }
-        .btn-danger { background: white; color: #b91c1c; border-color: #fecaca; }
+        .btn-primary { background: var(--cmdb-accent, #be185d); color: var(--cmdb-on-accent, #ffffff); }
+        .btn-primary:hover { background: var(--cmdb-accent-hover, #9d174d); }
+        .btn-secondary { background: var(--surface, #ffffff); color: var(--text, #374151); border-color: var(--border, #d1d5db); }
+        .btn-danger { background: var(--surface, #ffffff); color: var(--danger-text, #b91c1c); border-color: #fecaca; }
         .btn-danger:hover { background: #fef2f2; }
 
         /* Modal */
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; }
         .modal.active { display: flex; align-items: center; justify-content: center; }
-        .modal-content { background: white; border-radius: 8px; width: 520px; max-width: 95vw; }
-        .modal-header { padding: 18px 24px; border-bottom: 1px solid #e5e7eb; font-weight: 600; font-size: 16px; }
+        .modal-content { background: var(--surface, #ffffff); border-radius: 8px; width: 520px; max-width: 95vw; }
+        .modal-header { padding: 18px 24px; border-bottom: 1px solid var(--border, #e5e7eb); font-weight: 600; font-size: 16px; }
         .modal-body { padding: 24px; }
         .modal-actions {
             padding: 16px 24px;
-            border-top: 1px solid #e5e7eb;
+            border-top: 1px solid var(--border, #e5e7eb);
             display: flex;
             gap: 12px;
             justify-content: flex-end;
         }
         .form-group { margin-bottom: 16px; }
-        .form-group label { display: block; font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 6px; }
+        .form-group label { display: block; font-size: 13px; font-weight: 500; color: var(--text, #374151); margin-bottom: 6px; }
         .form-group select, .form-group input {
-            width: 100%; padding: 9px 12px; border: 1px solid #d1d5db;
+            width: 100%; padding: 9px 12px; border: 1px solid var(--border, #d1d5db);
             border-radius: 4px; font-size: 14px;
         }
 
@@ -547,8 +549,8 @@ $translationNamespaces = ['common', 'cmdb'];
         .autocomplete-results {
             position: absolute;
             top: 100%; left: 0; right: 0;
-            background: white;
-            border: 1px solid #e5e7eb;
+            background: var(--surface, #ffffff);
+            border: 1px solid var(--border, #e5e7eb);
             border-radius: 4px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
             max-height: 240px;
@@ -565,9 +567,9 @@ $translationNamespaces = ['common', 'cmdb'];
             justify-content: space-between;
             font-size: 13px;
         }
-        .ac-result:hover, .ac-result.highlighted { background: #fdf2f8; color: #be185d; }
-        .ac-result .ac-class { color: #9ca3af; font-size: 11px; }
-        .ac-empty { padding: 10px; color: #9ca3af; font-size: 13px; text-align: center; }
+        .ac-result:hover, .ac-result.highlighted { background: #fdf2f8; color: var(--cmdb-accent, #be185d); }
+        .ac-result .ac-class { color: var(--text-dim, #9ca3af); font-size: 11px; }
+        .ac-empty { padding: 10px; color: var(--text-dim, #9ca3af); font-size: 13px; text-align: center; }
 
         /* Inline parent picker */
         .parent-edit-wrap { display: inline-block; min-width: 200px; }
@@ -576,7 +578,7 @@ $translationNamespaces = ['common', 'cmdb'];
         .prop-cog {
             background: none;
             border: none;
-            color: #d1d5db;
+            color: var(--text-faint, #d1d5db);
             cursor: pointer;
             padding: 2px 4px;
             margin-left: 4px;
@@ -584,7 +586,7 @@ $translationNamespaces = ['common', 'cmdb'];
             line-height: 1;
             vertical-align: middle;
         }
-        .prop-cog:hover { color: #be185d; background: #fdf2f8; }
+        .prop-cog:hover { color: var(--cmdb-accent, #be185d); background: #fdf2f8; }
         .prop-cog svg { width: 13px; height: 13px; vertical-align: middle; }
 
         /* Floating draggable property-edit modal — no backdrop so the object stays visible */
@@ -595,7 +597,7 @@ $translationNamespaces = ['common', 'cmdb'];
             transform: translateX(-50%);
             width: 540px;
             max-width: 95vw;
-            background: white;
+            background: var(--surface, #ffffff);
             border-radius: 8px;
             box-shadow: 0 12px 40px rgba(0,0,0,0.25);
             z-index: 3000;
@@ -605,8 +607,8 @@ $translationNamespaces = ['common', 'cmdb'];
         .float-modal.active { display: flex; }
         .float-modal-header {
             padding: 12px 16px;
-            background: linear-gradient(135deg, #be185d, #9d174d);
-            color: white;
+            background: linear-gradient(135deg, var(--cmdb-accent, #be185d), var(--cmdb-accent-hover, #9d174d));
+            color: var(--cmdb-on-accent, #ffffff);
             border-radius: 8px 8px 0 0;
             display: flex;
             justify-content: space-between;
@@ -616,7 +618,7 @@ $translationNamespaces = ['common', 'cmdb'];
         }
         .float-modal-header span { font-weight: 600; font-size: 14px; }
         .float-modal-close {
-            background: none; border: none; color: white;
+            background: none; border: none; color: var(--cmdb-on-accent, #ffffff);
             font-size: 22px; cursor: pointer; line-height: 1;
             padding: 0; opacity: 0.85;
         }
@@ -624,24 +626,68 @@ $translationNamespaces = ['common', 'cmdb'];
         .float-modal-body { padding: 18px 20px; overflow-y: auto; max-height: calc(100vh - 220px); }
         .float-modal-actions {
             padding: 12px 20px;
-            border-top: 1px solid #e5e7eb;
+            border-top: 1px solid var(--border, #e5e7eb);
             display: flex;
             gap: 10px;
             justify-content: flex-end;
-            background: #fafafa;
+            background: var(--surface-2, #fafafa);
             border-radius: 0 0 8px 8px;
         }
         .float-modal .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
         .float-modal .form-check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
         .float-modal .form-check input { width: auto; }
-        .key-hint { font-family: 'Consolas', 'Monaco', monospace; font-size: 12px; color: #6b7280; }
+        .key-hint { font-family: 'Consolas', 'Monaco', monospace; font-size: 12px; color: var(--text-muted, #6b7280); }
+
+        /* Dark-mode re-skin for the pale-pink accent surfaces + amber planned state.
+           These pale tints are kept hardcoded above (their light hex differs from the
+           --cmdb-accent-soft light value, so tokenising them would shift light mode);
+           here we give them appropriate dark tints. */
+        [data-theme-mode="dark"] .obj-meta .class-badge {
+            background: var(--cmdb-accent-soft, #3a1826);
+        }
+        [data-theme-mode="dark"] .ai-summary-card {
+            background: var(--cmdb-accent-soft, #3a1826);
+            border-color: #5a2a40;
+        }
+        [data-theme-mode="dark"] .impact-bucket .count-badge,
+        [data-theme-mode="dark"] .activity-bucket-head .count-badge {
+            border-color: #5a2a40;
+        }
+        [data-theme-mode="dark"] .ticket-card:hover,
+        [data-theme-mode="dark"] .mg-node:hover,
+        [data-theme-mode="dark"] .obj-ref-pill,
+        [data-theme-mode="dark"] .btn-mini,
+        [data-theme-mode="dark"] .ac-result:hover,
+        [data-theme-mode="dark"] .ac-result.highlighted,
+        [data-theme-mode="dark"] .prop-cog:hover {
+            background: var(--cmdb-accent-soft, #3a1826);
+        }
+        [data-theme-mode="dark"] .ticket-card:hover,
+        [data-theme-mode="dark"] .mg-node:hover,
+        [data-theme-mode="dark"] .obj-ref-pill,
+        [data-theme-mode="dark"] .btn-mini {
+            border-color: #5a2a40;
+        }
+        [data-theme-mode="dark"] .obj-ref-pill:hover,
+        [data-theme-mode="dark"] .btn-mini:hover {
+            background: #4a1f30;
+        }
+        [data-theme-mode="dark"] .obj-header.is-planned {
+            background: linear-gradient(180deg, var(--warning-bg, #3a2e12) 0%, var(--surface, #1e2228) 60%);
+        }
+        [data-theme-mode="dark"] .btn-danger {
+            border-color: #5a2a2e;
+        }
+        [data-theme-mode="dark"] .btn-danger:hover {
+            background: var(--danger-bg, #3a1a1d);
+        }
     </style>
 </head>
 <body>
     <?php include 'includes/header.php'; ?>
 
     <div class="obj-page" id="objPage">
-        <div style="text-align: center; padding: 60px; color: #9ca3af;"><?php echo htmlspecialchars(t('cmdb.object.loading')); ?></div>
+        <div style="text-align: center; padding: 60px; color: var(--text-dim, #9ca3af);"><?php echo htmlspecialchars(t('cmdb.object.loading')); ?></div>
     </div>
 
     <!-- Add Relationship Modal -->
@@ -652,7 +698,7 @@ $translationNamespaces = ['common', 'cmdb'];
                 <div class="form-group">
                     <label for="relTypeSelect"><?php echo htmlspecialchars(t('cmdb.rel_modal.verb_label')); ?></label>
                     <select id="relTypeSelect"></select>
-                    <small id="relInverseHint" style="color: #6b7280; font-size: 12px; display: block; margin-top: 4px;"></small>
+                    <small id="relInverseHint" style="color: var(--text-muted, #6b7280); font-size: 12px; display: block; margin-top: 4px;"></small>
                 </div>
                 <div class="form-group">
                     <label for="relTargetInput"><?php echo htmlspecialchars(t('cmdb.rel_modal.target_label')); ?></label>
@@ -661,7 +707,7 @@ $translationNamespaces = ['common', 'cmdb'];
                         <input type="hidden" id="relTargetId">
                         <div class="autocomplete-results" id="relTargetResults"></div>
                     </div>
-                    <small style="color: #6b7280; font-size: 12px;"><?php echo htmlspecialchars(t('cmdb.rel_modal.target_help')); ?></small>
+                    <small style="color: var(--text-muted, #6b7280); font-size: 12px;"><?php echo htmlspecialchars(t('cmdb.rel_modal.target_help')); ?></small>
                 </div>
             </div>
             <div class="modal-actions">
@@ -683,7 +729,7 @@ $translationNamespaces = ['common', 'cmdb'];
                         <input type="hidden" id="parentId">
                         <div class="autocomplete-results" id="parentResults"></div>
                     </div>
-                    <small style="color: #6b7280; font-size: 12px;"><?php echo htmlspecialchars(t('cmdb.parent_modal.help')); ?></small>
+                    <small style="color: var(--text-muted, #6b7280); font-size: 12px;"><?php echo htmlspecialchars(t('cmdb.parent_modal.help')); ?></small>
                 </div>
             </div>
             <div class="modal-actions">

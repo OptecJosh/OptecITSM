@@ -9,6 +9,7 @@ session_start();
 require_once '../config.php';
 require_once '../includes/functions.php';
 require_once '../includes/i18n.php';
+require_once '../includes/theme.php';
 require_once '../includes/timezone.php';
 I18n::initFromSession();
 Tz::init();
@@ -23,20 +24,21 @@ $path_prefix = '../';
 $translationNamespaces = ['common', 'network-mapper'];
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>" data-theme="<?php echo htmlspecialchars(Theme::active()); ?>" data-theme-mode="<?php echo htmlspecialchars(Theme::mode()); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars(t('network-mapper.help.browser_title')); ?></title>
+    <link rel="stylesheet" href="../assets/css/theme.css?v=18">
     <link rel="stylesheet" href="../assets/css/inbox.css">
     <style>
-        .nh-container { display: flex; height: calc(100vh - 48px); background: #f5f5f5; }
+        .nh-container { display: flex; height: calc(100vh - 48px); background: var(--app-bg, #f5f5f5); }
 
         /* ---- Sidebar nav ---- */
         .nh-sidebar {
             width: 260px;
-            background: white;
-            border-right: 1px solid #ddd;
+            background: var(--surface, #fff);
+            border-right: 1px solid var(--border, #ddd);
             padding: 20px;
             display: flex;
             flex-direction: column;
@@ -45,32 +47,32 @@ $translationNamespaces = ['common', 'network-mapper'];
         }
         .nh-sidebar h3 {
             font-size: 12px; font-weight: 600;
-            color: #888; text-transform: uppercase;
+            color: var(--text-dim, #888); text-transform: uppercase;
             letter-spacing: 0.5px;
             margin: 0 0 12px;
         }
         .nh-nav-link {
             display: flex; align-items: center; gap: 10px;
             padding: 10px 12px; border-radius: 6px;
-            font-size: 13px; color: #555;
+            font-size: 13px; color: var(--text-muted, #555);
             text-decoration: none;
             transition: background 0.15s, color 0.15s;
         }
-        .nh-nav-link:hover { background: #f5f5f5; color: #333; }
+        .nh-nav-link:hover { background: var(--surface-hover, #f5f5f5); color: var(--text, #333); }
         .nh-nav-link.active { background: #ecfeff; color: #0e7490; font-weight: 600; }
         .nh-nav-num {
             display: flex; align-items: center; justify-content: center;
             min-width: 22px; height: 22px;
             border-radius: 50%;
-            background: #f5f5f5; color: #888;
+            background: var(--surface-3, #f5f5f5); color: var(--text-dim, #888);
             font-size: 11px; font-weight: 700;
         }
-        .nh-nav-link.active .nh-nav-num { background: #06b6d4; color: white; }
+        .nh-nav-link.active .nh-nav-num { background: var(--nm-accent, #06b6d4); color: white; }
 
         /* ---- Main content ---- */
         .nh-main { flex: 1; overflow-y: auto; }
         .nh-hero {
-            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 50%, #0e7490 100%);
+            background: linear-gradient(135deg, var(--nm-accent, #06b6d4) 0%, var(--nm-accent-hover, #0891b2) 50%, #0e7490 100%);
             color: white;
             padding: 40px 48px 36px;
             text-align: center;
@@ -80,16 +82,16 @@ $translationNamespaces = ['common', 'network-mapper'];
         .nh-content { max-width: 1120px; margin: 0 auto; padding: 10px 48px 48px; }
 
         /* ---- Sections ---- */
-        .nh-section { padding: 28px 0; border-bottom: 1px solid #eee; scroll-margin-top: 20px; }
+        .nh-section { padding: 28px 0; border-bottom: 1px solid var(--border-soft, #eee); scroll-margin-top: 20px; }
         .nh-section:last-child { border-bottom: 0; padding-bottom: 0; }
         .nh-section-header {
             display: flex; align-items: flex-start; gap: 14px;
             margin-bottom: 16px;
         }
-        .nh-section-header h3 { margin: 0; font-size: 18px; color: #333; }
-        .nh-section-header p  { margin: 6px 0 0; font-size: 14px; color: #666; line-height: 1.6; }
+        .nh-section-header h3 { margin: 0; font-size: 18px; color: var(--text, #333); }
+        .nh-section-header p  { margin: 6px 0 0; font-size: 14px; color: var(--text-muted, #666); line-height: 1.6; }
         .nh-section > p {
-            font-size: 14px; color: #555; line-height: 1.7;
+            font-size: 14px; color: var(--text-muted, #555); line-height: 1.7;
             margin: 0 0 14px;
         }
         .nh-section-num {
@@ -100,15 +102,15 @@ $translationNamespaces = ['common', 'network-mapper'];
             font-weight: 700; font-size: 14px;
             flex-shrink: 0;
         }
-        .nh-section-num.highlight { background: #06b6d4; color: white; }
+        .nh-section-num.highlight { background: var(--nm-accent, #06b6d4); color: white; }
 
         /* ---- Feature card grid ---- */
         .nh-features-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
         .nh-feature-card {
             padding: 20px;
             border-radius: 10px;
-            border: 1px solid #e0e0e0;
-            background: white;
+            border: 1px solid var(--border, #e0e0e0);
+            background: var(--surface, #fff);
             transition: transform 0.15s, box-shadow 0.15s;
         }
         .nh-feature-card:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
@@ -118,26 +120,26 @@ $translationNamespaces = ['common', 'network-mapper'];
             display: flex; align-items: center; justify-content: center;
             margin-bottom: 12px;
         }
-        .nh-feature-icon.cyan   { background: #ecfeff; color: #0891b2; }
+        .nh-feature-icon.cyan   { background: #ecfeff; color: var(--nm-accent-hover, #0891b2); }
         .nh-feature-icon.blue   { background: #e3f2fd; color: #1565c0; }
         .nh-feature-icon.green  { background: #e8f5e9; color: #2e7d32; }
         .nh-feature-icon.amber  { background: #fff7ed; color: #c2410c; }
-        .nh-feature-card h4 { margin: 0 0 6px; font-size: 15px; color: #333; }
-        .nh-feature-card p  { margin: 0; font-size: 12.5px; color: #666; line-height: 1.5; }
+        .nh-feature-card h4 { margin: 0 0 6px; font-size: 15px; color: var(--text, #333); }
+        .nh-feature-card p  { margin: 0; font-size: 12.5px; color: var(--text-muted, #666); line-height: 1.5; }
 
         /* ---- Numbered steps ---- */
         .nh-steps { display: flex; flex-direction: column; gap: 12px; margin-left: 46px; }
         .nh-step-item {
             display: flex; align-items: flex-start; gap: 14px;
             padding: 10px 14px; border-radius: 8px;
-            background: #fafafa;
-            font-size: 14px; color: #444; line-height: 1.5;
+            background: var(--surface-2, #fafafa);
+            font-size: 14px; color: var(--text-muted, #444); line-height: 1.5;
         }
         .nh-step-num {
             display: flex; align-items: center; justify-content: center;
             min-width: 28px; height: 28px;
             border-radius: 50%;
-            background: #06b6d4; color: white;
+            background: var(--nm-accent, #06b6d4); color: white;
             font-weight: 700; font-size: 13px;
             flex-shrink: 0;
         }
@@ -151,7 +153,7 @@ $translationNamespaces = ['common', 'network-mapper'];
             border-top: 2px solid #a5f3fc;
         }
         .nh-intro {
-            font-size: 14px; color: #555; line-height: 1.7;
+            font-size: 14px; color: var(--text-muted, #555); line-height: 1.7;
             margin-bottom: 20px !important;
         }
 
@@ -173,7 +175,7 @@ $translationNamespaces = ['common', 'network-mapper'];
         .nh-flow-step.s2 { background: #e3f2fd; color: #1565c0; }
         .nh-flow-step.s3 { background: #e8f5e9; color: #2e7d32; }
         .nh-flow-step.s4 { background: #fff3e0; color: #c2410c; }
-        .nh-flow-arrow { padding: 0 8px; color: #bbb; font-size: 18px; }
+        .nh-flow-arrow { padding: 0 8px; color: var(--text-faint, #bbb); font-size: 18px; }
 
         /* ---- Callouts ---- */
         .nh-tip {
@@ -182,7 +184,7 @@ $translationNamespaces = ['common', 'network-mapper'];
             background: #ecfeff;
             padding: 10px 14px;
             border-radius: 8px;
-            border-left: 3px solid #06b6d4;
+            border-left: 3px solid var(--nm-accent, #06b6d4);
             margin-top: 10px;
         }
         .nh-warn {
@@ -200,12 +202,12 @@ $translationNamespaces = ['common', 'network-mapper'];
             display: inline-block;
             padding: 1px 6px;
             border-radius: 4px;
-            background: white;
-            border: 1px solid #cbd5e1;
+            background: var(--surface, #fff);
+            border: 1px solid var(--border, #cbd5e1);
             box-shadow: 0 1px 0 rgba(0,0,0,0.04);
             font-family: ui-monospace, Menlo, Consolas, monospace;
             font-size: 11.5px;
-            color: #334155;
+            color: var(--text-muted, #334155);
         }
 
         /* ---- Tips grid ---- */
@@ -213,14 +215,14 @@ $translationNamespaces = ['common', 'network-mapper'];
         .nh-tip-card {
             display: flex; gap: 12px;
             padding: 14px;
-            background: #fafafa;
+            background: var(--surface-2, #fafafa);
             border-radius: 8px;
             font-size: 13px;
-            color: #555;
+            color: var(--text-muted, #555);
             line-height: 1.5;
         }
         .nh-tip-icon { font-size: 24px; flex-shrink: 0; line-height: 1; }
-        .nh-tip-card strong { color: #333; }
+        .nh-tip-card strong { color: var(--text, #333); }
 
         /* ---- Pill mock-ups used in copy ---- */
         .nh-pill {
@@ -247,6 +249,19 @@ $translationNamespaces = ['common', 'network-mapper'];
             .nh-features-grid { grid-template-columns: 1fr; }
             .nh-tips-grid { grid-template-columns: 1fr; }
         }
+
+        /* Dark mode: darken the hero and flip the pale-cyan chrome tints (active
+           nav, section numbers, highlight band, tip) + amber warn callout so they
+           don't glow. Feature-icon tiles, flow-step badges and the illustrative
+           pill mock-ups stay as data. */
+        [data-theme-mode="dark"] .nh-hero {
+            background: linear-gradient(135deg, #0b7c91 0%, #0a6274 50%, #0a4f5e 100%);
+        }
+        [data-theme-mode="dark"] .nh-nav-link.active { background: #0d2b30; color: #67e8f9; }
+        [data-theme-mode="dark"] .nh-section-num { background: #0d2b30; color: #67e8f9; }
+        [data-theme-mode="dark"] .nh-section-highlight { background: #10262b; }
+        [data-theme-mode="dark"] .nh-tip { background: #0d2b30; color: #67e8f9 !important; }
+        [data-theme-mode="dark"] .nh-warn { background: #3a2e12; color: #fcd34d !important; }
     </style>
     <?php echo Tz::scriptTag(); ?>
     <script src="../assets/js/tz.js?v=1"></script>

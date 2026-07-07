@@ -6,6 +6,7 @@
 session_start();
 require_once '../config.php';
 require_once '../includes/i18n.php';
+require_once '../includes/theme.php';
 require_once '../includes/timezone.php';
 I18n::initFromSession();
 Tz::init();
@@ -15,7 +16,7 @@ $path_prefix = '../';
 $translationNamespaces = ['common', 'service-status'];
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>" data-theme="<?php echo htmlspecialchars(Theme::active()); ?>" data-theme-mode="<?php echo htmlspecialchars(Theme::mode()); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -24,8 +25,13 @@ $translationNamespaces = ['common', 'service-status'];
     <?php echo Tz::scriptTag(); ?>
     <script src="../assets/js/tz.js?v=1"></script>
     <script src="../assets/js/i18n.js?v=2"></script>
+    <link rel="stylesheet" href="../assets/css/theme.css?v=17">
     <link rel="stylesheet" href="../assets/css/inbox.css">
     <style>
+        /* Pin the shared --accent to the module's emerald so modals, focus
+           rings and the secondary button read on-brand. */
+        body { --accent: var(--ss-accent, #10b981); }
+
         .status-layout {
             height: calc(100vh - 48px);
             overflow-y: auto;
@@ -35,7 +41,7 @@ $translationNamespaces = ['common', 'service-status'];
         .section-title {
             font-size: 18px;
             font-weight: 600;
-            color: #333;
+            color: var(--text, #333);
             margin: 0 0 16px 0;
             display: flex;
             align-items: center;
@@ -45,7 +51,7 @@ $translationNamespaces = ['common', 'service-status'];
         .section-title .count {
             font-size: 13px;
             font-weight: 400;
-            color: #888;
+            color: var(--text-dim, #888);
         }
 
         /* Service Board Grid */
@@ -57,8 +63,8 @@ $translationNamespaces = ['common', 'service-status'];
         }
 
         .service-card {
-            background: white;
-            border: 1px solid #e5e7eb;
+            background: var(--surface, #fff);
+            border: 1px solid var(--border, #e5e7eb);
             border-radius: 8px;
             padding: 16px;
             text-align: center;
@@ -70,13 +76,13 @@ $translationNamespaces = ['common', 'service-status'];
         .service-card .service-name {
             font-size: 14px;
             font-weight: 600;
-            color: #333;
+            color: var(--text, #333);
             margin-bottom: 8px;
         }
 
         .service-card .service-desc {
             font-size: 12px;
-            color: #888;
+            color: var(--text-dim, #888);
             margin-bottom: 10px;
             min-height: 16px;
         }
@@ -118,41 +124,41 @@ $translationNamespaces = ['common', 'service-status'];
         .incident-table {
             width: 100%;
             border-collapse: collapse;
-            background: white;
+            background: var(--surface, #fff);
             border-radius: 8px;
             overflow: hidden;
-            border: 1px solid #e5e7eb;
+            border: 1px solid var(--border, #e5e7eb);
         }
 
         .incident-table th {
-            background: #f9fafb;
+            background: var(--surface-2, #f9fafb);
             padding: 10px 14px;
             text-align: left;
             font-size: 12px;
             font-weight: 600;
-            color: #666;
+            color: var(--text-muted, #666);
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            border-bottom: 1px solid #e5e7eb;
+            border-bottom: 1px solid var(--border, #e5e7eb);
         }
 
         .incident-table td {
             padding: 12px 14px;
             font-size: 13px;
-            color: #333;
-            border-bottom: 1px solid #f3f4f6;
+            color: var(--text, #333);
+            border-bottom: 1px solid var(--border-soft, #f3f4f6);
         }
 
         .incident-table tr:last-child td { border-bottom: none; }
 
-        .incident-table tr.resolved td { color: #999; }
+        .incident-table tr.resolved td { color: var(--text-dim, #999); }
 
         .incident-title {
             font-weight: 500;
             cursor: pointer;
         }
 
-        .incident-title:hover { color: #10b981; }
+        .incident-title:hover { color: var(--ss-accent, #10b981); }
 
         .incident-services-list {
             display: flex;
@@ -172,7 +178,7 @@ $translationNamespaces = ['common', 'service-status'];
 
         .new-btn {
             padding: 8px 18px;
-            background: #10b981;
+            background: var(--ss-accent, #10b981);
             color: white;
             border: none;
             border-radius: 6px;
@@ -182,34 +188,34 @@ $translationNamespaces = ['common', 'service-status'];
             transition: background 0.2s;
         }
 
-        .new-btn:hover { background: #059669; }
+        .new-btn:hover { background: var(--ss-accent-hover, #059669); }
 
         .empty-state {
             text-align: center;
             padding: 40px 20px;
-            color: #999;
+            color: var(--text-dim, #999);
             font-size: 14px;
         }
 
         /* Incident modal */
         .modal-content { padding: 20px; max-width: 600px; }
-        .modal-header { font-size: 20px; font-weight: 600; margin-bottom: 20px; color: #333; padding: 0; border-bottom: none; }
+        .modal-header { font-size: 20px; font-weight: 600; margin-bottom: 20px; color: var(--text, #333); padding: 0; border-bottom: none; }
 
         .modal .form-group { margin-bottom: 15px; }
-        .modal .form-group label { display: block; margin-bottom: 5px; font-weight: 500; font-size: 13px; color: #333; }
+        .modal .form-group label { display: block; margin-bottom: 5px; font-weight: 500; font-size: 13px; color: var(--text, #333); }
         .modal .form-group input,
         .modal .form-group textarea,
-        .modal .form-group select { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box; }
+        .modal .form-group select { width: 100%; padding: 8px 12px; border: 1px solid var(--border, #ddd); border-radius: 4px; font-size: 14px; box-sizing: border-box; }
         .modal .form-group textarea { height: 80px; resize: vertical; }
         .modal .form-group input:focus,
         .modal .form-group textarea:focus,
-        .modal .form-group select:focus { outline: none; border-color: #10b981; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.1); }
+        .modal .form-group select:focus { outline: none; border-color: var(--ss-accent, #10b981); box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.1); }
 
         .modal-actions { margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end; }
 
         .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500; transition: background-color 0.15s; }
-        .btn-primary { background-color: #10b981; color: white; }
-        .btn-primary:hover { background-color: #059669; }
+        .btn-primary { background-color: var(--ss-accent, #10b981); color: white; }
+        .btn-primary:hover { background-color: var(--ss-accent-hover, #059669); }
         .btn-danger { background-color: #ef4444; color: white; }
         .btn-danger:hover { background-color: #dc2626; }
 
@@ -228,7 +234,7 @@ $translationNamespaces = ['common', 'service-status'];
         .affected-row .remove-svc {
             background: none;
             border: none;
-            color: #d13438;
+            color: var(--danger-accent, #d13438);
             cursor: pointer;
             font-size: 18px;
             padding: 4px 8px;
@@ -239,8 +245,8 @@ $translationNamespaces = ['common', 'service-status'];
 
         .add-svc-btn {
             background: none;
-            border: 1px dashed #ccc;
-            color: #666;
+            border: 1px dashed var(--border, #ccc);
+            color: var(--text-muted, #666);
             padding: 6px 14px;
             border-radius: 4px;
             cursor: pointer;
@@ -248,13 +254,17 @@ $translationNamespaces = ['common', 'service-status'];
             transition: all 0.2s;
         }
 
-        .add-svc-btn:hover { border-color: #10b981; color: #10b981; }
+        .add-svc-btn:hover { border-color: var(--ss-accent, #10b981); color: var(--ss-accent, #10b981); }
 
         .incident-date {
             font-size: 12px;
-            color: #999;
+            color: var(--text-dim, #999);
             white-space: nowrap;
         }
+
+        /* Pale-red remove-service hover wash → dark red in dark mode so it
+           doesn't glow. Impact/incident-status badges stay hardcoded (data). */
+        [data-theme-mode="dark"] .affected-row .remove-svc:hover { background: #3a1a1a; }
     </style>
 </head>
 <body>
@@ -419,7 +429,7 @@ $translationNamespaces = ['common', 'service-status'];
                     <tr class="${isResolved ? 'resolved' : ''}">
                         <td><span class="incident-title" onclick="editIncident(${inc.id})">${escapeHtml(inc.title)}</span></td>
                         <td><span class="incident-status" ${statusStyle}>${escapeHtml(inc.status)}</span></td>
-                        <td><div class="incident-services-list">${svcs || `<span style="color:#999">${escapeHtml(window.t('service-status.board.none'))}</span>`}</div></td>
+                        <td><div class="incident-services-list">${svcs || `<span style="color:var(--text-dim, #999)">${escapeHtml(window.t('service-status.board.none'))}</span>`}</div></td>
                         <td><span class="incident-date">${dateStr}</span></td>
                     </tr>
                 `;

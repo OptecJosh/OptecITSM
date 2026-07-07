@@ -104,6 +104,11 @@
     --con-accent:      #f59e0b;  --con-accent-hover: #d97706;
     --con-accent-soft: #fef3c7;  --con-on-accent:    #ffffff;
 
+    /* Service Status module (emerald) accents — chrome only; the up/down/
+       degraded STATE colours are data. Emerald is the registered brand. */
+    --ss-accent:       #10b981;  --ss-accent-hover:  #059669;
+    --ss-accent-soft:  #d1fae5;  --ss-on-accent:     #ffffff;
+
     /* Messaging-channel (WhatsApp etc.) composer — green-tinted surface */
     --channel-bg:        #f7fdf9;  --channel-border: #d6e9d8;
 
@@ -190,6 +195,10 @@
     /* Contracts module (amber) — accent nudged lighter to read on dark */
     --con-accent:      #fbbf24;  --con-accent-hover: #fcd34d;
     --con-accent-soft: #3a2e12;  --con-on-accent:    #ffffff;
+
+    /* Service Status module (emerald) — accent nudged lighter to read on dark */
+    --ss-accent:       #34d399;  --ss-accent-hover:  #6ee7b7;
+    --ss-accent-soft:  #0f2e24;  --ss-on-accent:     #ffffff;
 
     /* Messaging-channel (WhatsApp etc.) composer — dark green-tinted surface */
     --channel-bg:        #15231b;  --channel-border: #2b3d31;

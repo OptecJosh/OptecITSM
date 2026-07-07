@@ -5,6 +5,7 @@
 session_start();
 require_once '../config.php';
 require_once '../includes/i18n.php';
+require_once '../includes/theme.php';
 require_once '../includes/timezone.php';
 I18n::initFromSession();
 Tz::init();
@@ -19,7 +20,7 @@ $path_prefix = '../';
 $translationNamespaces = ['common', 'service-status'];
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>" data-theme="<?php echo htmlspecialchars(Theme::active()); ?>" data-theme-mode="<?php echo htmlspecialchars(Theme::mode()); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -28,19 +29,20 @@ $translationNamespaces = ['common', 'service-status'];
     <?php echo Tz::scriptTag(); ?>
     <script src="../assets/js/tz.js?v=1"></script>
     <script src="../assets/js/i18n.js?v=2"></script>
+    <link rel="stylesheet" href="../assets/css/theme.css?v=17">
     <link rel="stylesheet" href="../assets/css/inbox.css">
     <style>
         .ss-help-container {
             display: flex;
             height: calc(100vh - 48px);
-            background: #f5f5f5;
+            background: var(--app-bg, #f5f5f5);
         }
 
         /* Left sidebar navigation */
         .ss-help-sidebar {
             width: 260px;
-            background: white;
-            border-right: 1px solid #ddd;
+            background: var(--surface, #fff);
+            border-right: 1px solid var(--border, #ddd);
             padding: 20px;
             display: flex;
             flex-direction: column;
@@ -51,7 +53,7 @@ $translationNamespaces = ['common', 'service-status'];
         .ss-help-sidebar h3 {
             font-size: 12px;
             font-weight: 600;
-            color: #888;
+            color: var(--text-dim, #888);
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin: 0 0 12px;
@@ -64,14 +66,14 @@ $translationNamespaces = ['common', 'service-status'];
             padding: 10px 12px;
             border-radius: 6px;
             font-size: 13px;
-            color: #555;
+            color: var(--text-muted, #555);
             text-decoration: none;
             transition: background 0.15s, color 0.15s;
         }
 
         .ss-help-nav-link:hover {
-            background: #f5f5f5;
-            color: #333;
+            background: var(--surface-hover, #f5f5f5);
+            color: var(--text, #333);
         }
 
         .ss-help-nav-link.active {
@@ -87,15 +89,15 @@ $translationNamespaces = ['common', 'service-status'];
             min-width: 24px;
             height: 24px;
             border-radius: 50%;
-            background: #eee;
-            color: #888;
+            background: var(--surface-3, #eee);
+            color: var(--text-dim, #888);
             font-weight: 700;
             font-size: 11px;
             flex-shrink: 0;
         }
 
         .ss-help-nav-link.active .ss-help-nav-num {
-            background: #059669;
+            background: var(--ss-accent, #059669);
             color: white;
         }
 
@@ -136,7 +138,7 @@ $translationNamespaces = ['common', 'service-status'];
         /* Sections */
         .ss-help-section {
             padding: 28px 0;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border-soft, #eee);
             scroll-margin-top: 20px;
         }
 
@@ -155,19 +157,19 @@ $translationNamespaces = ['common', 'service-status'];
         .ss-help-section-header h3 {
             margin: 0;
             font-size: 18px;
-            color: #333;
+            color: var(--text, #333);
         }
 
         .ss-help-section-header p {
             margin: 6px 0 0;
             font-size: 14px;
-            color: #666;
+            color: var(--text-muted, #666);
             line-height: 1.6;
         }
 
         .ss-help-section > p {
             font-size: 14px;
-            color: #555;
+            color: var(--text-muted, #555);
             line-height: 1.7;
             margin: 0 0 14px;
         }
@@ -187,7 +189,7 @@ $translationNamespaces = ['common', 'service-status'];
         }
 
         .ss-help-section-num.highlight {
-            background: #059669;
+            background: var(--ss-accent, #059669);
             color: white;
         }
 
@@ -201,8 +203,8 @@ $translationNamespaces = ['common', 'service-status'];
         .ss-help-feature-card {
             padding: 20px;
             border-radius: 10px;
-            border: 1px solid #e0e0e0;
-            background: white;
+            border: 1px solid var(--border, #e0e0e0);
+            background: var(--surface, #fff);
             transition: transform 0.15s, box-shadow 0.15s;
         }
 
@@ -229,13 +231,13 @@ $translationNamespaces = ['common', 'service-status'];
         .ss-help-feature-card h4 {
             margin: 0 0 6px;
             font-size: 15px;
-            color: #333;
+            color: var(--text, #333);
         }
 
         .ss-help-feature-card p {
             margin: 0;
             font-size: 12.5px;
-            color: #666;
+            color: var(--text-muted, #666);
             line-height: 1.5;
         }
 
@@ -253,8 +255,8 @@ $translationNamespaces = ['common', 'service-status'];
             gap: 12px;
             padding: 14px 16px;
             border-radius: 8px;
-            background: white;
-            border: 1px solid #e0e0e0;
+            background: var(--surface, #fff);
+            border: 1px solid var(--border, #e0e0e0);
         }
 
         .ss-help-status-dot {
@@ -272,13 +274,13 @@ $translationNamespaces = ['common', 'service-status'];
         .ss-help-status-card strong {
             display: block;
             font-size: 13px;
-            color: #333;
+            color: var(--text, #333);
             margin-bottom: 2px;
         }
 
         .ss-help-status-card span {
             font-size: 12px;
-            color: #777;
+            color: var(--text-muted, #777);
             line-height: 1.4;
         }
 
@@ -296,9 +298,9 @@ $translationNamespaces = ['common', 'service-status'];
             gap: 14px;
             padding: 10px 14px;
             border-radius: 8px;
-            background: #fafafa;
+            background: var(--surface-2, #fafafa);
             font-size: 14px;
-            color: #444;
+            color: var(--text-muted, #444);
             line-height: 1.5;
         }
 
@@ -309,7 +311,7 @@ $translationNamespaces = ['common', 'service-status'];
             min-width: 28px;
             height: 28px;
             border-radius: 50%;
-            background: #10b981;
+            background: var(--ss-accent, #10b981);
             color: white;
             font-weight: 700;
             font-size: 13px;
@@ -327,7 +329,7 @@ $translationNamespaces = ['common', 'service-status'];
 
         .ss-help-intro {
             font-size: 14px;
-            color: #555;
+            color: var(--text-muted, #555);
             line-height: 1.7;
             margin-bottom: 20px !important;
         }
@@ -342,10 +344,10 @@ $translationNamespaces = ['common', 'service-status'];
 
         .ss-help-fields div {
             padding: 8px 14px;
-            background: #fafafa;
+            background: var(--surface-2, #fafafa);
             border-radius: 6px;
             font-size: 13px;
-            color: #555;
+            color: var(--text-muted, #555);
         }
 
         /* Incident flow diagram */
@@ -376,7 +378,7 @@ $translationNamespaces = ['common', 'service-status'];
 
         .ss-help-flow-arrow {
             padding: 0 8px;
-            color: #bbb;
+            color: var(--text-faint, #bbb);
             font-size: 18px;
         }
 
@@ -387,7 +389,7 @@ $translationNamespaces = ['common', 'service-status'];
             background: #ecfdf5;
             padding: 10px 14px;
             border-radius: 8px;
-            border-left: 3px solid #10b981;
+            border-left: 3px solid var(--ss-accent, #10b981);
             margin-top: 10px;
         }
 
@@ -402,10 +404,10 @@ $translationNamespaces = ['common', 'service-status'];
             display: flex;
             gap: 12px;
             padding: 14px;
-            background: #fafafa;
+            background: var(--surface-2, #fafafa);
             border-radius: 8px;
             font-size: 13px;
-            color: #555;
+            color: var(--text-muted, #555);
             line-height: 1.5;
         }
 
@@ -415,7 +417,7 @@ $translationNamespaces = ['common', 'service-status'];
         }
 
         .ss-help-tip-card strong {
-            color: #333;
+            color: var(--text, #333);
         }
 
         /* Responsive */
@@ -431,6 +433,17 @@ $translationNamespaces = ['common', 'service-status'];
             .ss-help-status-grid { grid-template-columns: 1fr; }
             .ss-help-tips-grid { grid-template-columns: 1fr; }
         }
+
+        /* Dark mode: darken the hero and flip the pale-emerald chrome tints
+           (active nav, section numbers, highlight band, tip) so they don't glow.
+           Feature-icon tiles, status dots and flow-step badges stay as data. */
+        [data-theme-mode="dark"] .ss-help-hero {
+            background: linear-gradient(135deg, #0b7a5a 0%, #076046 50%, #064d38 100%);
+        }
+        [data-theme-mode="dark"] .ss-help-nav-link.active { background: #0f2e24; color: #6ee7b7; }
+        [data-theme-mode="dark"] .ss-help-section-num { background: #0f2e24; color: #6ee7b7; }
+        [data-theme-mode="dark"] .ss-help-section-highlight { background: #12241d; }
+        [data-theme-mode="dark"] .ss-help-tip { background: #0f2e24; color: #6ee7b7 !important; }
     </style>
 </head>
 <body>
@@ -526,7 +539,7 @@ $translationNamespaces = ['common', 'service-status'];
                     <p><?php echo htmlspecialchars(t('service-status.help.dashboard_p1')); ?></p>
                     <p><?php echo t('service-status.help.dashboard_p2_html'); ?></p>
 
-                    <p style="margin-top: 18px; margin-bottom: 10px; font-weight: 600; color: #333;"><?php echo htmlspecialchars(t('service-status.help.status_levels')); ?></p>
+                    <p style="margin-top: 18px; margin-bottom: 10px; font-weight: 600; color: var(--text, #333);"><?php echo htmlspecialchars(t('service-status.help.status_levels')); ?></p>
                     <div class="ss-help-status-grid">
                         <div class="ss-help-status-card">
                             <div class="ss-help-status-dot operational"></div>
@@ -568,7 +581,7 @@ $translationNamespaces = ['common', 'service-status'];
                     </div>
                     <p class="ss-help-intro"><?php echo htmlspecialchars(t('service-status.help.services_intro')); ?></p>
 
-                    <p style="font-weight: 600; color: #333; margin-bottom: 10px;"><?php echo htmlspecialchars(t('service-status.help.add_incident_heading')); ?></p>
+                    <p style="font-weight: 600; color: var(--text, #333); margin-bottom: 10px;"><?php echo htmlspecialchars(t('service-status.help.add_incident_heading')); ?></p>
                     <div class="ss-help-steps">
                         <div class="ss-help-step-item">
                             <div class="ss-help-step-num">1</div>
@@ -608,7 +621,7 @@ $translationNamespaces = ['common', 'service-status'];
                         </div>
                     </div>
 
-                    <p style="font-weight: 600; color: #333; margin: 20px 0 10px;"><?php echo htmlspecialchars(t('service-status.help.workflow_heading')); ?></p>
+                    <p style="font-weight: 600; color: var(--text, #333); margin: 20px 0 10px;"><?php echo htmlspecialchars(t('service-status.help.workflow_heading')); ?></p>
                     <div class="ss-help-flow">
                         <div class="ss-help-flow-step investigating"><?php echo htmlspecialchars(t('service-status.help.workflow_investigating')); ?></div>
                         <div class="ss-help-flow-arrow">&rarr;</div>
@@ -618,7 +631,7 @@ $translationNamespaces = ['common', 'service-status'];
                         <div class="ss-help-flow-arrow">&rarr;</div>
                         <div class="ss-help-flow-step resolved"><?php echo htmlspecialchars(t('service-status.help.workflow_resolved')); ?></div>
                     </div>
-                    <p style="font-size: 13px; color: #555; text-align: center; margin-top: 4px;"><?php echo t('service-status.help.workflow_note_html'); ?></p>
+                    <p style="font-size: 13px; color: var(--text-muted, #555); text-align: center; margin-top: 4px;"><?php echo t('service-status.help.workflow_note_html'); ?></p>
 
                     <p class="ss-help-tip"><?php echo htmlspecialchars(t('service-status.help.services_tip')); ?></p>
                 </div>

@@ -6,6 +6,7 @@
 session_start();
 require_once '../../config.php';
 require_once '../../includes/i18n.php';
+require_once '../../includes/theme.php';
 require_once '../../includes/timezone.php';
 I18n::initFromSession();
 Tz::init();
@@ -15,7 +16,7 @@ $path_prefix = '../../';
 $translationNamespaces = ['common', 'service-status'];
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>" data-theme="<?php echo htmlspecialchars(Theme::active()); ?>" data-theme-mode="<?php echo htmlspecialchars(Theme::mode()); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -24,18 +25,19 @@ $translationNamespaces = ['common', 'service-status'];
     <?php echo Tz::scriptTag(); ?>
     <script src="../../assets/js/tz.js?v=1"></script>
     <script src="../../assets/js/i18n.js?v=2"></script>
+    <link rel="stylesheet" href="../../assets/css/theme.css?v=17">
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <style>
         /* Override the shared .container max-width so this page uses the full screen */
         .container { height: calc(100vh - 48px); overflow-y: auto; max-width: none; }
 
-        .tab:hover { color: #10b981; }
-        .tab.active { color: #10b981; border-bottom-color: #10b981; }
+        .tab:hover { color: var(--ss-accent, #10b981); }
+        .tab.active { color: var(--ss-accent, #10b981); border-bottom-color: var(--ss-accent, #10b981); }
 
         .tab-content .action-btn {
             background: none;
-            border: 1px solid #ddd;
-            color: #666;
+            border: 1px solid var(--border, #ddd);
+            color: var(--text-muted, #666);
             cursor: pointer;
             padding: 6px;
             margin-right: 4px;
@@ -46,9 +48,9 @@ $translationNamespaces = ['common', 'service-status'];
             transition: all 0.2s;
         }
 
-        .tab-content .action-btn:hover { background: #f0f0f0; border-color: #10b981; color: #10b981; }
-        .tab-content .action-btn.delete { color: #d13438; }
-        .tab-content .action-btn.delete:hover { background: #fdf3f3; border-color: #d13438; color: #a00; }
+        .tab-content .action-btn:hover { background: var(--surface-hover, #f0f0f0); border-color: var(--ss-accent, #10b981); color: var(--ss-accent, #10b981); }
+        .tab-content .action-btn.delete { color: var(--danger-accent, #d13438); }
+        .tab-content .action-btn.delete:hover { background: #fdf3f3; border-color: var(--danger-accent, #d13438); color: var(--danger-text, #a00); }
         .tab-content .action-btn svg { width: 16px; height: 16px; }
 
         /* Active/Inactive badges use the shared .status-badge / .status-active
@@ -56,15 +58,18 @@ $translationNamespaces = ['common', 'service-status'];
 
         /* Module accent — drives toggle, focus rings, button colours.
            Modal form CSS lives entirely in inbox.css. */
-        body { --accent: #10b981; }
+        body { --accent: var(--ss-accent, #10b981); }
 
         .modal-content { padding: 20px; max-width: 500px; }
-        .modal-header { font-size: 20px; font-weight: 600; margin-bottom: 20px; color: #333; padding: 0; border-bottom: none; }
+        .modal-header { font-size: 20px; font-weight: 600; margin-bottom: 20px; color: var(--text, #333); padding: 0; border-bottom: none; }
         .modal-actions { margin-top: 20px; }
 
         .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500; transition: background-color 0.15s; }
-        .btn-primary { background-color: #10b981; color: white; }
-        .btn-primary:hover { background-color: #059669; }
+        .btn-primary { background-color: var(--ss-accent, #10b981); color: white; }
+        .btn-primary:hover { background-color: var(--ss-accent-hover, #059669); }
+
+        /* Pale-red delete-hover wash → dark red in dark mode so it doesn't glow. */
+        [data-theme-mode="dark"] .tab-content .action-btn.delete:hover { background: #3a1a1a; }
     </style>
 </head>
 <body>
@@ -93,7 +98,7 @@ $translationNamespaces = ['common', 'service-status'];
                     </tr>
                 </thead>
                 <tbody id="services-list">
-                    <tr><td colspan="5" style="text-align: center; padding: 20px; color: #999;"><?php echo htmlspecialchars(t('service-status.settings.loading')); ?></td></tr>
+                    <tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--text-dim, #999);"><?php echo htmlspecialchars(t('service-status.settings.loading')); ?></td></tr>
                 </tbody>
             </table>
         </div>
@@ -104,10 +109,10 @@ $translationNamespaces = ['common', 'service-status'];
                 <h2><?php echo htmlspecialchars(t('service-status.settings.statuses_heading')); ?></h2>
                 <button class="add-btn" onclick="openLookupModal('status')"><?php echo htmlspecialchars(t('service-status.settings.add')); ?></button>
             </div>
-            <p style="color: #666; margin-bottom: 16px;"><?php echo t('service-status.settings.statuses_intro_html'); ?></p>
+            <p style="color: var(--text-muted, #666); margin-bottom: 16px;"><?php echo t('service-status.settings.statuses_intro_html'); ?></p>
             <table>
                 <thead><tr><th><?php echo htmlspecialchars(t('service-status.settings.col_name')); ?></th><th><?php echo htmlspecialchars(t('service-status.settings.col_colour')); ?></th><th><?php echo htmlspecialchars(t('service-status.settings.col_resolved')); ?></th><th><?php echo htmlspecialchars(t('service-status.settings.col_default')); ?></th><th><?php echo htmlspecialchars(t('service-status.settings.col_order')); ?></th><th><?php echo htmlspecialchars(t('service-status.settings.col_status')); ?></th><th><?php echo htmlspecialchars(t('service-status.settings.col_actions')); ?></th></tr></thead>
-                <tbody id="statuses-list"><tr><td colspan="7" style="text-align:center;padding:20px;color:#999;"><?php echo htmlspecialchars(t('service-status.settings.loading')); ?></td></tr></tbody>
+                <tbody id="statuses-list"><tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-dim, #999);"><?php echo htmlspecialchars(t('service-status.settings.loading')); ?></td></tr></tbody>
             </table>
         </div>
 
@@ -117,10 +122,10 @@ $translationNamespaces = ['common', 'service-status'];
                 <h2><?php echo htmlspecialchars(t('service-status.settings.impacts_heading')); ?></h2>
                 <button class="add-btn" onclick="openLookupModal('impact')"><?php echo htmlspecialchars(t('service-status.settings.add')); ?></button>
             </div>
-            <p style="color: #666; margin-bottom: 16px;"><?php echo t('service-status.settings.impacts_intro_html'); ?></p>
+            <p style="color: var(--text-muted, #666); margin-bottom: 16px;"><?php echo t('service-status.settings.impacts_intro_html'); ?></p>
             <table>
                 <thead><tr><th><?php echo htmlspecialchars(t('service-status.settings.col_name')); ?></th><th><?php echo htmlspecialchars(t('service-status.settings.col_colour')); ?></th><th><?php echo htmlspecialchars(t('service-status.settings.col_severity')); ?></th><th><?php echo htmlspecialchars(t('service-status.settings.col_default')); ?></th><th><?php echo htmlspecialchars(t('service-status.settings.col_order')); ?></th><th><?php echo htmlspecialchars(t('service-status.settings.col_status')); ?></th><th><?php echo htmlspecialchars(t('service-status.settings.col_actions')); ?></th></tr></thead>
-                <tbody id="impacts-list"><tr><td colspan="7" style="text-align:center;padding:20px;color:#999;"><?php echo htmlspecialchars(t('service-status.settings.loading')); ?></td></tr></tbody>
+                <tbody id="impacts-list"><tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-dim, #999);"><?php echo htmlspecialchars(t('service-status.settings.loading')); ?></td></tr></tbody>
             </table>
         </div>
     </div>
@@ -140,7 +145,7 @@ $translationNamespaces = ['common', 'service-status'];
 
                 <div class="form-group">
                     <label for="lookupItemColour"><?php echo htmlspecialchars(t('service-status.settings.field_colour')); ?></label>
-                    <input type="color" id="lookupItemColour" value="#10b981" style="width: 60px; height: 32px; padding: 2px;">
+                    <input type="color" id="lookupItemColour" value="var(--ss-accent, #10b981)" style="width: 60px; height: 32px; padding: 2px;">
                 </div>
 
                 <div class="form-group" id="lookupItemResolvedGroup" style="display: none;">
@@ -148,13 +153,13 @@ $translationNamespaces = ['common', 'service-status'];
                         <span class="toggle-switch"><input type="checkbox" id="lookupItemResolved"><span class="toggle-slider"></span></span>
                         <?php echo htmlspecialchars(t('service-status.settings.field_resolved')); ?>
                     </label>
-                    <small style="display:block; color:#666; margin-top:4px;"><?php echo t('service-status.settings.resolved_help_html'); ?></small>
+                    <small style="display:block; color:var(--text-muted, #666); margin-top:4px;"><?php echo t('service-status.settings.resolved_help_html'); ?></small>
                 </div>
 
                 <div class="form-group" id="lookupItemSeverityGroup" style="display: none;">
                     <label for="lookupItemSeverityOrder"><?php echo htmlspecialchars(t('service-status.settings.field_severity')); ?></label>
                     <input type="number" id="lookupItemSeverityOrder" value="99" min="1">
-                    <small style="display:block; color:#666; margin-top:4px;"><?php echo htmlspecialchars(t('service-status.settings.severity_help')); ?></small>
+                    <small style="display:block; color:var(--text-muted, #666); margin-top:4px;"><?php echo htmlspecialchars(t('service-status.settings.severity_help')); ?></small>
                 </div>
 
                 <div class="form-group">
@@ -246,11 +251,11 @@ $translationNamespaces = ['common', 'service-status'];
                     renderServices(data.services);
                 } else {
                     document.getElementById('services-list').innerHTML =
-                        '<tr><td colspan="5" style="text-align:center;padding:20px;color:#d13438;">' + escapeHtml(window.t('service-status.settings.error_prefix', { message: data.error })) + '</td></tr>';
+                        '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--danger-accent, #d13438);">' + escapeHtml(window.t('service-status.settings.error_prefix', { message: data.error })) + '</td></tr>';
                 }
             } catch (error) {
                 document.getElementById('services-list').innerHTML =
-                    '<tr><td colspan="5" style="text-align:center;padding:20px;color:#d13438;">' + escapeHtml(window.t('service-status.settings.load_failed')) + '</td></tr>';
+                    '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--danger-accent, #d13438);">' + escapeHtml(window.t('service-status.settings.load_failed')) + '</td></tr>';
             }
         }
 
@@ -258,7 +263,7 @@ $translationNamespaces = ['common', 'service-status'];
             const tbody = document.getElementById('services-list');
 
             if (items.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#999;">' + escapeHtml(window.t('service-status.settings.no_services')) + '</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-dim, #999);">' + escapeHtml(window.t('service-status.settings.no_services')) + '</td></tr>';
                 return;
             }
 
@@ -403,16 +408,16 @@ $translationNamespaces = ['common', 'service-status'];
             const rows = lookupCache[kind];
             const tbody = document.getElementById(cfg.tableId);
             if (!rows || rows.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="${cfg.colspan}" style="text-align:center;padding:20px;color:#999;">${escapeHtml(window.t('service-status.settings.no_items'))}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="${cfg.colspan}" style="text-align:center;padding:20px;color:var(--text-dim, #999);">${escapeHtml(window.t('service-status.settings.no_items'))}</td></tr>`;
                 return;
             }
             tbody.innerHTML = rows.map(r => {
                 const safeName = escapeHtml(r.name).replace(/'/g, "\\'");
                 const swatch = r.colour
-                    ? `<span style="display:inline-block;width:18px;height:18px;border-radius:3px;background:${escapeHtml(r.colour)};vertical-align:middle;border:1px solid #ddd;margin-right:6px;"></span><code style="font-size:12px;">${escapeHtml(r.colour)}</code>`
-                    : '<span style="color:#999;">—</span>';
+                    ? `<span style="display:inline-block;width:18px;height:18px;border-radius:3px;background:${escapeHtml(r.colour)};vertical-align:middle;border:1px solid var(--border, #ddd);margin-right:6px;"></span><code style="font-size:12px;">${escapeHtml(r.colour)}</code>`
+                    : '<span style="color:var(--text-dim, #999);">—</span>';
                 const yesBadge = `<span class="status-badge status-active">${escapeHtml(window.t('service-status.settings.yes'))}</span>`;
-                const noBadge = `<span style="color:#999;">${escapeHtml(window.t('service-status.settings.no'))}</span>`;
+                const noBadge = `<span style="color:var(--text-dim, #999);">${escapeHtml(window.t('service-status.settings.no'))}</span>`;
                 const flagCol = cfg.hasResolved
                     ? `<td>${r.is_resolved ? yesBadge : noBadge}</td>`
                     : `<td>${r.severity_order}</td>`;
@@ -442,7 +447,7 @@ $translationNamespaces = ['common', 'service-status'];
             document.getElementById('lookupItemKind').value = kind;
             document.getElementById('lookupItemId').value = '';
             document.getElementById('lookupItemName').value = '';
-            document.getElementById('lookupItemColour').value = '#10b981';
+            document.getElementById('lookupItemColour').value = 'var(--ss-accent, #10b981)';
             document.getElementById('lookupItemResolved').checked = false;
             document.getElementById('lookupItemDefault').checked = false;
             document.getElementById('lookupItemSeverityOrder').value = '99';
@@ -461,7 +466,7 @@ $translationNamespaces = ['common', 'service-status'];
             document.getElementById('lookupItemKind').value = kind;
             document.getElementById('lookupItemId').value = item.id;
             document.getElementById('lookupItemName').value = item.name;
-            document.getElementById('lookupItemColour').value = item.colour || '#10b981';
+            document.getElementById('lookupItemColour').value = item.colour || 'var(--ss-accent, #10b981)';
             document.getElementById('lookupItemResolved').checked = !!item.is_resolved;
             document.getElementById('lookupItemDefault').checked = !!item.is_default;
             document.getElementById('lookupItemSeverityOrder').value = item.severity_order ?? 99;

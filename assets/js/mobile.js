@@ -43,9 +43,10 @@
             // also called to REFRESH an already-open ticket; those must not stack.
             if (mq.matches && currentPane() !== 'reading') pushPane('reading');
             // Once the ticket has rendered, move the link strips + properties
-            // into their own sheets (mobile only — see relocateSections).
-            if (r && typeof r.then === 'function') r.then(relocateSections);
-            else relocateSections();
+            // into their own sheets and apply the reading-pane refinements
+            // (mobile only — see afterTicketRender).
+            if (r && typeof r.then === 'function') r.then(afterTicketRender);
+            else afterTicketRender();
             return r;
         };
     }
@@ -61,15 +62,49 @@
         };
     }
 
+    // The desktop "pop-out" (full-screen reading pane) mode is meaningless on a
+    // phone — the reading pane is already full-screen via the master-detail
+    // stack — and body.ticket-popout HIDES the email list (breaking Back) and
+    // pads the reading pane by 340px. inbox.js re-applies it on every ticket
+    // open when the saved pref is on, so strip it right after each sync here.
+    if (typeof window.syncPopoutToTicketState === 'function') {
+        var _syncPopout = window.syncPopoutToTicketState;
+        window.syncPopoutToTicketState = function () {
+            var r = _syncPopout.apply(this, arguments);
+            if (mq.matches) document.body.classList.remove('ticket-popout');
+            return r;
+        };
+    }
+
+    // Attachments load async after the ticket renders; when the info bar is
+    // (re)rendered, refresh the compact mobile badge that replaces it.
+    if (typeof window.renderAttachmentInfoBar === 'function') {
+        var _renderAttach = window.renderAttachmentInfoBar;
+        window.renderAttachmentInfoBar = function () {
+            var r = _renderAttach.apply(this, arguments);
+            if (mq.matches) syncAttachBadge();
+            return r;
+        };
+    }
+
     // ---- inject the sub-bar (Back / Folders), sitting above the pane area ----
     var bar = document.createElement('div');
     bar.className = 'mobile-subbar';
     bar.innerHTML =
         '<button type="button" class="msb-back" aria-label="Back">‹ Back</button>' +
-        '<button type="button" class="msb-folders" aria-label="Folders">☰ Folders</button>';
+        '<button type="button" class="msb-folders" aria-label="Folders">☰ Folders</button>' +
+        '<span class="msb-ref" aria-label="Ticket reference"></span>';
     mc.parentNode.insertBefore(bar, mc);
 
-    bar.querySelector('.msb-back').addEventListener('click', function () { history.back(); });
+    bar.querySelector('.msb-back').addEventListener('click', function () {
+        if (currentPane() === 'list') return;
+        // Force the list pane directly (guaranteed regardless of the history
+        // stack), then pop the entry we pushed so the device Back button stays
+        // in sync. Leading with setPane makes Back reliable even if history.back
+        // has nothing to pop.
+        setPane('list');
+        if (history.state && history.state.nmPane) history.back();
+    });
     bar.querySelector('.msb-folders').addEventListener('click', function () { pushPane('folders'); });
 
     // ---- Views hamburger (top-right) -> right-side slide-in drawer ----
@@ -90,6 +125,20 @@
 
         vBtn.addEventListener('click', function () { document.body.classList.toggle('mobile-views-open'); });
         vOverlay.addEventListener('click', function () { document.body.classList.remove('mobile-views-open'); });
+    }
+
+    // ---- Company switcher -> into the module (waffle) drawer on mobile ----
+    // Declutters the tight top bar. The switcher only exists on multi-company
+    // installs (renderTenantSwitcher emits nothing at N=1), so this is a no-op
+    // on single-company setups. Styled for the light drawer in mobile.css.
+    if (mq.matches) {
+        var wafflePanel = document.getElementById('wafflePanel');
+        var tenant = document.querySelector('.tenant-switcher');
+        if (wafflePanel && tenant) {
+            var wHead = wafflePanel.querySelector('.waffle-panel-header');
+            if (wHead) wHead.insertAdjacentElement('afterend', tenant);
+            else wafflePanel.insertBefore(tenant, wafflePanel.firstChild);
+        }
     }
 
     // ---- Gmail-style collapsible ticket header ----
@@ -156,6 +205,117 @@
             }
         });
     }
+
+    // ---- Opened-ticket refinements ----------------------------------------
+    // Run after every ticket render: relocate the section sheets, then apply
+    // the reading-pane tidy-ups (subject-only heading + reference in the sub-bar,
+    // attachment badge, single-row action bar with a "…" overflow).
+    function afterTicketRender() {
+        relocateSections();
+        decorateReadingPane();
+    }
+
+    // inbox.js keeps the open ticket in the top-level `currentEmail` binding
+    // (shared across classic scripts). Read it defensively.
+    function getCurrentEmail() {
+        return (typeof currentEmail !== 'undefined') ? currentEmail : null;
+    }
+
+    function decorateReadingPane() {
+        if (!mq.matches) return;
+        var rp = document.getElementById('readingPane');
+        if (!rp) return;
+        var email = getCurrentEmail();
+
+        // (1) Drop the "Ticket <ref> - " prefix from the heading (leave the bare
+        //     subject) and pin the reference to the right of the sub-bar.
+        var subj = rp.querySelector('.email-subject-text');
+        if (subj && email) subj.textContent = email.subject || '';
+        var ref = bar.querySelector('.msb-ref');
+        if (ref) ref.textContent = email ? (email.ticket_number || '') : '';
+
+        // (2) Attachment badge (also refreshed async once attachments arrive).
+        syncAttachBadge();
+
+        // (3) Collapse the action bar to five icons + a "…" overflow.
+        buildToolbarOverflow();
+    }
+
+    // Compact yellow attachment badge on the subject row, replacing the full
+    // "…has N attachments" bar (hidden on mobile). Tapping it opens the list.
+    function syncAttachBadge() {
+        if (!mq.matches) return;
+        var rp = document.getElementById('readingPane');
+        if (!rp) return;
+        var line = rp.querySelector('.email-subject-line');
+        if (!line) return;
+        var atts = (typeof ticketAttachments !== 'undefined' && ticketAttachments) ? ticketAttachments : [];
+        var badge = line.querySelector('.mobile-attach-badge');
+        if (!atts.length) { if (badge) badge.style.display = 'none'; return; }
+        var regular = atts.filter(function (a) { return !a.is_inline; }).length;
+        var count = regular > 0 ? regular : atts.length;
+        if (!badge) {
+            badge = document.createElement('button');
+            badge.type = 'button';
+            badge.className = 'mobile-attach-badge';
+            badge.addEventListener('click', function (e) {
+                e.stopPropagation();          // don't toggle the header meta
+                if (typeof showAttachmentList === 'function') showAttachmentList();
+            });
+            line.appendChild(badge);          // last real child → rides on the right
+        }
+        badge.style.display = 'inline-flex';
+        badge.innerHTML = '<span class="mab-clip">📎</span><span class="mab-count">' + count + '</span>';
+        badge.setAttribute('aria-label', count + ' attachment' + (count === 1 ? '' : 's'));
+        badge.title = count + ' attachment' + (count === 1 ? '' : 's');
+    }
+
+    // Keep the action bar to a single row: five icons + a "…" button whose panel
+    // holds the rest (with their word labels). The toolbar is rebuilt on every
+    // render, so this re-collapses each time.
+    function buildToolbarOverflow() {
+        if (!mq.matches) return;
+        var rp = document.getElementById('readingPane');
+        if (!rp) return;
+        var toolbar = rp.querySelector('.action-toolbar');
+        if (!toolbar || toolbar.querySelector('.mobile-more-btn')) return;
+
+        var btns = Array.prototype.filter.call(toolbar.children, function (el) {
+            return el.classList && el.classList.contains('action-btn');
+        });
+        var KEEP = 5;
+        if (btns.length <= KEEP + 1) return;   // already fits in one row
+
+        var panel = document.createElement('div');
+        panel.className = 'mobile-more-panel';
+        panel.style.display = 'none';
+
+        var moreBtn = document.createElement('button');
+        moreBtn.type = 'button';
+        moreBtn.className = 'action-btn mobile-more-btn';
+        moreBtn.setAttribute('aria-label', 'More actions');
+        moreBtn.innerHTML = '<span class="action-btn-icon">⋯</span>';
+        moreBtn.addEventListener('click', function () {
+            panel.style.display = (panel.style.display === 'none') ? 'flex' : 'none';
+        });
+
+        btns.slice(KEEP).forEach(function (b) {
+            b.addEventListener('click', function () { panel.style.display = 'none'; });
+            panel.appendChild(b);
+        });
+
+        toolbar.appendChild(moreBtn);
+        toolbar.appendChild(panel);
+    }
+
+    // Close the overflow panel when tapping outside it (or its button).
+    document.addEventListener('click', function (e) {
+        if (!mq.matches || !e.target.closest) return;
+        var panel = document.querySelector('.mobile-more-panel');
+        if (!panel || panel.style.display === 'none') return;
+        if (e.target.closest('.mobile-more-panel') || e.target.closest('.mobile-more-btn')) return;
+        panel.style.display = 'none';
+    });
 
     // Injected chrome (sub-bar + views hamburger) is mobile-only; keep it out of
     // desktop entirely (belt-and-suspenders alongside the @media-only styling).

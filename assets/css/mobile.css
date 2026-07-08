@@ -352,4 +352,123 @@
         border-bottom: none !important;
         background: none !important;
     }
+
+    /* ====================================================================
+       LAYER 8 — Opened-ticket refinements (device-test loop with Ed):
+       (1) ticket reference pinned right of the Back button in the sub-bar,
+       (2) subject-only truncated heading with a compact attachment badge,
+       (3) single-row action bar with a "…" overflow panel.
+       All of the moved/added nodes are injected by mobile.js on mobile only.
+       ==================================================================== */
+
+    /* (1) Reference — same colour + size as the Back control, right-aligned,
+       shown only while a ticket is open (reading pane). */
+    .msb-ref {
+        display: none;
+        margin-left: auto;
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--accent, #0078d4);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 55%;
+        padding-left: 8px;
+    }
+    body[data-mobile-pane="reading"] .msb-ref { display: inline-block; }
+
+    /* (2) Subject heading: one truncated line. The chevron (email-details toggle)
+       sits immediately after the subject text; the attachment badge is pushed to
+       the far right so the two are well separated (Ed kept tapping the pill when
+       reaching for the arrow). Tighter spacing below the subject too. */
+    .email-header { padding-top: 12px; padding-bottom: 10px; }
+    .email-header .email-subject-line { margin-bottom: 6px; }
+    .email-subject-line { gap: 8px; }
+    .email-subject-line .email-subject-text {
+        flex: 0 1 auto;              /* natural width so the chevron sits beside it */
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    /* Chevron right after the subject (was pinned far right next to the badge). */
+    .email-subject-line::after { margin-left: 6px; order: 1; }
+
+    /* The full yellow attachment bar is replaced by the badge on mobile.
+       renderAttachmentInfoBar sets an inline display, so !important is needed. */
+    .attachment-info-bar { display: none !important; }
+    .mobile-attach-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        flex-shrink: 0;
+        order: 2;                    /* after the chevron → pinned far right */
+        margin-left: auto;
+        background: var(--warning-bg, #fff3cd);
+        color: var(--warning-text, #856404);
+        border: 1px solid #ffc107;
+        border-radius: 11px;
+        padding: 2px 9px;
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1.4;
+        cursor: pointer;
+    }
+    .mobile-attach-badge .mab-clip { font-size: 12px; }
+
+    /* (3) Action bar forced to a single row of five icons + the "…" button. */
+    .action-toolbar {
+        flex-wrap: nowrap;
+        justify-content: space-around;
+        position: relative;             /* anchor for the overflow panel */
+    }
+    .action-toolbar .action-btn { padding: 9px 8px; }
+
+    /* Overflow panel: a labelled popover above the bar holding the 6th+ actions. */
+    .mobile-more-panel {
+        position: absolute;
+        right: 6px;
+        bottom: calc(100% + 6px);
+        min-width: 190px;
+        background: var(--surface, #fff);
+        border: 1px solid var(--border, #ddd);
+        border-radius: 12px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.28);
+        padding: 6px;
+        flex-direction: column;
+        gap: 2px;
+        z-index: 1600;
+    }
+    .mobile-more-panel .action-btn {
+        justify-content: flex-start;
+        width: 100%;
+        gap: 12px;
+        padding: 11px 14px;
+        border: none;
+    }
+    /* In the panel the actions regain their word labels (hidden on the bar). */
+    .mobile-more-panel .action-btn span:not(.action-btn-icon) { display: inline; }
+    .mobile-more-panel .action-btn .action-btn-icon { font-size: 18px; }
+
+    /* Company (tenant) switcher relocated into the module drawer (mobile.js).
+       Its header styling is white-on-blue for the top bar; recolour it for the
+       light drawer and make it a full-width row. The dropdown keeps its own
+       (already light) styling and opens beneath the button. */
+    .waffle-panel .tenant-switcher { margin: 0 0 14px; }
+    .waffle-panel .tenant-switcher-btn {
+        width: 100%;
+        max-width: none;
+        height: 40px;
+        justify-content: space-between;
+        border-radius: 8px;
+        background: var(--surface-hover, #eef1f4);
+        color: var(--text, #333);
+    }
+    .waffle-panel .tenant-switcher-btn:hover { background: var(--surface-3, #e4e8ec); }
+
+    /* Backstop for the desktop pop-out mode (also stripped in JS): never let it
+       hide the list or re-pad the reading pane on a phone, or Back has nothing
+       to return to and the conversation is squeezed into a sliver. */
+    body.ticket-popout .folder-container,
+    body.ticket-popout .email-list-container { display: block; }
+    body.ticket-popout .reading-pane { position: absolute; padding-right: 0; }
 }

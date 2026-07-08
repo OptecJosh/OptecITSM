@@ -133,8 +133,8 @@ $translationNamespaces = ['common', 'knowledge'];
 
         /* Content area */
         .kb-help-content {
-            max-width: 1120px;
-            margin: 0 auto;
+            /* Full width (no centred max-width cap) — matches the workflow help
+               layout, which uses the whole pane. */
             padding: 10px 48px 48px;
         }
 
@@ -199,7 +199,7 @@ $translationNamespaces = ['common', 'knowledge'];
         /* Feature cards grid */
         .kb-help-features-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 14px;
         }
 
@@ -249,7 +249,9 @@ $translationNamespaces = ['common', 'knowledge'];
             display: flex;
             flex-direction: column;
             gap: 12px;
-            margin-left: 46px;
+            /* Align steps to the section's left edge (same as paragraphs/panels)
+               so there's a single consistent left margin, not a random indent. */
+            margin: 16px 0 0;
         }
 
         .kb-help-step-item {
@@ -278,13 +280,15 @@ $translationNamespaces = ['common', 'knowledge'];
             flex-shrink: 0;
         }
 
-        /* Highlighted section */
+        /* Highlighted panel — an inset, padded, rounded card (not a full-bleed
+           band) so it lines up with the other content and never touches edges. */
         .kb-help-section-highlight {
             background: var(--kb-accent-soft, #f3e5f5);
-            margin: 0 -48px;
-            padding: 28px 48px !important;
+            margin: 20px 0 !important;
+            padding: 20px 24px !important;
             border-bottom: none !important;
-            border-top: 2px solid var(--kb-accent, #ce93d8);
+            border-radius: 10px;
+            border-left: 3px solid var(--kb-accent, #ce93d8);
         }
 
         .kb-help-intro {
@@ -329,7 +333,7 @@ $translationNamespaces = ['common', 'knowledge'];
         /* Review status badges */
         .kb-help-status-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 10px;
             margin: 14px 0;
         }
@@ -423,7 +427,7 @@ $translationNamespaces = ['common', 'knowledge'];
         /* Settings options grid */
         .kb-help-settings-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
             gap: 10px;
             margin: 14px 0;
         }
@@ -456,13 +460,13 @@ $translationNamespaces = ['common', 'knowledge'];
             padding: 10px 14px;
             border-radius: 8px;
             border-left: 3px solid var(--kb-accent, #8764b8);
-            margin-top: 10px;
+            margin: 18px 0 0;
         }
 
         /* Quick tips grid */
         .kb-help-tips-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 12px;
         }
 
@@ -491,7 +495,7 @@ $translationNamespaces = ['common', 'knowledge'];
             .kb-help-sidebar { display: none; }
             .kb-help-content { padding: 10px 24px 40px; }
             .kb-help-hero { padding: 30px 24px; }
-            .kb-help-section-highlight { margin: 0 -24px; padding: 20px 24px !important; }
+            .kb-help-section-highlight { margin: 20px 0 !important; padding: 16px 18px !important; }
         }
 
         @media (max-width: 700px) {

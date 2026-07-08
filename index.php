@@ -163,6 +163,39 @@ $allowed_modules = $_SESSION['allowed_modules'] ?? null;
             color: var(--text-faint, #999);
             font-size: 12px;
         }
+
+        /* ====================================================================
+           Mobile (on-the-go analyst) — landing page reflow.
+           Self-contained @media block rather than linking assets/css/mobile.css:
+           that file carries tickets-inbox body/pane rules (body{height:100dvh},
+           .main-container{overflow:hidden}) that would clip this scrolling page.
+           Above 768px nothing here applies, so the desktop render is unchanged.
+           ==================================================================== */
+        @media (max-width: 768px) {
+            .landing-header { padding: 12px 14px; }
+            .landing-header h1 { font-size: 16px; }
+
+            .landing-container { padding: 24px 14px 32px; justify-content: flex-start; }
+
+            .company-logo { width: 220px; max-width: 70%; margin-bottom: 20px; }
+
+            .welcome-text { margin-bottom: 28px; }
+            .welcome-text h2 { font-size: 24px; }
+            .welcome-text p { font-size: 14px; }
+
+            /* Fixed 7 columns → an adaptive icon grid that fits any phone width
+               (~3 across on a 360px screen, 4 on a larger phone). */
+            .modules-grid {
+                grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+                gap: 10px;
+            }
+            .module-card { padding: 14px 6px; border-radius: 12px; }
+            .module-icon { width: 42px; height: 42px; margin-bottom: 8px; }
+            .module-name { font-size: 12px; line-height: 1.25; }
+
+            /* Keep the account dropdown from overflowing off a narrow screen. */
+            .user-menu { right: 8px; max-width: calc(100vw - 16px); }
+        }
     </style>
 </head>
 <body>

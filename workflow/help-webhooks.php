@@ -14,6 +14,7 @@ session_start();
 require_once '../config.php';
 require_once '../includes/functions.php';
 require_once '../includes/i18n.php';
+require_once '../includes/theme.php';
 require_once '../includes/timezone.php';
 I18n::initFromSession();
 Tz::init();
@@ -25,52 +26,57 @@ $path_prefix = '../';
 $translationNamespaces = ['common', 'workflow'];
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>" data-theme="<?php echo htmlspecialchars(Theme::active()); ?>" data-theme-mode="<?php echo htmlspecialchars(Theme::mode()); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Webhooks guide</title>
+    <link rel="stylesheet" href="../assets/css/theme.css?v=19">
     <link rel="stylesheet" href="../assets/css/inbox.css">
-    <link rel="stylesheet" href="../assets/css/workflow.css?v=4">
+    <link rel="stylesheet" href="../assets/css/workflow.css?v=5">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <?php echo Tz::scriptTag(); ?>
     <script src="../assets/js/tz.js?v=1"></script>
     <script src="../assets/js/i18n.js?v=2"></script>
     <style>
         /* Same shape as workflow/help.php */
-        .wfh-container { display: flex; height: calc(100vh - 48px); background: #f5f5f5; }
-        .wfh-sidebar { width: 260px; background: white; border-right: 1px solid #ddd; padding: 20px; display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; overflow-y: auto; }
-        .wfh-sidebar h3 { font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 12px; }
-        .wfh-nav-link { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; font-size: 13px; color: #555; text-decoration: none; transition: background 0.15s, color 0.15s; }
-        .wfh-nav-link:hover { background: #f5f5f5; color: #333; }
-        .wfh-nav-link.active { background: #fff7ed; color: #b45309; font-weight: 600; }
-        .wfh-nav-num { display: flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; border-radius: 50%; background: #f5f5f5; color: #888; font-size: 11px; font-weight: 700; }
-        .wfh-nav-link.active .wfh-nav-num { background: #f59e0b; color: white; }
-        .wfh-back { display: flex; align-items: center; gap: 8px; padding: 8px 12px; margin-bottom: 8px; font-size: 12.5px; color: #6b7280; text-decoration: none; border-radius: 6px; }
-        .wfh-back:hover { background: #f5f5f5; color: #374151; }
+        .wfh-container { display: flex; height: calc(100vh - 48px); background: var(--surface-3, #f5f5f5); }
+        .wfh-sidebar { width: 260px; background: var(--surface, #fff); border-right: 1px solid var(--border, #ddd); padding: 20px; display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; overflow-y: auto; }
+        .wfh-sidebar h3 { font-size: 12px; font-weight: 600; color: var(--text-dim, #888); text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 12px; }
+        .wfh-nav-link { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; font-size: 13px; color: var(--text-muted, #555); text-decoration: none; transition: background 0.15s, color 0.15s; }
+        .wfh-nav-link:hover { background: var(--surface-3, #f5f5f5); color: var(--text, #333); }
+        .wfh-nav-link.active { background: var(--wf-accent-soft, #fff7ed); color: var(--warning-text, #b45309); font-weight: 600; }
+        .wfh-nav-num { display: flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; border-radius: 50%; background: var(--surface-3, #f5f5f5); color: var(--text-dim, #888); font-size: 11px; font-weight: 700; }
+        .wfh-nav-link.active .wfh-nav-num { background: var(--wf-accent, #f59e0b); color: white; }
+        .wfh-back { display: flex; align-items: center; gap: 8px; padding: 8px 12px; margin-bottom: 8px; font-size: 12.5px; color: var(--text-muted, #6b7280); text-decoration: none; border-radius: 6px; }
+        .wfh-back:hover { background: var(--surface-3, #f5f5f5); color: var(--text, #374151); }
 
         .wfh-main { flex: 1; overflow-y: auto; padding: 24px 32px 60px; }
-        .wf-help h2 { font-size: 22px; color: #333; margin: 0 0 4px; }
-        .wf-help p { color: #555; line-height: 1.6; }
-        .wf-help .lede { font-size: 15px; color: #444; }
-        .wf-help h3 { margin: 34px 0 10px; font-size: 16px; color: #333; padding-bottom: 6px; border-bottom: 1px solid #eee; scroll-margin-top: 20px; }
+        .wf-help h2 { font-size: 22px; color: var(--text, #333); margin: 0 0 4px; }
+        .wf-help p { color: var(--text-muted, #555); line-height: 1.6; }
+        .wf-help .lede { font-size: 15px; color: var(--text, #444); }
+        .wf-help h3 { margin: 34px 0 10px; font-size: 16px; color: var(--text, #333); padding-bottom: 6px; border-bottom: 1px solid var(--border-soft, #eee); scroll-margin-top: 20px; }
         .wf-help h3:first-of-type { margin-top: 22px; }
-        .wf-help h4 { margin: 22px 0 6px; font-size: 14px; color: #444; }
-        .wf-help ul, .wf-help ol { color: #555; line-height: 1.7; padding-left: 22px; }
+        .wf-help h4 { margin: 22px 0 6px; font-size: 14px; color: var(--text, #444); }
+        .wf-help ul, .wf-help ol { color: var(--text-muted, #555); line-height: 1.7; padding-left: 22px; }
         .wf-help li { margin-bottom: 6px; }
-        .wf-help code { background: #f4f4f4; padding: 1px 6px; border-radius: 3px; font-size: 12.5px; color: #b45309; }
+        .wf-help code { background: var(--surface-3, #f4f4f4); padding: 1px 6px; border-radius: 3px; font-size: 12.5px; color: var(--warning-text, #b45309); }
         .wf-help pre { background: #263238; color: #eceff1; border-radius: 6px; padding: 14px 16px; font-size: 12.5px; line-height: 1.55; overflow-x: auto; margin: 14px 0; }
         .wf-help pre code { background: none; color: inherit; padding: 0; font-size: 12.5px; }
         .wf-help table { border-collapse: collapse; width: 100%; margin: 14px 0; font-size: 13px; }
-        .wf-help table th, .wf-help table td { border: 1px solid #e5e7eb; padding: 8px 10px; text-align: left; vertical-align: top; }
-        .wf-help table th { background: #f9fafb; font-weight: 600; color: #374151; }
-        .wf-help .callout { background: #fff7ed; border-left: 3px solid #f59e0b; padding: 10px 14px; margin: 14px 0; border-radius: 4px; font-size: 13.5px; color: #92400e; }
-        .wf-help .callout strong { color: #78350f; }
+        .wf-help table th, .wf-help table td { border: 1px solid var(--border, #e5e7eb); padding: 8px 10px; text-align: left; vertical-align: top; }
+        .wf-help table th { background: var(--surface-2, #f9fafb); font-weight: 600; color: var(--text, #374151); }
+        .wf-help .callout { background: var(--wf-accent-soft, #fff7ed); border-left: 3px solid var(--wf-accent, #f59e0b); padding: 10px 14px; margin: 14px 0; border-radius: 4px; font-size: 13.5px; color: var(--warning-text, #92400e); }
+        .wf-help .callout strong { color: var(--warning-text, #78350f); }
         .wf-help .tip { background: #f0f9ff; border-left: 3px solid #0ea5e9; padding: 10px 14px; margin: 14px 0; border-radius: 4px; font-size: 13.5px; color: #075985; }
         .wf-help .tip code, .wf-help .callout code { background: rgba(255,255,255,0.55); }
         .wf-help .steps-num { counter-reset: qs; list-style: none; padding-left: 0; }
         .wf-help .steps-num li { position: relative; padding: 2px 0 10px 40px; }
-        .wf-help .steps-num li::before { counter-increment: qs; content: counter(qs); position: absolute; left: 0; top: 0; width: 26px; height: 26px; border-radius: 50%; background: #f59e0b; color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+        .wf-help .steps-num li::before { counter-increment: qs; content: counter(qs); position: absolute; left: 0; top: 0; width: 26px; height: 26px; border-radius: 50%; background: var(--wf-accent, #f59e0b); color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+        /* Dark: sink the pale sky-blue tip box + the translucent-white inline
+           code chips inside tip/callout so they don't glow. */
+        [data-theme-mode="dark"] .wf-help .tip { background: #12263a; border-left-color: #38bdf8; color: #7dd3fc; }
+        [data-theme-mode="dark"] .wf-help .tip code, [data-theme-mode="dark"] .wf-help .callout code { background: rgba(0,0,0,0.30); }
     </style>
 </head>
 <body>

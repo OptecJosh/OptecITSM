@@ -10,6 +10,7 @@ session_start();
 require_once '../config.php';
 require_once '../includes/functions.php';
 require_once '../includes/i18n.php';
+require_once '../includes/theme.php';
 require_once '../includes/timezone.php';
 I18n::initFromSession();
 Tz::init();
@@ -20,13 +21,14 @@ $path_prefix = '../';
 $translationNamespaces = ['common', 'workflow'];
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>" data-theme="<?php echo htmlspecialchars(Theme::active()); ?>" data-theme-mode="<?php echo htmlspecialchars(Theme::mode()); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars(t('workflow.list.page_title')); ?></title>
+    <link rel="stylesheet" href="../assets/css/theme.css?v=19">
     <link rel="stylesheet" href="../assets/css/inbox.css">
-    <link rel="stylesheet" href="../assets/css/workflow.css?v=4">
+    <link rel="stylesheet" href="../assets/css/workflow.css?v=5">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <?php echo Tz::scriptTag(); ?>
     <script src="../assets/js/tz.js?v=1"></script>
@@ -44,7 +46,7 @@ $translationNamespaces = ['common', 'workflow'];
                 <h2><?php echo htmlspecialchars(t('workflow.list.page_title')); ?></h2>
                 <a class="add-btn" href="editor.php"><?php echo htmlspecialchars(t('workflow.list.add_btn')); ?></a>
             </div>
-            <p style="margin-bottom: 20px; color: #666;"><?php echo htmlspecialchars(t('workflow.list.intro')); ?></p>
+            <p style="margin-bottom: 20px; color: var(--text-muted, #666);"><?php echo htmlspecialchars(t('workflow.list.intro')); ?></p>
 
             <table>
                 <thead>
@@ -75,7 +77,7 @@ $translationNamespaces = ['common', 'workflow'];
         }
 
         function fmtDate(s) {
-            if (!s) return '<span style="color:#999;">' + esc(window.t('workflow.list.never_run')) + '</span>';
+            if (!s) return '<span style="color:var(--text-faint, #999);">' + esc(window.t('workflow.list.never_run')) + '</span>';
             // last_run_datetime is a server-stamped UTC instant → show in the analyst's zone.
             try { return esc(window.parseUTCDate(s).toLocaleString(undefined, window.tzOpts({}))); }
             catch (e) { return esc(s); }
@@ -96,18 +98,18 @@ $translationNamespaces = ['common', 'workflow'];
                 const r = await fetch(API + 'list.php', { credentials: 'same-origin' });
                 const d = await r.json();
                 if (!d.success) {
-                    tb.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #c33;">' + esc(d.error || 'Load failed') + '</td></tr>';
+                    tb.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--danger-text, #c33);">' + esc(d.error || 'Load failed') + '</td></tr>';
                     return;
                 }
                 if (!d.workflows || !d.workflows.length) {
-                    tb.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #999;">' + esc(window.t('workflow.list.no_workflows')) + '</td></tr>';
+                    tb.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-faint, #999);">' + esc(window.t('workflow.list.no_workflows')) + '</td></tr>';
                     return;
                 }
                 tb.innerHTML = d.workflows.map(w => `
                     <tr>
-                        <td><strong><a href="editor.php?id=${w.id}" style="color: #333; text-decoration: none;">${esc(w.name)}</a></strong>${w.description ? '<br><span style="color:#777; font-size: 12px;">' + esc(w.description) + '</span>' : ''}</td>
+                        <td><strong><a href="editor.php?id=${w.id}" style="color: var(--text, #333); text-decoration: none;">${esc(w.name)}</a></strong>${w.description ? '<br><span style="color:var(--text-dim, #777); font-size: 12px;">' + esc(w.description) + '</span>' : ''}</td>
                         <td><code style="font-size:12px;">${esc(w.trigger_event)}</code></td>
-                        <td style="color:#666;">${w.run_count} run${w.run_count == 1 ? '' : 's'}</td>
+                        <td style="color:var(--text-muted, #666);">${w.run_count} run${w.run_count == 1 ? '' : 's'}</td>
                         <td>${fmtDate(w.last_run_datetime)}</td>
                         <td>${statusPill(+w.is_active)}</td>
                         <td>
@@ -117,7 +119,7 @@ $translationNamespaces = ['common', 'workflow'];
                     </tr>
                 `).join('');
             } catch (e) {
-                tb.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #c33;">' + esc(e.message || 'Network error') + '</td></tr>';
+                tb.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--danger-text, #c33);">' + esc(e.message || 'Network error') + '</td></tr>';
             }
         }
 

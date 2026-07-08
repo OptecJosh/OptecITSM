@@ -114,6 +114,12 @@
     --nm-accent:       #06b6d4;  --nm-accent-hover:  #0891b2;
     --nm-accent-soft:  #ecfeff;  --nm-on-accent:     #ffffff;
 
+    /* Workflows module (amber) accents — editor CHROME only; the workflow
+       canvas + nodes stay a light worksheet. NB workflow.css is authored amber
+       (#f59e0b), even though module-colors registers #ea580c for the header. */
+    --wf-accent:       #f59e0b;  --wf-accent-hover:  #d97706;
+    --wf-accent-soft:  #fef3c7;  --wf-on-accent:     #ffffff;
+
     /* Messaging-channel (WhatsApp etc.) composer — green-tinted surface */
     --channel-bg:        #f7fdf9;  --channel-border: #d6e9d8;
 
@@ -208,6 +214,10 @@
     /* Network Mapper module (cyan) — accent nudged lighter to read on dark */
     --nm-accent:       #22d3ee;  --nm-accent-hover:  #67e8f9;
     --nm-accent-soft:  #0d2b30;  --nm-on-accent:     #ffffff;
+
+    /* Workflows module (amber) — accent nudged lighter to read on dark */
+    --wf-accent:       #fbbf24;  --wf-accent-hover:  #fcd34d;
+    --wf-accent-soft:  #3a2e12;  --wf-on-accent:     #ffffff;
 
     /* Messaging-channel (WhatsApp etc.) composer — dark green-tinted surface */
     --channel-bg:        #15231b;  --channel-border: #2b3d31;

@@ -3,7 +3,18 @@
    -------------------------------------------------------------
    Theme colour: amber #f59e0b (associative with automation tools
    like Zapier / n8n / Make).
+
+   Dark mode: the editor CHROME (toolbar, detail panel, AI modal,
+   buttons) themes via var(--token, #light-fallback); the CANVAS +
+   dot-grid + nodes stay a LIGHT worksheet in both modes (draw.io /
+   Process-Mapper style — the nodes are colour-coded data tuned for
+   a light surface). Fallbacks = the original light values, so light
+   mode is pixel-identical and un-themed pages are unaffected.
    ============================================================= */
+
+/* Workflow pages pin the shared --accent to amber so inbox.css
+   primitives (modals, .add-btn, tabs, focus rings) are on-brand. */
+body { --accent: var(--wf-accent, #f59e0b); }
 
 /* Nav width/centring rules live in assets/css/inbox.css alongside the
    other module-header overrides — keep this file focused on layout. */
@@ -17,7 +28,7 @@
     flex-direction: column;
     height: calc(100vh - 48px);
     overflow: hidden;
-    background: #fafafa;
+    background: var(--app-bg, #fafafa);
 }
 
 .wf-toolbar {
@@ -25,8 +36,8 @@
     justify-content: space-between;
     align-items: center;
     padding: 6px 12px;
-    background: #fff;
-    border-bottom: 1px solid #e0e0e0;
+    background: var(--surface, #fff);
+    border-bottom: 1px solid var(--border, #e0e0e0);
     min-height: 44px;
     gap: 8px;
     flex-shrink: 0;
@@ -38,9 +49,9 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: #f5f5f5;
-    color: #333;
-    border: 1px solid #ddd;
+    background: var(--surface-3, #f5f5f5);
+    color: var(--text, #333);
+    border: 1px solid var(--border, #ddd);
     padding: 6px 12px;
     border-radius: 4px;
     cursor: pointer;
@@ -50,8 +61,8 @@
     transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 .wf-tool-btn:hover {
-    background: #ececec;
-    border-color: #c4c4c4;
+    background: var(--surface-hover, #ececec);
+    border-color: var(--border, #c4c4c4);
 }
 .wf-tool-btn:disabled {
     opacity: 0.45;
@@ -60,6 +71,8 @@
 .wf-tool-btn svg {
     flex-shrink: 0;
 }
+/* Saturated amber primary — white text reads on both modes, so kept
+   hardcoded (not the light-in-dark --wf-accent token). */
 .wf-tool-btn.wf-tool-primary {
     background: #f59e0b;       /* amber primary */
     color: #fff;
@@ -70,29 +83,29 @@
 .wf-tool-sep {
     width: 1px;
     height: 22px;
-    background: #ddd;
+    background: var(--border, #ddd);
     margin: 0 4px;
 }
 
 /* Status pip beside the Save button. */
 .wf-status {
     font-size: 12px;
-    color: #888;
+    color: var(--text-muted, #888);
     margin-right: 6px;
     display: inline-flex;
     align-items: center;
     gap: 4px;
     min-height: 18px;
 }
-.wf-status-unsaved  { color: #b45309; }
-.wf-status-saving   { color: #92400e; }
-.wf-status-saved    { color: #2e7d32; }
+.wf-status-unsaved  { color: var(--warning-text, #b45309); }
+.wf-status-saving   { color: var(--warning-text, #92400e); }
+.wf-status-saved    { color: var(--success-text, #2e7d32); }
 .wf-status-tick     { font-weight: 600; }
 .wf-status-dot {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: #f59e0b;
+    background: var(--wf-accent, #f59e0b);
     animation: wf-pulse 0.9s infinite;
 }
 @keyframes wf-pulse {
@@ -102,6 +115,9 @@
 
 /* =============================================================
    Main split — canvas on the left, detail panel on the right
+   -------------------------------------------------------------
+   CANVAS IS CONTENT: the worksheet + dot-grid + nodes stay LIGHT in
+   both modes (nodes are colour-coded pills tuned for a white surface).
    ============================================================= */
 
 .wf-main {
@@ -114,7 +130,7 @@
 .wf-canvas-wrap {
     flex: 1;
     overflow: hidden;
-    background: #fafafa;
+    background: #fafafa;          /* light worksheet — intentional in dark too */
     position: relative;
 }
 
@@ -140,7 +156,7 @@
 }
 
 /* =============================================================
-   Nodes — trigger / condition / action
+   Nodes — trigger / condition / action (CONTENT — stay light/coloured)
    ============================================================= */
 
 .wf-node {
@@ -223,14 +239,14 @@
 }
 
 /* =============================================================
-   Detail panel — slide-in from the right
+   Detail panel — slide-in from the right (CHROME — themed)
    ============================================================= */
 
 .wf-detail {
     width: 340px;
     min-width: 340px;
-    background: #fff;
-    border-left: 1px solid #e0e0e0;
+    background: var(--surface, #fff);
+    border-left: 1px solid var(--border, #e0e0e0);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -238,14 +254,14 @@
 
 .wf-detail-header {
     padding: 14px 18px;
-    border-bottom: 1px solid #e0e0e0;
-    background: #fafafa;
+    border-bottom: 1px solid var(--border, #e0e0e0);
+    background: var(--surface-2, #fafafa);
 }
 .wf-detail-header h3 {
     margin: 0;
     font-size: 15px;
     font-weight: 600;
-    color: #333;
+    color: var(--text, #333);
 }
 
 .wf-detail-body {
@@ -259,7 +275,7 @@
     display: block;
     font-size: 12px;
     font-weight: 600;
-    color: #555;
+    color: var(--text-muted, #555);
     margin-bottom: 6px;
 }
 .wf-detail-body input[type="text"],
@@ -267,7 +283,9 @@
 .wf-detail-body textarea {
     width: 100%;
     padding: 8px 10px;
-    border: 1px solid #ddd;
+    background: var(--surface, #fff);
+    color: var(--text, #333);
+    border: 1px solid var(--border, #ddd);
     border-radius: 4px;
     font-size: 13px;
     font-family: inherit;
@@ -281,16 +299,16 @@
 .wf-detail-body select:focus,
 .wf-detail-body textarea:focus {
     outline: none;
-    border-color: #f59e0b;
+    border-color: var(--wf-accent, #f59e0b);
 }
 
 .wf-detail-delete {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: #fff;
-    color: #c62828;
-    border: 1px solid #f4c5c5;
+    background: var(--surface, #fff);
+    color: var(--danger-text, #c62828);
+    border: 1px solid #f4c5c5;    /* pale red — dark override below */
     padding: 7px 14px;
     border-radius: 4px;
     cursor: pointer;
@@ -299,15 +317,16 @@
     margin-top: 8px;
 }
 .wf-detail-delete:hover {
-    background: #fdf3f3;
-    border-color: #c62828;
+    background: #fdf3f3;           /* pale red wash — dark override below */
+    border-color: var(--danger-text, #c62828);
 }
 
 /* =============================================================
-   AI co-author modal + toolbar button
+   AI co-author modal + toolbar button (CHROME — themed)
    ============================================================= */
 
-/* Toolbar AI button — amber-tinted so it stands out as the "magic" action. */
+/* Toolbar AI button — amber-tinted so it stands out as the "magic" action.
+   Pale-amber tints kept hardcoded for light + flipped via the dark block. */
 .wf-tool-btn.wf-tool-ai {
     background: #fff7ed;
     border-color: #fed7aa;
@@ -318,7 +337,7 @@
     border-color: #fdba74;
     color: #92400e;
 }
-.wf-tool-btn.wf-tool-ai svg { color: #f59e0b; }
+.wf-tool-btn.wf-tool-ai svg { color: var(--wf-accent, #f59e0b); }
 
 /* Modal content override — wider than the default tickets-settings modal
    because the AI result panel is content-heavy (explanation + preview +
@@ -332,7 +351,7 @@
 }
 
 /* Amber primary buttons for the AI flow so they stand out from the
-   blue .btn-primary used elsewhere. */
+   blue .btn-primary used elsewhere. Saturated → kept hardcoded. */
 .btn.wf-ai-primary {
     background: #f59e0b;
     border-color: #f59e0b;
@@ -350,4 +369,25 @@
 @keyframes wf-spark {
     0%, 100% { transform: rotate(-4deg) scale(1); }
     50%      { transform: rotate(4deg)  scale(1.08); }
+}
+
+/* =============================================================
+   Dark-mode overrides for pale-amber / pale-red tints that don't map
+   to a token (keep light values above so light mode is identical).
+   ============================================================= */
+[data-theme-mode="dark"] .wf-tool-btn.wf-tool-ai {
+    background: #3a2e12;
+    border-color: #5a4718;
+    color: #fcd34d;
+}
+[data-theme-mode="dark"] .wf-tool-btn.wf-tool-ai:hover {
+    background: #4a3a16;
+    border-color: #6b5520;
+    color: #fde68a;
+}
+[data-theme-mode="dark"] .wf-detail-delete {
+    border-color: #5a2a2a;
+}
+[data-theme-mode="dark"] .wf-detail-delete:hover {
+    background: #3a1c1c;
 }

@@ -155,6 +155,7 @@ return [
         'link_cmdb'        => 'Link CMDB object…',
         'link_problem'     => 'Link to problem…',
         'link_change'      => 'Link to change…',
+        'link_ticket'      => 'Link to ticket…',
         'record_time'      => 'Record time…',
         'set_status'       => 'Set status',
         'set_priority'     => 'Set priority',

@@ -275,6 +275,10 @@ $translationNamespaces = ['common', 'tickets'];
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
             <span><?php echo htmlspecialchars(t('tickets.context.link_change')); ?></span>
         </button>
+        <button class="ticket-context-menu-item" type="button" onclick="openContextLinkTicket()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            <span><?php echo htmlspecialchars(t('tickets.context.link_ticket')); ?></span>
+        </button>
         <button class="ticket-context-menu-item" type="button" onclick="openContextRecordTime()">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             <span><?php echo htmlspecialchars(t('tickets.context.record_time')); ?></span>
@@ -409,6 +413,30 @@ $translationNamespaces = ['common', 'tickets'];
         </div>
     </div>
 
+    <!-- Link-to-ticket modal (#38): pick a relationship type, then search the target ticket -->
+    <div class="modal" id="linkTicketModal">
+        <div class="modal-content" style="max-width: 620px;">
+            <div class="modal-header">Link <span id="linkTicketRef"></span> to another ticket</div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <div style="display:flex;flex-wrap:wrap;gap:14px;font-size:13px;">
+                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="radio" name="ticketLinkRelation" value="related" checked> Related to</label>
+                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="radio" name="ticketLinkRelation" value="duplicate_of"> Duplicate of</label>
+                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="radio" name="ticketLinkRelation" value="parent_of"> Parent of</label>
+                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="radio" name="ticketLinkRelation" value="child_of"> Child of</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <input type="text" class="form-input" id="linkTicketSearch" placeholder="Search tickets by number or subject…" autocomplete="off" oninput="linkTicketSearchDebounced()">
+                </div>
+                <div class="lp-list" id="linkTicketList"><div class="lp-empty">Loading…</div></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeLinkTicketModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Context menu — Record Time modal -->
     <div class="modal" id="ctxTimeModal">
         <div class="modal-content" style="max-width: 480px;">
@@ -439,7 +467,7 @@ $translationNamespaces = ['common', 'tickets'];
         window.API_BASE = '../api/tickets/';
         window.CURRENT_ANALYST_ID = <?php echo (int)($_SESSION['analyst_id'] ?? 0); ?>;
     </script>
-    <script src="../assets/js/inbox.js?v=54"></script>
+    <script src="../assets/js/inbox.js?v=55"></script>
     <script src="../assets/js/mobile.js?v=9"></script>
     <script>
     // Auto-check mailboxes every 60 seconds

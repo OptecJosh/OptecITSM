@@ -1661,6 +1661,26 @@ CREATE TABLE IF NOT EXISTS `problem_tickets` (
     CONSTRAINT `fk_ptickets_ticket` FOREIGN KEY (`ticket_id`) REFERENCES `tickets` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Ticket-to-ticket links (self-referential, typed). relation_type:
+--   'related'   = symmetric (order doesn't matter; reciprocal duplicates blocked);
+--   'duplicate' = source is a DUPLICATE OF target (target is the master);
+--   'parent'    = source is the PARENT OF target (target is the child).
+-- The service enforces: no self-link, at most one parent per child, at most one
+-- duplicate-master per ticket, and same-company only on multi-tenant installs.
+CREATE TABLE IF NOT EXISTS `ticket_links` (
+    `id`                INT NOT NULL AUTO_INCREMENT,
+    `source_ticket_id`  INT NOT NULL,
+    `target_ticket_id`  INT NOT NULL,
+    `relation_type`     VARCHAR(20) NOT NULL DEFAULT 'related',
+    `created_by_id`     INT NULL,
+    `created_datetime`  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_ticket_link` (`source_ticket_id`, `target_ticket_id`, `relation_type`),
+    KEY `ix_ticket_links_target` (`target_ticket_id`),
+    CONSTRAINT `fk_ticket_links_source` FOREIGN KEY (`source_ticket_id`) REFERENCES `tickets` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_ticket_links_target` FOREIGN KEY (`target_ticket_id`) REFERENCES `tickets` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `problem_audit` (
     `id`               INT NOT NULL AUTO_INCREMENT,
     `problem_id`       INT NOT NULL,

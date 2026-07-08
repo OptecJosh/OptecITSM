@@ -1356,6 +1356,7 @@ function displayEmail(email, recordings) {
         </div>
         ${buildProblemStrip(email)}
         ${buildChangeStrip(email)}
+        ${buildLinkedTicketsStrip(email)}
         ${buildRecordingsStrip(currentRecordings)}
         <div class="action-toolbar">
             <button class="action-btn" onclick="openNoteModal()">
@@ -1626,6 +1627,104 @@ async function unlinkTicketFromChange(changeId) {
         });
         const data = await res.json();
         if (data.success) { showToast('Unlinked', 'success'); selectEmail(currentEmail.id); }
+        else showToast(data.error || 'Failed', 'error');
+    } catch (e) { showToast('Failed', 'error'); }
+}
+
+// ============================================================
+// Ticket-to-ticket links (#38): related / duplicate / parent-child.
+// Reads email.linked_tickets (grouped) from get_email_detail.
+// ============================================================
+function buildLinkedTicketsStrip(email) {
+    const L = email.linked_tickets || {};
+    const badge = (item, prefix) => `<a class="pm-ticket-badge" href="#" onclick="event.preventDefault();loadTicketById(${item.ticket_id});" title="${escapeHtml(item.subject || '')}">
+        🔗 ${escapeHtml(prefix)} ${escapeHtml(item.ticket_number || ('#' + item.ticket_id))}${item.status ? ' · ' + escapeHtml(item.status) : ''}
+        <span class="pm-ticket-unlink" onclick="event.preventDefault();event.stopPropagation();unlinkTicketLink(${item.link_id});">✕</span>
+    </a>`;
+    const parts = [];
+    if (L.parent) parts.push(badge(L.parent, 'Parent:'));
+    (L.children || []).forEach(c => parts.push(badge(c, 'Child:')));
+    if (L.duplicate_of) parts.push(badge(L.duplicate_of, 'Duplicate of:'));
+    (L.duplicates || []).forEach(d => parts.push(badge(d, 'Duplicate:')));
+    (L.related || []).forEach(r => parts.push(badge(r, 'Related:')));
+    const badges = parts.join('');
+    return `<div class="problem-strip">
+        <span class="problem-strip-label">Linked tickets</span>
+        ${badges || `<span style="color:#9ca3af;font-size:13px;">No linked tickets</span>`}
+        <button class="problem-link-btn" onclick="linkTicketToTicket()">Link to ticket</button>
+    </div>`;
+}
+
+// Reading-pane "Link to ticket" button — opens the picker for the open ticket.
+function linkTicketToTicket() {
+    if (!currentEmail) return;
+    openLinkTicketModal(currentEmail.ticket_id, currentEmail.ticket_number, currentEmail.subject || '');
+}
+
+// Right-click "Link to ticket…" — targets whichever ticket was right-clicked.
+function openContextLinkTicket() {
+    closeTicketContextMenu();
+    if (!ctxTargetTicketId) return;
+    openLinkTicketModal(ctxTargetTicketId, ctxTargetTicketRef, '');
+}
+
+let linkTicketSourceId = null;
+let linkTicketSourceRef = '';
+let linkTicketSearchTimer = null;
+
+function openLinkTicketModal(ticketId, ticketRef, subject) {
+    linkTicketSourceId = ticketId;
+    linkTicketSourceRef = ticketRef || ('Ticket ' + ticketId);
+    document.getElementById('linkTicketRef').textContent = linkTicketSourceRef;
+    const rel = document.querySelector('input[name="ticketLinkRelation"][value="related"]');
+    if (rel) rel.checked = true;
+    const s = document.getElementById('linkTicketSearch'); if (s) s.value = '';
+    document.getElementById('linkTicketModal').classList.add('active');
+    loadLinkTicketList();
+}
+function closeLinkTicketModal() { document.getElementById('linkTicketModal').classList.remove('active'); }
+function linkTicketSearchDebounced() { clearTimeout(linkTicketSearchTimer); linkTicketSearchTimer = setTimeout(loadLinkTicketList, 250); }
+
+async function loadLinkTicketList() {
+    const list = document.getElementById('linkTicketList');
+    const q = (document.getElementById('linkTicketSearch') || {}).value || '';
+    list.innerHTML = '<div class="lp-empty">Loading…</div>';
+    try {
+        const data = await fetch('../api/tickets/list_linkable_tickets.php?source_ticket_id=' + encodeURIComponent(linkTicketSourceId) + '&q=' + encodeURIComponent(q.trim())).then(r => r.json());
+        if (!data.success) { list.innerHTML = '<div class="lp-empty">' + escapeHtml(data.error || 'Failed to load') + '</div>'; return; }
+        const rows = (data.tickets || []).map(tk => `<div class="lp-row" onclick="pickLinkTicket(${tk.id})">
+            <span class="lp-num">${escapeHtml(tk.ticket_number || ('#' + tk.id))}</span>
+            <span class="lp-title">${escapeHtml(tk.subject || '')}</span>
+            <span class="lp-status">${escapeHtml(tk.status || '')}</span></div>`).join('');
+        list.innerHTML = rows || '<div class="lp-empty">' + (q.trim() ? 'No matching tickets.' : 'No other tickets found.') + '</div>';
+    } catch (e) { list.innerHTML = '<div class="lp-empty">Failed to load tickets</div>'; }
+}
+
+async function pickLinkTicket(targetId) {
+    const relEl = document.querySelector('input[name="ticketLinkRelation"]:checked');
+    const relation = relEl ? relEl.value : 'related';
+    try {
+        const res = await fetch('../api/tickets/create_ticket_link.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source_ticket_id: linkTicketSourceId, target_ticket_id: targetId, relation: relation })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast('Tickets linked', 'success');
+            closeLinkTicketModal();
+            if (currentEmail && currentEmail.ticket_id == linkTicketSourceId) selectEmail(currentEmail.id);
+        } else showToast(data.error || 'Could not link', 'error');
+    } catch (e) { showToast('Failed to link tickets', 'error'); }
+}
+
+async function unlinkTicketLink(linkId) {
+    try {
+        const res = await fetch('../api/tickets/delete_ticket_link.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ link_id: linkId })
+        });
+        const data = await res.json();
+        if (data.success) { showToast('Unlinked', 'success'); if (currentEmail) selectEmail(currentEmail.id); }
         else showToast(data.error || 'Failed', 'error');
     } catch (e) { showToast('Failed', 'error'); }
 }

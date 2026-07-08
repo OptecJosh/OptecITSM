@@ -1149,6 +1149,16 @@ $schema = [
         'created_datetime' => 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP',
     ],
 
+    // Ticket-to-ticket links (self-referential, typed): related / duplicate / parent.
+    'ticket_links' => [
+        'id'               => 'INT NOT NULL AUTO_INCREMENT',
+        'source_ticket_id' => 'INT NOT NULL',
+        'target_ticket_id' => 'INT NOT NULL',
+        'relation_type'    => "VARCHAR(20) NOT NULL DEFAULT 'related'",
+        'created_by_id'    => 'INT NULL',
+        'created_datetime' => 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
     // Incidents (tickets) linked to a change — twin of problem_tickets.
     'change_tickets' => [
         'id'               => 'INT NOT NULL AUTO_INCREMENT',
@@ -3465,6 +3475,8 @@ try {
         ['problem_tickets', 'fk_ptickets_ticket',   "ALTER TABLE problem_tickets ADD CONSTRAINT fk_ptickets_ticket FOREIGN KEY (ticket_id) REFERENCES tickets (id) ON DELETE CASCADE"],
         ['change_tickets',  'fk_ctickets_change',   "ALTER TABLE change_tickets ADD CONSTRAINT fk_ctickets_change FOREIGN KEY (change_id) REFERENCES changes (id) ON DELETE CASCADE"],
         ['change_tickets',  'fk_ctickets_ticket',   "ALTER TABLE change_tickets ADD CONSTRAINT fk_ctickets_ticket FOREIGN KEY (ticket_id) REFERENCES tickets (id) ON DELETE CASCADE"],
+        ['ticket_links',    'fk_ticket_links_source', "ALTER TABLE ticket_links ADD CONSTRAINT fk_ticket_links_source FOREIGN KEY (source_ticket_id) REFERENCES tickets (id) ON DELETE CASCADE"],
+        ['ticket_links',    'fk_ticket_links_target', "ALTER TABLE ticket_links ADD CONSTRAINT fk_ticket_links_target FOREIGN KEY (target_ticket_id) REFERENCES tickets (id) ON DELETE CASCADE"],
         ['problem_audit',   'fk_paudit_problem',    "ALTER TABLE problem_audit ADD CONSTRAINT fk_paudit_problem FOREIGN KEY (problem_id) REFERENCES problems (id) ON DELETE CASCADE"],
         ['problem_notes',   'fk_pnotes_problem',    "ALTER TABLE problem_notes ADD CONSTRAINT fk_pnotes_problem FOREIGN KEY (problem_id) REFERENCES problems (id) ON DELETE CASCADE"],
     ];
@@ -3477,6 +3489,7 @@ try {
         ['problems', 'ix_problems_tenant_id',  'tenant_id'],
         ['problem_tickets', 'ix_ptickets_ticket', 'ticket_id'],
         ['change_tickets',  'ix_ctickets_ticket', 'ticket_id'],
+        ['ticket_links',    'ix_ticket_links_target', 'target_ticket_id'],
         ['problem_notes', 'ix_pnotes_problem', 'problem_id'],
     ];
     foreach ($problemIndexes as [$tbl, $name, $col]) {
@@ -4200,6 +4213,7 @@ try {
         ['tenant_channel_senders', 'uq_tenant_channel_sender_identifier', '(`identifier`)'],
         ['problem_tickets', 'uq_problem_ticket', '(`problem_id`, `ticket_id`)'],
         ['change_tickets',  'uq_change_ticket',  '(`change_id`, `ticket_id`)'],
+        ['ticket_links',    'uq_ticket_link',    '(`source_ticket_id`, `target_ticket_id`, `relation_type`)'],
         ['api_keys', 'uq_api_keys_hash', '(`key_hash`)'],
         ['api_key_rate_limits', 'uq_api_key_window', '(`api_key_id`, `window_start`)'],
         ['contract_term_values', 'uq_ctv_contract_tab', '(`contract_id`, `term_tab_id`)'],

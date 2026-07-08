@@ -187,6 +187,14 @@ try {
         $email['changes'] = $cq->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) { /* module not installed yet */ }
 
+    // Ticket-to-ticket links (parent / children / duplicates / related), grouped
+    // from this ticket's perspective. Degrades to empty if the table is absent.
+    $email['linked_tickets'] = ['parent' => null, 'children' => [], 'duplicate_of' => null, 'duplicates' => [], 'related' => []];
+    try {
+        require_once '../../includes/ticket_links.php';
+        $email['linked_tickets'] = ticketLinksFor($conn, (int) $email['ticket_id']);
+    } catch (Exception $e) { /* table not present yet */ }
+
     // Screen recordings attached to the ticket
     $recordings = [];
     try {

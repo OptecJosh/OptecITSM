@@ -202,6 +202,32 @@
        element's inline grid-template-columns. */
     .modal-content .form-row { grid-template-columns: 1fr !important; }
 
+    /* Add-note: on a phone this fills the screen (its own panel), so the note
+       box should fill it too instead of a small fixed-height textarea with dead
+       space below. Scoped to #noteModal so multi-field forms (reply, new ticket)
+       keep their natural per-field sizing. */
+    #noteModal .modal-body { display: flex; flex-direction: column; }
+    #noteModal .form-group {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        margin-bottom: 0;
+    }
+    /* font-size:16px is REQUIRED here (not cosmetic): iOS Safari zooms in on
+       focus for any field under 16px, which then mangles this fixed full-screen
+       sheet (it spills wide, Safari reflows to a desktop-width layout, and the
+       max-width:768px rules stop matching → the big centred desktop modal).
+       Set at ID specificity so nothing overrides it. */
+    #noteModal .form-textarea { flex: 1; min-height: 0; resize: none; font-size: 16px; }
+
+    /* Same anti-zoom for every other modal field on mobile. */
+    .modal-content .form-input,
+    .modal-content .form-textarea,
+    .modal-content .form-select {
+        font-size: 16px;
+    }
+
     /* ====================================================================
        LAYER 4 — Reading-pane density on mobile.
        The ticket detail sections use a roomy 30px side padding for desktop;

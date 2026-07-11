@@ -44,6 +44,20 @@ function safeEmailHtml(html) {
         // document or fire side effects on insertion.
         const dangerous = doc.querySelectorAll('style, script, link, base, meta');
         dangerous.forEach(el => el.remove());
+
+        // Inbound inline images (cid:) are saved server-side and their <img src>
+        // rewritten to a get_attachment.php URL. That rewrite emitted a ROOT-ABSOLUTE
+        // path ('/api/tickets/get_attachment.php?...') that ignores the app's
+        // deployment sub-path — so on any install not served from the web root the
+        // images 404. Normalise every get_attachment.php image URL to the same
+        // relative API_BASE the rest of the app uses, so they resolve wherever the
+        // app is mounted. Idempotent — already-relative URLs pass straight through.
+        doc.querySelectorAll('img[src*="get_attachment.php"]').forEach(img => {
+            const raw = img.getAttribute('src') || '';
+            const qs = raw.indexOf('?');
+            img.setAttribute('src', API_BASE + 'get_attachment.php' + (qs >= 0 ? raw.slice(qs) : ''));
+        });
+
         return doc.body.innerHTML;
     } catch (e) {
         return '';

@@ -123,6 +123,14 @@ try {
         $message = 'Analyst created successfully';
     }
 
+    // Module access (issue #30): the all-modules flag. Only touched when the form
+    // sends it, so other callers can't clobber it. Specific grants (when restricted)
+    // are managed on System -> Modules.
+    if (array_key_exists('can_access_all_modules', $data) && $analystId > 0) {
+        $allMods = !empty($data['can_access_all_modules']) ? 1 : 0;
+        try { $conn->prepare("UPDATE analysts SET can_access_all_modules = ? WHERE id = ?")->execute([$allMods, $analystId]); } catch (Exception $e) {}
+    }
+
     // Multi-tenancy: company access. Only touched when the form actually sends it
     // (it's hidden on a single-company install), so we never clobber the all-access
     // default on installs that don't show the control.

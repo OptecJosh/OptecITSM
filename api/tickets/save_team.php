@@ -28,6 +28,10 @@ $name = trim($input['name'] ?? '');
 $description = trim($input['description'] ?? '');
 $displayOrder = intval($input['display_order'] ?? 0);
 $isActive = isset($input['is_active']) ? ($input['is_active'] ? 1 : 0) : 1;
+// Module access (issue #30): whether this team grants all modules to its members.
+// Only applied when the form sends it, so other callers never clobber it.
+$hasAllModules = array_key_exists('can_access_all_modules', $input);
+$allModules = !empty($input['can_access_all_modules']) ? 1 : 0;
 
 // Validate
 if (empty($name)) {
@@ -52,6 +56,11 @@ try {
 
         $id = $conn->lastInsertId();
         $message = 'Team created successfully';
+    }
+
+    // Persist the all-modules flag when the form provided it.
+    if ($hasAllModules) {
+        try { $conn->prepare("UPDATE teams SET can_access_all_modules = ? WHERE id = ?")->execute([$allModules, $id]); } catch (Exception $e) {}
     }
 
     echo json_encode([

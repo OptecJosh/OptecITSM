@@ -209,6 +209,17 @@ $translationNamespaces = ['common', 'tickets'];
                     <small style="display:block;color:var(--text-muted,#666);margin-top:4px;"><?php echo htmlspecialchars(t('tickets.settings.modals.analyst.is_admin_help')); ?></small>
                 </div>
 
+                <div class="form-group">
+                    <label class="toggle-label">
+                        <span class="toggle-switch">
+                            <input type="checkbox" id="analystAllModules" checked>
+                            <span class="toggle-slider"></span>
+                        </span>
+                        <?php echo htmlspecialchars(t('tickets.settings.modals.analyst.all_modules')); ?>
+                    </label>
+                    <small style="display:block;color:var(--text-muted,#666);margin-top:4px;"><?php echo htmlspecialchars(t('tickets.settings.modals.analyst.all_modules_help')); ?></small>
+                </div>
+
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeAnalystModal()"><?php echo htmlspecialchars(t('common.cancel')); ?></button>
                     <button type="submit" class="btn btn-primary"><?php echo htmlspecialchars(t('common.save')); ?></button>
@@ -437,6 +448,7 @@ $translationNamespaces = ['common', 'tickets'];
             document.getElementById('analystPassword').value = '';
             document.getElementById('analystActive').checked = analyst ? analyst.is_active : true;
             document.getElementById('analystIsAdmin').checked = analyst ? !!analyst.is_admin : false;
+            document.getElementById('analystAllModules').checked = analyst ? (analyst.can_access_all_modules === undefined ? true : !!Number(analyst.can_access_all_modules)) : true;
             document.getElementById('analystAuthProvider').value = (analyst && analyst.auth_provider_id) ? String(analyst.auth_provider_id) : '';
 
             // Password is required only for new analysts
@@ -618,6 +630,7 @@ $translationNamespaces = ['common', 'tickets'];
                 password: document.getElementById('analystPassword').value || null,
                 is_active: document.getElementById('analystActive').checked,
                 is_admin: document.getElementById('analystIsAdmin').checked,
+                can_access_all_modules: document.getElementById('analystAllModules').checked,
                 auth_provider_id: document.getElementById('analystAuthProvider').value || null
             };
 

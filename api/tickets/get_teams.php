@@ -17,7 +17,7 @@ if (!isset($_SESSION['analyst_id'])) {
 try {
     $conn = connectToDatabase();
 
-    $sql = "SELECT id, name, description, display_order, is_active, created_datetime, updated_datetime
+    $sql = "SELECT id, name, description, display_order, is_active, can_access_all_modules, created_datetime, updated_datetime
             FROM teams
             ORDER BY display_order, name";
     $stmt = $conn->prepare($sql);

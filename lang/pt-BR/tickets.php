@@ -451,6 +451,8 @@ return [
                 'active' => 'Ativo',
                 'is_admin' => 'Administrador',
                 'is_admin_help' => 'Administradores podem abrir o módulo Sistema (gerenciar analistas, equipes, acesso a empresas, SSO, segurança e mais). Deixe desativado para analistas comuns.',
+                'all_modules' => 'Acessar todos os módulos',
+                'all_modules_help' => 'Ativado = este analista pode usar todos os módulos. Desative para restringi-lo e, em seguida, conceda módulos específicos em Sistema → Módulos.',
             ],
             'password_reset' => [
                 'title' => 'Redefinir senha',

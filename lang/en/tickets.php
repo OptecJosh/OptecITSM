@@ -514,6 +514,8 @@ return [
                 'active'                => 'Active',
                 'is_admin'              => 'Administrator',
                 'is_admin_help'         => 'Administrators can open the System module (managing analysts, teams, company access, SSO, security and more). Leave off for regular analysts.',
+                'all_modules'           => 'Access all modules',
+                'all_modules_help'      => 'On = this analyst can use every module. Turn off to restrict them, then grant specific modules on System → Modules.',
             ],
 
             // Password reset modal

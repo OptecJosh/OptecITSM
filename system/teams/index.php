@@ -148,6 +148,16 @@ $translationNamespaces = ['common', 'tickets'];
                         <?php echo htmlspecialchars(t('tickets.settings.modals.lookup.active_label')); ?>
                     </label>
                 </div>
+                <div class="form-group">
+                    <label class="toggle-label">
+                        <span class="toggle-switch">
+                            <input type="checkbox" id="teamAllModules">
+                            <span class="toggle-slider"></span>
+                        </span>
+                        <?php echo htmlspecialchars(t('tickets.settings.modals.analyst.all_modules')); ?>
+                    </label>
+                    <small style="display:block;color:var(--text-muted,#666);margin-top:4px;">On = members of this team can use every module (added to their own access). Off = only the modules granted on System → Modules.</small>
+                </div>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeTeamModal()"><?php echo htmlspecialchars(t('common.cancel')); ?></button>
                     <button type="submit" class="btn btn-primary"><?php echo htmlspecialchars(t('common.save')); ?></button>
@@ -318,6 +328,7 @@ $translationNamespaces = ['common', 'tickets'];
             document.getElementById('teamDescription').value = team ? (team.description || '') : '';
             document.getElementById('teamOrder').value = team ? (team.display_order || 0) : 0;
             document.getElementById('teamActive').checked = team ? !!Number(team.is_active) : true;
+            document.getElementById('teamAllModules').checked = team ? !!Number(team.can_access_all_modules) : false;
             document.getElementById('teamModal').classList.add('active');
         }
 
@@ -505,7 +516,8 @@ $translationNamespaces = ['common', 'tickets'];
                 name: document.getElementById('teamName').value,
                 description: document.getElementById('teamDescription').value,
                 display_order: parseInt(document.getElementById('teamOrder').value) || 0,
-                is_active: document.getElementById('teamActive').checked ? 1 : 0
+                is_active: document.getElementById('teamActive').checked ? 1 : 0,
+                can_access_all_modules: document.getElementById('teamAllModules').checked ? 1 : 0
             };
             try {
                 const response = await fetch(API_BASE + 'save_team.php', {

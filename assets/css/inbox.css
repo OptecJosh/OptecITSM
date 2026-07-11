@@ -681,6 +681,17 @@ body.ticket-popout .ticket-toolbar {
     overflow: hidden;
 }
 
+/* Email HTML is authored for the browser default (content-box); the app's
+ * global `* { box-sizing: border-box }` reset leaks into the injected body and
+ * recomputes every table cell / image width, which can make images overflow
+ * their cell and overlap the text. Restore content-box for the email subtree
+ * only (higher specificity than the global `*`), so third-party email layouts
+ * render as their author intended. Scoped strictly to the rendered body. */
+.email-body-content *,
+.thread-message-body * {
+    box-sizing: content-box;
+}
+
 /* Correspondence thread */
 .thread-separator {
     border-top: 1px solid var(--border, #ddd);

@@ -27,17 +27,103 @@ function connectToDatabase() {
  * @param int $analyst_id Analyst ID
  * @return array|null Null means all access; array of module_key strings if restricted
  */
-function getAnalystAllowedModules($conn, $analyst_id) {
-    $sql = "SELECT module_key FROM analyst_modules WHERE analyst_id = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->execute([$analyst_id]);
-    $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
+/**
+ * Site-wide policy for combining module grants from several sources (issue #30):
+ *   'most'  (default) — an analyst may use a module if ANY source grants it (union).
+ *   'least'           — only if their own access AND every team allow it (intersection).
+ */
+function getModulePermissionMode(PDO $conn): string {
+    static $mode = null;
+    if ($mode !== null) return $mode;
+    try {
+        $s = $conn->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'module_permission_mode'");
+        $s->execute();
+        $mode = ($s->fetchColumn() === 'least') ? 'least' : 'most';
+    } catch (Throwable $e) {
+        $mode = 'most';
+    }
+    return $mode;
+}
 
-    if (empty($rows)) {
-        return null; // No restrictions — full access
+/**
+ * Resolve an analyst's EFFECTIVE module access (issue #30) from every source:
+ * the analyst's own grant (all-modules flag, or analyst_modules rows) plus each
+ * team they belong to (the team's all-modules flag, or team_modules rows), combined
+ * per getModulePermissionMode(). Mirrors getAccessibleTenantIds() for companies.
+ *
+ * Returns: null = ALL modules (unrestricted) · [] = NO modules · [keys] = a specific set.
+ * Cached per request. System is deliberately excluded (gated by is_admin instead).
+ */
+function getAnalystAllowedModules($conn, $analyst_id) {
+    static $cache = [];
+    $analyst_id = (int) $analyst_id;
+    if (array_key_exists($analyst_id, $cache)) return $cache[$analyst_id];
+
+    // Each source is ['all' => bool, 'set' => [module_key, …]].
+    $sources = [];
+
+    // 1. The analyst themselves.
+    $analystAll = true;
+    try {
+        $a = $conn->prepare("SELECT can_access_all_modules FROM analysts WHERE id = ?");
+        $a->execute([$analyst_id]);
+        $analystAll = ((int) $a->fetchColumn() === 1);
+    } catch (Throwable $e) { /* pre-upgrade DB: treat as unrestricted */ }
+    if ($analystAll) {
+        $sources[] = ['all' => true, 'set' => []];
+    } else {
+        $r = $conn->prepare("SELECT module_key FROM analyst_modules WHERE analyst_id = ?");
+        $r->execute([$analyst_id]);
+        $sources[] = ['all' => false, 'set' => $r->fetchAll(PDO::FETCH_COLUMN)];
     }
 
-    return $rows;
+    // 2. Each active team the analyst is in (guarded — tables/columns may predate an
+    //    un-verified DB, in which case the analyst simply has no team sources).
+    try {
+        $t = $conn->prepare(
+            "SELECT t.id, t.can_access_all_modules
+               FROM analyst_teams at JOIN teams t ON at.team_id = t.id
+              WHERE at.analyst_id = ?");
+        $t->execute([$analyst_id]);
+        foreach ($t->fetchAll(PDO::FETCH_ASSOC) as $team) {
+            if ((int) $team['can_access_all_modules'] === 1) {
+                $sources[] = ['all' => true, 'set' => []];
+            } else {
+                $tm = $conn->prepare("SELECT module_key FROM team_modules WHERE team_id = ?");
+                $tm->execute([$team['id']]);
+                $sources[] = ['all' => false, 'set' => $tm->fetchAll(PDO::FETCH_COLUMN)];
+            }
+        }
+    } catch (Throwable $e) { /* no team dimension on this DB yet */ }
+
+    // 3. Combine.
+    if (getModulePermissionMode($conn) === 'least') {
+        // Allowed only where EVERY source grants it. All-access sources don't
+        // constrain, so intersect the specific sets; if none are specific, every
+        // source is all-access → unrestricted.
+        $specific = [];
+        foreach ($sources as $s) if (!$s['all']) $specific[] = $s['set'];
+        if (empty($specific)) {
+            $result = null;
+        } else {
+            $result = $specific[0];
+            for ($i = 1, $n = count($specific); $i < $n; $i++) {
+                $result = array_intersect($result, $specific[$i]);
+            }
+            $result = array_values(array_unique($result)); // may be [] = no modules
+        }
+    } else {
+        // 'most' — any all-access source means unrestricted; else union of the sets.
+        $result = [];
+        $anyAll = false;
+        foreach ($sources as $s) {
+            if ($s['all']) { $anyAll = true; break; }
+            $result = array_merge($result, $s['set']);
+        }
+        $result = $anyAll ? null : array_values(array_unique($result)); // may be [] = no modules
+    }
+
+    return $cache[$analyst_id] = $result;
 }
 
 /**

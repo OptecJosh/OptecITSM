@@ -44,6 +44,11 @@ $schema = [
         // non-admin; existing analysts are grandfathered to admin on first upgrade
         // (see the one-time backfill below) so nobody is locked out.
         'is_admin'               => 'TINYINT(1) NOT NULL DEFAULT 0',
+        // Module access (issue #30) — mirrors can_access_all_tenants. 1 = every
+        // module; 0 = restricted to analyst_modules (+ any team grants). Defaults to
+        // 1 so a new analyst is unrestricted; the upgrade back-fill sets it to 0 for
+        // analysts who already had analyst_modules rows (i.e. were restricted).
+        'can_access_all_modules' => 'TINYINT(1) NOT NULL DEFAULT 1',
     ],
 
     'auth_providers' => [
@@ -92,6 +97,11 @@ $schema = [
         // Team company access. Defaults to 0 (grants nothing) — NOT 1 — so
         // existing teams don't silently widen their members' access on upgrade.
         'can_access_all_tenants' => 'TINYINT(1) NOT NULL DEFAULT 0',
+        // Team module access (issue #30). Defaults to 0 (grants no modules) — same
+        // reasoning: a team must be explicitly granted modules, and under the default
+        // 'most' (union) mode a team defaulting to all would blow away every member's
+        // individual restrictions. Grants are in team_modules.
+        'can_access_all_modules' => 'TINYINT(1) NOT NULL DEFAULT 0',
         'created_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
         'updated_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
     ],
@@ -108,6 +118,14 @@ $schema = [
         'department_id'     => 'INT NOT NULL',
         'team_id'           => 'INT NOT NULL',
         'created_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
+    // Per-team module grants (issue #30) — the team twin of analyst_modules,
+    // mirroring team_tenant_access. A row = "this team grants this module".
+    'team_modules' => [
+        'id'          => 'INT NOT NULL AUTO_INCREMENT',
+        'team_id'     => 'INT NOT NULL',
+        'module_key'  => 'VARCHAR(50) NOT NULL',
     ],
 
     'analyst_modules' => [
@@ -2352,6 +2370,18 @@ try {
         $analystIsAdminColWasMissing = ((int)$iaProbe->fetchColumn() === 0);
     } catch (Exception $e) {}
 
+    // Module access (issue #30): was analysts.can_access_all_modules absent before
+    // this run? The column defaults to 1 (all modules), which is right for analysts
+    // who were unrestricted — but analysts who already had analyst_modules rows were
+    // RESTRICTED, so once the column is added we must flip them to 0 (see back-fill
+    // below), or the upgrade would silently give restricted analysts every module.
+    $analystAllModulesColWasMissing = false;
+    try {
+        $amProbe = $conn->prepare("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = ? AND table_name = 'analysts' AND column_name = 'can_access_all_modules'");
+        $amProbe->execute([$dbName]);
+        $analystAllModulesColWasMissing = ((int)$amProbe->fetchColumn() === 0);
+    } catch (Exception $e) {}
+
     foreach ($schema as $tableName => $columns) {
         $tableResult = ['table' => $tableName, 'status' => 'ok', 'details' => []];
 
@@ -2486,6 +2516,21 @@ try {
             'table' => 'analysts',
             'status' => 'updated',
             'details' => ['Granted admin to ' . (int)$graduated . ' existing analyst(s) (one-time upgrade — demote non-admins in System → Analysts)']
+        ];
+    }
+
+    // One-time module-access grandfather (issue #30): analysts who already had
+    // analyst_modules rows were restricted, so flip their new all-modules flag to 0
+    // (the default 1 correctly leaves previously-unrestricted analysts untouched).
+    // Runs only on the run that first adds the column, so a later deliberate
+    // "all modules" choice is never clobbered.
+    if ($analystAllModulesColWasMissing) {
+        $restricted = $conn->exec("UPDATE analysts SET can_access_all_modules = 0
+            WHERE id IN (SELECT analyst_id FROM (SELECT DISTINCT analyst_id FROM analyst_modules) t)");
+        $results[] = [
+            'table' => 'analysts',
+            'status' => 'updated',
+            'details' => ['Preserved module restrictions for ' . (int)$restricted . ' analyst(s) on upgrade (issue #30)']
         ];
     }
 

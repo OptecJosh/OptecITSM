@@ -36,6 +36,9 @@ CREATE TABLE IF NOT EXISTS `analysts` (
     -- Only administrators may enter the System module (analyst/team/company mgmt,
     -- SSO, security, DB verify, etc.). New analysts default to non-admin.
     `is_admin`                  TINYINT(1) NOT NULL DEFAULT 0,
+    -- Module access (issue #30). 1 = all modules; 0 = restricted to analyst_modules
+    -- (+ team grants). New analysts default unrestricted.
+    `can_access_all_modules`    TINYINT(1) NOT NULL DEFAULT 1,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_analysts_username` (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -123,6 +126,9 @@ CREATE TABLE IF NOT EXISTS `teams` (
     -- access to its members on upgrade. When 0, team_tenant_access lists the
     -- specific companies the team grants; when 1, the team grants every company.
     `can_access_all_tenants` TINYINT(1) NOT NULL DEFAULT 0,
+    -- Team module access (issue #30). Defaults to 0 (grants no modules) for the same
+    -- reason — a team must be explicitly granted modules; team_modules lists them.
+    `can_access_all_modules` TINYINT(1) NOT NULL DEFAULT 0,
     `created_datetime`  DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_datetime`  DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`)
@@ -157,6 +163,16 @@ CREATE TABLE IF NOT EXISTS `analyst_modules` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_analyst_module` (`analyst_id`, `module_key`),
     CONSTRAINT `fk_analyst_modules_analyst` FOREIGN KEY (`analyst_id`) REFERENCES `analysts` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Per-team module grants (issue #30) — the team twin of analyst_modules.
+CREATE TABLE IF NOT EXISTS `team_modules` (
+    `id`            INT NOT NULL AUTO_INCREMENT,
+    `team_id`       INT NOT NULL,
+    `module_key`    VARCHAR(50) NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_team_module` (`team_id`, `module_key`),
+    CONSTRAINT `fk_team_modules_team` FOREIGN KEY (`team_id`) REFERENCES `teams` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------

@@ -26,7 +26,7 @@ $translationNamespaces = ['common', 'system'];
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <style>
         .main-container { flex: 1; background: var(--bg, #f5f7fa); overflow-y: auto; }
-        .modules-container { max-width: 1000px; margin: 0 auto; padding: 28px 24px 80px; }
+        .modules-container { flex: 1; min-width: 0; overflow-y: auto; padding: 28px 32px 80px; box-sizing: border-box; }
         .page-title { font-size: 24px; font-weight: 700; color: var(--text, #1a1a1a); margin: 0 0 4px; }
         .page-subtitle { color: var(--text-muted, #666); margin: 0 0 22px; }
 

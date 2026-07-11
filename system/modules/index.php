@@ -73,9 +73,6 @@ $translationNamespaces = ['common', 'system'];
         .lvl-empty { padding: 14px; text-align: center; color: var(--text-faint, #999); font-size: 13px; }
 
         .loading-spinner { text-align: center; color: var(--text-muted, #666); padding: 30px; }
-        .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(120px); background: #333; color: #fff; padding: 12px 22px; border-radius: 8px; font-size: 14px; z-index: 3000; transition: transform 0.3s; }
-        .toast.show { transform: translateX(-50%) translateY(0); }
-        .toast.success { background: #2e7d32; } .toast.error { background: #d32f2f; }
     </style>
 </head>
 <body>
@@ -280,13 +277,9 @@ $translationNamespaces = ['common', 'system'];
             ).join('') + '</table>';
     }
 
-    function showToast(msg, type) {
-        let t = document.getElementById('toast');
-        if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.body.appendChild(t); }
-        t.textContent = msg;
-        t.className = 'toast ' + (type || '') + ' show';
-        setTimeout(() => { t.className = 'toast ' + (type || ''); }, 2500);
-    }
+    // showToast() is the global helper from assets/js/toast.js (loaded via the
+    // waffle menu in the shared header), so toasts honour the user's configured
+    // position/animation and match every other module.
 
     function escapeHtml(str) { const d = document.createElement('div'); d.textContent = str || ''; return d.innerHTML; }
 

@@ -31,10 +31,13 @@ $translationNamespaces = ['common', 'system-wiki'];
     <link rel="stylesheet" href="../assets/css/theme.css?v=21">
     <link rel="stylesheet" href="../assets/css/inbox.css">
     <style>
+        /* Pin the generic accent to the System Wiki red for this page */
+        body { --accent: var(--wiki-accent, #c62828); }
+
         .wiki-detail {
             height: calc(100vh - 48px);
             overflow-y: auto;
-            background: #f5f7fa;
+            background: var(--app-bg, #f5f7fa);
         }
         .detail-content {
             max-width: 900px;
@@ -43,25 +46,25 @@ $translationNamespaces = ['common', 'system-wiki'];
         }
         .breadcrumb {
             font-size: 13px;
-            color: #888;
+            color: var(--text-dim, #888);
             margin-bottom: 16px;
         }
-        .breadcrumb a { color: #c62828; text-decoration: none; }
+        .breadcrumb a { color: var(--wiki-accent, #c62828); text-decoration: none; }
         .breadcrumb a:hover { text-decoration: underline; }
         .breadcrumb span { margin: 0 6px; color: #ccc; }
 
         .func-header {
-            background: #fff;
+            background: var(--surface, #fff);
             border-radius: 8px;
             padding: 24px;
             margin-bottom: 20px;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            box-shadow: 0 1px 4px var(--shadow, rgba(0,0,0,0.06));
         }
         .func-name {
             font-size: 22px;
             font-weight: 600;
             font-family: monospace;
-            color: #333;
+            color: var(--text, #333);
             margin-bottom: 12px;
         }
         .func-meta {
@@ -70,49 +73,49 @@ $translationNamespaces = ['common', 'system-wiki'];
             flex-wrap: wrap;
             margin-bottom: 12px;
             font-size: 13px;
-            color: #666;
+            color: var(--text-muted, #666);
         }
-        .func-meta a { color: #c62828; text-decoration: none; }
+        .func-meta a { color: var(--wiki-accent, #c62828); text-decoration: none; }
         .func-meta a:hover { text-decoration: underline; }
         .func-params {
             padding: 10px 16px;
-            background: #f5f7fa;
+            background: var(--surface-3, #f5f7fa);
             border-radius: 4px;
             font-family: monospace;
             font-size: 13px;
-            color: #555;
+            color: var(--text-muted, #555);
         }
         .func-desc {
             margin-top: 12px;
             padding-top: 12px;
-            border-top: 1px solid #eee;
+            border-top: 1px solid var(--border-soft, #eee);
             font-size: 14px;
-            color: #555;
+            color: var(--text-muted, #555);
             line-height: 1.5;
         }
 
         .section {
-            background: #fff;
+            background: var(--surface, #fff);
             border-radius: 8px;
             margin-bottom: 16px;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            box-shadow: 0 1px 4px var(--shadow, rgba(0,0,0,0.06));
         }
         .section-header {
             padding: 14px 20px;
             font-size: 14px;
             font-weight: 600;
-            color: #333;
-            border-bottom: 1px solid #eee;
+            color: var(--text, #333);
+            border-bottom: 1px solid var(--border-soft, #eee);
             display: flex;
             align-items: center;
             gap: 8px;
         }
         .section-count {
-            background: #f0f0f0;
+            background: var(--surface-hover, #f0f0f0);
             padding: 1px 8px;
             border-radius: 10px;
             font-size: 11px;
-            color: #888;
+            color: var(--text-dim, #888);
         }
         .caller-table {
             width: 100%;
@@ -122,18 +125,19 @@ $translationNamespaces = ['common', 'system-wiki'];
         .caller-table th {
             text-align: left;
             padding: 8px 16px;
-            background: #f9f9f9;
-            color: #666;
+            background: var(--surface-2, #f9f9f9);
+            color: var(--text-muted, #666);
             font-weight: 600;
         }
         .caller-table td {
             padding: 7px 16px;
-            border-bottom: 1px solid #f5f5f5;
+            border-bottom: 1px solid var(--border-soft, #f5f5f5);
         }
-        .caller-table a { color: #c62828; text-decoration: none; }
+        .caller-table a { color: var(--wiki-accent, #c62828); text-decoration: none; }
         .caller-table a:hover { text-decoration: underline; }
-        .line-ref { color: #aaa; font-family: monospace; font-size: 12px; }
-        .empty-section { padding: 20px; color: #aaa; font-size: 13px; font-style: italic; }
+        .line-ref { color: var(--text-faint, #aaa); font-family: monospace; font-size: 12px; }
+        .empty-section { padding: 20px; color: var(--text-faint, #aaa); font-size: 13px; font-style: italic; }
+        /* Visibility / static badge — a type-coded chip (data): same colours in both modes */
         .visibility-badge {
             display: inline-block;
             padding: 1px 6px;
@@ -143,6 +147,9 @@ $translationNamespaces = ['common', 'system-wiki'];
             background: #e8eaf6;
             color: #3f51b5;
         }
+
+        /* Dark-mode overrides for the few colours that stay hardcoded */
+        [data-theme-mode="dark"] .breadcrumb span { color: #555b66; }
     </style>
 </head>
 <body>
@@ -150,7 +157,7 @@ $translationNamespaces = ['common', 'system-wiki'];
 
     <div class="wiki-detail">
         <div class="detail-content" id="content">
-            <div style="text-align:center;padding:60px;color:#aaa;"><?php echo htmlspecialchars(t('system-wiki.function.loading')); ?></div>
+            <div style="text-align:center;padding:60px;color:var(--text-faint,#aaa);"><?php echo htmlspecialchars(t('system-wiki.function.loading')); ?></div>
         </div>
     </div>
 
@@ -162,7 +169,7 @@ $translationNamespaces = ['common', 'system-wiki'];
 
         async function loadFunctionDetail() {
             if (!funcId) {
-                document.getElementById('content').innerHTML = '<div style="text-align:center;padding:60px;color:#888;">' + esc(window.t('system-wiki.function.no_id')) + '</div>';
+                document.getElementById('content').innerHTML = '<div style="text-align:center;padding:60px;color:var(--text-dim,#888);">' + esc(window.t('system-wiki.function.no_id')) + '</div>';
                 return;
             }
 
@@ -171,7 +178,7 @@ $translationNamespaces = ['common', 'system-wiki'];
                 const data = await res.json();
 
                 if (!data.success) {
-                    document.getElementById('content').innerHTML = '<div style="text-align:center;padding:60px;color:#c62828;">' + esc(window.t('system-wiki.function.error_prefix')) + esc(data.error) + '</div>';
+                    document.getElementById('content').innerHTML = '<div style="text-align:center;padding:60px;color:var(--wiki-accent,#c62828);">' + esc(window.t('system-wiki.function.error_prefix')) + esc(data.error) + '</div>';
                     return;
                 }
 

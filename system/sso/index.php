@@ -11,6 +11,7 @@ I18n::initFromSession();
 Tz::init();
 
 require_once '../../includes/functions.php';
+require_once '../../includes/theme.php';
 require_once '../../includes/tenancy.php';
 
 $current_page = 'sso';
@@ -35,11 +36,12 @@ $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' :
 $redirectUri = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . BASE_URL . 'api/auth/oidc_callback.php';
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>" data-theme="<?php echo htmlspecialchars(Theme::active()); ?>" data-theme-mode="<?php echo htmlspecialchars(Theme::mode()); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('system.sso.title')); ?></title>
+    <link rel="stylesheet" href="../../assets/css/theme.css?v=21">
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <style>
         .sso-container { height: calc(100vh - 48px); overflow-y: auto; padding: 30px 20px; }

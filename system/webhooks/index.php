@@ -25,6 +25,7 @@ require_once '../../includes/timezone.php';
 I18n::initFromSession();
 Tz::init();
 require_once '../../includes/functions.php';
+require_once '../../includes/theme.php';
 
 $current_page = 'webhooks';
 $path_prefix  = '../../';
@@ -179,11 +180,12 @@ function whAgo($s) {
 }
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>" data-theme="<?php echo htmlspecialchars(Theme::active()); ?>" data-theme-mode="<?php echo htmlspecialchars(Theme::mode()); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - Webhooks</title>
+    <link rel="stylesheet" href="../../assets/css/theme.css?v=21">
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <style>
         .wh-container { height: calc(100vh - 48px); overflow-y: auto; padding: 30px 20px; }

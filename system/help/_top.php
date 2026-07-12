@@ -10,11 +10,12 @@ $helpSub  = $helpSub ?? '';
 $helpNav  = $helpNav ?? [];
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>" data-theme="<?php echo htmlspecialchars(Theme::active()); ?>" data-theme-mode="<?php echo htmlspecialchars(Theme::mode()); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>System Help — <?php echo htmlspecialchars($helpHero); ?></title>
+    <link rel="stylesheet" href="../../assets/css/theme.css?v=21">
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <style>
         .syshelp-container { display: flex; height: calc(100vh - 48px); background: #f5f6fa; }

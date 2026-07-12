@@ -7,6 +7,7 @@ session_start();
 require_once '../../config.php';
 require_once '../../includes/i18n.php';
 require_once '../../includes/timezone.php';
+require_once '../../includes/theme.php';
 I18n::initFromSession();
 Tz::init();
 
@@ -15,11 +16,12 @@ $path_prefix = '../../';
 $translationNamespaces = ['common', 'system'];
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>" data-theme="<?php echo htmlspecialchars(Theme::active()); ?>" data-theme-mode="<?php echo htmlspecialchars(Theme::mode()); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('system.security.title')); ?></title>
+    <link rel="stylesheet" href="../../assets/css/theme.css?v=21">
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <style>
         .security-container {

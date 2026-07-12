@@ -5,6 +5,7 @@
 session_start();
 require_once '../../config.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/theme.php';
 require_once '../../includes/i18n.php';
 I18n::initFromSession();
 
@@ -61,11 +62,12 @@ if (isset($_SESSION['analyst_id'])) {
 }
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars($currentLocale); ?>">
+<html lang="<?php echo htmlspecialchars(); ?>" data-theme="<?php echo htmlspecialchars(Theme::active()); ?>" data-theme-mode="<?php echo htmlspecialchars(Theme::mode()); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('system.preferences.title')); ?></title>
+    <link rel="stylesheet" href="../../assets/css/theme.css?v=21">
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <style>
         .prefs-container {

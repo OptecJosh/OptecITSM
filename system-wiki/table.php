@@ -31,6 +31,8 @@ $translationNamespaces = ['common', 'system-wiki'];
     <link rel="stylesheet" href="../assets/css/theme.css?v=21">
     <link rel="stylesheet" href="../assets/css/inbox.css">
     <style>
+        body { --accent: var(--wiki-accent, #c62828); }
+
         .wiki-detail {
             height: calc(100vh - 48px);
             overflow-y: auto;
@@ -43,41 +45,42 @@ $translationNamespaces = ['common', 'system-wiki'];
         }
         .breadcrumb {
             font-size: 13px;
-            color: #888;
+            color: var(--text-dim, #888);
             margin-bottom: 16px;
         }
-        .breadcrumb a { color: #c62828; text-decoration: none; }
+        .breadcrumb a { color: var(--wiki-accent, #c62828); text-decoration: none; }
         .breadcrumb a:hover { text-decoration: underline; }
-        .breadcrumb span { margin: 0 6px; color: #ccc; }
+        .breadcrumb span { margin: 0 6px; color: var(--text-faint, #ccc); }
 
         .table-header {
-            background: #fff;
+            background: var(--surface, #fff);
             border-radius: 8px;
             padding: 24px;
             margin-bottom: 20px;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            box-shadow: 0 1px 4px var(--shadow, rgba(0,0,0,0.06));
         }
         .table-name {
             font-size: 22px;
             font-weight: 600;
             font-family: monospace;
-            color: #333;
+            color: var(--text, #333);
             margin-bottom: 8px;
         }
-        .table-meta { font-size: 13px; color: #888; }
+        .table-meta { font-size: 13px; color: var(--text-dim, #888); }
 
         .ref-group {
-            background: #fff;
+            background: var(--surface, #fff);
             border-radius: 8px;
             margin-bottom: 12px;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            box-shadow: 0 1px 4px var(--shadow, rgba(0,0,0,0.06));
             overflow: hidden;
         }
         .ref-group-header {
             padding: 12px 18px;
             font-size: 13px;
             font-weight: 600;
-            border-bottom: 1px solid #eee;
+            color: var(--text, #333);
+            border-bottom: 1px solid var(--border-soft, #eee);
             display: flex;
             align-items: center;
             gap: 8px;
@@ -89,6 +92,7 @@ $translationNamespaces = ['common', 'system-wiki'];
             font-size: 11px;
             font-weight: 600;
         }
+        /* ref-badge colours are DATA (SQL-operation coded), left hardcoded */
         .ref-badge.SELECT { background: #e3f2fd; color: #1565c0; }
         .ref-badge.INSERT { background: #e8f5e9; color: #2e7d32; }
         .ref-badge.UPDATE { background: #fff3e0; color: #e65100; }
@@ -103,13 +107,17 @@ $translationNamespaces = ['common', 'system-wiki'];
         }
         .ref-table td {
             padding: 6px 18px;
-            border-bottom: 1px solid #f5f5f5;
+            color: var(--text, #333);
+            border-bottom: 1px solid var(--border-soft, #f5f5f5);
         }
         .ref-table tr:last-child td { border-bottom: none; }
-        .ref-table a { color: #c62828; text-decoration: none; }
+        .ref-table a { color: var(--wiki-accent, #c62828); text-decoration: none; }
         .ref-table a:hover { text-decoration: underline; }
-        .line-ref { color: #aaa; font-family: monospace; font-size: 12px; }
-        .no-data { text-align: center; padding: 40px; color: #aaa; font-size: 14px; }
+        .line-ref { color: var(--text-faint, #aaa); font-family: monospace; font-size: 12px; }
+        .no-data { text-align: center; padding: 40px; color: var(--text-faint, #aaa); font-size: 14px; }
+
+        /* Dark-mode overrides for pale washes that would glow */
+        [data-theme-mode="dark"] .wiki-detail { background: var(--app-bg, #f5f7fa); }
     </style>
 </head>
 <body>
@@ -117,7 +125,7 @@ $translationNamespaces = ['common', 'system-wiki'];
 
     <div class="wiki-detail">
         <div class="detail-content" id="content">
-            <div style="text-align:center;padding:60px;color:#aaa;"><?php echo htmlspecialchars(t('system-wiki.table.loading')); ?></div>
+            <div style="text-align:center;padding:60px;color:var(--text-faint,#aaa);"><?php echo htmlspecialchars(t('system-wiki.table.loading')); ?></div>
         </div>
     </div>
 

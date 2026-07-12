@@ -31,6 +31,9 @@ $translationNamespaces = ['common', 'system-wiki'];
     <link rel="stylesheet" href="../assets/css/theme.css?v=21">
     <link rel="stylesheet" href="../assets/css/inbox.css">
     <style>
+        /* Module accent (red) — pinned so shared components pick it up */
+        body { --accent: var(--wiki-accent, #c62828); }
+
         .wiki-container {
             display: flex;
             height: calc(100vh - 48px);
@@ -42,8 +45,8 @@ $translationNamespaces = ['common', 'system-wiki'];
             display: flex;
             gap: 12px;
             padding: 16px 20px;
-            background: #fff;
-            border-bottom: 1px solid #e0e0e0;
+            background: var(--surface, #fff);
+            border-bottom: 1px solid var(--border, #e0e0e0);
             align-items: center;
             flex-wrap: wrap;
         }
@@ -55,15 +58,15 @@ $translationNamespaces = ['common', 'system-wiki'];
             background: #f5f7fa;
             border-radius: 20px;
             font-size: 13px;
-            color: #555;
+            color: var(--text-muted, #555);
         }
         .stat-chip strong {
-            color: #333;
+            color: var(--text, #333);
             font-weight: 600;
         }
         .stat-chip.scan-info {
             margin-left: auto;
-            color: #888;
+            color: var(--text-dim, #888);
             font-size: 12px;
         }
         .search-box {
@@ -73,28 +76,30 @@ $translationNamespaces = ['common', 'system-wiki'];
         }
         .search-box input {
             padding: 6px 12px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border, #ddd);
             border-radius: 4px;
             font-size: 13px;
             width: 200px;
+            background: var(--surface, #fff);
+            color: var(--text, #333);
         }
         .search-box button {
             padding: 6px 14px;
-            background: #c62828;
-            color: #fff;
+            background: var(--wiki-accent, #c62828);
+            color: var(--wiki-on-accent, #fff);
             border: none;
             border-radius: 4px;
             cursor: pointer;
             font-size: 13px;
         }
-        .search-box button:hover { background: #b71c1c; }
+        .search-box button:hover { background: var(--wiki-accent-hover, #b71c1c); }
 
         /* Sidebar */
         .wiki-sidebar {
             width: 280px;
             min-width: 280px;
-            background: #fff;
-            border-right: 1px solid #e0e0e0;
+            background: var(--surface, #fff);
+            border-right: 1px solid var(--border, #e0e0e0);
             overflow-y: auto;
             padding: 12px 0;
         }
@@ -102,7 +107,7 @@ $translationNamespaces = ['common', 'system-wiki'];
             font-size: 11px;
             font-weight: 600;
             text-transform: uppercase;
-            color: #999;
+            color: var(--text-faint, #999);
             padding: 0 16px 8px;
             letter-spacing: 0.5px;
         }
@@ -112,12 +117,12 @@ $translationNamespaces = ['common', 'system-wiki'];
             padding: 5px 12px 5px calc(12px + var(--depth, 0) * 18px);
             cursor: pointer;
             font-size: 13px;
-            color: #444;
+            color: var(--text, #444);
             transition: background 0.1s;
             user-select: none;
         }
         .tree-item:hover { background: #f5f7fa; }
-        .tree-item.active { background: #fce4ec; color: #c62828; font-weight: 500; }
+        .tree-item.active { background: #fce4ec; color: var(--wiki-accent, #c62828); font-weight: 500; }
         .tree-toggle {
             width: 18px;
             height: 18px;
@@ -126,7 +131,7 @@ $translationNamespaces = ['common', 'system-wiki'];
             justify-content: center;
             margin-right: 4px;
             font-size: 10px;
-            color: #999;
+            color: var(--text-faint, #999);
             flex-shrink: 0;
         }
         .tree-icon {
@@ -137,7 +142,7 @@ $translationNamespaces = ['common', 'system-wiki'];
         .tree-count {
             margin-left: auto;
             font-size: 11px;
-            color: #aaa;
+            color: var(--text-faint, #aaa);
             padding-left: 8px;
         }
         .tree-children { display: none; }
@@ -152,16 +157,16 @@ $translationNamespaces = ['common', 'system-wiki'];
         }
         .file-list-header {
             padding: 12px 20px;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border-soft, #eee);
             font-size: 14px;
             font-weight: 500;
-            color: #333;
-            background: #fafafa;
+            color: var(--text, #333);
+            background: var(--surface-2, #fafafa);
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-        .file-list-count { font-size: 12px; color: #888; font-weight: 400; }
+        .file-list-count { font-size: 12px; color: var(--text-dim, #888); font-weight: 400; }
         .file-list {
             flex: 1;
             overflow-y: auto;
@@ -175,20 +180,20 @@ $translationNamespaces = ['common', 'system-wiki'];
         .file-table th {
             text-align: left;
             padding: 8px 16px;
-            background: #f9f9f9;
-            border-bottom: 1px solid #eee;
+            background: var(--surface-3, #f9f9f9);
+            border-bottom: 1px solid var(--border-soft, #eee);
             font-weight: 600;
-            color: #666;
+            color: var(--text-muted, #666);
             position: sticky;
             top: 0;
             z-index: 1;
         }
         .file-table td {
             padding: 7px 16px;
-            border-bottom: 1px solid #f0f0f0;
+            border-bottom: 1px solid var(--border-soft, #f0f0f0);
             vertical-align: middle;
         }
-        .file-table tr:hover td { background: #fafafa; }
+        .file-table tr:hover td { background: var(--surface-2, #fafafa); }
         .file-table tr { cursor: pointer; }
         .file-name-cell {
             display: flex;
@@ -196,7 +201,7 @@ $translationNamespaces = ['common', 'system-wiki'];
             gap: 8px;
         }
         .file-name-cell a {
-            color: #c62828;
+            color: var(--wiki-accent, #c62828);
             text-decoration: none;
             font-weight: 500;
         }
@@ -209,10 +214,11 @@ $translationNamespaces = ['common', 'system-wiki'];
             font-weight: 600;
             letter-spacing: 0.3px;
         }
+        /* Language chips are DATA — same colours in both modes */
         .type-badge.php { background: #e8eaf6; color: #3f51b5; }
         .type-badge.js { background: #fff8e1; color: #f57f17; }
         .file-desc {
-            color: #888;
+            color: var(--text-dim, #888);
             font-size: 12px;
             max-width: 300px;
             white-space: nowrap;
@@ -222,23 +228,28 @@ $translationNamespaces = ['common', 'system-wiki'];
         .no-data {
             text-align: center;
             padding: 60px 20px;
-            color: #aaa;
+            color: var(--text-faint, #aaa);
             font-size: 14px;
         }
-        .no-data h3 { color: #666; margin-bottom: 8px; }
+        .no-data h3 { color: var(--text-muted, #666); margin-bottom: 8px; }
+
+        /* ---- Dark-mode overrides: pale tints that would glow ---- */
+        [data-theme-mode="dark"] .stat-chip { background: var(--surface-3, #20242b); }
+        [data-theme-mode="dark"] .tree-item:hover { background: var(--surface-hover, #2a3039); }
+        [data-theme-mode="dark"] .tree-item.active { background: rgba(239, 83, 80, 0.16); }
     </style>
 </head>
 <body>
     <?php include 'includes/header.php'; ?>
 
     <div class="stats-bar" id="statsBar">
-        <span style="color:#aaa;font-size:13px;"><?php echo htmlspecialchars(t('system-wiki.index.loading_stats')); ?></span>
+        <span style="color:var(--text-faint,#aaa);font-size:13px;"><?php echo htmlspecialchars(t('system-wiki.index.loading_stats')); ?></span>
     </div>
 
     <div class="wiki-container">
         <div class="wiki-sidebar" id="sidebar">
             <div class="sidebar-title"><?php echo htmlspecialchars(t('system-wiki.index.folders')); ?></div>
-            <div id="folderTree"><span style="padding:16px;color:#aaa;font-size:13px;display:block;"><?php echo htmlspecialchars(t('system-wiki.index.loading')); ?></span></div>
+            <div id="folderTree"><span style="padding:16px;color:var(--text-faint,#aaa);font-size:13px;display:block;"><?php echo htmlspecialchars(t('system-wiki.index.loading')); ?></span></div>
         </div>
         <div class="wiki-main">
             <div class="file-list-header">
@@ -281,7 +292,7 @@ $translationNamespaces = ['common', 'system-wiki'];
                 const bar = document.getElementById('statsBar');
 
                 if (!data.success || !data.stats) {
-                    bar.innerHTML = '<span style="color:#888;font-size:13px;">' + esc(window.t('system-wiki.index.no_scan_data')) + '</span>';
+                    bar.innerHTML = '<span style="color:var(--text-dim,#888);font-size:13px;">' + esc(window.t('system-wiki.index.no_scan_data')) + '</span>';
                     return;
                 }
 

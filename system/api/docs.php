@@ -14,6 +14,7 @@ I18n::initFromSession();
 Tz::init();
 
 require_once '../../includes/functions.php';
+require_once '../../includes/theme.php';
 
 $current_page = 'api';
 $path_prefix = '../../';
@@ -29,11 +30,12 @@ $__specJson   = $__spec ? json_encode($__spec['spec'])   : '[]';
 $__extrasJson = $__spec ? json_encode($__spec['extras']) : '{}';
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>" data-theme="<?php echo htmlspecialchars(Theme::active()); ?>" data-theme-mode="<?php echo htmlspecialchars(Theme::mode()); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - API documentation</title>
+    <link rel="stylesheet" href="../../assets/css/theme.css?v=21">
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <style>
         /* ---- Three-pane shell: nav | endpoint doc | live code -------------- */

@@ -31,6 +31,8 @@ $translationNamespaces = ['common', 'system-wiki'];
     <link rel="stylesheet" href="../assets/css/theme.css?v=21">
     <link rel="stylesheet" href="../assets/css/inbox.css">
     <style>
+        body { --accent: var(--wiki-accent, #c62828); }
+
         .wiki-tables {
             height: calc(100vh - 48px);
             overflow-y: auto;
@@ -44,18 +46,18 @@ $translationNamespaces = ['common', 'system-wiki'];
         .page-title {
             font-size: 20px;
             font-weight: 600;
-            color: #333;
+            color: var(--text, #333);
             margin-bottom: 16px;
         }
         .page-subtitle {
             font-size: 13px;
-            color: #888;
+            color: var(--text-dim, #888);
             margin-bottom: 20px;
         }
         .tables-card {
-            background: #fff;
+            background: var(--surface, #fff);
             border-radius: 8px;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            box-shadow: 0 1px 4px var(--shadow, rgba(0,0,0,0.06));
             overflow: hidden;
         }
         .tables-table {
@@ -66,20 +68,21 @@ $translationNamespaces = ['common', 'system-wiki'];
         .tables-table th {
             text-align: left;
             padding: 10px 16px;
-            background: #f9f9f9;
-            color: #666;
+            background: var(--surface-3, #f9f9f9);
+            color: var(--text-muted, #666);
             font-weight: 600;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border-soft, #eee);
             cursor: pointer;
             user-select: none;
         }
-        .tables-table th:hover { background: #f0f0f0; }
+        .tables-table th:hover { background: var(--surface-hover, #f0f0f0); }
         .tables-table td {
             padding: 8px 16px;
-            border-bottom: 1px solid #f5f5f5;
+            color: var(--text, #333);
+            border-bottom: 1px solid var(--border-soft, #f5f5f5);
         }
-        .tables-table tr:hover td { background: #fafafa; }
-        .tables-table a { color: #c62828; text-decoration: none; font-weight: 500; }
+        .tables-table tr:hover td { background: var(--surface-hover, #fafafa); }
+        .tables-table a { color: var(--wiki-accent, #c62828); text-decoration: none; font-weight: 500; }
         .tables-table a:hover { text-decoration: underline; }
         .op-count {
             display: inline-block;
@@ -90,13 +93,18 @@ $translationNamespaces = ['common', 'system-wiki'];
             font-size: 11px;
             font-weight: 600;
         }
+        /* op-count colours are DATA (SQL-operation coded), left hardcoded */
         .op-count.sel { background: #e3f2fd; color: #1565c0; }
         .op-count.ins { background: #e8f5e9; color: #2e7d32; }
         .op-count.upd { background: #fff3e0; color: #e65100; }
         .op-count.del { background: #fce4ec; color: #c62828; }
         .op-count.join { background: #f3e5f5; color: #7b1fa2; }
         .op-count.zero { background: transparent; color: #ddd; }
-        .no-data { text-align: center; padding: 40px; color: #aaa; }
+        .no-data { text-align: center; padding: 40px; color: var(--text-faint, #aaa); }
+
+        /* Dark-mode overrides for pale washes that would glow */
+        [data-theme-mode="dark"] .wiki-tables { background: var(--app-bg, #f5f7fa); }
+        [data-theme-mode="dark"] .op-count.zero { color: #555; }
     </style>
 </head>
 <body>

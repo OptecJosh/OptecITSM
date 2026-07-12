@@ -13,6 +13,7 @@ require_once __DIR__ . '/../../../config.php';
 require_once __DIR__ . '/../../../includes/i18n.php';
 require_once __DIR__ . '/tools.php';
 require_once __DIR__ . '/../../../includes/timezone.php';
+require_once __DIR__ . '/../../../includes/theme.php';
 I18n::initFromSession();
 Tz::init();
 
@@ -46,11 +47,12 @@ $toolFields = !empty($tool['inputs']) ? $tool['inputs'] : (!empty($tool['input']
 $toolMethod = strtoupper($tool['method'] ?? 'GET');
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>" data-theme="<?php echo htmlspecialchars(Theme::active()); ?>" data-theme-mode="<?php echo htmlspecialchars(Theme::mode()); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars($tool['id'] . ' · ' . $tool['title']); ?></title>
+    <link rel="stylesheet" href="<?php echo $path_prefix; ?>assets/css/theme.css?v=21">
     <link rel="stylesheet" href="<?php echo $path_prefix; ?>assets/css/inbox.css">
     <style>
         .debug-container { height: calc(100vh - 48px); overflow-y: auto; padding: 0 20px 40px; }

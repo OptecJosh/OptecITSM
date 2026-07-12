@@ -274,7 +274,12 @@ $translationNamespaces = ['common', 'workflow'];
     // Scroll-spy: highlight the active sidebar link as the user scrolls.
     (function () {
         const helpMain = document.querySelector('.wfh-main');
-        const navLinks = document.querySelectorAll('.wfh-nav-link');
+        // [data-section] ONLY — the sidebar also holds real page links (the
+        // Webhooks and HTTPS-certificates deep-dives). Selecting every
+        // .wfh-nav-link meant the click handler below preventDefault()'d those
+        // too, then tried to scroll to getElementById(undefined) — so they
+        // silently did nothing. Same selector help-webhooks.php already uses.
+        const navLinks = document.querySelectorAll('.wfh-nav-link[data-section]');
         const sections = [];
 
         navLinks.forEach(link => {

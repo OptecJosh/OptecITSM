@@ -2872,6 +2872,7 @@ CREATE TABLE IF NOT EXISTS `workflow_executions` (
     `trigger_event`     VARCHAR(100) NOT NULL,
     `trigger_payload`   TEXT NULL,                    -- JSON snapshot of the event payload
     `status`            VARCHAR(20) NOT NULL,         -- 'running' | 'success' | 'failed' | 'skipped' | 'aborted'
+    `is_dry_run`        TINYINT(1) NOT NULL DEFAULT 0, -- 1 = actions were described, not executed
     `started_datetime`  DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
     `finished_datetime` DATETIME NULL,
     `step_log`          TEXT NULL,                    -- JSON array of per-step results

@@ -30,7 +30,7 @@ $translationNamespaces = ['common', 'workflow'];
     <title><?php echo htmlspecialchars(t('workflow.list.page_title')); ?></title>
     <link rel="stylesheet" href="../assets/css/theme.css?v=20">
     <link rel="stylesheet" href="../assets/css/inbox.css">
-    <link rel="stylesheet" href="../assets/css/workflow.css?v=5">
+    <link rel="stylesheet" href="../assets/css/workflow.css?v=6">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <?php echo Tz::scriptTag(); ?>
     <script src="../assets/js/tz.js?v=1"></script>
@@ -46,7 +46,10 @@ $translationNamespaces = ['common', 'workflow'];
         <div class="tab-content active">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('workflow.list.page_title')); ?></h2>
-                <a class="add-btn" href="editor.php"><?php echo htmlspecialchars(t('workflow.list.add_btn')); ?></a>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button class="add-btn" style="background: var(--surface, #fff); color: var(--text, #333); border: 1px solid var(--border, #d0d0d0);" onclick="WF.openTemplates()"><?php echo htmlspecialchars(t('workflow.templates.btn')); ?></button>
+                    <a class="add-btn" href="editor.php"><?php echo htmlspecialchars(t('workflow.list.add_btn')); ?></a>
+                </div>
             </div>
             <p style="margin-bottom: 20px; color: var(--text-muted, #666);"><?php echo htmlspecialchars(t('workflow.list.intro')); ?></p>
 
@@ -65,6 +68,22 @@ $translationNamespaces = ['common', 'workflow'];
                     <tr><td colspan="6" style="text-align: center;"><?php echo htmlspecialchars(t('common.loading')); ?></td></tr>
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- Starter templates gallery — clone a ready-made workflow. -->
+    <div class="modal" id="wfTplModal">
+        <div class="modal-content" style="max-width: 900px; width: 92%;">
+            <div class="modal-header"><?php echo htmlspecialchars(t('workflow.templates.title')); ?></div>
+            <div class="modal-body">
+                <p style="margin: 0 0 16px; color: var(--text-muted, #666);"><?php echo htmlspecialchars(t('workflow.templates.intro')); ?></p>
+                <div id="wfTplList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px;">
+                    <div style="color: var(--text-faint, #999);"><?php echo htmlspecialchars(t('common.loading')); ?></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="WF.closeTemplates()"><?php echo htmlspecialchars(t('common.cancel')); ?></button>
+            </div>
         </div>
     </div>
 
@@ -140,8 +159,75 @@ $translationNamespaces = ['common', 'workflow'];
             } catch (e) { window.showToast('Delete failed', 'error'); }
         }
 
+        // ---- Starter templates ------------------------------------------
+
+        let templatesLoaded = false;
+
+        function openTemplates() {
+            document.getElementById('wfTplModal').style.display = 'flex';
+            if (!templatesLoaded) loadTemplates();
+        }
+
+        function closeTemplates() {
+            document.getElementById('wfTplModal').style.display = 'none';
+        }
+
+        async function loadTemplates() {
+            const host = document.getElementById('wfTplList');
+            try {
+                const r = await fetch(API + 'templates.php', { credentials: 'same-origin' });
+                const d = await r.json();
+                if (!d.success) {
+                    host.innerHTML = '<div style="color: var(--danger-text, #c33);">' + esc(d.error || 'Load failed') + '</div>';
+                    return;
+                }
+                templatesLoaded = true;
+                host.innerHTML = d.templates.map(t => `
+                    <div class="wf-tpl-card">
+                        <div class="wf-tpl-cat">${esc(t.category)}</div>
+                        <div class="wf-tpl-name">${esc(t.name)}</div>
+                        <div class="wf-tpl-desc">${esc(t.description)}</div>
+                        <div class="wf-tpl-meta">
+                            <div><strong>${esc(window.t('workflow.templates.when'))}</strong> ${esc(t.trigger_label)}</div>
+                            <div><strong>${esc(window.t('workflow.templates.then'))}</strong> ${t.steps.map(esc).join(', ')}</div>
+                        </div>
+                        <button class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="WF.useTemplate('${esc(t.key)}', this)">${esc(window.t('workflow.templates.use'))}</button>
+                    </div>
+                `).join('');
+            } catch (e) {
+                host.innerHTML = '<div style="color: var(--danger-text, #c33);">' + esc(e.message || 'Network error') + '</div>';
+            }
+        }
+
+        async function useTemplate(key, btn) {
+            btn.disabled = true;
+            try {
+                const r = await fetch(API + 'create_from_template.php', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key })
+                });
+                const d = await r.json();
+                if (!d.success) {
+                    window.showToast(d.error || 'Could not create from template', 'error');
+                    btn.disabled = false;
+                    return;
+                }
+                // Hand the "you still need to fill these in" list to the editor.
+                // It's a one-hop message, not state worth a database column.
+                if (d.unresolved && d.unresolved.length) {
+                    try { sessionStorage.setItem('wfUnresolved:' + d.id, JSON.stringify(d.unresolved)); } catch (e) {}
+                }
+                window.location.href = 'editor.php?id=' + d.id + '&from_template=1';
+            } catch (e) {
+                window.showToast('Could not create from template', 'error');
+                btn.disabled = false;
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', load);
-        window.WF = { del };
+        window.WF = { del, openTemplates, closeTemplates, useTemplate };
     })();
     </script>
 </body>

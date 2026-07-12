@@ -391,3 +391,93 @@ body { --accent: var(--wf-accent, #f59e0b); }
 [data-theme-mode="dark"] .wf-detail-delete:hover {
     background: #3a1c1c;
 }
+
+/* =========================================================
+   Starter-template gallery (workflow/index.php)
+   ========================================================= */
+.wf-tpl-card {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border, #e0e0e0);
+    border-radius: 8px;
+    padding: 14px;
+    background: var(--surface, #fff);
+}
+.wf-tpl-card:hover {
+    border-color: var(--wf-accent, #f59e0b);
+}
+.wf-tpl-cat {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--wf-accent-hover, #d97706);
+    margin-bottom: 6px;
+}
+.wf-tpl-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text, #333);
+    margin-bottom: 6px;
+}
+.wf-tpl-desc {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-muted, #666);
+    margin-bottom: 10px;
+}
+.wf-tpl-meta {
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-dim, #777);
+    background: var(--surface-2, #fafafa);
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-top: auto;
+}
+.wf-tpl-meta strong {
+    color: var(--text-muted, #666);
+}
+
+/* Banner shown in the editor when a cloned template left args for the user. */
+.wf-needs-config {
+    margin: 0 0 12px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.6;
+    background: var(--warning-bg, #fef3c7);
+    color: var(--warning-text, #92400e);
+    border: 1px solid var(--warning-border, #fcd34d);
+}
+.wf-needs-config ul {
+    margin: 6px 0 0;
+    padding-left: 18px;
+}
+
+/* Dry-run run rows + step log in the editor's Recent runs panel. */
+.wf-dry-pill {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--surface-3, #eef2ff);
+    color: var(--text-muted, #3730a3);
+}
+.wf-dry-steps {
+    margin-top: 6px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-muted, #666);
+    background: var(--surface-2, #fafafa);
+    border: 1px solid var(--border-soft, #eee);
+    border-radius: 6px;
+    padding: 8px 10px;
+}
+.wf-dry-steps code {
+    font-size: 11px;
+    color: var(--text-dim, #777);
+    word-break: break-word;
+}

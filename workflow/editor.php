@@ -85,7 +85,7 @@ foreach ($actionDefs as $actionKey => $def) {
     <title><?php echo htmlspecialchars($id ? t('workflow.editor.edit_title') : t('workflow.editor.new_title')); ?></title>
     <link rel="stylesheet" href="../assets/css/theme.css?v=20">
     <link rel="stylesheet" href="../assets/css/inbox.css">
-    <link rel="stylesheet" href="../assets/css/workflow.css?v=5">
+    <link rel="stylesheet" href="../assets/css/workflow.css?v=6">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <?php echo Tz::scriptTag(); ?>
     <script src="../assets/js/tz.js?v=1"></script>
@@ -119,6 +119,10 @@ foreach ($actionDefs as $actionKey => $def) {
             </div>
             <div class="wf-toolbar-right">
                 <span class="wf-status" id="wfStatus" aria-live="polite"></span>
+                <button class="wf-tool-btn" id="dryRunBtn" onclick="WFE.dryRun()" title="<?php echo htmlspecialchars(t('workflow.editor.dry_run_hint')); ?>" disabled>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <span><?php echo htmlspecialchars(t('workflow.editor.dry_run')); ?></span>
+                </button>
                 <button class="wf-tool-btn" id="testFireBtn" onclick="WFE.testFire()" title="<?php echo htmlspecialchars(t('workflow.editor.test_fire_hint')); ?>" disabled>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                     <span><?php echo htmlspecialchars(t('workflow.editor.test_fire')); ?></span>
@@ -147,6 +151,9 @@ foreach ($actionDefs as $actionKey => $def) {
 
                 <!-- Workflow-level (default — shown when nothing is selected) -->
                 <div class="wf-detail-body" id="wfBodyWorkflow">
+                    <!-- Populated when a workflow is cloned from a starter template
+                         and the template couldn't fill in every value for this install. -->
+                    <div class="wf-needs-config" id="wfNeedsConfig" style="display: none;"></div>
                     <div class="form-group">
                         <label for="wfName"><?php echo htmlspecialchars(t('workflow.editor.name_label')); ?></label>
                         <input type="text" id="wfName" maxlength="255" autocomplete="off" placeholder="<?php echo htmlspecialchars(t('workflow.editor.name_placeholder')); ?>" required>
@@ -334,6 +341,6 @@ foreach ($actionDefs as $actionKey => $def) {
             });
         };
     </script>
-    <script src="../assets/js/workflow-editor.js?v=13"></script>
+    <script src="../assets/js/workflow-editor.js?v=14"></script>
 </body>
 </html>

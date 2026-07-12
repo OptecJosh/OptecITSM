@@ -32,7 +32,7 @@ $translationNamespaces = ['common', 'workflow'];
     <title><?php echo htmlspecialchars(t('workflow.help.page_title')); ?></title>
     <link rel="stylesheet" href="../assets/css/theme.css?v=20">
     <link rel="stylesheet" href="../assets/css/inbox.css">
-    <link rel="stylesheet" href="../assets/css/workflow.css?v=5">
+    <link rel="stylesheet" href="../assets/css/workflow.css?v=6">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <?php echo Tz::scriptTag(); ?>
     <script src="../assets/js/tz.js?v=1"></script>
@@ -114,6 +114,9 @@ $translationNamespaces = ['common', 'workflow'];
     <div class="wfh-container">
         <aside class="wfh-sidebar">
             <h3><?php echo htmlspecialchars(t('workflow.help.guide')); ?></h3>
+            <a href="#templates" class="wfh-nav-link" data-section="templates" style="color:var(--warning-text, #b45309);">
+                <span class="wfh-nav-num" style="background:var(--wf-accent-soft, #fff7ed); color:var(--warning-text, #b45309);">&#9733;</span> <?php echo htmlspecialchars(t('workflow.help.nav_templates')); ?>
+            </a>
             <a href="#anatomy" class="wfh-nav-link active" data-section="anatomy">
                 <span class="wfh-nav-num">1</span> <?php echo htmlspecialchars(t('workflow.help.nav_anatomy')); ?>
             </a>
@@ -155,6 +158,11 @@ $translationNamespaces = ['common', 'workflow'];
                 <p><?php echo htmlspecialchars(t('workflow.help.intro')); ?></p>
             </div>
             <div class="tab-content active wf-help">
+            <h3 id="templates"><?php echo htmlspecialchars(t('workflow.help.templates_heading')); ?></h3>
+            <p><?php echo t('workflow.help.templates_intro'); ?></p>
+            <p><?php echo t('workflow.help.templates_lookups'); ?></p>
+            <div class="callout"><?php echo t('workflow.help.templates_callout'); ?></div>
+
             <h3 id="anatomy"><?php echo htmlspecialchars(t('workflow.help.anatomy_heading')); ?></h3>
             <p><?php echo htmlspecialchars(t('workflow.help.anatomy_intro')); ?></p>
             <ul>
@@ -225,6 +233,10 @@ $translationNamespaces = ['common', 'workflow'];
 
             <h3 id="testing"><?php echo htmlspecialchars(t('workflow.help.testing_heading')); ?></h3>
             <p><?php echo t('workflow.help.testing_save'); ?></p>
+            <h4><?php echo htmlspecialchars(t('workflow.help.testing_dry_heading')); ?></h4>
+            <p><?php echo t('workflow.help.testing_dry_body'); ?></p>
+            <p><?php echo t('workflow.help.testing_dry_safe'); ?></p>
+            <h4><?php echo htmlspecialchars(t('workflow.help.testing_fire_heading')); ?></h4>
             <p><?php echo t('workflow.help.testing_fire'); ?></p>
             <p><?php echo t('workflow.help.testing_real'); ?></p>
 

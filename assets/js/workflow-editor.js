@@ -68,8 +68,49 @@ const WFE = (() => {
             renderAll();
             selectWorkflow();
             setStatus('unsaved');
-            document.getElementById('testFireBtn').disabled = true;
+            setRunButtonsEnabled(false);
         }
+    }
+
+    /**
+     * Test fire and Dry run both need a saved workflow (the engine loads it
+     * from the database by id), so they enable and disable together.
+     */
+    function setRunButtonsEnabled(on) {
+        ['testFireBtn', 'dryRunBtn'].forEach(id => {
+            const b = document.getElementById(id);
+            if (b) b.disabled = !on;
+        });
+    }
+
+    /**
+     * A workflow just cloned from a starter template may carry args the
+     * template couldn't fill in for this install — a priority we don't have,
+     * a webhook URL only the user knows. The list is handed over in
+     * sessionStorage by the gallery; show it once, then clear it.
+     */
+    function showTemplateGaps(id) {
+        const host = document.getElementById('wfNeedsConfig');
+        if (!host) return;
+        let items = [];
+        try {
+            const raw = sessionStorage.getItem('wfUnresolved:' + id);
+            if (!raw) return;
+            items = JSON.parse(raw) || [];
+            sessionStorage.removeItem('wfUnresolved:' + id);
+        } catch (e) { return; }
+        if (!items.length) return;
+
+        const escHtml = s => {
+            const d = document.createElement('div');
+            d.textContent = s == null ? '' : String(s);
+            return d.innerHTML;
+        };
+        host.innerHTML =
+            '<strong>' + escHtml(window.t('workflow.templates.needs_config')) + '</strong><ul>' +
+            items.map(i => '<li><strong>' + escHtml(i.where) + '</strong> — ' + escHtml(i.reason) + '</li>').join('') +
+            '</ul>';
+        host.style.display = 'block';
     }
 
     async function loadWorkflow(id) {
@@ -122,8 +163,9 @@ const WFE = (() => {
             renderAll();
             selectWorkflow();
             renderExecutions(d.executions || []);
-            document.getElementById('testFireBtn').disabled = false;
+            setRunButtonsEnabled(true);
             setStatus('saved');
+            showTemplateGaps(workflow.id);
         } catch (e) {
             window.showToast('Load failed', 'error');
         }
@@ -1050,7 +1092,7 @@ const WFE = (() => {
                 workflow.id = d.id;
                 window.WF_ID = d.id;
                 window.history.replaceState({}, '', 'editor.php?id=' + d.id);
-                document.getElementById('testFireBtn').disabled = false;
+                setRunButtonsEnabled(true);
             }
         } catch (e) {
             setStatus('unsaved');
@@ -1111,21 +1153,33 @@ const WFE = (() => {
         return payload;
     }
 
-    async function testFire() {
+    /**
+     * Dry run — evaluate the conditions for real, but describe the actions
+     * instead of executing them. Nothing is written, emailed or queued, so
+     * this is safe to point at a live workflow.
+     */
+    async function dryRun() {
+        return testFire(true);
+    }
+
+    async function testFire(isDryRun) {
         if (!workflow.id) { window.showToast('Save the workflow first.', 'error'); return; }
-        window.showToast(window.t('workflow.toast.fire_started'), 'info');
+        if (dirty) {
+            window.showToast(window.t('workflow.toast.run_unsaved'), 'info');
+        }
+        window.showToast(window.t(isDryRun ? 'workflow.toast.dry_run_started' : 'workflow.toast.fire_started'), 'info');
         try {
             const r = await fetch(window.WF_API + 'fire.php', {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: workflow.id, payload: buildTestFirePayload() }),
+                body: JSON.stringify({ id: workflow.id, payload: buildTestFirePayload(), dry_run: !!isDryRun }),
             });
             const d = await r.json();
             if (d.success) {
                 const status = d.result.status;
                 window.showToast(
-                    window.t('workflow.toast.fire_done').replace('%s', status),
+                    window.t(isDryRun ? 'workflow.toast.dry_run_done' : 'workflow.toast.fire_done').replace('%s', status),
                     status === 'failed' ? 'error' : 'success'
                 );
                 const re = await fetch(window.WF_API + 'get.php?id=' + workflow.id, { credentials: 'same-origin' });
@@ -1155,16 +1209,40 @@ const WFE = (() => {
             try { return window.parseUTCDate(s).toLocaleString(undefined, window.tzOpts({})); }
             catch (e) { return s; }
         };
+        // A dry run's whole value is in its step log — "here is what it WOULD
+        // have done" — so unlike a real run we render the steps inline rather
+        // than just a status pill.
+        const dryStepsHtml = (e) => {
+            if (!e.is_dry_run) return '';
+            const steps = (e.step_log || []).filter(s => s.status === 'dry_run');
+            if (!steps.length) {
+                return '<div class="wf-dry-steps"><em>' + escHtml(window.t('workflow.dry_run.no_actions')) + '</em></div>';
+            }
+            const rows = steps.map(s => {
+                const args = Object.entries(s.would_args || {})
+                    .filter(([, v]) => v !== '' && v !== null)
+                    .map(([k, v]) => '<div><code>' + escHtml(k) + ':</code> ' + escHtml(v) + '</div>')
+                    .join('');
+                return '<div style="margin-bottom: 6px;"><strong>' + escHtml(s.would_run || s.type) + '</strong>' + args + '</div>';
+            }).join('');
+            return '<div class="wf-dry-steps"><div style="margin-bottom: 6px;">'
+                 + escHtml(window.t('workflow.dry_run.would_have')) + '</div>' + rows + '</div>';
+        };
+
         host.innerHTML = execs.map(e => {
             const pill = e.status === 'success'  ? '<span class="status-badge status-active">' + escHtml(window.t('workflow.status.success')) + '</span>'
                        : e.status === 'failed'   ? '<span class="status-badge status-inactive">' + escHtml(window.t('workflow.status.failed'))  + '</span>'
                        : e.status === 'skipped'  ? '<span class="status-badge"   style="background:#fef3c7;color:#92400e;">' + escHtml(window.t('workflow.status.skipped')) + '</span>'
                        : e.status === 'aborted'  ? '<span class="status-badge"   style="background:#fee2e2;color:#991b1b;">' + escHtml(window.t('workflow.status.aborted')) + '</span>'
                        :                           '<span class="status-badge"   style="background:#e0e7ff;color:#3730a3;">' + escHtml(window.t('workflow.status.running')) + '</span>';
-            return `<div style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
-                ${pill}
-                <div style="font-size: 12px; color: #888; margin-top: 4px;">${escHtml(fmtDate(e.started_datetime))}</div>
-                ${e.error_message ? '<div style="font-size: 12px; color: #c33; margin-top: 4px;">' + escHtml(e.error_message) + '</div>' : ''}
+            const dryPill = e.is_dry_run
+                ? '<span class="wf-dry-pill">' + escHtml(window.t('workflow.dry_run.pill')) + '</span>'
+                : '';
+            return `<div style="padding: 8px 0; border-bottom: 1px solid var(--border-soft, #f0f0f0);">
+                ${pill}${dryPill}
+                <div style="font-size: 12px; color: var(--text-dim, #888); margin-top: 4px;">${escHtml(fmtDate(e.started_datetime))}</div>
+                ${e.error_message ? '<div style="font-size: 12px; color: var(--danger-text, #c33); margin-top: 4px;">' + escHtml(e.error_message) + '</div>' : ''}
+                ${dryStepsHtml(e)}
             </div>`;
         }).join('');
     }
@@ -1371,7 +1449,7 @@ const WFE = (() => {
     // Public API used by the editor.php inline handlers and toolbar.
     return {
         addCondition, addAction, deleteSelected,
-        save, testFire,
+        save, testFire, dryRun,
         updateTriggerFromDetail,
         updateConditionFromDetail,
         onConditionMultiToggle,

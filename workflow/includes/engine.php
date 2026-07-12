@@ -646,7 +646,7 @@ class WorkflowEngine
      * Returns the workflow_executions row as an array (for the API to
      * surface back to the caller).
      */
-    public static function manualFire(int $workflowId, array $samplePayload = []): array
+    public static function manualFire(int $workflowId, array $samplePayload = [], bool $dryRun = false): array
     {
         $conn = connectToDatabase();
         $stmt = $conn->prepare("SELECT * FROM workflows WHERE id = ?");
@@ -655,7 +655,7 @@ class WorkflowEngine
         if (!$wf) {
             throw new Exception('Workflow not found');
         }
-        return self::run($wf, $wf['trigger_event'], $samplePayload, /*isManual*/ true);
+        return self::run($wf, $wf['trigger_event'], $samplePayload, /*isManual*/ true, $dryRun);
     }
 
     // -----------------------------------------------------------------
@@ -668,20 +668,20 @@ class WorkflowEngine
      * 'aborted' execution row, and otherwise manages the request-scoped
      * counters around the real run.
      */
-    private static function run(array $wf, string $event, array $payload, bool $isManual): array
+    private static function run(array $wf, string $event, array $payload, bool $isManual, bool $dryRun = false): array
     {
         $wfId = (int)$wf['id'];
 
         if (in_array($wfId, self::$activeWorkflowIds, true)) {
-            return self::recordAbortedRun($wf, $event, $payload, $isManual,
+            return self::recordAbortedRun($wf, $event, $payload, $isManual, $dryRun,
                 'Loop protection: this workflow is already running in the current event chain — re-entry refused to prevent an infinite loop.');
         }
         if (self::$chainDepth >= self::MAX_CHAIN_DEPTH) {
-            return self::recordAbortedRun($wf, $event, $payload, $isManual,
+            return self::recordAbortedRun($wf, $event, $payload, $isManual, $dryRun,
                 'Loop protection: workflow chain depth limit (' . self::MAX_CHAIN_DEPTH . ') reached — execution aborted.');
         }
         if (self::$runsThisRequest >= self::MAX_RUNS_PER_REQUEST) {
-            return self::recordAbortedRun($wf, $event, $payload, $isManual,
+            return self::recordAbortedRun($wf, $event, $payload, $isManual, $dryRun,
                 'Loop protection: per-request workflow run limit (' . self::MAX_RUNS_PER_REQUEST . ') reached — execution aborted.');
         }
 
@@ -689,7 +689,7 @@ class WorkflowEngine
         self::$chainDepth++;
         self::$runsThisRequest++;
         try {
-            return self::runInner($wf, $event, $payload, $isManual);
+            return self::runInner($wf, $event, $payload, $isManual, $dryRun);
         } finally {
             // Pop this workflow off the active stack and unwind the depth even
             // if runInner threw, so one bad run can't wedge the counters for
@@ -705,7 +705,7 @@ class WorkflowEngine
      * block is visible in the execution audit, and stamps the parent
      * workflow's last-run state for non-manual runs. Never throws.
      */
-    private static function recordAbortedRun(array $wf, string $event, array $payload, bool $isManual, string $message): array
+    private static function recordAbortedRun(array $wf, string $event, array $payload, bool $isManual, bool $dryRun, string $message): array
     {
         $wfId = (int)$wf['id'];
         error_log('[WorkflowEngine] aborted run for workflow ' . $wfId . ': ' . $message);
@@ -714,11 +714,11 @@ class WorkflowEngine
             $conn = connectToDatabase();
             $stmt = $conn->prepare(
                 "INSERT INTO workflow_executions
-                 (workflow_id, workflow_name, trigger_event, trigger_payload, status, started_datetime, finished_datetime, step_log, error_message)
-                 VALUES (?, ?, ?, ?, 'aborted', UTC_TIMESTAMP(), UTC_TIMESTAMP(), ?, ?)"
+                 (workflow_id, workflow_name, trigger_event, trigger_payload, status, is_dry_run, started_datetime, finished_datetime, step_log, error_message)
+                 VALUES (?, ?, ?, ?, 'aborted', ?, UTC_TIMESTAMP(), UTC_TIMESTAMP(), ?, ?)"
             );
             $stmt->execute([
-                $wfId, $wf['name'] ?? null, $event, json_encode($payload), json_encode($stepLog), $message,
+                $wfId, $wf['name'] ?? null, $event, json_encode($payload), $dryRun ? 1 : 0, json_encode($stepLog), $message,
             ]);
             $execId = (int)$conn->lastInsertId();
             // Reflect the block in the parent workflow's last-run state, but
@@ -741,7 +741,7 @@ class WorkflowEngine
         ];
     }
 
-    private static function runInner(array $wf, string $event, array $payload, bool $isManual): array
+    private static function runInner(array $wf, string $event, array $payload, bool $isManual, bool $dryRun = false): array
     {
         $conn = connectToDatabase();
         $stepLog = [];
@@ -753,14 +753,15 @@ class WorkflowEngine
         // its parent workflow is deleted (workflow_id goes NULL then).
         $insert = $conn->prepare(
             "INSERT INTO workflow_executions
-             (workflow_id, workflow_name, trigger_event, trigger_payload, status, started_datetime)
-             VALUES (?, ?, ?, ?, 'running', UTC_TIMESTAMP())"
+             (workflow_id, workflow_name, trigger_event, trigger_payload, status, is_dry_run, started_datetime)
+             VALUES (?, ?, ?, ?, 'running', ?, UTC_TIMESTAMP())"
         );
         $insert->execute([
             (int)$wf['id'],
             $wf['name'] ?? null,
             $event,
             json_encode($payload),
+            $dryRun ? 1 : 0,
         ]);
         $execId = (int)$conn->lastInsertId();
         self::$ctxWorkflowId  = (int)$wf['id'];
@@ -778,6 +779,23 @@ class WorkflowEngine
                 foreach ($actions as $i => $action) {
                     $type = $action['type'] ?? '';
                     $args = $action['args'] ?? [];
+
+                    // Dry run: resolve the action exactly as far as we can
+                    // WITHOUT touching anything — substitute the {{variables}}
+                    // and record the args the handler would have received, then
+                    // move on. Nothing is written, sent or queued.
+                    if ($dryRun) {
+                        $stepLog[] = [
+                            'kind'        => 'action',
+                            'index'       => $i,
+                            'type'        => $type,
+                            'status'      => 'dry_run',
+                            'would_run'   => self::describeAction($type),
+                            'would_args'  => self::previewArgs($args, $payload),
+                        ];
+                        continue;
+                    }
+
                     try {
                         $result = self::executeAction($type, $args, $payload);
                         $stepLog[] = [
@@ -815,9 +833,9 @@ class WorkflowEngine
         );
         $update->execute([$status, json_encode($stepLog), $errorMessage, $execId]);
 
-        // Update parent workflow stats — only for non-manual runs, so
-        // "Test fire" doesn't pollute the production last-run counters.
-        if (!$isManual) {
+        // Update parent workflow stats — only for real, non-manual runs, so
+        // neither "Test fire" nor a dry run pollutes the production counters.
+        if (!$isManual && !$dryRun) {
             $updateWf = $conn->prepare(
                 "UPDATE workflows
                  SET last_run_datetime = UTC_TIMESTAMP(),
@@ -832,9 +850,41 @@ class WorkflowEngine
             'execution_id'   => $execId,
             'workflow_id'    => (int)$wf['id'],
             'status'         => $status,
+            'is_dry_run'     => $dryRun,
             'step_log'       => $stepLog,
             'error_message'  => $errorMessage,
         ];
+    }
+
+    /**
+     * The catalogue label for an action type — what a dry run reports it
+     * "would have" done. Falls back to the raw type for an action the
+     * catalogue no longer knows about.
+     */
+    private static function describeAction(string $type): string
+    {
+        return self::availableActions()[$type]['label'] ?? $type;
+    }
+
+    /**
+     * Render an action's args for a dry run: every {{variable}} substituted
+     * against the real payload, so what you read in the log is exactly the
+     * value the handler would have been handed.
+     *
+     * The signing secret is redacted — a dry run is a debugging surface and
+     * must not become a way to read a secret back out of a saved workflow.
+     */
+    private static function previewArgs(array $args, array $payload): array
+    {
+        $out = [];
+        foreach ($args as $k => $v) {
+            if ($k === 'secret') {
+                $out[$k] = ($v === '' || $v === null) ? '' : '(set — redacted)';
+                continue;
+            }
+            $out[$k] = is_string($v) ? self::renderTemplate($v, $payload) : $v;
+        }
+        return $out;
     }
 
     // -----------------------------------------------------------------

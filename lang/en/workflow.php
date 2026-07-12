@@ -74,6 +74,8 @@ return [
         'remove'          => 'Remove',
         'test_fire'       => 'Test fire',
         'test_fire_hint'  => 'Run this workflow once with a synthetic payload so you can verify the actions work. Real triggers will fire when wired in subsequent commits.',
+        'dry_run'         => 'Dry run',
+        'dry_run_hint'    => 'Check the conditions and show what each action would do — without doing it. Nothing is written, emailed or sent.',
         'no_conditions'   => 'No conditions — runs on every event.',
         'no_actions'      => 'No actions yet — add at least one.',
         'condition_field' => 'Field',
@@ -105,6 +107,22 @@ return [
         'aborted' => 'Aborted (loop protection)',
     ],
 
+    'dry_run' => [
+        'pill'        => 'Dry run',
+        'would_have'  => 'This run would have:',
+        'no_actions'  => 'Nothing would have run — the conditions did not match.',
+    ],
+
+    'templates' => [
+        'btn'           => 'New from template',
+        'title'         => 'Start from a template',
+        'intro'         => 'Ready-made workflows for the jobs most service desks automate first. Pick one and it is copied into your workflows — switched off, so you can read it, adjust it and dry-run it before it fires for real.',
+        'when'          => 'When:',
+        'then'          => 'Then:',
+        'use'           => 'Use this template',
+        'needs_config'  => 'This template needs a few details from you before it will work:',
+    ],
+
     'toast' => [
         'saved'         => 'Workflow saved.',
         'deleted'       => 'Workflow deleted.',
@@ -112,6 +130,9 @@ return [
         'fire_started'  => 'Test fire started — see the Execution log.',
         'fire_done'     => 'Test fire complete: %s.',
         'fire_failed'   => 'Test fire failed: %s',
+        'dry_run_started' => 'Dry run started — nothing will actually be changed.',
+        'dry_run_done'    => 'Dry run complete: %s. See Recent runs for what would have happened.',
+        'run_unsaved'   => 'Note: you have unsaved changes — this runs the last saved version.',
         'name_required' => 'Name is required.',
         'actions_required' => 'At least one action is required.',
         'saved_no_actions' => 'Saved — but this workflow has no actions yet, so it won\'t do anything until you add one.',
@@ -143,6 +164,7 @@ return [
         'intro'      => 'Workflows let you automate the things you find yourself doing manually after a ticket arrives: tagging, escalating, assigning, notifying, fanning out to other systems. A workflow listens for an event, optionally filters with conditions, then runs one or more actions in order.',
         'guide'      => 'Guide',
 
+        'nav_templates'  => 'Start from a template',
         'nav_anatomy'    => 'Anatomy of a workflow',
         'nav_canvas'     => 'The visual canvas',
         'nav_conditions' => 'Conditions',
@@ -231,9 +253,18 @@ return [
         'ai_config'    => 'Configure the provider (Anthropic / OpenAI), model and API key under <strong>Workflow &rarr; Settings &rarr; AI</strong>. Keys are stored per module so billing and access can be granular.',
 
         // 7. Saving and testing
+        'templates_heading' => 'Start from a template',
+        'templates_intro'   => 'The <strong>New from template</strong> button on the Workflows list opens a gallery of ready-made recipes for the jobs most service desks automate first &mdash; auto-acknowledging a new ticket, alerting the team on a P1, fanning a new-starter form out into IT, HR and Facilities tickets, raising an implementation task when a change is approved. Pick one and it is copied into your workflows as a normal, fully editable workflow. There is nothing special about it afterwards: it is yours to rename, rewire or delete.',
+        'templates_lookups' => 'Every install names its own statuses and priorities, so a template cannot simply hardcode them. Instead it says <em>"whatever this install calls Closed"</em> and we look the real value up as it is copied. Anything we cannot match &mdash; a priority you do not have, or a value only you know, like a Slack webhook URL &mdash; is left blank and listed in a banner at the top of the editor, so you can see exactly what still needs you.',
+        'templates_callout' => 'A cloned template always arrives <strong>switched off</strong>. Nothing it contains can fire until you have read it, filled in the gaps and ticked <em>Active</em> &mdash; and you can <strong>Dry run</strong> it first to see precisely what it would do.',
+
         'testing_heading' => '7. Saving and testing',
         'testing_save'    => 'The status pip in the toolbar shows <em>Unsaved</em> / <em>Saving&hellip;</em> / <em>Saved</em>. Click <strong>Save</strong> to persist. You can save in-progress drafts with zero actions &mdash; you\'ll get a soft "this workflow has no actions yet" warning rather than being blocked.',
-        'testing_fire'    => '<strong>Test fire</strong> runs the workflow with a synthetic payload generated from its own conditions, so the action path actually executes. The result lands in <em>Recent runs</em> on the workflow detail panel with status (<em>success / failed / skipped</em>) and full step log.',
+        'testing_dry_heading' => 'Dry run &mdash; see what it would do, without doing it',
+        'testing_dry_body'    => '<strong>Dry run</strong> evaluates the conditions for real, then <em>describes</em> each action instead of carrying it out. The run appears in <em>Recent runs</em> marked <em>Dry run</em>, listing every action it would have taken with the <code>{{variables}}</code> already filled in &mdash; so you read the actual email subject, the actual chat message, the actual note.',
+        'testing_dry_safe'    => 'Nothing is written, emailed, queued or sent: no ticket changes, no notes, no webhook deliveries, and the workflow\'s run counter is untouched. That makes it safe to point at a live workflow &mdash; and it is the sensible first thing to do with a freshly cloned template. (Any signing secret is redacted in the output rather than echoed back.)',
+        'testing_fire_heading' => 'Test fire &mdash; actually run it',
+        'testing_fire'    => '<strong>Test fire</strong> runs the workflow for real with a synthetic payload generated from its own conditions, so the action path actually executes &mdash; it will genuinely send that email. The result lands in <em>Recent runs</em> with status (<em>success / failed / skipped</em>) and full step log.',
         'testing_real'    => 'To test against real data, just do the thing that triggers it &mdash; assign a ticket, change its priority, etc. The dispatch from the host module (Tickets) is live; the execution log shows every fire.',
 
         // 8. The trigger catalogue

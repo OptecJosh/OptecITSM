@@ -33,9 +33,11 @@ try {
     $wf['conditions'] = json_decode($wf['conditions'] ?: '[]', true) ?: [];
     $wf['actions']    = json_decode($wf['actions']    ?: '[]', true) ?: [];
 
-    // Last 20 executions, newest first.
+    // Last 20 executions, newest first. step_log comes along so the editor can
+    // expand a run — it's what makes a dry run readable ("this is what it
+    // would have done"), not just a status pill.
     $execStmt = $conn->prepare(
-        "SELECT id, trigger_event, status, started_datetime, finished_datetime, error_message
+        "SELECT id, trigger_event, status, is_dry_run, started_datetime, finished_datetime, step_log, error_message
          FROM workflow_executions
          WHERE workflow_id = ?
          ORDER BY started_datetime DESC, id DESC
@@ -43,6 +45,11 @@ try {
     );
     $execStmt->execute([$id]);
     $executions = $execStmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($executions as &$ex) {
+        $ex['is_dry_run'] = (int)$ex['is_dry_run'];
+        $ex['step_log']   = json_decode($ex['step_log'] ?: '[]', true) ?: [];
+    }
+    unset($ex);
 
     echo json_encode(['success' => true, 'workflow' => $wf, 'executions' => $executions]);
 } catch (Exception $e) {

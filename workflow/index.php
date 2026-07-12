@@ -163,13 +163,16 @@ $translationNamespaces = ['common', 'workflow'];
 
         let templatesLoaded = false;
 
+        // inbox.css keeps .modal permanently display:flex and reveals it with
+        // the .active class (opacity + visibility) — setting display here would
+        // do nothing.
         function openTemplates() {
-            document.getElementById('wfTplModal').style.display = 'flex';
+            document.getElementById('wfTplModal').classList.add('active');
             if (!templatesLoaded) loadTemplates();
         }
 
         function closeTemplates() {
-            document.getElementById('wfTplModal').style.display = 'none';
+            document.getElementById('wfTplModal').classList.remove('active');
         }
 
         async function loadTemplates() {

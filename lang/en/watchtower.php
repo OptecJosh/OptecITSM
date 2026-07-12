@@ -37,6 +37,18 @@ return [
         'knowledge'      => 'Knowledge',
         'assets'         => 'Assets',
         'tasks'          => 'Tasks',
+        'workflows'      => 'Workflows',
+    ],
+
+    // Workflows card. The engine swallows its own errors by design (so a broken
+    // workflow can't break the ticket save that triggered it) — which means a
+    // failing workflow is silent. This card is what breaks that silence.
+    'workflows' => [
+        'all_clear'     => 'No workflow failures',
+        'failed'        => '<span class="wt-attention-bold">{count}</span> workflow run(s) failed in the last 24h',
+        'aborted'       => '<span class="wt-attention-bold">{count}</span> run(s) aborted by loop protection in the last 24h',
+        'dead_webhooks' => '<span class="wt-attention-bold">{count}</span> webhook(s) gave up retrying — the message never arrived',
+        'failures'      => '{count} failure(s)',
     ],
 
     // Morning Checks card.

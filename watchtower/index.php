@@ -290,6 +290,34 @@ $translationNamespaces = ['common', 'watchtower'];
             color: #166534;
             font-weight: 500;
         }
+
+        /* Workflows card — the failing workflows, named, with what they said. */
+        .wt-wf-item {
+            padding: 7px 0;
+            border-top: 1px solid var(--border-soft, #f0f0f0);
+        }
+        .wt-wf-name {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text, #334155);
+        }
+        .wt-wf-count {
+            flex-shrink: 0;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--danger-text, #b91c1c);
+        }
+        .wt-wf-err {
+            margin-top: 2px;
+            font-size: 11.5px;
+            line-height: 1.45;
+            color: var(--text-muted, #64748b);
+            word-break: break-word;
+        }
     </style>
 </head>
 <body>
@@ -433,6 +461,20 @@ $translationNamespaces = ['common', 'watchtower'];
                         <div class="wt-card-name"><a href="../tasks/"><?php echo htmlspecialchars(t('watchtower.cards.tasks')); ?></a></div>
                     </div>
                     <div class="wt-status-dot" id="wtTasksDot"></div>
+                </div>
+                <div class="wt-card-body"><div class="wt-card-loading"><div class="wt-spinner"></div></div></div>
+            </div>
+
+            <!-- Workflows — hidden entirely if the engine's tables aren't there yet -->
+            <div class="wt-card" id="wtWorkflows" style="display:none;">
+                <div class="wt-card-header">
+                    <div class="wt-card-header-left">
+                        <div class="wt-card-icon" style="background:#f59e0b;">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                        </div>
+                        <div class="wt-card-name"><a href="../workflow/"><?php echo htmlspecialchars(t('watchtower.cards.workflows')); ?></a></div>
+                    </div>
+                    <div class="wt-status-dot" id="wtWfDot"></div>
                 </div>
                 <div class="wt-card-body"><div class="wt-card-loading"><div class="wt-spinner"></div></div></div>
             </div>
@@ -736,6 +778,65 @@ $translationNamespaces = ['common', 'watchtower'];
         setBody('wtAssets', html);
     }
 
+    /**
+     * Workflows.
+     *
+     * The engine deliberately SWALLOWS its own errors — a broken workflow must
+     * never break the ticket save that triggered it. Correct, and it means a
+     * failing workflow is completely silent. Nothing tells you. This card is the
+     * something that tells you.
+     *
+     * Dead-lettered webhooks are counted here too: the workflow itself
+     * "succeeded" (it queued the send), so a message that never arrived would
+     * otherwise show up nowhere at all.
+     */
+    function renderWorkflows(d) {
+        const wf = d.workflows;
+        const card = document.getElementById('wtWorkflows');
+        if (!wf || !wf.available) { card.style.display = 'none'; return; }
+        card.style.display = '';
+
+        const esc = (s) => { const x = document.createElement('div'); x.textContent = s == null ? '' : String(s); return x.innerHTML; };
+        const broken = wf.failed_24h + wf.aborted_24h;
+
+        setDot('wtWfDot', broken > 0 ? 'red' : (wf.dead_webhooks > 0 ? 'amber' : 'green'));
+
+        let html = '';
+        if (wf.all_clear) {
+            html += '<div class="wt-all-clear"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>'
+                  + window.t('watchtower.workflows.all_clear') + '</div>';
+            setBody('wtWorkflows', html);
+            return;
+        }
+
+        html += '<div class="wt-attention">';
+        if (wf.failed_24h > 0) {
+            html += attentionItem('red', '<a href="../workflow/executions.php?status=failed" style="color:inherit;">'
+                  + window.t('watchtower.workflows.failed', { count: wf.failed_24h }) + '</a>');
+        }
+        if (wf.aborted_24h > 0) {
+            html += attentionItem('red', '<a href="../workflow/executions.php?status=aborted" style="color:inherit;">'
+                  + window.t('watchtower.workflows.aborted', { count: wf.aborted_24h }) + '</a>');
+        }
+        if (wf.dead_webhooks > 0) {
+            html += attentionItem('amber', '<a href="../system/webhooks/" style="color:inherit;">'
+                  + window.t('watchtower.workflows.dead_webhooks', { count: wf.dead_webhooks }) + '</a>');
+        }
+        html += '</div>';
+
+        // Name names, and show what the failure actually said — a bare count sends
+        // you hunting; the error message often answers the question on the spot.
+        wf.worst.forEach(function (w) {
+            html += '<div class="wt-wf-item">'
+                  + '<div class="wt-wf-name">' + esc(w.name)
+                  + '<span class="wt-wf-count">' + window.t('watchtower.workflows.failures', { count: w.failures }) + '</span></div>'
+                  + (w.last_error ? '<div class="wt-wf-err">' + esc(String(w.last_error).slice(0, 110)) + '</div>' : '')
+                  + '</div>';
+        });
+
+        setBody('wtWorkflows', html);
+    }
+
     function renderTasks(d) {
         if (!d.tasks) return;
         const t = d.tasks;
@@ -789,6 +890,7 @@ $translationNamespaces = ['common', 'watchtower'];
                 renderKnowledge(d);
                 renderAssets(d);
                 renderTasks(d);
+                renderWorkflows(d);
 
                 // Update timestamp
                 const now = new Date();

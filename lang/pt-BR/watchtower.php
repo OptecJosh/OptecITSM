@@ -28,6 +28,7 @@ return [
         'knowledge'      => 'Conhecimento',
         'assets'         => 'Ativos',
         'tasks'          => 'Tarefas',
+        'workflows'      => 'Workflows',
     ],
 
     // Morning Checks card.
@@ -109,6 +110,14 @@ return [
     ],
 
     // Tasks card.
+    'workflows' => [
+        'all_clear'     => 'Nenhuma falha de workflow',
+        'failed'        => '<span class="wt-attention-bold">{count}</span> execução(ões) de workflow falharam nas últimas 24h',
+        'aborted'       => '<span class="wt-attention-bold">{count}</span> execução(ões) abortadas pela proteção contra loop nas últimas 24h',
+        'dead_webhooks' => '<span class="wt-attention-bold">{count}</span> webhook(s) desistiram após novas tentativas — a mensagem nunca chegou',
+        'failures'      => '{count} falha(s)',
+    ],
+
     'tasks' => [
         'metric_todo'   => 'A fazer',
         'metric_active' => 'Ativas',

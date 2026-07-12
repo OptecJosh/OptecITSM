@@ -319,6 +319,79 @@ function getWatchtowerData($conn) {
         'todo'        => $taskTodo
     ];
 
+    // -- Workflows --
+    // A failing workflow is silent by design: the engine swallows its own errors
+    // so a broken rule can never break the ticket save that triggered it. Which
+    // is correct — and means nothing tells you it's broken. This card is that
+    // "something".
+    //
+    // Real runs only (is_dry_run = 0): a dry run is a person testing, and its
+    // failures are expected, not an incident.
+    $wf = [
+        'failed_24h'      => 0,
+        'aborted_24h'     => 0,
+        'dead_webhooks'   => 0,
+        'worst'           => [],   // the workflows failing most, so the card names names
+        'all_clear'       => true,
+        'available'       => false,
+    ];
+    try {
+        $wfFailed = $conn->query(
+            "SELECT COUNT(*) FROM workflow_executions
+              WHERE status = 'failed' AND is_dry_run = 0
+                AND started_datetime >= UTC_TIMESTAMP() - INTERVAL 24 HOUR"
+        )->fetchColumn();
+        $wfAborted = $conn->query(
+            "SELECT COUNT(*) FROM workflow_executions
+              WHERE status = 'aborted' AND is_dry_run = 0
+                AND started_datetime >= UTC_TIMESTAMP() - INTERVAL 24 HOUR"
+        )->fetchColumn();
+
+        // Which workflows, and what they're actually saying — an error message is
+        // far more useful on the dashboard than a bare count.
+        $wfWorst = $conn->query(
+            "SELECT COALESCE(w.name, e.workflow_name, '(deleted workflow)') AS name,
+                    COUNT(*) AS failures,
+                    SUBSTRING_INDEX(GROUP_CONCAT(e.error_message ORDER BY e.id DESC SEPARATOR '||'), '||', 1) AS last_error
+               FROM workflow_executions e
+               LEFT JOIN workflows w ON w.id = e.workflow_id
+              WHERE e.status IN ('failed','aborted') AND e.is_dry_run = 0
+                AND e.started_datetime >= UTC_TIMESTAMP() - INTERVAL 24 HOUR
+              GROUP BY name
+              ORDER BY failures DESC
+              LIMIT 3"
+        )->fetchAll(PDO::FETCH_ASSOC);
+
+        // Dead-lettered webhooks belong here too: the workflow itself "succeeded"
+        // (it queued the send), so nothing else would ever surface the fact that
+        // the message never arrived.
+        $wfDead = 0;
+        try {
+            $wfDead = (int)$conn->query(
+                "SELECT COUNT(*) FROM webhook_deliveries
+                  WHERE status = 'dead'
+                    AND updated_datetime >= UTC_TIMESTAMP() - INTERVAL 24 HOUR"
+            )->fetchColumn();
+        } catch (Exception $ignore) { /* table may not exist yet */ }
+
+        $wf = [
+            'failed_24h'    => (int)$wfFailed,
+            'aborted_24h'   => (int)$wfAborted,
+            'dead_webhooks' => $wfDead,
+            'worst'         => array_map(fn($r) => [
+                'name'       => $r['name'],
+                'failures'   => (int)$r['failures'],
+                'last_error' => $r['last_error'],
+            ], $wfWorst),
+            'all_clear'     => ((int)$wfFailed + (int)$wfAborted + $wfDead) === 0,
+            'available'     => true,
+        ];
+    } catch (Exception $e) {
+        // workflow_executions missing (pre-Database-Verify) — show nothing rather
+        // than breaking the whole dashboard for every other module.
+        $wf['available'] = false;
+    }
+
     return [
         'morning_checks' => $morningChecks,
         'tickets'        => $tickets,
@@ -328,6 +401,7 @@ function getWatchtowerData($conn) {
         'contracts'      => $contracts,
         'knowledge'      => $knowledge,
         'assets'         => $assets,
-        'tasks'          => $tasksWt
+        'tasks'          => $tasksWt,
+        'workflows'      => $wf
     ];
 }

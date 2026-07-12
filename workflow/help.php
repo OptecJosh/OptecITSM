@@ -32,7 +32,7 @@ $translationNamespaces = ['common', 'workflow'];
     <title><?php echo htmlspecialchars(t('workflow.help.page_title')); ?></title>
     <link rel="stylesheet" href="../assets/css/theme.css?v=20">
     <link rel="stylesheet" href="../assets/css/inbox.css">
-    <link rel="stylesheet" href="../assets/css/workflow.css?v=8">
+    <link rel="stylesheet" href="../assets/css/workflow.css?v=9">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <?php echo Tz::scriptTag(); ?>
     <script src="../assets/js/tz.js?v=1"></script>
@@ -246,6 +246,9 @@ $translationNamespaces = ['common', 'workflow'];
             <h4><?php echo htmlspecialchars(t('workflow.help.testing_fire_heading')); ?></h4>
             <p><?php echo t('workflow.help.testing_fire'); ?></p>
             <p><?php echo t('workflow.help.testing_real'); ?></p>
+            <h4><?php echo htmlspecialchars(t('workflow.help.testing_log_heading')); ?></h4>
+            <p><?php echo t('workflow.help.testing_log_body'); ?></p>
+            <div class="callout"><?php echo t('workflow.help.testing_log_why'); ?></div>
 
             <h3 id="triggers"><?php echo htmlspecialchars(t('workflow.help.triggers_heading')); ?></h3>
             <p><?php echo t('workflow.help.triggers_intro'); ?></p>

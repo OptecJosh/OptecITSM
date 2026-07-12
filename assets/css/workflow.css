@@ -395,6 +395,36 @@ body { --accent: var(--wf-accent, #f59e0b); }
 /* =========================================================
    Starter-template gallery (workflow/index.php)
    ========================================================= */
+
+/* Category + search, sitting above the card grid. Mirrors the execution-log
+   filter bar (.wfx-filters) so the two read as the same control. */
+.wf-tpl-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+    padding-bottom: 14px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid var(--border, #e0e0e0);
+}
+.wf-tpl-filters label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted, #666);
+    margin-bottom: 4px;
+}
+.wf-tpl-filters .form-input {
+    min-width: 180px;
+}
+.wf-tpl-count {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--text-dim, #777);
+    padding-bottom: 8px;
+    white-space: nowrap;
+}
+
 .wf-tpl-card {
     display: flex;
     flex-direction: column;

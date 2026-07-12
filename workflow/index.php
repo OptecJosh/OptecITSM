@@ -30,7 +30,7 @@ $translationNamespaces = ['common', 'workflow'];
     <title><?php echo htmlspecialchars(t('workflow.list.page_title')); ?></title>
     <link rel="stylesheet" href="../assets/css/theme.css?v=20">
     <link rel="stylesheet" href="../assets/css/inbox.css">
-    <link rel="stylesheet" href="../assets/css/workflow.css?v=9">
+    <link rel="stylesheet" href="../assets/css/workflow.css?v=10">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <?php echo Tz::scriptTag(); ?>
     <script src="../assets/js/tz.js?v=1"></script>
@@ -77,6 +77,23 @@ $translationNamespaces = ['common', 'workflow'];
             <div class="modal-header"><?php echo htmlspecialchars(t('workflow.templates.title')); ?></div>
             <div class="modal-body">
                 <p style="margin: 0 0 16px; color: var(--text-muted, #666);"><?php echo htmlspecialchars(t('workflow.templates.intro')); ?></p>
+
+                <!-- Filters. The gallery is past the point where scanning it is
+                     pleasant, so let people narrow by module or just type. -->
+                <div class="wf-tpl-filters">
+                    <div>
+                        <label for="wfTplCat"><?php echo htmlspecialchars(t('workflow.templates.filter_cat')); ?></label>
+                        <select id="wfTplCat" class="form-input" onchange="WF.filterTemplates()">
+                            <option value=""><?php echo htmlspecialchars(t('workflow.templates.all_cats')); ?></option>
+                        </select>
+                    </div>
+                    <div style="flex: 1 1 220px;">
+                        <label for="wfTplSearch"><?php echo htmlspecialchars(t('workflow.templates.f_search')); ?></label>
+                        <input type="text" id="wfTplSearch" class="form-input" oninput="WF.filterTemplates()" placeholder="<?php echo htmlspecialchars(t('workflow.templates.search_ph')); ?>">
+                    </div>
+                    <div class="wf-tpl-count" id="wfTplCount"></div>
+                </div>
+
                 <div id="wfTplList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px;">
                     <div style="color: var(--text-faint, #999);"><?php echo htmlspecialchars(t('common.loading')); ?></div>
                 </div>
@@ -175,6 +192,10 @@ $translationNamespaces = ['common', 'workflow'];
             document.getElementById('wfTplModal').classList.remove('active');
         }
 
+        // The whole catalogue, held once. Filtering is client-side: it's a few
+        // dozen recipes, so a round-trip per keystroke would buy nothing.
+        let allTemplates = [];
+
         async function loadTemplates() {
             const host = document.getElementById('wfTplList');
             try {
@@ -185,21 +206,58 @@ $translationNamespaces = ['common', 'workflow'];
                     return;
                 }
                 templatesLoaded = true;
-                host.innerHTML = d.templates.map(t => `
-                    <div class="wf-tpl-card">
-                        <div class="wf-tpl-cat">${esc(t.category)}</div>
-                        <div class="wf-tpl-name">${esc(t.name)}</div>
-                        <div class="wf-tpl-desc">${esc(t.description)}</div>
-                        <div class="wf-tpl-meta">
-                            <div><strong>${esc(window.t('workflow.templates.when'))}</strong> ${esc(t.trigger_label)}</div>
-                            <div><strong>${esc(window.t('workflow.templates.then'))}</strong> ${t.steps.map(esc).join(', ')}</div>
-                        </div>
-                        <button class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="WF.useTemplate('${esc(t.key)}', this)">${esc(window.t('workflow.templates.use'))}</button>
-                    </div>
-                `).join('');
+                allTemplates = d.templates || [];
+
+                // Categories come from the registry, not a hardcoded list — a new
+                // recipe in a new category appears in the dropdown on its own.
+                const sel  = document.getElementById('wfTplCat');
+                const cats = [...new Set(allTemplates.map(t => t.category))].sort((a, b) => a.localeCompare(b));
+                sel.insertAdjacentHTML('beforeend', cats.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join(''));
+
+                renderTemplates(allTemplates);
             } catch (e) {
                 host.innerHTML = '<div style="color: var(--danger-text, #c33);">' + esc(e.message || 'Network error') + '</div>';
             }
+        }
+
+        // Search covers everything a person might reach for: the name, the
+        // description, the category, the trigger and the action labels — so
+        // "expiry", "slack" and "warranty" all find something.
+        function templateHaystack(t) {
+            return [t.name, t.description, t.category, t.trigger_label, t.trigger_event, (t.steps || []).join(' ')]
+                .join(' ').toLowerCase();
+        }
+
+        function filterTemplates() {
+            const cat = document.getElementById('wfTplCat').value;
+            const q   = document.getElementById('wfTplSearch').value.trim().toLowerCase();
+            renderTemplates(allTemplates.filter(t =>
+                (!cat || t.category === cat) && (!q || templateHaystack(t).includes(q))
+            ));
+        }
+
+        function renderTemplates(list) {
+            const host  = document.getElementById('wfTplList');
+            const count = document.getElementById('wfTplCount');
+            count.textContent = window.t('workflow.templates.showing', { n: list.length, total: allTemplates.length });
+
+            if (!list.length) {
+                host.innerHTML = '<div style="grid-column: 1 / -1; color: var(--text-faint, #999);">'
+                    + esc(window.t('workflow.templates.no_match')) + '</div>';
+                return;
+            }
+            host.innerHTML = list.map(t => `
+                <div class="wf-tpl-card">
+                    <div class="wf-tpl-cat">${esc(t.category)}</div>
+                    <div class="wf-tpl-name">${esc(t.name)}</div>
+                    <div class="wf-tpl-desc">${esc(t.description)}</div>
+                    <div class="wf-tpl-meta">
+                        <div><strong>${esc(window.t('workflow.templates.when'))}</strong> ${esc(t.trigger_label)}</div>
+                        <div><strong>${esc(window.t('workflow.templates.then'))}</strong> ${t.steps.map(esc).join(', ')}</div>
+                    </div>
+                    <button class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="WF.useTemplate('${esc(t.key)}', this)">${esc(window.t('workflow.templates.use'))}</button>
+                </div>
+            `).join('');
         }
 
         async function useTemplate(key, btn) {
@@ -230,7 +288,7 @@ $translationNamespaces = ['common', 'workflow'];
         }
 
         document.addEventListener('DOMContentLoaded', load);
-        window.WF = { del, openTemplates, closeTemplates, useTemplate };
+        window.WF = { del, openTemplates, closeTemplates, useTemplate, filterTemplates };
     })();
     </script>
 </body>

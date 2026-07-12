@@ -111,7 +111,7 @@ class WorkflowTemplates
                         'args' => [
                             'preset'  => 'slack',
                             'url'     => ['$configure' => 'Your Slack incoming-webhook URL'],
-                            'message' => ':rotating_light: *P1 raised* — {{ticket.subject}} (ticket {{ticket.id}}). Requester: {{ticket.requester_email}}',
+                            'message' => ':rotating_light: *{{ticket.priority_name}} raised* — {{ticket.subject}} (ticket {{ticket.id}}). Requester: {{ticket.requester_email}}',
                         ],
                     ],
                     [
@@ -142,7 +142,7 @@ class WorkflowTemplates
                         'args' => [
                             'preset'  => 'slack',
                             'url'     => ['$configure' => 'Your Slack incoming-webhook URL'],
-                            'message' => ':arrow_up: *Escalated to P1* — {{ticket.subject}} (ticket {{ticket.id}})',
+                            'message' => ':arrow_up: *Escalated to {{ticket.priority_name}}* — {{ticket.subject}} (ticket {{ticket.id}})',
                         ],
                     ],
                     [

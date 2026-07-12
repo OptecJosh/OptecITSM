@@ -52,25 +52,26 @@ $scheme  = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' 
 $appBase = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . BASE_URL;
 $conn = connectToDatabase();
 
+// The sample MUST mirror the real dispatch payload, key for key. It previously
+// invented fields (ticket.priority, ticket.status, ticket.company, ticket.url)
+// that no real ticket event carries — so a test would render "High", you'd ship
+// it, and in production the same code would render an empty string. A preview
+// that shows values production won't produce is worse than no preview.
+// The canonical shape is WorkflowEngine::availableFields('ticket.created').
 $sample = [
     'event'  => (string)($in['trigger_event'] ?? 'ticket.updated'),
     'ticket' => [
-        'id'              => 1024,
-        'subject'         => 'Sample ticket — webhook test',
-        'description'     => 'This is a sample payload sent by the Send test button in the workflow editor.',
-        'status'          => 'Open',
-        'status_id'       => 1,
-        'priority'        => 'High',
-        'priority_id'     => 1,
-        'type'            => 'Incident',
-        'origin'          => 'Email',
-        'company'         => 'Example Company Ltd',
-        'company_id'      => 1,
-        'requester'       => 'Jane Requester',
-        'requester_email' => 'jane@example.com',
-        'assignee'        => 'Alex Analyst',
-        'assignee_id'     => 2,
-        'url'             => $appBase . 'tickets/?ticket=1024',
+        'id'                  => 1024,
+        'subject'             => 'Sample ticket — webhook test',
+        'priority_id'         => 1,
+        'status_id'           => 1,
+        'department_id'       => null,
+        'type_id'             => null,
+        'assigned_analyst_id' => null,
+        'owner_id'            => null,
+        'origin_id'           => null,
+        'created_by'          => null,
+        'requester_email'     => 'jane@example.com',
     ],
 ];
 
@@ -82,25 +83,30 @@ try {
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($row) {
             $ser = apiSerializeTicket($row);
+            // Same keys a real ticket.* dispatch carries — nothing invented.
+            // `full` is genuine: it's what {{ticket.full}} resolves to at run time.
             $sample['ticket'] = [
-                'id'              => $ser['id'],
-                'subject'         => $ser['subject'],
-                'status'          => $ser['status']['name']   ?? null,
-                'status_id'       => $ser['status']['id']     ?? null,
-                'priority'        => $ser['priority']['name'] ?? null,
-                'priority_id'     => $ser['priority']['id']   ?? null,
-                'type'            => $ser['ticket_type']['name'] ?? null,
-                'origin'          => $ser['origin']['name']   ?? null,
-                'company'         => $ser['company']['name']  ?? null,
-                'requester'       => $ser['requester']['name']  ?? null,
-                'requester_email' => $ser['requester']['email'] ?? null,
-                'assignee'        => $ser['assigned_analyst']['name'] ?? null,
-                'url'             => $appBase . 'tickets/?ticket=' . $ser['id'],
-                'full'            => $ser,
+                'id'                  => $ser['id'],
+                'subject'             => $ser['subject'],
+                'priority_id'         => $ser['priority']['id']         ?? null,
+                'status_id'           => $ser['status']['id']           ?? null,
+                'department_id'       => $ser['department']['id']       ?? null,
+                'type_id'             => $ser['ticket_type']['id']      ?? null,
+                'assigned_analyst_id' => $ser['assigned_analyst']['id'] ?? null,
+                'owner_id'            => $ser['owner']['id']            ?? null,
+                'origin_id'           => $ser['origin']['id']           ?? null,
+                'created_by'          => null,
+                'requester_email'     => $ser['requester']['email']     ?? null,
+                'full'                => $ser,
             ];
         }
     }
 } catch (Throwable $e) { /* keep the synthetic sample */ }
+
+// Resolve the readable `_name` twins exactly as the engine does at run time, so
+// {{ticket.priority_name}} previews as "Critical" here and renders "Critical"
+// in production. This is the whole point of the sample mirroring the real shape.
+$sample = WorkflowEngine::enrichWithLookupNames($conn, $sample);
 
 // 1) Build the request the same way a real send would (validates url, renders
 //    templates, builds the preset/custom body, signs if a secret is set).

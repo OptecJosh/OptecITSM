@@ -294,6 +294,91 @@ class WorkflowEngine
     ];
 
     /**
+     * The `_name` merge code that pairs with a lookup id field.
+     *
+     *   ticket.priority_id        → ticket.priority_name
+     *   ticket.created_by         → ticket.created_by_name   (no _id to strip)
+     *   approver.id               → approver.name
+     *
+     * Returns null if there's nothing sensible to derive.
+     */
+    private static function lookupNamePath(string $idPath): ?string
+    {
+        if (str_ends_with($idPath, '_id'))  return substr($idPath, 0, -3) . '_name';
+        if (str_ends_with($idPath, '.id'))  return substr($idPath, 0, -3) . '.name';
+        if ($idPath === '')                 return null;
+        return $idPath . '_name';   // e.g. created_by → created_by_name
+    }
+
+    /**
+     * Resolve one lookup id to its human label (cached per request — a ticket
+     * payload touches ~6 of these and the same status/priority recurs across a
+     * fan-out, so the cache earns its keep).
+     */
+    private static function lookupLabel(PDO $conn, array $spec, int $id): ?string
+    {
+        static $cache = [];
+        $key = $spec['table'] . ':' . $id;
+        if (array_key_exists($key, $cache)) return $cache[$key];
+        try {
+            $stmt = $conn->prepare(sprintf(
+                'SELECT %s AS label FROM `%s` WHERE id = ? LIMIT 1',
+                $spec['label_col'], $spec['table']
+            ));
+            $stmt->execute([$id]);
+            $v = $stmt->fetchColumn();
+            $cache[$key] = ($v === false || $v === null) ? null : (string)$v;
+        } catch (Exception $e) {
+            $cache[$key] = null;   // a missing lookup table must never break a run
+        }
+        return $cache[$key];
+    }
+
+    /**
+     * Add a human-readable `_name` beside every lookup id the payload carries.
+     *
+     * WHY: `{{ticket.priority_id}}` renders as `4`. In a Slack message that is
+     * useless — nobody reading the channel knows what priority 4 is. This makes
+     * `{{ticket.priority_name}}` ("Critical") available everywhere a merge code
+     * can be used, resolved from the same FIELD_LOOKUP_TABLES registry that
+     * powers the condition dropdowns, so a new lookup field gets its name code
+     * for free.
+     *
+     * NEVER CLOBBERS an existing value: `form.submitted` already ships a real
+     * `form.name` in its payload, and the host module's value wins over anything
+     * we'd derive from `form.id`.
+     */
+    public static function enrichWithLookupNames(PDO $conn, array $payload): array
+    {
+        foreach (self::FIELD_LOOKUP_TABLES as $idPath => $spec) {
+            $id = self::dotGet($payload, $idPath);
+            if ($id === null || $id === '' || !is_numeric($id)) continue;
+
+            $namePath = self::lookupNamePath($idPath);
+            if ($namePath === null) continue;
+            if (self::dotGet($payload, $namePath) !== null) continue;   // host module's value wins
+
+            $label = self::lookupLabel($conn, $spec, (int)$id);
+            if ($label === null) continue;
+
+            self::dotSet($payload, $namePath, $label);
+        }
+        return $payload;
+    }
+
+    /** Dotted-path setter — the write twin of dotGet(). */
+    private static function dotSet(array &$haystack, string $path, $value): void
+    {
+        $parts = explode('.', $path);
+        $ref = &$haystack;
+        foreach ($parts as $i => $p) {
+            if ($i === count($parts) - 1) { $ref[$p] = $value; return; }
+            if (!isset($ref[$p]) || !is_array($ref[$p])) $ref[$p] = [];
+            $ref = &$ref[$p];
+        }
+    }
+
+    /**
      * The merge codes (`{{variables}}`) a workflow on `$trigger` can actually
      * resolve — the catalogue behind the editor's variable picker.
      *
@@ -320,7 +405,30 @@ class WorkflowEngine
 
         $fields = self::availableFields($trigger);
         foreach ($fields as $path) {
-            $vars[] = ['path' => $path, 'label' => self::humaniseFieldPath($path), 'note' => ''];
+            $human    = self::humaniseFieldPath($path);
+            $hasTwin  = isset(self::FIELD_LOOKUP_TABLES[$path]);
+            $namePath = $hasTwin ? self::lookupNamePath($path) : null;
+            // form.submitted already ships a real form.name — don't offer it twice.
+            if ($namePath !== null && in_array($namePath, $fields, true)) $namePath = null;
+
+            // Every lookup id gets a human-readable twin. {{ticket.priority_id}}
+            // renders "4"; {{ticket.priority_name}} renders "Critical" — which is
+            // the one you actually want in a message a person will read.
+            //
+            // So the NAME gets the plain label ("Ticket · Priority") and the id is
+            // marked as such. Labelling them the other way round hands the natural-
+            // sounding name to the field that renders a meaningless number.
+            $vars[] = [
+                'path'  => $path,
+                'label' => $namePath !== null ? $human . ' (id)' : $human,
+                'note'  => $namePath !== null ? 'The numeric id — usually you want the name instead.' : '',
+            ];
+            if ($namePath === null) continue;
+            $vars[] = [
+                'path'  => $namePath,
+                'label' => $human,
+                'note'  => 'The readable name, e.g. "Critical" rather than "4".',
+            ];
         }
 
         // Whole-record codes, but only for objects this trigger actually carries
@@ -420,6 +528,11 @@ class WorkflowEngine
         'ticket.type_id'             => ['table' => 'ticket_types',      'label_col' => 'name',      'where' => 'is_active = 1', 'order' => 'name'],
         'ticket.assigned_analyst_id' => ['table' => 'analysts',          'label_col' => 'full_name', 'where' => 'is_active = 1', 'order' => 'full_name'],
         'ticket.created_by'          => ['table' => 'analysts',          'label_col' => 'full_name', 'where' => 'is_active = 1', 'order' => 'full_name'],
+        // Registry gaps closed alongside the _name merge codes: owner and origin
+        // were the only ticket lookup fields with no entry here, so they had no
+        // condition dropdown (free-text id box) AND no readable name twin.
+        'ticket.owner_id'            => ['table' => 'analysts',          'label_col' => 'full_name', 'where' => 'is_active = 1', 'order' => 'full_name'],
+        'ticket.origin_id'           => ['table' => 'ticket_origins',    'label_col' => 'name',      'where' => 'is_active = 1', 'order' => 'display_order, name'],
         'old_status_id'              => ['table' => 'ticket_statuses',   'label_col' => 'name',      'order' => 'display_order, name'],
         'new_status_id'              => ['table' => 'ticket_statuses',   'label_col' => 'name',      'order' => 'display_order, name'],
         'old_priority_id'            => ['table' => 'ticket_priorities', 'label_col' => 'name',      'order' => 'display_order, name'],
@@ -860,6 +973,12 @@ class WorkflowEngine
         if (!array_key_exists('event', $payload)) {
             $payload['event'] = $event;
         }
+
+        // Add a readable `_name` beside every lookup id the payload carries, so
+        // {{ticket.priority_name}} → "Critical" rather than {{ticket.priority_id}}
+        // → "4". Done here, once, before conditions and actions — so the step log,
+        // the dry-run preview and every action see the same enriched payload.
+        $payload = self::enrichWithLookupNames($conn, $payload);
 
         // Insert a "running" execution row so we have an id to update. The
         // workflow name is snapshotted so the run stays attributable after

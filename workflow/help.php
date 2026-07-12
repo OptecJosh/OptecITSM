@@ -214,6 +214,7 @@ $translationNamespaces = ['common', 'workflow'];
             <h3 id="variables"><?php echo t('workflow.help.variables_heading'); ?></h3>
             <p><?php echo t('workflow.help.variables_intro'); ?></p>
             <div class="callout"><?php echo t('workflow.help.variables_scoped'); ?></div>
+            <div class="tip"><?php echo t('workflow.help.variables_names'); ?></div>
             <p><?php echo t('workflow.help.variables_full'); ?></p>
             <p><?php echo htmlspecialchars(t('workflow.help.variables_common')); ?></p>
             <ul>

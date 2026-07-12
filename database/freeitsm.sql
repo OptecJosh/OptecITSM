@@ -176,6 +176,61 @@ CREATE TABLE IF NOT EXISTS `team_modules` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------
+-- RBAC (Layer 2): per-module SETTINGS permissions.
+-- Module access (above) decides which modules you can ENTER. These tables decide
+-- whether you can also ADMINISTER a module's settings once in. Deny by default;
+-- System administrators (analysts.is_admin) bypass the whole layer. Capability
+-- keys are '<module>.<action>' and validated against the code registry in
+-- includes/rbac.php — the DB never holds a capability the code doesn't know.
+-- See docs/design/rbac.md.
+-- ----------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS `rbac_roles` (
+    `id`                INT NOT NULL AUTO_INCREMENT,
+    `name`              VARCHAR(100) NOT NULL,
+    `description`       VARCHAR(500) NULL,
+    `is_active`         TINYINT(1) NOT NULL DEFAULT 1,
+    `created_by_id`     INT NULL,
+    `created_datetime`  DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_datetime`  DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- The capabilities a role grants. capability_key is '<module>.<action>'.
+CREATE TABLE IF NOT EXISTS `rbac_role_capabilities` (
+    `id`                INT NOT NULL AUTO_INCREMENT,
+    `role_id`           INT NOT NULL,
+    `capability_key`    VARCHAR(100) NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_rrc_role_capability` (`role_id`, `capability_key`),
+    CONSTRAINT `fk_rrc_role` FOREIGN KEY (`role_id`) REFERENCES `rbac_roles` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Roles assigned to an analyst.
+CREATE TABLE IF NOT EXISTS `rbac_analyst_roles` (
+    `id`                INT NOT NULL AUTO_INCREMENT,
+    `analyst_id`        INT NOT NULL,
+    `role_id`           INT NOT NULL,
+    `created_datetime`  DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_rar_analyst_role` (`analyst_id`, `role_id`),
+    CONSTRAINT `fk_rar_analyst` FOREIGN KEY (`analyst_id`) REFERENCES `analysts` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_rar_role` FOREIGN KEY (`role_id`) REFERENCES `rbac_roles` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Roles assigned to a team — every member inherits (mirrors team_modules).
+CREATE TABLE IF NOT EXISTS `rbac_team_roles` (
+    `id`                INT NOT NULL AUTO_INCREMENT,
+    `team_id`           INT NOT NULL,
+    `role_id`           INT NOT NULL,
+    `created_datetime`  DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_rtr_team_role` (`team_id`, `role_id`),
+    CONSTRAINT `fk_rtr_team` FOREIGN KEY (`team_id`) REFERENCES `teams` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_rtr_role` FOREIGN KEY (`role_id`) REFERENCES `rbac_roles` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------
 -- Tickets
 -- ----------------------------------------------------------
 

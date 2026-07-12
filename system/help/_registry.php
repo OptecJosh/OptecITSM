@@ -73,6 +73,19 @@ function getHelpTopics() {
             'terms' => 'group squad service desk membership queue visibility'
                      . " can't see tickets cannot see tickets no tickets empty queue missing departments",
         ],
+        'roles' => [
+            'hero' => 'Roles',
+            'sub'  => 'Let someone who is not a System administrator manage a specific module\'s settings — a training lead who runs the LMS, say — without handing them the whole System module. A role grants settings capabilities; you assign it to analysts or whole teams.',
+            'sections' => [
+                ['id' => 'overview',      'label' => 'What roles are for'],
+                ['id' => 'two-layers',    'label' => 'Access vs administration'],
+                ['id' => 'creating',      'label' => 'Creating a role'],
+                ['id' => 'assigning',     'label' => 'Assigning it'],
+                ['id' => 'admins',        'label' => 'Administrators'],
+                ['id' => 'notes',         'label' => 'Good to know'],
+            ],
+            'terms' => 'rbac role based access control permissions capabilities delegate grant manage settings lms manager who can change settings deny by default privilege',
+        ],
         'modules' => [
             'hero' => 'Modules',
             'sub'  => 'Control which modules each analyst can open, by ticking the ones they need in a per-analyst access matrix.',

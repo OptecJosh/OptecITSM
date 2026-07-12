@@ -134,6 +134,39 @@ $schema = [
         'module_key'  => 'VARCHAR(50) NOT NULL',
     ],
 
+    // RBAC Layer 2 — per-module settings permissions (see docs/design/rbac.md).
+    // Deny by default; is_admin bypasses. Capability keys validated against the
+    // code registry in includes/rbac.php. Unique keys + FKs added below.
+    'rbac_roles' => [
+        'id'                => 'INT NOT NULL AUTO_INCREMENT',
+        'name'              => 'VARCHAR(100) NOT NULL',
+        'description'       => 'VARCHAR(500) NULL',
+        'is_active'         => 'TINYINT(1) NOT NULL DEFAULT 1',
+        'created_by_id'     => 'INT NULL',
+        'created_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+        'updated_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
+    'rbac_role_capabilities' => [
+        'id'                => 'INT NOT NULL AUTO_INCREMENT',
+        'role_id'           => 'INT NOT NULL',
+        'capability_key'    => 'VARCHAR(100) NOT NULL',
+    ],
+
+    'rbac_analyst_roles' => [
+        'id'                => 'INT NOT NULL AUTO_INCREMENT',
+        'analyst_id'        => 'INT NOT NULL',
+        'role_id'           => 'INT NOT NULL',
+        'created_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
+    'rbac_team_roles' => [
+        'id'                => 'INT NOT NULL AUTO_INCREMENT',
+        'team_id'           => 'INT NOT NULL',
+        'role_id'           => 'INT NOT NULL',
+        'created_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
     'user_preferences' => [
         'id'                => 'INT NOT NULL AUTO_INCREMENT',
         'analyst_id'        => 'INT NOT NULL',
@@ -2799,6 +2832,30 @@ try {
         }
     }
 
+    // RBAC Layer 2. Cascades keep the join tables clean: deleting a role, an
+    // analyst or a team removes the assignments that pointed at it.
+    if ($tableExists('rbac_role_capabilities') && $tableExists('rbac_roles')) {
+        if (!$fkExists('rbac_role_capabilities', 'fk_rrc_role')) {
+            try { $conn->exec("ALTER TABLE rbac_role_capabilities ADD CONSTRAINT fk_rrc_role FOREIGN KEY (role_id) REFERENCES rbac_roles (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+    }
+    if ($tableExists('rbac_analyst_roles') && $tableExists('rbac_roles') && $tableExists('analysts')) {
+        if (!$fkExists('rbac_analyst_roles', 'fk_rar_analyst')) {
+            try { $conn->exec("ALTER TABLE rbac_analyst_roles ADD CONSTRAINT fk_rar_analyst FOREIGN KEY (analyst_id) REFERENCES analysts (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('rbac_analyst_roles', 'fk_rar_role')) {
+            try { $conn->exec("ALTER TABLE rbac_analyst_roles ADD CONSTRAINT fk_rar_role FOREIGN KEY (role_id) REFERENCES rbac_roles (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+    }
+    if ($tableExists('rbac_team_roles') && $tableExists('rbac_roles') && $tableExists('teams')) {
+        if (!$fkExists('rbac_team_roles', 'fk_rtr_team')) {
+            try { $conn->exec("ALTER TABLE rbac_team_roles ADD CONSTRAINT fk_rtr_team FOREIGN KEY (team_id) REFERENCES teams (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('rbac_team_roles', 'fk_rtr_role')) {
+            try { $conn->exec("ALTER TABLE rbac_team_roles ADD CONSTRAINT fk_rtr_role FOREIGN KEY (role_id) REFERENCES rbac_roles (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+    }
+
     if ($tableExists('tenant_domains') && $tableExists('tenants')) {
         if (!$idxExists('tenant_domains', 'uq_tenant_domains_domain')) {
             try { $conn->exec("ALTER TABLE tenant_domains ADD UNIQUE KEY uq_tenant_domains_domain (domain)"); } catch (Exception $e) {}
@@ -4431,6 +4488,9 @@ try {
         ['workflow_scheduled_emissions', 'uq_wse_once', '(`trigger_event`, `entity_key`, `fingerprint`)'],
         ['lms_cmi_data', 'uq_lcd_progress_element', '(`progress_id`, `element`)'],
         ['lms_progress', 'uq_lp_analyst_course', '(`analyst_id`, `course_id`)'],
+        ['rbac_role_capabilities', 'uq_rrc_role_capability', '(`role_id`, `capability_key`)'],
+        ['rbac_analyst_roles', 'uq_rar_analyst_role', '(`analyst_id`, `role_id`)'],
+        ['rbac_team_roles', 'uq_rtr_team_role', '(`team_id`, `role_id`)'],
         ['lms_learning_group_members', 'uq_lgm_group_analyst', '(`group_id`, `analyst_id`)'],
         ['lms_course_assignments', 'uq_lca_course_group', '(`course_id`, `group_id`)'],
         ['intune_devices', 'uq_intune_devices_intune_id', '(`intune_id`)'],

@@ -91,7 +91,7 @@ foreach ($actionDefs as $actionKey => $def) {
     <title><?php echo htmlspecialchars($id ? t('workflow.editor.edit_title') : t('workflow.editor.new_title')); ?></title>
     <link rel="stylesheet" href="../assets/css/theme.css?v=20">
     <link rel="stylesheet" href="../assets/css/inbox.css">
-    <link rel="stylesheet" href="../assets/css/workflow.css?v=7">
+    <link rel="stylesheet" href="../assets/css/workflow.css?v=8">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <?php echo Tz::scriptTag(); ?>
     <script src="../assets/js/tz.js?v=1"></script>
@@ -358,6 +358,11 @@ foreach ($actionDefs as $actionKey => $def) {
         // (status, priority, analyst, department, etc.). Mirrors
         // WF_LOOKUP_VALUES but keyed by lookup name rather than field path.
         window.WF_ACTION_LOOKUPS = <?php echo json_encode($actionLookupValues); ?>;
+        // Webhook message formats — each carries a url_pattern (so we can warn when
+        // the URL doesn't look like it belongs to the chosen platform: pasting a
+        // Discord URL with the format on Slack is a 400 waiting to happen) and a
+        // markdown_hint (Discord's **bold** vs Slack's *bold*), shown where you type.
+        window.WF_FORMATS = <?php echo json_encode(WorkflowEngine::webhookFormats()); ?>;
         window.WF_ID             = <?php echo (int)$id; ?>;
         window.WF_API            = '../api/workflow/';
         // Full trigger catalogue {event: label} — drives the searchable picker.
@@ -384,6 +389,6 @@ foreach ($actionDefs as $actionKey => $def) {
             });
         };
     </script>
-    <script src="../assets/js/workflow-editor.js?v=15"></script>
+    <script src="../assets/js/workflow-editor.js?v=16"></script>
 </body>
 </html>

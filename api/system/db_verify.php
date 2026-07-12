@@ -1522,6 +1522,20 @@ $schema = [
         'delivered_datetime' => 'DATETIME NULL',
     ],
 
+    'webhook_message_formats' => [
+        'id'               => 'INT NOT NULL AUTO_INCREMENT',
+        'format_key'       => 'VARCHAR(40) NOT NULL',
+        'label'            => 'VARCHAR(100) NOT NULL',
+        'body_template'    => 'TEXT NOT NULL',
+        'url_pattern'      => 'VARCHAR(255) NULL',
+        'markdown_hint'    => 'VARCHAR(255) NULL',
+        'is_builtin'       => 'TINYINT(1) NOT NULL DEFAULT 0',
+        'is_active'        => 'TINYINT(1) NOT NULL DEFAULT 1',
+        'display_order'    => 'INT NOT NULL DEFAULT 0',
+        'created_datetime' => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+        'updated_datetime' => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+    ],
+
     'workflow_executions' => [
         'id'                => 'INT NOT NULL AUTO_INCREMENT',
         'workflow_id'       => 'INT NULL',
@@ -3798,6 +3812,32 @@ try {
             }
         } catch (Exception $e) { /* shrug */ }
     }
+    // Seed the built-in webhook message formats (Slack / Teams / Discord).
+    // INSERT IGNORE on the unique format_key, so this is idempotent and never
+    // clobbers an install's own rows. The engine carries the same three as a
+    // hardcoded fallback, so webhooks work even before this runs.
+    if ($tableExists('webhook_message_formats')) {
+        try {
+            require_once dirname(__DIR__, 2) . '/workflow/includes/engine.php';
+            $ins = $conn->prepare(
+                "INSERT IGNORE INTO webhook_message_formats
+                 (format_key, label, body_template, url_pattern, markdown_hint, is_builtin, display_order)
+                 VALUES (?, ?, ?, ?, ?, 1, ?)"
+            );
+            $order = 10;
+            $seeded = 0;
+            foreach (WorkflowEngine::BUILTIN_WEBHOOK_FORMATS as $key => $f) {
+                $ins->execute([$key, $f['label'], $f['body_template'], $f['url_pattern'], $f['markdown_hint'], $order]);
+                $seeded += $ins->rowCount();
+                $order += 10;
+            }
+            if ($seeded > 0) {
+                $results[] = ['table' => 'webhook_message_formats', 'status' => 'seeded',
+                              'details' => ["Inserted $seeded built-in webhook message format(s)"]];
+            }
+        } catch (Exception $e) { /* shrug — engine falls back to its built-ins */ }
+    }
+
     // url was VARCHAR(1000). It is now ENCRYPTED at rest, and AES-256-GCM +
     // base64 inflates a string by ~1/3 + 28 bytes — so a max-length 1000-char
     // URL becomes ~1377 chars. At VARCHAR(1000) MySQL would silently TRUNCATE
@@ -4315,6 +4355,7 @@ try {
 
     // Ensure unique indexes exist on LMS tables (db_verify only creates columns, not indexes)
     $uniqueIndexes = [
+        ['webhook_message_formats', 'uq_wmf_key', '(`format_key`)'],
         ['lms_cmi_data', 'uq_lcd_progress_element', '(`progress_id`, `element`)'],
         ['lms_progress', 'uq_lp_analyst_course', '(`analyst_id`, `course_id`)'],
         ['lms_learning_group_members', 'uq_lgm_group_analyst', '(`group_id`, `analyst_id`)'],

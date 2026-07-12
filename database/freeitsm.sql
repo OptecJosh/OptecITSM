@@ -2889,6 +2889,34 @@ CREATE TABLE IF NOT EXISTS `workflow_executions` (
 -- dead endpoint never blocks the host request. The signing secret is NOT
 -- stored — the signature header is computed at enqueue time and kept in
 -- request_headers, so retries reuse it without persisting the secret.
+-- Webhook message formats. A chat "preset" is just a JSON body template with a
+-- {{message}} slot — Slack is {"text": "{{message}}"}, Discord is
+-- {"content": "{{message}}"} — so they live as DATA rather than a PHP switch,
+-- and an admin can add Google Chat / Mattermost / Rocket.Chat with no code change.
+-- Built-ins are seeded and LOCKED (is_builtin = 1); users add their own.
+-- NB `custom` and `full` are NOT rows here: they aren't message-wrapping formats,
+-- they're structurally different, and they stay in the engine.
+CREATE TABLE IF NOT EXISTS `webhook_message_formats` (
+    `id`             INT NOT NULL AUTO_INCREMENT,
+    `format_key`     VARCHAR(40) NOT NULL,           -- stored in the workflow's action args
+    `label`          VARCHAR(100) NOT NULL,          -- shown in the Format dropdown
+    `body_template`  TEXT NOT NULL,                  -- JSON, with {{message}} (and any payload vars)
+    `url_pattern`    VARCHAR(255) NULL,              -- regex fragment; warns on a mismatched webhook URL
+    `markdown_hint`  VARCHAR(255) NULL,              -- e.g. Discord's **bold** vs Slack's *bold*
+    `is_builtin`     TINYINT(1) NOT NULL DEFAULT 0,  -- 1 = shipped, not editable/deletable
+    `is_active`      TINYINT(1) NOT NULL DEFAULT 1,
+    `display_order`  INT NOT NULL DEFAULT 0,
+    `created_datetime` DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_datetime` DATETIME NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_wmf_key` (`format_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO `webhook_message_formats` (`format_key`, `label`, `body_template`, `url_pattern`, `markdown_hint`, `is_builtin`, `display_order`) VALUES
+    ('slack',   'Slack',            '{"text": "{{message}}"}',    'hooks\\.slack\\.com',                                        'Slack mrkdwn: *bold*, _italic_, `code`. Links are <https://example.com|like this>.', 1, 10),
+    ('teams',   'Microsoft Teams',  '{"@type": "MessageCard", "@context": "https://schema.org/extensions", "summary": "{{message}}", "text": "{{message}}"}', 'webhook\\.office\\.com|office\\.com/webhookb2|logic\\.azure\\.com', 'Teams MessageCard: **bold**, *italic*, [link](https://example.com).', 1, 20),
+    ('discord', 'Discord',          '{"content": "{{message}}"}', 'discord(app)?\\.com/api/webhooks',                           'Discord markdown: **bold** (two asterisks — a single *asterisk* is italic). Emoji shortcodes like :rotating_light: work.', 1, 30);
+
 CREATE TABLE IF NOT EXISTS `webhook_deliveries` (
     `id`                 INT NOT NULL AUTO_INCREMENT,
     `workflow_id`        INT NULL,                       -- source workflow (SET NULL if deleted)

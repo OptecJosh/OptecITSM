@@ -18,7 +18,36 @@ return [
     ],
 
     'settings_tabs' => [
-        'ai' => 'AI',
+        'ai'      => 'AI',
+        'formats' => 'Message formats',
+    ],
+
+    'formats' => [
+        'title'         => 'Webhook message formats',
+        'intro'         => 'A chat format is nothing more than a <strong>JSON body template with a <code>{{message}}</code> slot</strong> — Slack is <code>{"text": "{{message}}"}</code>, Discord is <code>{"content": "{{message}}"}</code>. So they live here as data rather than in code, and you can add any platform that accepts an incoming webhook — Google Chat, Mattermost, Rocket.Chat, Zulip, ntfy — without waiting for a release.',
+        'reserved_note' => '<strong>Custom (raw JSON)</strong> and <strong>Full record</strong> aren\'t listed here. They don\'t wrap a message &mdash; one sends the exact JSON you write, the other sends the whole record &mdash; so they stay part of the engine rather than pretending to be formats.',
+        'col_name'      => 'Name',
+        'col_key'       => 'Key',
+        'col_template'  => 'Body template',
+        'col_status'    => 'Status',
+        'builtin'       => 'Built-in',
+        'copy'          => 'Copy',
+        'add_title'     => 'New message format',
+        'edit_title'    => 'Edit message format',
+        'f_label'       => 'Name',
+        'f_key'         => 'Key',
+        'f_key_hint'    => 'Lowercase letters, numbers, hyphens and underscores. Stored inside every workflow that uses this format, so avoid changing it later.',
+        'f_template'    => 'JSON body template',
+        'f_template_hint' => 'The exact JSON this platform expects, with <code>{{message}}</code> where your workflow\'s message should go. You can use any merge code here too (e.g. <code>{{ticket.number}}</code>). Quotes and newlines in the message are escaped for you &mdash; you never need to worry about breaking the JSON.',
+        'f_url_pattern' => 'URL pattern (optional)',
+        'f_url_pattern_hint' => 'A regular expression matching this platform\'s webhook URLs, e.g. chat\\.googleapis\\.com. If the URL on a workflow doesn\'t match, the editor warns you — which catches the classic "pasted a Discord URL but left the format on Slack".',
+        'f_hint'        => 'Formatting hint (optional)',
+        'f_hint_hint'   => 'One line about this platform\'s markdown, shown under the Message box. Worth filling in: Discord treats *one asterisk* as italic where Slack treats it as bold, and that difference costs people real time.',
+        'saved'         => 'Message format saved.',
+        'deleted'       => 'Message format deleted.',
+        'delete_confirm'=> 'Delete this message format?',
+        'mismatch'      => 'This URL doesn\'t look like a %f webhook URL. Check you picked the right format — the endpoint will reject a payload in the wrong shape.',
+        'mismatch_known'=> 'This looks like a %u webhook URL, but the format is set to %f. The endpoint will reject it — switch the format to %u.',
     ],
 
     'ai_settings' => [

@@ -293,6 +293,123 @@ class WorkflowEngine
         'contract', 'supplier', 'calendar_event', 'software_licence', 'incident',
     ];
 
+    // -----------------------------------------------------------------
+    //  Webhook message formats
+    //
+    //  A chat "preset" is nothing but a JSON body template with a
+    //  {{message}} slot:
+    //
+    //      Slack   → {"text": "{{message}}"}
+    //      Discord → {"content": "{{message}}"}
+    //
+    //  Which means the Custom (raw JSON) format already does everything a
+    //  preset does — a preset is just a custom body somebody named. They were
+    //  frozen into a PHP switch, so adding Google Chat or Mattermost meant a
+    //  code change and a release. Now they're DATA: rows in
+    //  webhook_message_formats, editable under Workflows → Settings.
+    //
+    //  These built-ins are the seed AND the fallback. If the table is missing,
+    //  empty or unreadable, the engine uses these — a mangled setting must
+    //  never be able to stop webhooks going out.
+    //
+    //  `custom` and `full` are deliberately NOT in here: they aren't
+    //  message-wrapping formats, they're structurally different, and forcing
+    //  them into this shape would be a lie.
+    // -----------------------------------------------------------------
+    public const BUILTIN_WEBHOOK_FORMATS = [
+        'slack' => [
+            'label'         => 'Slack',
+            'body_template' => '{"text": "{{message}}"}',
+            'url_pattern'   => 'hooks\.slack\.com',
+            'markdown_hint' => 'Slack mrkdwn: *bold*, _italic_, `code`. Links are <https://example.com|like this>.',
+        ],
+        'teams' => [
+            'label'         => 'Microsoft Teams',
+            'body_template' => '{"@type": "MessageCard", "@context": "https://schema.org/extensions", "summary": "{{message}}", "text": "{{message}}"}',
+            'url_pattern'   => 'webhook\.office\.com|office\.com/webhookb2|logic\.azure\.com',
+            'markdown_hint' => 'Teams MessageCard: **bold**, *italic*, [link](https://example.com).',
+        ],
+        'discord' => [
+            'label'         => 'Discord',
+            'body_template' => '{"content": "{{message}}"}',
+            'url_pattern'   => 'discord(app)?\.com/api/webhooks',
+            'markdown_hint' => 'Discord markdown: **bold** (two asterisks — a single *asterisk* is italic). Emoji shortcodes like :rotating_light: work.',
+        ],
+    ];
+
+    /** Formats that are structurally special and stay in code. */
+    public const RESERVED_FORMAT_KEYS = ['custom', 'full'];
+
+    /**
+     * Every message-wrapping format available on this install: the built-ins
+     * plus whatever the admin has added. Cached per request.
+     *
+     * Falls back to the built-ins on ANY database problem — the engine has to
+     * keep sending webhooks even if the formats table is missing or broken.
+     */
+    public static function webhookFormats(): array
+    {
+        static $formats = null;
+        if ($formats !== null) return $formats;
+
+        $formats = self::BUILTIN_WEBHOOK_FORMATS;
+        try {
+            $conn = connectToDatabase();
+            $rows = $conn->query(
+                "SELECT format_key, label, body_template, url_pattern, markdown_hint
+                   FROM webhook_message_formats
+                  WHERE is_active = 1
+                  ORDER BY display_order, label"
+            )->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($rows as $r) {
+                $key = strtolower(trim((string)$r['format_key']));
+                if ($key === '' || in_array($key, self::RESERVED_FORMAT_KEYS, true)) continue;
+                $formats[$key] = [
+                    'label'         => (string)$r['label'],
+                    'body_template' => (string)$r['body_template'],
+                    'url_pattern'   => $r['url_pattern']   !== null ? (string)$r['url_pattern']   : null,
+                    'markdown_hint' => $r['markdown_hint'] !== null ? (string)$r['markdown_hint'] : null,
+                ];
+            }
+        } catch (Exception $e) {
+            // Table not created yet (pre-Database-Verify), or unreadable.
+            // The built-ins above already cover Slack / Teams / Discord.
+        }
+        return $formats;
+    }
+
+    /**
+     * Render a format's JSON body template.
+     *
+     * ⚠️ THE ESCAPING POINT. We do NOT string-substitute into the raw template
+     * text: a message containing a double quote, a backslash or a newline would
+     * produce invalid JSON (or, worse, let a crafted message inject structure
+     * into the payload). Instead we DECODE the template, walk it, substitute
+     * inside the string VALUES, and re-encode — so json_encode does the
+     * escaping, exactly as the old hardcoded array-then-encode approach did.
+     */
+    private static function renderFormatBody(string $template, string $message, array $payload): string
+    {
+        $decoded = json_decode($template, true);
+        if ($decoded === null && strtolower(trim($template)) !== 'null') {
+            throw new Exception('this message format\'s JSON template is not valid JSON: ' . json_last_error_msg());
+        }
+        $vars = $payload;
+        $vars['message'] = $message;   // {{message}} is what the format wraps
+
+        $walk = function ($node) use (&$walk, $vars) {
+            if (is_string($node)) return self::renderTemplate($node, $vars);
+            if (is_array($node)) {
+                $out = [];
+                foreach ($node as $k => $v) $out[$k] = $walk($v);
+                return $out;
+            }
+            return $node;
+        };
+
+        return json_encode($walk($decoded), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    }
+
     /**
      * Records whose human-facing REFERENCE differs from their internal id.
      *
@@ -768,6 +885,19 @@ class WorkflowEngine
      */
     public static function availableActions(): array
     {
+        // The webhook Format dropdown is generated from the message-format
+        // registry, so an admin-added format (Google Chat, Mattermost…) shows up
+        // without touching this file. `custom` and `full` are the two structural
+        // modes that stay in code — they don't wrap a message.
+        $messageFormatKeys = array_keys(self::webhookFormats());
+        $formatOptions = [
+            ['value' => 'custom', 'label' => 'Custom (raw JSON body)'],
+            ['value' => 'full',   'label' => 'Full record (whole object as JSON)'],
+        ];
+        foreach (self::webhookFormats() as $key => $fmt) {
+            $formatOptions[] = ['value' => $key, 'label' => $fmt['label']];
+        }
+
         $ticketIdArg = [
             'type'          => 'text',
             'label'         => 'Ticket ID',
@@ -858,17 +988,14 @@ class WorkflowEngine
                     'preset' => [
                         'type'    => 'select',
                         'label'   => 'Format',
-                        'options' => [
-                            ['value' => 'custom',  'label' => 'Custom (raw JSON body)'],
-                            ['value' => 'full',    'label' => 'Full record (whole object as JSON)'],
-                            ['value' => 'slack',   'label' => 'Slack'],
-                            ['value' => 'teams',   'label' => 'Microsoft Teams'],
-                            ['value' => 'discord', 'label' => 'Discord'],
-                        ],
+                        // Built from the registry, so a format an admin adds under
+                        // Workflows → Settings appears here with no code change.
+                        'options' => $formatOptions,
                         'default' => 'custom',
                     ],
                     'url'     => ['type' => 'text', 'label' => 'Webhook URL', 'required' => true, 'supports_vars' => true],
-                    'message' => ['type' => 'textarea', 'label' => 'Message', 'supports_vars' => true, 'show_when' => ['preset' => ['slack', 'teams', 'discord']]],
+                    // Shown for every message-wrapping format — including new ones.
+                    'message' => ['type' => 'textarea', 'label' => 'Message', 'supports_vars' => true, 'show_when' => ['preset' => $messageFormatKeys]],
                     'body'    => ['type' => 'textarea', 'label' => 'Raw JSON body', 'supports_vars' => true, 'show_when' => ['preset' => ['custom']], 'default' => "{\n  \"event\": \"{{event}}\",\n  \"ticket_id\": \"{{ticket.id}}\",\n  \"subject\": \"{{ticket.subject}}\"\n}"],
                     'secret'  => ['type' => 'text', 'label' => 'Signing secret (optional)', 'supports_vars' => false],
                 ],
@@ -1741,23 +1868,22 @@ class WorkflowEngine
                 throw new Exception('the full-record format needs a trigger that carries a record with a full object (ticket, change, problem, task, asset, knowledge, contract, supplier, calendar event, software licence, or service-status incident events)');
             }
             $bodyJson = json_encode($full, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        } elseif ($preset === 'slack' || $preset === 'discord' || $preset === 'teams') {
+        } elseif (isset(self::webhookFormats()[$preset])) {
+            // A message-wrapping format — Slack, Teams, Discord, or anything the
+            // admin has added under Workflows → Settings → Message formats.
+            $fmt     = self::webhookFormats()[$preset];
             $message = self::argString($args, 'message', $payload);
-            if ($message === '') throw new Exception('message is required for the ' . $preset . ' preset');
-            switch ($preset) {
-                case 'slack':   $bodyArr = ['text' => $message]; break;
-                case 'discord': $bodyArr = ['content' => $message]; break;
-                case 'teams':
-                default:
-                    $bodyArr = [
-                        '@type'    => 'MessageCard',
-                        '@context' => 'https://schema.org/extensions',
-                        'summary'  => mb_substr($message, 0, 80),
-                        'text'     => $message,
-                    ];
-                    break;
-            }
-            $bodyJson = json_encode($bodyArr, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            if ($message === '') throw new Exception('message is required for the ' . $preset . ' format');
+            $bodyJson = self::renderFormatBody($fmt['body_template'], $message, $payload);
+        } elseif ($preset !== 'custom') {
+            // A workflow referencing a format that has since been deleted or
+            // deactivated. Fail loudly — silently falling back to some other
+            // shape would post a malformed payload the receiver would reject
+            // for no visible reason.
+            throw new Exception(
+                'unknown message format "' . $preset . '" — it may have been deleted under '
+                . 'Workflows → Settings → Message formats. Pick a format that still exists.'
+            );
         } else {
             // Custom: render the raw JSON body and validate it parses.
             $bodyJson = self::argString($args, 'body', $payload);

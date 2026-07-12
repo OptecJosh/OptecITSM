@@ -838,6 +838,8 @@ const WFE = (() => {
         });
         applyArgVisibility(host, n);
 
+        if (n.type === 'send_webhook') applyFormatHints(host, n);
+
         // The send_webhook action gets a "Send test" button: fire the current
         // config at the URL now and show the endpoint's real response, before
         // saving. Detected by its args, so any future URL-posting action with a
@@ -845,6 +847,69 @@ const WFE = (() => {
         if (host.querySelector('[data-arg-name="url"]') && n.type === 'send_webhook') {
             appendWebhookTest(host, n);
         }
+    }
+
+    /**
+     * Two things the message-format registry gives us, shown where they're needed
+     * rather than in a help page you'd have to know to read:
+     *
+     *  1. The platform's markdown quirk, under the Message box. Discord treats
+     *     *bold* as ITALIC; Slack doesn't. That difference has cost real time.
+     *  2. A warning when the webhook URL doesn't match the chosen format's
+     *     url_pattern — pasting a Discord URL with the format left on Slack is a
+     *     400 from the endpoint, and the app can simply notice instead.
+     */
+    function applyFormatHints(host, n) {
+        const fmts = window.WF_FORMATS || {};
+        const key  = String((n.args && n.args.preset) || '');
+        const fmt  = fmts[key];
+
+        // ---- markdown hint under the Message field ----
+        const msgFg = host.querySelector('[data-arg-name="message"]')?.closest('[data-arg-fg]');
+        if (msgFg) {
+            msgFg.querySelector('.wf-fmt-hint')?.remove();
+            if (fmt && fmt.markdown_hint) {
+                const el = document.createElement('small');
+                el.className = 'wf-fmt-hint';
+                el.textContent = fmt.markdown_hint;
+                msgFg.appendChild(el);
+            }
+        }
+
+        // ---- URL vs format mismatch ----
+        const urlCtrl = host.querySelector('[data-arg-name="url"]');
+        const urlFg   = urlCtrl?.closest('[data-arg-fg]');
+        if (!urlCtrl || !urlFg) return;
+
+        const check = () => {
+            urlFg.querySelector('.wf-fmt-mismatch')?.remove();
+            const url = String(urlCtrl.value || '');
+            if (!url || !fmt || !fmt.url_pattern) return;
+
+            let looksRight = false;
+            try { looksRight = new RegExp(fmt.url_pattern, 'i').test(url); }
+            catch (e) { return; }   // a bad pattern must never break the editor
+            if (looksRight) return;
+
+            // Does it look like a DIFFERENT known platform? Then we can name it.
+            let suggestion = null;
+            for (const [k, f] of Object.entries(fmts)) {
+                if (k === key || !f.url_pattern) continue;
+                try { if (new RegExp(f.url_pattern, 'i').test(url)) { suggestion = f.label; break; } }
+                catch (e) { /* skip */ }
+            }
+
+            const el = document.createElement('small');
+            el.className = 'wf-fmt-mismatch';
+            el.textContent = suggestion
+                ? window.t('workflow.formats.mismatch_known')
+                      .replace('%u', suggestion).replace('%f', fmt.label)
+                : window.t('workflow.formats.mismatch').replace('%f', fmt.label);
+            urlFg.appendChild(el);
+        };
+
+        urlCtrl.addEventListener('input', check);
+        check();
     }
 
     /**
@@ -1139,7 +1204,11 @@ const WFE = (() => {
         if (n.el) n.el.innerHTML = renderNodeContent(n);
         // Re-apply conditional visibility (e.g. changing the webhook preset
         // swaps the Message / Raw JSON body fields).
-        applyArgVisibility(document.getElementById('wfActArgsHost'), n);
+        const argsHost = document.getElementById('wfActArgsHost');
+        applyArgVisibility(argsHost, n);
+        // …and the format-dependent hints: switching Slack → Discord changes both
+        // the markdown advice and whether the pasted URL still looks right.
+        if (n.type === 'send_webhook') applyFormatHints(argsHost, n);
         markDirty();
     }
 

@@ -668,3 +668,23 @@ body { --accent: var(--wf-accent, #f59e0b); }
     .wf-var-body { grid-template-columns: 1fr; }
     .wf-var-list { max-height: 200px; }
 }
+
+/* Message-format hints in the webhook action panel. */
+.wf-fmt-hint {
+    display: block;
+    margin-top: 5px;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--text-muted, #6b7280);
+}
+.wf-fmt-mismatch {
+    display: block;
+    margin-top: 5px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    line-height: 1.5;
+    background: var(--warning-bg, #fef3c7);
+    color: var(--warning-text, #92400e);
+    border: 1px solid var(--warning-border, #fcd34d);
+}

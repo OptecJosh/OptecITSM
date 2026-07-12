@@ -26,17 +26,18 @@ $translationNamespaces = ['common', 'system'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('system.routing_test.title')); ?></title>
-    <link rel="stylesheet" href="../../assets/css/theme.css?v=21">
+    <link rel="stylesheet" href="../../assets/css/theme.css?v=22">
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <style>
         /* inbox.css gives body height:100vh + overflow:hidden but no flex
            column, so flex:1 children can't bound their height. Make body a
            column here so the content area scrolls under a header of any
            height (the #535 reasoning — no hardcoded 100vh-48px). */
-        body { display: flex; flex-direction: column; }
+        /* System module accent (blue-grey) */
+        body { display: flex; flex-direction: column; --accent: var(--sys-accent, #546e7a); }
         .rt-container { flex: 1; min-height: 0; overflow-y: auto; padding: 30px 20px; }
-        .page-title { font-size: 22px; font-weight: 600; color: #333; margin: 0 0 6px 0; }
-        .page-subtitle { font-size: 13px; color: #888; margin: 0 0 24px 0; }
+        .page-title { font-size: 22px; font-weight: 600; color: var(--text, #333); margin: 0 0 6px 0; }
+        .page-subtitle { font-size: 13px; color: var(--text-dim, #888); margin: 0 0 24px 0; }
 
         /* Two columns: the form on the left, the result on the right. Wraps to
            a single column when there isn't room. */
@@ -44,16 +45,16 @@ $translationNamespaces = ['common', 'system'];
         .rt-col-form   { flex: 0 0 400px; max-width: 100%; }
         .rt-col-result { flex: 1 1 360px; min-width: 0; }
 
-        .settings-card { background: #fff; border-radius: 8px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+        .settings-card { background: var(--surface, #fff); color: var(--text, #333); border-radius: 8px; padding: 24px; box-shadow: 0 1px 4px var(--shadow, rgba(0,0,0,0.08)); }
 
         .form-field { margin-bottom: 16px; }
         .form-field label { display: block; font-size: 13px; font-weight: 600; color: #444; margin-bottom: 4px; }
-        .form-field .hint { font-size: 12px; color: #999; font-weight: 400; margin-bottom: 6px; }
-        .form-field input[type=text], .form-field select { width: 100%; padding: 9px 11px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px; font-family: inherit; box-sizing: border-box; background: #fff; }
-        .form-field input:focus, .form-field select:focus { outline: none; border-color: #546e7a; }
+        .form-field .hint { font-size: 12px; color: var(--text-faint, #999); font-weight: 400; margin-bottom: 6px; }
+        .form-field input[type=text], .form-field select { width: 100%; padding: 9px 11px; border: 1px solid var(--border, #ddd); border-radius: 5px; font-size: 13px; font-family: inherit; box-sizing: border-box; background: var(--surface, #fff); color: var(--text, #333); }
+        .form-field input:focus, .form-field select:focus { outline: none; border-color: var(--sys-accent, #546e7a); }
 
         .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 6px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; transition: all 0.15s; }
-        .btn-primary { background: #546e7a; color: #fff; }
+        .btn-primary { background: var(--sys-accent, #546e7a); color: var(--sys-on-accent, #fff); }
         .btn-primary:hover { background: #455a64; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
@@ -68,19 +69,36 @@ $translationNamespaces = ['common', 'system'];
         .rt-headline.company { background: #e8f5e9; border: 1px solid #c8e6c9; }
         .rt-headline.triage  { background: #fff3e0; border: 1px solid #ffe0b2; }
         .rt-headline .rt-h-icon { font-size: 22px; }
-        .rt-headline .rt-h-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #777; }
-        .rt-headline .rt-h-value { font-size: 17px; font-weight: 600; color: #333; }
+        .rt-headline .rt-h-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-dim, #777); }
+        .rt-headline .rt-h-value { font-size: 17px; font-weight: 600; color: var(--text, #333); }
 
-        .rt-steps-title { font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 10px 0; }
-        .rt-step { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f2f2f2; }
+        .rt-steps-title { font-size: 12px; font-weight: 600; color: var(--text-dim, #888); text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 10px 0; }
+        .rt-step { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border-soft, #f2f2f2); }
         .rt-step:last-child { border-bottom: none; }
         .rt-step .rt-s-icon { flex: 0 0 auto; width: 18px; text-align: center; font-size: 14px; line-height: 1.4; }
         .rt-step .rt-s-body { flex: 1; min-width: 0; }
         .rt-step .rt-s-name { font-size: 13px; font-weight: 600; color: #444; }
-        .rt-step .rt-s-detail { font-size: 12px; color: #777; margin-top: 1px; }
+        .rt-step .rt-s-detail { font-size: 12px; color: var(--text-dim, #777); margin-top: 1px; }
         .rt-step.fired .rt-s-name { color: #2e7d32; }
         .rt-step.skipped, .rt-step.not_evaluated { opacity: 0.7; }
         .rt-step strong { color: #444; font-weight: 600; }
+
+        /* ---- Dark mode overrides ----------------------------------------
+           The routing verdict (green = matched a company, amber = triage) and
+           the green "rule fired" step are DATA — the hues stay, the pale wash
+           is sunk and the text lifted so it doesn't glow on a dark surface. */
+        [data-theme-mode="dark"] .form-field label,
+        [data-theme-mode="dark"] .rt-step .rt-s-name,
+        [data-theme-mode="dark"] .rt-step strong { color: var(--text, #444); }
+
+        [data-theme-mode="dark"] .btn-primary:hover { background: var(--sys-accent-hover, #455a64); }
+
+        [data-theme-mode="dark"] .rt-note { color: #fcd34d; background: #3a2e12; border-color: #5a4a1e; }
+        [data-theme-mode="dark"] .rt-placeholder { color: var(--text-dim, #b0b8bd); background: var(--surface-2, #fafbfc); border-color: var(--border, #dde3e6); }
+
+        [data-theme-mode="dark"] .rt-headline.company { background: #16331f; border-color: #285538; }
+        [data-theme-mode="dark"] .rt-headline.triage  { background: #3a2e12; border-color: #5a4a1e; }
+        [data-theme-mode="dark"] .rt-step.fired .rt-s-name { color: #86efac; }
     </style>
 </head>
 <body>

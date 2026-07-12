@@ -27,9 +27,21 @@ if (!isset($_SESSION['analyst_id'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('system.db_verify.heading')); ?></title>
-    <link rel="stylesheet" href="../../assets/css/theme.css?v=21">
+    <link rel="stylesheet" href="../../assets/css/theme.css?v=22">
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <style>
+        /* System module accent (blue-grey) */
+        body {
+            /* System is the FIRST module whose DARK accent is a LIGHT colour (#90a4ae).
+               inbox.css renders .btn-primary/.add-btn as background:var(--accent) +
+               color:var(--on-accent) — and the global --on-accent stays WHITE in dark.
+               So pinning --accent alone would put white text on a light button. Pin
+               --on-accent too: it flips to near-black in dark. */
+            --accent: var(--sys-accent, #546e7a);
+            --accent-hover: var(--sys-accent-hover, #37474f);
+            --on-accent: var(--sys-on-accent, #fff);
+        }
+
         .db-verify-container {
             height: calc(100vh - 48px);
             overflow-y: auto;
@@ -46,18 +58,18 @@ if (!isset($_SESSION['analyst_id'])) {
         .db-verify-header h2 {
             margin: 0;
             font-size: 22px;
-            color: #333;
+            color: var(--text, #333);
         }
 
         .db-verify-header p {
             margin: 5px 0 0 0;
             font-size: 13px;
-            color: #888;
+            color: var(--text-dim, #888);
         }
 
         .verify-btn {
-            background: #546e7a;
-            color: white;
+            background: var(--sys-accent, #546e7a);
+            color: var(--sys-on-accent, #fff);
             border: none;
             padding: 12px 24px;
             border-radius: 6px;
@@ -70,8 +82,8 @@ if (!isset($_SESSION['analyst_id'])) {
             gap: 8px;
         }
 
-        .verify-btn:hover { background: #37474f; }
-        .verify-btn:disabled { background: #999; cursor: not-allowed; }
+        .verify-btn:hover { background: var(--sys-accent-hover, #37474f); }
+        .verify-btn:disabled { background: #999; color: #fff; cursor: not-allowed; }
 
         .results-summary {
             display: flex;
@@ -107,25 +119,26 @@ if (!isset($_SESSION['analyst_id'])) {
         .results-table {
             width: 100%;
             border-collapse: collapse;
-            background: white;
+            background: var(--surface, #fff);
+            color: var(--text, #333);
             border-radius: 8px;
             overflow: hidden;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            box-shadow: 0 1px 4px var(--shadow, rgba(0,0,0,0.08));
         }
 
         .results-table th {
-            background: #f8f9fa;
+            background: var(--surface-3, #f8f9fa);
             padding: 12px 16px;
             text-align: left;
             font-size: 12px;
             text-transform: uppercase;
-            color: #666;
-            border-bottom: 2px solid #e0e0e0;
+            color: var(--text-muted, #666);
+            border-bottom: 2px solid var(--border, #e0e0e0);
         }
 
         .results-table td {
             padding: 10px 16px;
-            border-bottom: 1px solid #f0f0f0;
+            border-bottom: 1px solid var(--border-soft, #f0f0f0);
             font-size: 14px;
         }
 
@@ -145,7 +158,7 @@ if (!isset($_SESSION['analyst_id'])) {
         .status-pill.error { background: #f8d7da; color: #721c24; }
         .status-pill.pending { background: #ffe0b2; color: #8a4b00; }
 
-        .detail-text { font-size: 12px; color: #666; }
+        .detail-text { font-size: 12px; color: var(--text-muted, #666); }
 
         .fix-btn {
             margin-left: 10px;
@@ -165,26 +178,52 @@ if (!isset($_SESSION['analyst_id'])) {
         .placeholder-msg {
             text-align: center;
             padding: 60px 20px;
-            background: white;
+            background: var(--surface, #fff);
             border-radius: 8px;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-            color: #888;
+            box-shadow: 0 1px 4px var(--shadow, rgba(0,0,0,0.08));
+            color: var(--text-dim, #888);
         }
 
         .placeholder-msg svg { color: #ccc; margin-bottom: 15px; }
         .placeholder-msg p { margin: 0; font-size: 14px; }
+
+        /* The error variant of the placeholder (set inline from JS). */
+        .placeholder-msg.is-error { color: #d13438; }
 
         .spinner-inline {
             display: inline-block;
             width: 16px;
             height: 16px;
             border: 2px solid rgba(255,255,255,0.3);
-            border-top-color: white;
+            border-top-color: currentColor; /* follows --sys-on-accent on the button */
             border-radius: 50%;
             animation: spin 0.6s linear infinite;
         }
 
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ---- Dark mode overrides ----------------------------------------
+           The result states (ok / created / updated / error / pending) are DATA:
+           the green / amber / blue / red / orange hues are kept, but the pale
+           wash is sunk and the saturated text lifted so they don't glow. */
+        [data-theme-mode="dark"] .verify-btn:disabled { background: #3a4048; color: var(--text-faint, #999); }
+        [data-theme-mode="dark"] .spinner-inline { border-color: rgba(0,0,0,0.2); border-top-color: currentColor; }
+        [data-theme-mode="dark"] .placeholder-msg svg { color: var(--border, #3a4048); }
+        [data-theme-mode="dark"] .placeholder-msg.is-error { color: var(--danger-text, #fca5a5); }
+
+        [data-theme-mode="dark"] .summary-ok,
+        [data-theme-mode="dark"] .status-pill.ok { background: #16331f; color: #86efac; }
+        [data-theme-mode="dark"] .summary-created,
+        [data-theme-mode="dark"] .status-pill.created { background: #3a2e12; color: #fcd34d; }
+        [data-theme-mode="dark"] .summary-updated,
+        [data-theme-mode="dark"] .status-pill.updated { background: #16293f; color: #93c5fd; }
+        [data-theme-mode="dark"] .summary-error,
+        [data-theme-mode="dark"] .status-pill.error { background: #3a1a1d; color: #fca5a5; }
+        [data-theme-mode="dark"] .status-pill.pending { background: #3d2a10; color: #ffcc80; }
+
+        [data-theme-mode="dark"] .fix-btn { background: #b26500; color: #fff; }
+        [data-theme-mode="dark"] .fix-btn:hover { background: #8a4b00; }
+        [data-theme-mode="dark"] .fix-btn:disabled { background: #4a505a; color: var(--text-faint, #999); }
     </style>
 </head>
 <body>
@@ -238,11 +277,11 @@ if (!isset($_SESSION['analyst_id'])) {
                     renderResults(data.results, data.total_tables);
                 } else {
                     document.getElementById('resultsArea').innerHTML =
-                        '<div class="placeholder-msg" style="color:#d13438;"><p>' + escapeHtml(window.t('system.db_verify.error', { message: data.error })) + '</p></div>';
+                        '<div class="placeholder-msg is-error"><p>' + escapeHtml(window.t('system.db_verify.error', { message: data.error })) + '</p></div>';
                 }
             } catch (error) {
                 document.getElementById('resultsArea').innerHTML =
-                    '<div class="placeholder-msg" style="color:#d13438;"><p>' + escapeHtml(window.t('system.db_verify.connect_fail', { message: error.message })) + '</p></div>';
+                    '<div class="placeholder-msg is-error"><p>' + escapeHtml(window.t('system.db_verify.connect_fail', { message: error.message })) + '</p></div>';
             }
 
             btn.disabled = false;

@@ -22,9 +22,20 @@ $translationNamespaces = ['common', 'system'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('system.colours.title')); ?></title>
-    <link rel="stylesheet" href="../../assets/css/theme.css?v=21">
+    <link rel="stylesheet" href="../../assets/css/theme.css?v=22">
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <style>
+        body {
+            /* System is the FIRST module whose DARK accent is a LIGHT colour (#90a4ae).
+               inbox.css renders .btn-primary/.add-btn as background:var(--accent) +
+               color:var(--on-accent) — and the global --on-accent stays WHITE in dark.
+               So pinning --accent alone would put white text on a light button. Pin
+               --on-accent too: it flips to near-black in dark. */
+            --accent: var(--sys-accent, #546e7a);
+            --accent-hover: var(--sys-accent-hover, #37474f);
+            --on-accent: var(--sys-on-accent, #fff);
+        }
+
         .colours-container {
             height: calc(100vh - 48px);
             overflow-y: auto;
@@ -34,13 +45,13 @@ $translationNamespaces = ['common', 'system'];
         .page-title {
             font-size: 22px;
             font-weight: 600;
-            color: #333;
+            color: var(--text, #333);
             margin: 0 0 6px 0;
         }
 
         .page-subtitle {
             font-size: 13px;
-            color: #888;
+            color: var(--text-dim, #888);
             margin: 0 0 30px 0;
         }
 
@@ -49,9 +60,9 @@ $translationNamespaces = ['common', 'system'];
             align-items: center;
             gap: 16px;
             padding: 14px 20px;
-            background: #fff;
+            background: var(--surface, #fff);
             border-radius: 8px;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            box-shadow: 0 1px 4px var(--shadow, rgba(0,0,0,0.08));
             margin-bottom: 10px;
         }
 
@@ -65,6 +76,8 @@ $translationNamespaces = ['common', 'system'];
             flex-shrink: 0;
         }
 
+        /* The icon sits ON the module's own saturated gradient preview (DATA) —
+           it must stay white in BOTH modes. Do not tokenise. */
         .module-preview svg {
             width: 20px;
             height: 20px;
@@ -74,7 +87,7 @@ $translationNamespaces = ['common', 'system'];
         .module-name {
             font-size: 14px;
             font-weight: 600;
-            color: #333;
+            color: var(--text, #333);
             width: 120px;
             flex-shrink: 0;
         }
@@ -87,17 +100,18 @@ $translationNamespaces = ['common', 'system'];
 
         .colour-field label {
             font-size: 12px;
-            color: #888;
+            color: var(--text-dim, #888);
             min-width: 60px;
         }
 
+        /* Frame only — the swatch inside is the user's chosen colour (DATA) */
         .colour-picker-wrap {
             position: relative;
             width: 36px;
             height: 36px;
             border-radius: 6px;
             overflow: hidden;
-            border: 2px solid #e0e0e0;
+            border: 2px solid var(--border, #e0e0e0);
             cursor: pointer;
         }
 
@@ -115,29 +129,31 @@ $translationNamespaces = ['common', 'system'];
         .colour-hex {
             width: 80px;
             padding: 6px 8px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border, #ddd);
             border-radius: 4px;
             font-size: 12px;
             font-family: monospace;
             text-transform: uppercase;
+            background: var(--surface, #fff);
+            color: var(--text, #333);
         }
 
-        .colour-hex:focus { outline: none; border-color: #546e7a; }
+        .colour-hex:focus { outline: none; border-color: var(--sys-accent, #546e7a); }
 
         .btn-reset {
             background: none;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border, #ddd);
             border-radius: 4px;
             padding: 6px 10px;
             font-size: 12px;
-            color: #888;
+            color: var(--text-dim, #888);
             cursor: pointer;
             white-space: nowrap;
             margin-left: auto;
             flex-shrink: 0;
         }
 
-        .btn-reset:hover { border-color: #999; color: #555; }
+        .btn-reset:hover { border-color: #999; color: var(--text, #555); }
 
         .save-area {
             margin-top: 24px;
@@ -157,8 +173,8 @@ $translationNamespaces = ['common', 'system'];
         }
 
         .btn-primary {
-            background: #546e7a;
-            color: #fff;
+            background: var(--sys-accent, #546e7a);
+            color: var(--sys-on-accent, #fff);
         }
 
         .btn-primary:hover { background: #455a64; }
@@ -168,6 +184,9 @@ $translationNamespaces = ['common', 'system'];
             .module-row { flex-wrap: wrap; }
             .module-name { width: 100%; }
         }
+
+        /* ---- Dark mode overrides ---- */
+        [data-theme-mode="dark"] .btn-primary:hover { background: #b0bec5; }
     </style>
 </head>
 <body>

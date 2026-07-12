@@ -67,9 +67,20 @@ if (isset($_SESSION['analyst_id'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('system.preferences.title')); ?></title>
-    <link rel="stylesheet" href="../../assets/css/theme.css?v=21">
+    <link rel="stylesheet" href="../../assets/css/theme.css?v=22">
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <style>
+        body {
+            /* System is the FIRST module whose DARK accent is a LIGHT colour (#90a4ae).
+               inbox.css renders .btn-primary/.add-btn as background:var(--accent) +
+               color:var(--on-accent) — and the global --on-accent stays WHITE in dark.
+               So pinning --accent alone would put white text on a light button. Pin
+               --on-accent too: it flips to near-black in dark. */
+            --accent: var(--sys-accent, #546e7a);
+            --accent-hover: var(--sys-accent-hover, #37474f);
+            --on-accent: var(--sys-on-accent, #fff);
+        }
+
         .prefs-container {
             height: calc(100vh - 48px);
             overflow-y: auto;
@@ -77,22 +88,22 @@ if (isset($_SESSION['analyst_id'])) {
         }
 
         .prefs-card {
-            background: #fff;
+            background: var(--surface, #fff);
             border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            box-shadow: 0 2px 8px var(--shadow, rgba(0,0,0,0.06));
             padding: 30px;
         }
 
         .prefs-card h2 {
             margin: 0 0 6px 0;
             font-size: 20px;
-            color: #333;
+            color: var(--text, #333);
         }
 
         .prefs-card .subtitle {
             margin: 0 0 30px 0;
             font-size: 13px;
-            color: #888;
+            color: var(--text-dim, #888);
         }
 
         .pref-section {
@@ -104,13 +115,13 @@ if (isset($_SESSION['analyst_id'])) {
         .pref-section h3 {
             margin: 0 0 6px 0;
             font-size: 15px;
-            color: #333;
+            color: var(--text, #333);
         }
 
         .pref-section p {
             margin: 0 0 16px 0;
             font-size: 13px;
-            color: #666;
+            color: var(--text-muted, #666);
         }
 
         .position-grid {
@@ -119,8 +130,8 @@ if (isset($_SESSION['analyst_id'])) {
             gap: 4px;
             width: 192px;
             height: 128px;
-            background: #f0f0f0;
-            border: 2px solid #ddd;
+            background: var(--surface-hover, #f0f0f0);
+            border: 2px solid var(--border, #ddd);
             border-radius: 8px;
             padding: 8px;
         }
@@ -136,8 +147,8 @@ if (isset($_SESSION['analyst_id'])) {
         }
 
         .position-cell:hover { background: #d0d0d0; }
-        .position-cell.active { background: #546e7a; }
-        .position-cell.active .position-dot { background: #fff; }
+        .position-cell.active { background: var(--sys-accent, #546e7a); }
+        .position-cell.active .position-dot { background: var(--sys-on-accent, #fff); }
 
         .position-dot {
             width: 10px;
@@ -150,7 +161,7 @@ if (isset($_SESSION['analyst_id'])) {
         .anim-toggle {
             display: flex;
             gap: 0;
-            border: 2px solid #ddd;
+            border: 2px solid var(--border, #ddd);
             border-radius: 6px;
             overflow: hidden;
             width: fit-content;
@@ -160,32 +171,33 @@ if (isset($_SESSION['analyst_id'])) {
             padding: 8px 20px;
             font-size: 13px;
             font-weight: 500;
-            color: #666;
-            background: #f5f5f5;
+            color: var(--text-muted, #666);
+            background: var(--surface-3, #f5f5f5);
             cursor: pointer;
             border: none;
             transition: all 0.15s;
         }
 
-        .anim-option:not(:last-child) { border-right: 1px solid #ddd; }
+        .anim-option:not(:last-child) { border-right: 1px solid var(--border, #ddd); }
         .anim-option:hover { background: #e8e8e8; }
-        .anim-option.active { background: #546e7a; color: #fff; }
+        .anim-option.active { background: var(--sys-accent, #546e7a); color: var(--sys-on-accent, #fff); }
 
         .pref-language-select {
             font-size: 14px;
             padding: 8px 12px;
-            border: 2px solid #ddd;
+            border: 2px solid var(--border, #ddd);
             border-radius: 6px;
-            background: #fff;
+            background: var(--surface, #fff);
+            color: var(--text, #333);
             min-width: 240px;
             cursor: pointer;
         }
-        .pref-language-select:focus { outline: none; border-color: #546e7a; }
+        .pref-language-select:focus { outline: none; border-color: var(--sys-accent, #546e7a); }
 
         .pref-saving-hint {
             margin-left: 10px;
             font-size: 12px;
-            color: #888;
+            color: var(--text-dim, #888);
             opacity: 0;
             transition: opacity 0.2s;
         }
@@ -204,15 +216,21 @@ if (isset($_SESSION['analyst_id'])) {
             justify-content: space-between;
             gap: 16px;
             padding: 8px 0;
-            border-bottom: 1px solid #f0f0f0;
+            border-bottom: 1px solid var(--border-soft, #f0f0f0);
         }
 
         .sidebar-panel-row:last-child { border-bottom: none; }
 
         .sidebar-panel-label {
             font-size: 14px;
-            color: #333;
+            color: var(--text, #333);
         }
+
+        /* ---- Dark mode overrides (pale greys that would glow) ---- */
+        [data-theme-mode="dark"] .position-cell { background: #3a4250; }
+        [data-theme-mode="dark"] .position-cell:not(.active):hover { background: #46505f; }
+        [data-theme-mode="dark"] .position-dot { background: #8b95a5; }
+        [data-theme-mode="dark"] .anim-option:not(.active):hover { background: var(--surface-hover, #39414f); }
     </style>
 </head>
 <body>

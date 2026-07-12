@@ -36,7 +36,7 @@ $translationNamespaces = ['common', 'lms'];
     <?php echo Tz::scriptTag(); ?>
     <script src="../assets/js/tz.js?v=1"></script>
     <script src="../assets/js/i18n.js?v=2"></script>
-    <link rel="stylesheet" href="../assets/css/theme.css?v=21">
+    <link rel="stylesheet" href="../assets/css/theme.css?v=22">
     <link rel="stylesheet" href="../assets/css/inbox.css">
     <style>
         /* Pin the module accent for shared components */

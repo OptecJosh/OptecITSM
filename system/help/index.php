@@ -33,21 +33,37 @@ try { $multiTenant = isMultiTenant(connectToDatabase()); } catch (Exception $e) 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>System Help</title>
-    <link rel="stylesheet" href="../../assets/css/theme.css?v=21">
+    <link rel="stylesheet" href="../../assets/css/theme.css?v=22">
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <style>
-        .syshelp-wrap { height: calc(100vh - 48px); overflow-y: auto; background: #f5f6fa; }
+        /* Pin the shared --accent (header/inbox.css primitives) to the System accent. */
+        body {
+            /* System is the FIRST module whose DARK accent is a LIGHT colour (#90a4ae).
+               inbox.css renders .btn-primary/.add-btn as background:var(--accent) +
+               color:var(--on-accent) — and the global --on-accent stays WHITE in dark.
+               So pinning --accent alone would put white text on a light button. Pin
+               --on-accent too: it flips to near-black in dark. */
+            --accent: var(--sys-accent, #546e7a);
+            --accent-hover: var(--sys-accent-hover, #37474f);
+            --on-accent: var(--sys-on-accent, #fff);
+        }
+
+        .syshelp-wrap { height: calc(100vh - 48px); overflow-y: auto; background: var(--app-bg, #f5f6fa); }
         .syshelp-hero { background: linear-gradient(135deg, #4f46e5 0%, #4338ca 50%, #3730a3 100%); color: #fff; padding: 40px 48px 36px; }
         .syshelp-hero h1 { margin: 0 0 8px; font-size: 26px; font-weight: 700; }
         .syshelp-hero p { margin: 0; font-size: 14.5px; opacity: 0.9; max-width: 720px; line-height: 1.5; }
         .syshelp-grid { max-width: 1100px; margin: 0 auto; padding: 28px 48px 56px; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-        .syshelp-tile { display: flex; gap: 14px; padding: 18px; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; text-decoration: none; transition: transform 0.12s, box-shadow 0.12s; }
-        .syshelp-tile:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.08); }
+        .syshelp-tile { display: flex; gap: 14px; padding: 18px; background: var(--surface, #fff); border: 1px solid var(--border, #e5e7eb); border-radius: 10px; text-decoration: none; transition: transform 0.12s, box-shadow 0.12s; }
+        .syshelp-tile:hover { transform: translateY(-2px); box-shadow: 0 6px 18px var(--shadow, rgba(0,0,0,0.08)); }
         .syshelp-tile-icon { flex-shrink: 0; width: 44px; height: 44px; border-radius: 10px; background: #eef2ff; color: #6366f1; display: flex; align-items: center; justify-content: center; }
         .syshelp-tile-icon svg { width: 24px; height: 24px; }
-        .syshelp-tile h3 { margin: 0 0 4px; font-size: 15px; color: #1f2330; }
-        .syshelp-tile p { margin: 0; font-size: 12.5px; color: #6b7280; line-height: 1.5; }
+        .syshelp-tile h3 { margin: 0 0 4px; font-size: 15px; color: var(--text, #1f2330); }
+        .syshelp-tile p { margin: 0; font-size: 12.5px; color: var(--text-muted, #6b7280); line-height: 1.5; }
         @media (max-width: 700px) { .syshelp-grid { padding: 22px; } .syshelp-hero { padding: 30px 22px; } }
+
+        /* ---- Dark mode: indigo hero + pale indigo icon tiles ---- */
+        [data-theme-mode="dark"] .syshelp-hero { filter: brightness(0.82); }
+        [data-theme-mode="dark"] .syshelp-tile-icon { background: #2b2f4a; color: #a5b4fc; }
     </style>
     <?php echo Tz::scriptTag(); ?>
     <script src="../../assets/js/tz.js?v=1"></script>

@@ -25,9 +25,20 @@ $translationNamespaces = ['common', 'system'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('system.branding.title')); ?></title>
-    <link rel="stylesheet" href="../../assets/css/theme.css?v=21">
+    <link rel="stylesheet" href="../../assets/css/theme.css?v=22">
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <style>
+        body {
+            /* System is the FIRST module whose DARK accent is a LIGHT colour (#90a4ae).
+               inbox.css renders .btn-primary/.add-btn as background:var(--accent) +
+               color:var(--on-accent) — and the global --on-accent stays WHITE in dark.
+               So pinning --accent alone would put white text on a light button. Pin
+               --on-accent too: it flips to near-black in dark. */
+            --accent: var(--sys-accent, #546e7a);
+            --accent-hover: var(--sys-accent-hover, #37474f);
+            --on-accent: var(--sys-on-accent, #fff);
+        }
+
         .branding-container {
             height: calc(100vh - 48px);
             overflow-y: auto;
@@ -37,34 +48,34 @@ $translationNamespaces = ['common', 'system'];
         .page-title {
             font-size: 22px;
             font-weight: 600;
-            color: #333;
+            color: var(--text, #333);
             margin: 0 0 6px 0;
         }
 
         .page-subtitle {
             font-size: 13px;
-            color: #888;
+            color: var(--text-dim, #888);
             margin: 0 0 30px 0;
         }
 
         .settings-card {
-            background: #fff;
+            background: var(--surface, #fff);
             border-radius: 8px;
             padding: 24px;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            box-shadow: 0 1px 4px var(--shadow, rgba(0,0,0,0.08));
             margin-bottom: 24px;
         }
 
         .settings-card h3 {
             font-size: 15px;
             font-weight: 600;
-            color: #333;
+            color: var(--text, #333);
             margin: 0 0 4px 0;
         }
 
         .settings-card .card-desc {
             font-size: 13px;
-            color: #888;
+            color: var(--text-dim, #888);
             margin: 0 0 20px 0;
             line-height: 1.5;
         }
@@ -79,9 +90,9 @@ $translationNamespaces = ['common', 'system'];
         .logo-preview {
             width: 140px;
             height: 80px;
-            border: 1px dashed #ccc;
+            border: 1px dashed var(--border, #ccc);
             border-radius: 6px;
-            background: #fafafa;
+            background: var(--surface-2, #fafafa);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -97,7 +108,7 @@ $translationNamespaces = ['common', 'system'];
 
         .logo-preview .no-logo {
             font-size: 11px;
-            color: #aaa;
+            color: var(--text-faint, #aaa);
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
@@ -117,11 +128,12 @@ $translationNamespaces = ['common', 'system'];
 
         .logo-controls input[type="file"] {
             font-size: 12px;
+            color: var(--text, #333);
         }
 
         .logo-hint {
             font-size: 12px;
-            color: #888;
+            color: var(--text-dim, #888);
             line-height: 1.5;
         }
 
@@ -136,7 +148,7 @@ $translationNamespaces = ['common', 'system'];
         .slot-grid .row-label {
             font-size: 13px;
             font-weight: 600;
-            color: #444;
+            color: var(--text, #444);
             text-align: right;
             padding-right: 4px;
         }
@@ -144,7 +156,7 @@ $translationNamespaces = ['common', 'system'];
         .slot-grid .col-head {
             font-size: 11px;
             font-weight: 600;
-            color: #888;
+            color: var(--text-dim, #888);
             text-transform: uppercase;
             letter-spacing: 0.5px;
             text-align: center;
@@ -153,31 +165,33 @@ $translationNamespaces = ['common', 'system'];
         .slot-input {
             width: 100%;
             padding: 8px 10px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border, #ddd);
             border-radius: 4px;
             font-size: 13px;
             font-family: inherit;
             box-sizing: border-box;
+            background: var(--surface, #fff);
+            color: var(--text, #333);
         }
 
         .slot-input:focus { outline: none; border-color: #06b6d4; }
 
         .info-note {
             background: #f5f7fa;
-            border: 1px solid #e0e0e0;
+            border: 1px solid var(--border, #e0e0e0);
             border-radius: 6px;
             padding: 14px 16px;
             font-size: 12px;
-            color: #666;
+            color: var(--text-muted, #666);
             line-height: 1.6;
             margin-top: 16px;
         }
 
-        .info-note strong { color: #333; }
+        .info-note strong { color: var(--text, #333); }
 
         .info-note code {
-            background: #fff;
-            border: 1px solid #e0e0e0;
+            background: var(--surface, #fff);
+            border: 1px solid var(--border, #e0e0e0);
             border-radius: 3px;
             padding: 1px 5px;
             font-size: 11px;
@@ -205,16 +219,16 @@ $translationNamespaces = ['common', 'system'];
         }
 
         .btn-primary {
-            background: #546e7a;
-            color: #fff;
+            background: var(--sys-accent, #546e7a);
+            color: var(--sys-on-accent, #fff);
         }
 
         .btn-primary:hover { background: #455a64; }
 
         .btn-secondary {
-            background: #fff;
-            color: #555;
-            border: 1px solid #ddd;
+            background: var(--surface, #fff);
+            color: var(--text-muted, #555);
+            border: 1px solid var(--border, #ddd);
         }
 
         .btn-secondary:hover { background: #f5f7fa; }
@@ -226,6 +240,12 @@ $translationNamespaces = ['common', 'system'];
         }
         .btn-link:hover { text-decoration: underline; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* ---- Dark mode overrides (pale washes / hovers that would glow) ---- */
+        [data-theme-mode="dark"] .info-note { background: #22293a; }
+        [data-theme-mode="dark"] .btn-primary:hover { background: #b0bec5; }
+        [data-theme-mode="dark"] .btn-secondary:hover { background: var(--surface-hover, #2a3140); }
+        [data-theme-mode="dark"] .btn-link { color: #ef5350; }
     </style>
 </head>
 <body>

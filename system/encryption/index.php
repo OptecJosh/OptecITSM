@@ -21,12 +21,16 @@ $translationNamespaces = ['common', 'system'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('system.encryption.title')); ?></title>
-    <link rel="stylesheet" href="../../assets/css/theme.css?v=21">
+    <link rel="stylesheet" href="../../assets/css/theme.css?v=22">
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <style>
+        /* System module accent (blue-grey). --on-accent is pinned too: in dark the
+           accent is a LIGHT blue-grey, so text on it must go dark, not white. */
+        body { --accent: var(--sys-accent, #546e7a); --accent-hover: var(--sys-accent-hover, #37474f); --on-accent: var(--sys-on-accent, #fff); }
+
         .main-container {
             flex: 1;
-            background: #f5f7fa;
+            background: var(--app-bg, #f5f7fa);
             overflow-y: auto;
         }
 
@@ -39,24 +43,24 @@ $translationNamespaces = ['common', 'system'];
         .page-title {
             font-size: 22px;
             font-weight: 600;
-            color: #333;
+            color: var(--text, #333);
             margin: 0 0 6px 0;
         }
 
         .page-subtitle {
             font-size: 13px;
-            color: #888;
+            color: var(--text-dim, #888);
             margin: 0 0 30px 0;
         }
 
         /* Status card */
         .status-card {
-            background: #fff;
+            background: var(--surface, #fff);
             border-radius: 8px;
             padding: 24px;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            box-shadow: 0 1px 4px var(--shadow, rgba(0,0,0,0.08));
             margin-bottom: 24px;
-            border-left: 4px solid #ccc;
+            border-left: 4px solid var(--border, #ccc);
         }
 
         .status-card.status-ok {
@@ -96,17 +100,17 @@ $translationNamespaces = ['common', 'system'];
         .status-title {
             font-size: 16px;
             font-weight: 600;
-            color: #333;
+            color: var(--text, #333);
         }
 
         .status-detail {
             font-size: 13px;
-            color: #666;
+            color: var(--text-muted, #666);
             line-height: 1.6;
         }
 
         .status-detail code {
-            background: #f0f0f0;
+            background: var(--surface-hover, #f0f0f0);
             padding: 2px 6px;
             border-radius: 3px;
             font-size: 12px;
@@ -137,14 +141,16 @@ $translationNamespaces = ['common', 'system'];
         .btn svg { width: 16px; height: 16px; }
 
         .btn-primary {
-            background: #546e7a;
-            color: #fff;
+            background: var(--sys-accent, #546e7a);
+            color: var(--sys-on-accent, #fff);
         }
 
+        /* Not --sys-accent-hover: its light value (#37474f) differs from #455a64,
+           so the light hover is kept exactly; dark gets the token (see overrides). */
         .btn-primary:hover { background: #455a64; }
 
         .btn-danger {
-            background: #fff;
+            background: var(--surface, #fff);
             color: #d32f2f;
             border: 1px solid #d32f2f;
         }
@@ -158,20 +164,20 @@ $translationNamespaces = ['common', 'system'];
 
         /* Info sections */
         .info-section {
-            background: #fff;
+            background: var(--surface, #fff);
             border-radius: 8px;
             padding: 24px;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            box-shadow: 0 1px 4px var(--shadow, rgba(0,0,0,0.08));
             margin-bottom: 24px;
         }
 
         .info-section h3 {
             font-size: 15px;
             font-weight: 600;
-            color: #333;
+            color: var(--text, #333);
             margin: 0 0 16px 0;
             padding-bottom: 10px;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border-soft, #eee);
         }
 
         .info-list {
@@ -183,7 +189,7 @@ $translationNamespaces = ['common', 'system'];
         .info-list li {
             padding: 8px 0;
             font-size: 13px;
-            color: #555;
+            color: var(--text-muted, #555);
             line-height: 1.5;
             display: flex;
             align-items: flex-start;
@@ -193,13 +199,13 @@ $translationNamespaces = ['common', 'system'];
         .info-list li svg {
             width: 16px;
             height: 16px;
-            color: #546e7a;
+            color: var(--sys-accent, #546e7a);
             flex-shrink: 0;
             margin-top: 2px;
         }
 
         .info-list li + li {
-            border-top: 1px solid #f5f5f5;
+            border-top: 1px solid var(--border-soft, #f5f5f5);
         }
 
         /* Warning box */
@@ -239,7 +245,7 @@ $translationNamespaces = ['common', 'system'];
         .encrypted-group h4 {
             font-size: 13px;
             font-weight: 600;
-            color: #546e7a;
+            color: var(--sys-accent, #546e7a);
             margin: 0 0 8px 0;
         }
 
@@ -251,7 +257,7 @@ $translationNamespaces = ['common', 'system'];
 
         .encrypted-group ul li {
             font-size: 12px;
-            color: #666;
+            color: var(--text-muted, #666);
             padding: 4px 0;
             font-family: 'Consolas', 'Courier New', monospace;
         }
@@ -261,7 +267,7 @@ $translationNamespaces = ['common', 'system'];
             display: inline-block;
             width: 6px;
             height: 6px;
-            background: #546e7a;
+            background: var(--sys-accent, #546e7a);
             border-radius: 50%;
             margin-right: 8px;
             vertical-align: middle;
@@ -271,11 +277,27 @@ $translationNamespaces = ['common', 'system'];
         .loading-spinner {
             text-align: center;
             padding: 40px;
-            color: #888;
+            color: var(--text-dim, #888);
             font-size: 13px;
         }
 
-        /* (no additional styles needed) */
+        /* ---- Dark mode ----
+           The status border-left colours (green / orange / red) and the danger
+           button's red are DATA — they stay identical in both modes. What changes
+           below is only the pale washes behind them, which would otherwise glow. */
+        [data-theme-mode="dark"] .status-icon.ok      { background: #16331f; color: #86efac; }
+        [data-theme-mode="dark"] .status-icon.warning { background: #3a2e12; color: #fcd34d; }
+        [data-theme-mode="dark"] .status-icon.missing { background: #3a1a1d; color: #fca5a5; }
+
+        [data-theme-mode="dark"] .warning-box     { background: #3a2e12; border-color: #5a4a1e; }
+        [data-theme-mode="dark"] .warning-box p   { color: #fcd34d; }
+        [data-theme-mode="dark"] .warning-box svg { color: #fbbf24; }
+
+        [data-theme-mode="dark"] .btn-danger        { color: #fca5a5; border-color: #fca5a5; }
+        [data-theme-mode="dark"] .btn-danger:hover  { background: #3a1a1d; }
+
+        /* Accent is light in dark mode, so the hover must go lighter still. */
+        [data-theme-mode="dark"] .btn-primary:hover { background: var(--sys-accent-hover, #455a64); }
     </style>
 </head>
 <body>

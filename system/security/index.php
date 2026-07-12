@@ -21,9 +21,21 @@ $translationNamespaces = ['common', 'system'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('system.security.title')); ?></title>
-    <link rel="stylesheet" href="../../assets/css/theme.css?v=21">
+    <link rel="stylesheet" href="../../assets/css/theme.css?v=22">
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <style>
+        /* System module accent (blue-grey) — shared primitives pick this up. */
+        body {
+            /* System is the FIRST module whose DARK accent is a LIGHT colour (#90a4ae).
+               inbox.css renders .btn-primary/.add-btn as background:var(--accent) +
+               color:var(--on-accent) — and the global --on-accent stays WHITE in dark.
+               So pinning --accent alone would put white text on a light button. Pin
+               --on-accent too: it flips to near-black in dark. */
+            --accent: var(--sys-accent, #546e7a);
+            --accent-hover: var(--sys-accent-hover, #37474f);
+            --on-accent: var(--sys-on-accent, #fff);
+        }
+
         .security-container {
             height: calc(100vh - 48px);
             overflow-y: auto;
@@ -33,34 +45,34 @@ $translationNamespaces = ['common', 'system'];
         .page-title {
             font-size: 22px;
             font-weight: 600;
-            color: #333;
+            color: var(--text, #333);
             margin: 0 0 6px 0;
         }
 
         .page-subtitle {
             font-size: 13px;
-            color: #888;
+            color: var(--text-dim, #888);
             margin: 0 0 30px 0;
         }
 
         .settings-card {
-            background: #fff;
+            background: var(--surface, #fff);
             border-radius: 8px;
             padding: 24px;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            box-shadow: 0 1px 4px var(--shadow, rgba(0,0,0,0.08));
             margin-bottom: 24px;
         }
 
         .settings-card h3 {
             font-size: 15px;
             font-weight: 600;
-            color: #333;
+            color: var(--text, #333);
             margin: 0 0 4px 0;
         }
 
         .settings-card .card-desc {
             font-size: 13px;
-            color: #888;
+            color: var(--text-dim, #888);
             margin: 0 0 20px 0;
             line-height: 1.5;
         }
@@ -77,30 +89,32 @@ $translationNamespaces = ['common', 'system'];
         .setting-label {
             flex: 1;
             font-size: 13px;
-            color: #555;
+            color: var(--text-muted, #555);
         }
 
         .setting-label strong {
             display: block;
-            color: #333;
+            color: var(--text, #333);
             margin-bottom: 2px;
         }
 
         .setting-input {
             width: 100px;
             padding: 8px 10px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border, #ddd);
             border-radius: 4px;
             font-size: 13px;
             text-align: center;
             font-family: inherit;
+            background: var(--surface, #fff);
+            color: var(--text, #333);
         }
 
-        .setting-input:focus { outline: none; border-color: #546e7a; }
+        .setting-input:focus { outline: none; border-color: var(--sys-accent, #546e7a); }
 
         .setting-unit {
             font-size: 12px;
-            color: #999;
+            color: var(--text-faint, #999);
             min-width: 50px;
         }
 
@@ -122,25 +136,36 @@ $translationNamespaces = ['common', 'system'];
         }
 
         .btn-primary {
-            background: #546e7a;
-            color: #fff;
+            background: var(--sys-accent, #546e7a);
+            /* The dark accent is a LIGHT blue-grey, so the label flips dark. */
+            color: var(--sys-on-accent, #fff);
         }
 
+        /* #455a64 isn't the --sys-accent-hover light value (#37474f), so it stays
+           hardcoded here and gets a dark override below. */
         .btn-primary:hover { background: #455a64; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .info-note {
             background: #f5f7fa;
-            border: 1px solid #e0e0e0;
+            border: 1px solid var(--border, #e0e0e0);
             border-radius: 6px;
             padding: 14px 16px;
             font-size: 12px;
-            color: #666;
+            color: var(--text-muted, #666);
             line-height: 1.6;
             margin-top: 6px;
         }
 
-        .info-note strong { color: #333; }
+        .info-note strong { color: var(--text, #333); }
+
+        /* ---- Dark mode: pale washes + off-token colours ---- */
+        [data-theme-mode="dark"] .btn-primary:hover {
+            background: var(--sys-accent-hover, #b0bec5);
+        }
+        [data-theme-mode="dark"] .info-note {
+            background: var(--surface-2, #232830);
+        }
     </style>
 </head>
 <body>

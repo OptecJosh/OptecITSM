@@ -26,9 +26,21 @@ if (!isset($_SESSION['analyst_id'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('system.demo.heading')); ?></title>
-    <link rel="stylesheet" href="../../assets/css/theme.css?v=21">
+    <link rel="stylesheet" href="../../assets/css/theme.css?v=22">
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <style>
+        /* System module accent (blue-grey) */
+        body {
+            /* System is the FIRST module whose DARK accent is a LIGHT colour (#90a4ae).
+               inbox.css renders .btn-primary/.add-btn as background:var(--accent) +
+               color:var(--on-accent) — and the global --on-accent stays WHITE in dark.
+               So pinning --accent alone would put white text on a light button. Pin
+               --on-accent too: it flips to near-black in dark. */
+            --accent: var(--sys-accent, #546e7a);
+            --accent-hover: var(--sys-accent-hover, #37474f);
+            --on-accent: var(--sys-on-accent, #fff);
+        }
+
         .demo-container {
             height: calc(100vh - 48px);
             overflow-y: auto;
@@ -42,13 +54,13 @@ if (!isset($_SESSION['analyst_id'])) {
         .demo-header h2 {
             margin: 0;
             font-size: 22px;
-            color: #333;
+            color: var(--text, #333);
         }
 
         .demo-header p {
             margin: 5px 0 0 0;
             font-size: 13px;
-            color: #888;
+            color: var(--text-dim, #888);
         }
 
         .warning-card {
@@ -97,40 +109,40 @@ if (!isset($_SESSION['analyst_id'])) {
             font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 1px;
-            color: #888;
+            color: var(--text-dim, #888);
             margin: 0 0 12px 0;
             font-weight: 600;
         }
 
         /* Core card - full width, highlighted */
         .core-card {
-            background: white;
-            border: 2px solid #546e7a;
+            background: var(--surface, #fff);
+            border: 2px solid var(--sys-accent, #546e7a);
             border-radius: 10px;
             padding: 20px 24px;
             margin-bottom: 28px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            box-shadow: 0 2px 8px var(--shadow, rgba(0,0,0,0.06));
         }
 
         .core-card .core-info h3 {
             margin: 0 0 4px 0;
             font-size: 16px;
-            color: #333;
+            color: var(--text, #333);
         }
 
         .core-card .core-info p {
             margin: 0;
             font-size: 13px;
-            color: #666;
+            color: var(--text-muted, #666);
         }
 
         .core-card .core-info .core-detail {
             margin: 8px 0 0 0;
             font-size: 12px;
-            color: #888;
+            color: var(--text-dim, #888);
         }
 
         /* Module grid */
@@ -142,10 +154,10 @@ if (!isset($_SESSION['analyst_id'])) {
         }
 
         .module-card {
-            background: white;
+            background: var(--surface, #fff);
             border-radius: 8px;
             padding: 18px 20px;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            box-shadow: 0 1px 4px var(--shadow, rgba(0,0,0,0.08));
             display: flex;
             flex-direction: column;
         }
@@ -153,12 +165,12 @@ if (!isset($_SESSION['analyst_id'])) {
         .module-card h4 {
             margin: 0 0 4px 0;
             font-size: 14px;
-            color: #333;
+            color: var(--text, #333);
         }
 
         .module-card .module-desc {
             font-size: 12px;
-            color: #888;
+            color: var(--text-dim, #888);
             margin: 0 0 14px 0;
             line-height: 1.4;
             flex: 1;
@@ -172,8 +184,8 @@ if (!isset($_SESSION['analyst_id'])) {
 
         /* Import buttons */
         .import-btn {
-            background: #546e7a;
-            color: white;
+            background: var(--sys-accent, #546e7a);
+            color: var(--sys-on-accent, #fff);
             border: none;
             padding: 8px 18px;
             border-radius: 5px;
@@ -186,11 +198,14 @@ if (!isset($_SESSION['analyst_id'])) {
             gap: 6px;
         }
 
-        .import-btn:hover { background: #37474f; }
-        .import-btn:disabled { background: #bbb; cursor: not-allowed; }
+        .import-btn:hover { background: var(--sys-accent-hover, #37474f); }
+        /* Solid fills below keep white text in BOTH modes — --sys-on-accent is
+           dark in dark mode, which would be unreadable on them. */
+        .import-btn:disabled { background: #bbb; color: #fff; cursor: not-allowed; }
 
         .import-btn.success {
             background: #2e7d32;
+            color: #fff;
             cursor: pointer;
         }
 
@@ -203,7 +218,7 @@ if (!isset($_SESSION['analyst_id'])) {
 
         .record-count {
             font-size: 12px;
-            color: #999;
+            color: var(--text-faint, #999);
         }
 
         .error-text {
@@ -217,7 +232,7 @@ if (!isset($_SESSION['analyst_id'])) {
             width: 14px;
             height: 14px;
             border: 2px solid rgba(255,255,255,0.3);
-            border-top-color: white;
+            border-top-color: currentColor; /* follows the button's text colour */
             border-radius: 50%;
             animation: spin 0.6s linear infinite;
         }
@@ -237,34 +252,53 @@ if (!isset($_SESSION['analyst_id'])) {
         }
 
         .bonus-card {
-            background: white;
+            background: var(--surface, #fff);
             border: 2px dashed #90a4ae;
             border-radius: 10px;
             padding: 20px 24px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            box-shadow: 0 1px 4px var(--shadow, rgba(0,0,0,0.06));
         }
 
         .bonus-card .bonus-info h4 {
             margin: 0 0 4px 0;
             font-size: 14px;
-            color: #333;
+            color: var(--text, #333);
         }
 
         .bonus-card .bonus-info p {
             margin: 0;
             font-size: 12px;
-            color: #888;
+            color: var(--text-dim, #888);
             line-height: 1.4;
         }
 
         .bonus-card .bonus-info .bonus-detail {
             margin: 8px 0 0 0;
             font-size: 12px;
-            color: #999;
+            color: var(--text-faint, #999);
         }
+
+        /* ---- Dark mode overrides ----------------------------------------
+           The amber warning band, the blue tip band and the red error text are
+           meaning-carrying: hues kept, washes sunk, text lifted. */
+        [data-theme-mode="dark"] .warning-card { background: #3a2e12; border-color: #5a4a1e; }
+        [data-theme-mode="dark"] .warning-card svg { color: #fbbf24; }
+        [data-theme-mode="dark"] .warning-card .warning-text { color: #fcd34d; }
+        [data-theme-mode="dark"] .warning-card .warning-text strong { color: #ffb74d; }
+
+        [data-theme-mode="dark"] .tip-card { background: #16293f; border-color: #2c4a6b; }
+        [data-theme-mode="dark"] .tip-card svg { color: #60a5fa; }
+        [data-theme-mode="dark"] .tip-card .tip-text { color: #93c5fd; }
+        [data-theme-mode="dark"] .tip-card .tip-text strong { color: #bfdbfe; }
+
+        [data-theme-mode="dark"] .import-btn:disabled { background: #4a505a; color: var(--text-faint, #999); }
+        [data-theme-mode="dark"] .import-btn.success { background: #2e7d32; color: #fff; }
+        [data-theme-mode="dark"] .import-btn.success:hover { background: #256428; }
+        [data-theme-mode="dark"] .spinner-inline { border-color: rgba(0,0,0,0.2); border-top-color: currentColor; }
+        [data-theme-mode="dark"] .error-text { color: var(--danger-text, #fca5a5); }
     </style>
 </head>
 <body>

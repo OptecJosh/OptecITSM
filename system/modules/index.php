@@ -24,46 +24,51 @@ $translationNamespaces = ['common', 'system'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('system.modules.title')); ?></title>
-    <link rel="stylesheet" href="../../assets/css/theme.css?v=21">
+    <link rel="stylesheet" href="../../assets/css/theme.css?v=22">
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <style>
-        .main-container { flex: 1; background: var(--bg, #f5f7fa); overflow-y: auto; }
+        /* System module accent (blue-grey). --on-accent is pinned too: in dark the
+           accent is a LIGHT blue-grey, so text on it must go dark, not white. */
+        body { --accent: var(--sys-accent, #546e7a); --accent-hover: var(--sys-accent-hover, #37474f); --on-accent: var(--sys-on-accent, #fff); }
+
+        .main-container { flex: 1; background: var(--app-bg, #f5f7fa); overflow-y: auto; }
         .modules-container { flex: 1; min-width: 0; overflow-y: auto; padding: 28px 32px 80px; box-sizing: border-box; }
         .page-title { font-size: 24px; font-weight: 700; color: var(--text, #1a1a1a); margin: 0 0 4px; }
         .page-subtitle { color: var(--text-muted, #666); margin: 0 0 22px; }
 
-        .panel { background: var(--surface, #fff); border: 1px solid var(--border, #e5e7eb); border-radius: 10px; padding: 18px 20px; margin-bottom: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .panel { background: var(--surface, #fff); border: 1px solid var(--border, #e5e7eb); border-radius: 10px; padding: 18px 20px; margin-bottom: 18px; box-shadow: 0 1px 3px var(--shadow, rgba(0,0,0,0.05)); }
         .panel > h2 { font-size: 15px; margin: 0 0 12px; color: var(--text, #333); }
 
         .mode-opt { display: block; margin: 8px 0; cursor: pointer; color: var(--text, #333); }
         .mode-opt input { margin-right: 8px; }
         .strict-explainer { margin-top: 12px; padding: 12px 14px; border-radius: 8px; background: #fff3e0; border: 1px solid #ffcc80; color: #7c2d12; font-size: 13px; line-height: 1.55; }
 
-        .eff-tool select { padding: 8px 10px; border: 1px solid var(--border, #ddd); border-radius: 6px; font-size: 14px; min-width: 260px; margin-left: 8px; }
+        .eff-tool select { padding: 8px 10px; border: 1px solid var(--border, #ddd); border-radius: 6px; font-size: 14px; min-width: 260px; margin-left: 8px; background: var(--surface, #fff); color: var(--text, #333); }
         .eff-head { margin: 12px 0 6px; font-size: 13px; color: var(--text-muted, #666); }
         .eff-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .eff-table td { padding: 6px 10px; border-bottom: 1px solid var(--border, #eee); vertical-align: top; }
+        .eff-table td { padding: 6px 10px; border-bottom: 1px solid var(--border, #eee); vertical-align: top; color: var(--text, #333); }
         .eff-table td:first-child { font-weight: 600; width: 22%; }
         .eff-table .yes { color: #2e7d32; font-weight: 600; white-space: nowrap; }
         .eff-table .no  { color: #c62828; font-weight: 600; white-space: nowrap; }
         .eff-table .reason { color: var(--text-muted, #666); }
 
-        table.access-table { width: 100%; border-collapse: collapse; background: var(--surface, #fff); border: 1px solid var(--border, #e5e7eb); border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .access-table th { text-align: left; padding: 12px 16px; background: var(--surface-alt, #f8fafc); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted, #667); border-bottom: 1px solid var(--border, #e5e7eb); }
-        .access-table td { padding: 12px 16px; border-bottom: 1px solid var(--border, #f0f0f0); vertical-align: middle; }
+        table.access-table { width: 100%; border-collapse: collapse; background: var(--surface, #fff); border: 1px solid var(--border, #e5e7eb); border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px var(--shadow, rgba(0,0,0,0.05)); }
+        .access-table th { text-align: left; padding: 12px 16px; background: var(--surface-3, #f8fafc); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted, #667); border-bottom: 1px solid var(--border, #e5e7eb); }
+        .access-table td { padding: 12px 16px; border-bottom: 1px solid var(--border, #f0f0f0); vertical-align: middle; color: var(--text, #333); }
         .mod-row { cursor: pointer; transition: background 0.12s; }
         .mod-row:hover { background: var(--surface-hover, #f5f8ff); }
 
         .pill { display: inline-block; padding: 3px 10px; margin: 2px; border-radius: 14px; font-size: 12px; background: #e8f0fe; color: #1565c0; }
         .pill-all { background: #ede7f6; color: #5e35b1; }
-        .pill-more { background: #eceff1; color: #546e7a; cursor: pointer; }
+        .pill-more { background: var(--sys-accent-soft, #eceff1); color: var(--sys-accent, #546e7a); cursor: pointer; }
         .pill-none { color: var(--text-faint, #999); font-size: 12px; }
+        .all-note { color: #5e35b1; }
 
-        .chk-row { display: block; padding: 6px 4px; cursor: pointer; border-bottom: 1px solid var(--border, #f2f2f2); }
+        .chk-row { display: block; padding: 6px 4px; cursor: pointer; border-bottom: 1px solid var(--border, #f2f2f2); color: var(--text, #333); }
         .chk-row input { margin-right: 8px; }
         #moduleModalBody h4 { margin: 14px 0 4px; font-size: 13px; color: var(--text-muted, #667); text-transform: uppercase; letter-spacing: 0.4px; }
 
-        .lvl-filter { width: 100%; max-width: 320px; padding: 7px 10px; border: 1px solid var(--border, #ddd); border-radius: 6px; font-size: 13px; margin: 4px 0 14px; box-sizing: border-box; }
+        .lvl-filter { width: 100%; max-width: 320px; padding: 7px 10px; border: 1px solid var(--border, #ddd); border-radius: 6px; font-size: 13px; margin: 4px 0 14px; box-sizing: border-box; background: var(--surface, #fff); color: var(--text, #333); }
         .lvl-cols { display: flex; gap: 20px; flex-wrap: wrap; }
         .lvl-col { flex: 1; min-width: 260px; }
         .lvl-col h4 { margin: 0 0 6px; font-size: 12px; color: var(--text-muted, #667); text-transform: uppercase; letter-spacing: 0.4px; }
@@ -75,6 +80,15 @@ $translationNamespaces = ['common', 'system'];
         .lvl-empty { padding: 14px; text-align: center; color: var(--text-faint, #999); font-size: 13px; }
 
         .loading-spinner { text-align: center; color: var(--text-muted, #666); padding: 30px; }
+
+        /* ---- Dark mode: pale washes and light-on-light text that can't be tokenised ---- */
+        [data-theme-mode="dark"] .strict-explainer { background: #3a2e12; border-color: #5a4a1e; color: #fcd34d; }
+        [data-theme-mode="dark"] .eff-table .yes { color: #86efac; }
+        [data-theme-mode="dark"] .eff-table .no  { color: #fca5a5; }
+        [data-theme-mode="dark"] .lvl-tag        { color: #fca5a5; }
+        [data-theme-mode="dark"] .pill           { background: #1e2b3d; color: #93c5fd; }
+        [data-theme-mode="dark"] .pill-all       { background: #2b2440; color: #c4b5fd; }
+        [data-theme-mode="dark"] .all-note       { color: #c4b5fd; }
     </style>
 </head>
 <body>
@@ -241,7 +255,7 @@ $translationNamespaces = ['common', 'system'];
         document.getElementById('moduleModalTitle').textContent = 'Who can use ' + m.name + '?';
         const rows = (arr, kind) => (arr.length ? arr.map(e => {
             const has = e.all_modules || (e.modules || []).includes(key);
-            const note = e.all_modules ? ' <span style="color:#5e35b1;">(all modules)</span>' : '';
+            const note = e.all_modules ? ' <span class="all-note">(all modules)</span>' : '';
             return `<label class="chk-row"><input type="checkbox" data-kind="${kind}" data-id="${e.id}" ${has ? 'checked' : ''} ${e.all_modules ? 'disabled' : ''}> ${escapeHtml(e.name)}${note}</label>`;
         }).join('') : '<p class="pill-none">None</p>');
         document.getElementById('moduleModalBody').innerHTML =

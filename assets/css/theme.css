@@ -40,8 +40,8 @@
     --on-accent:     #ffffff;   /* text/icons on accent     */
 
     /* Status / semantic pairs (badges, pills) */
-    --success-bg:     #dcfce7;  --success-text: #166534;  --success-accent: #16a34a;
-    --danger-bg:      #fee2e2;  --danger-text:  #991b1b;  --danger-accent:  #d13438;
+    --success-bg:     #dcfce7;  --success-text: #166534;  --success-accent: #16a34a;  --success-border: #b7e1c4;
+    --danger-bg:      #fee2e2;  --danger-text:  #991b1b;  --danger-accent:  #d13438;  --danger-border:  #f0c2c2;
     --warning-bg:     #fef3c7;  --warning-text: #92400e;  --warning-border: #f0d9a8;
 
     /* Problem Management (purple) accents — the problem strip + badges */
@@ -177,8 +177,8 @@
     --on-accent:     #ffffff;
 
     /* Status / semantic pairs — dark surfaces with light readable text */
-    --success-bg:     #16331f;  --success-text: #86efac;  --success-accent: #22c55e;
-    --danger-bg:      #3a1a1d;  --danger-text:  #fca5a5;  --danger-accent:  #f87171;
+    --success-bg:     #16331f;  --success-text: #86efac;  --success-accent: #22c55e;  --success-border: #2f6b46;
+    --danger-bg:      #3a1a1d;  --danger-text:  #fca5a5;  --danger-accent:  #f87171;  --danger-border:  #6b2b30;
     --warning-bg:     #3a2e12;  --warning-text: #fcd34d;  --warning-border: #5a4a1e;
 
     /* Problem Management (purple) — dark surfaces with light readable text */

@@ -41,7 +41,7 @@ $translationNamespaces = ['common', 'tickets'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('tickets.settings.headings.teams')); ?></title>
-    <link rel="stylesheet" href="../../assets/css/theme.css?v=21">
+    <link rel="stylesheet" href="../../assets/css/theme.css?v=22">
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <script src="../../assets/js/i18n.js?v=2"></script>
@@ -51,16 +51,28 @@ $translationNamespaces = ['common', 'tickets'];
            scroll region below fill the screen. Own class (NOT inbox.css's
            .container, whose max-width:1200px + margin:auto would centre and cap
            the page) so it fills the full width. */
+        /* System's accent is blue-grey. Pin the generic accent trio to the module
+           tokens so the shared inbox.css primitives (.add-btn, .btn-primary,
+           focus rings, the action-icon hover) pick it up. --on-accent MUST be
+           pinned too: in dark mode --sys-accent is a LIGHT blue-grey, so text on
+           an accent fill has to go dark (--sys-on-accent: #263238), not white. */
+        body {
+            --accent: var(--sys-accent, #546e7a);
+            --accent-hover: var(--sys-accent-hover, #37474f);
+            --on-accent: var(--sys-on-accent, #fff);
+        }
         .settings-shell { display: flex; flex-direction: column; height: 100vh; }
         .settings-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; width: 100%; margin: 0; box-sizing: border-box; padding: 30px 24px 24px; }
-        .page-title { font-size: 22px; font-weight: 600; color: var(--text-strong, #333); margin: 0 0 6px 0; }
+        .page-title { font-size: 22px; font-weight: 600; color: var(--text, #333); margin: 0 0 6px 0; }
         .page-subtitle { font-size: 13px; color: var(--text-muted, #888); margin: 0 0 24px 0; line-height: 1.5; }
         .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-        .section-header h2 { font-size: 16px; font-weight: 600; color: var(--text-strong, #333); margin: 0; }
+        .section-header h2 { font-size: 16px; font-weight: 600; color: var(--text, #333); margin: 0; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
         thead th { text-align: left; color: var(--text-muted, #888); font-weight: 600; font-size: 12px; padding: 8px 10px; border-bottom: 1px solid var(--border-soft, #eee); }
-        tbody td { padding: 10px; border-bottom: 1px solid var(--border-faint, #f2f2f2); color: var(--text, #444); vertical-align: middle; }
+        tbody td { padding: 10px; border-bottom: 1px solid var(--border-soft, #f2f2f2); color: var(--text, #444); vertical-align: middle; }
         tbody tr:last-child td { border-bottom: none; }
+        /* Status + company-access pills are DATA — they encode meaning and read
+           the same in both modes, so their colours stay hardcoded. */
         .status-badge.status-active { background: #e8f5e9; color: #2e7d32; }
         .status-badge.status-inactive { background: #f0f0f0; color: #999; }
 
@@ -88,6 +100,17 @@ $translationNamespaces = ['common', 'tickets'];
         /* Canonical settings-modal overrides (match tickets/settings). */
         .modal-content { padding: 20px; max-width: 500px; }
         .modal-header { font-size: 20px; font-weight: 600; margin-bottom: 20px; color: var(--text, #333); padding: 0; border-bottom: none; }
+
+        /* Native controls don't inherit a theme — inbox.css sets only border/size,
+           so without these the inputs stay white-on-black in dark mode. */
+        .form-group input[type="text"],
+        .form-group input[type="number"],
+        .form-group select {
+            background: var(--surface, #fff);
+            color: var(--text, #333);
+        }
+        .form-group input::placeholder { color: var(--text-faint, #999); }
+        .form-group input[type="checkbox"] { accent-color: var(--accent, #546e7a); }
     </style>
 </head>
 <body>

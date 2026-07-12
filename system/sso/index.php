@@ -41,86 +41,120 @@ $redirectUri = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . BASE_U
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('system.sso.title')); ?></title>
-    <link rel="stylesheet" href="../../assets/css/theme.css?v=21">
+    <link rel="stylesheet" href="../../assets/css/theme.css?v=22">
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <style>
-        .sso-container { height: calc(100vh - 48px); overflow-y: auto; padding: 30px 20px; }
-        .page-title { font-size: 22px; font-weight: 600; color: #333; margin: 0 0 6px 0; }
-        .page-subtitle { font-size: 13px; color: #888; margin: 0 0 30px 0; }
+        /* System module accent (blue-grey) — pin the generic --accent to it. */
+        body {
+            /* System is the FIRST module whose DARK accent is a LIGHT colour (#90a4ae).
+               inbox.css renders .btn-primary/.add-btn as background:var(--accent) +
+               color:var(--on-accent) — and the global --on-accent stays WHITE in dark.
+               So pinning --accent alone would put white text on a light button. Pin
+               --on-accent too: it flips to near-black in dark. */
+            --accent: var(--sys-accent, #546e7a);
+            --accent-hover: var(--sys-accent-hover, #37474f);
+            --on-accent: var(--sys-on-accent, #fff);
+        }
 
-        .settings-card { background: #fff; border-radius: 8px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 24px; }
-        .settings-card h3 { font-size: 15px; font-weight: 600; color: #333; margin: 0 0 4px 0; }
-        .settings-card .card-desc { font-size: 13px; color: #888; margin: 0 0 20px 0; line-height: 1.5; }
+        .sso-container { height: calc(100vh - 48px); overflow-y: auto; padding: 30px 20px; }
+        .page-title { font-size: 22px; font-weight: 600; color: var(--text, #333); margin: 0 0 6px 0; }
+        .page-subtitle { font-size: 13px; color: var(--text-dim, #888); margin: 0 0 30px 0; }
+
+        .settings-card { background: var(--surface, #fff); border-radius: 8px; padding: 24px; box-shadow: 0 1px 4px var(--shadow, rgba(0,0,0,0.08)); margin-bottom: 24px; }
+        .settings-card h3 { font-size: 15px; font-weight: 600; color: var(--text, #333); margin: 0 0 4px 0; }
+        .settings-card .card-desc { font-size: 13px; color: var(--text-dim, #888); margin: 0 0 20px 0; line-height: 1.5; }
 
         .setting-row { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
         .setting-row:last-child { margin-bottom: 0; }
-        .setting-label { flex: 1; font-size: 13px; color: #555; }
-        .setting-label strong { display: block; color: #333; margin-bottom: 2px; }
+        .setting-label { flex: 1; font-size: 13px; color: var(--text-muted, #555); }
+        .setting-label strong { display: block; color: var(--text, #333); margin-bottom: 2px; }
 
         /* Toggle switch */
         .switch { position: relative; display: inline-block; width: 44px; height: 24px; flex: none; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .switch .slider { position: absolute; cursor: pointer; inset: 0; background: #ccc; border-radius: 24px; transition: .2s; }
         .switch .slider:before { content: ""; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .2s; }
-        .switch input:checked + .slider { background: #546e7a; }
+        .switch input:checked + .slider { background: var(--sys-accent, #546e7a); }
         .switch input:checked + .slider:before { transform: translateX(20px); }
 
         .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 6px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; transition: all 0.15s; }
-        .btn-primary { background: #546e7a; color: #fff; }
+        .btn-primary { background: var(--sys-accent, #546e7a); color: var(--sys-on-accent, #fff); }
         .btn-primary:hover { background: #455a64; }
-        .btn-secondary { background: #eceff1; color: #455a64; }
+        .btn-secondary { background: var(--sys-accent-soft, #eceff1); color: #455a64; }
         .btn-secondary:hover { background: #cfd8dc; }
-        .btn-test { background: #fff; color: #546e7a; border: 1px solid #cfd8dc; }
+        .btn-test { background: var(--surface, #fff); color: var(--sys-accent, #546e7a); border: 1px solid #cfd8dc; }
         .btn-test:hover { background: #f5f7fa; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .save-area { margin-top: 24px; }
 
-        .info-note { background: #f5f7fa; border: 1px solid #e0e0e0; border-radius: 6px; padding: 14px 16px; font-size: 12px; color: #666; line-height: 1.6; }
-        .info-note strong { color: #333; }
+        .info-note { background: #f5f7fa; border: 1px solid var(--border, #e0e0e0); border-radius: 6px; padding: 14px 16px; font-size: 12px; color: var(--text-muted, #666); line-height: 1.6; }
+        .info-note strong { color: var(--text, #333); }
         .redirect-uri-box { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
-        .redirect-uri-box code { flex: 1; background: #fff; border: 1px solid #ddd; border-radius: 4px; padding: 8px 10px; font-size: 12px; color: #333; overflow-x: auto; white-space: nowrap; }
+        .redirect-uri-box code { flex: 1; background: var(--surface, #fff); border: 1px solid var(--border, #ddd); border-radius: 4px; padding: 8px 10px; font-size: 12px; color: var(--text, #333); overflow-x: auto; white-space: nowrap; }
 
         /* Providers table */
         .providers-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-        .add-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: #546e7a; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .add-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--sys-accent, #546e7a); color: var(--sys-on-accent, #fff); border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
         .add-btn:hover { background: #455a64; }
         table.providers { width: 100%; border-collapse: collapse; font-size: 13px; }
-        table.providers th { text-align: left; color: #888; font-weight: 600; font-size: 12px; padding: 8px 10px; border-bottom: 1px solid #eee; }
-        table.providers td { padding: 10px; border-bottom: 1px solid #f2f2f2; color: #444; vertical-align: middle; }
+        table.providers th { text-align: left; color: var(--text-dim, #888); font-weight: 600; font-size: 12px; padding: 8px 10px; border-bottom: 1px solid var(--border-soft, #eee); }
+        table.providers td { padding: 10px; border-bottom: 1px solid var(--border-soft, #f2f2f2); color: var(--text, #444); vertical-align: middle; }
         table.providers tr:last-child td { border-bottom: none; }
-        .issuer-cell { color: #888; font-size: 12px; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .issuer-cell { color: var(--text-dim, #888); font-size: 12px; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .status-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
         .status-badge.on { background: #e8f5e9; color: #2e7d32; }
         .status-badge.off { background: #f0f0f0; color: #999; }
         .badge-jit { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; background: #e3f2fd; color: #1565c0; }
         .table-action-btn { background: none; border: none; cursor: pointer; color: #607d8b; padding: 4px 8px; font-size: 13px; border-radius: 4px; }
-        .table-action-btn:hover { background: #eceff1; }
+        .table-action-btn:hover { background: var(--sys-accent-soft, #eceff1); }
         .table-action-btn.danger:hover { background: #ffebee; color: #c62828; }
-        .empty-row td { text-align: center; color: #aaa; padding: 24px; font-style: italic; }
+        .empty-row td { text-align: center; color: var(--text-faint, #aaa); padding: 24px; font-style: italic; }
 
         /* Modal — namespaced (sso-) so it doesn't inherit inbox.css's global .modal
            framework, whose .modal rule sets opacity:0/visibility:hidden by default. */
         .sso-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 2100; align-items: center; justify-content: center; }
         .sso-modal-overlay.open { display: flex; }
-        .sso-modal { background: #fff; border-radius: 10px; width: 560px; max-width: 92vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
-        .sso-modal-header { padding: 20px 24px; border-bottom: 1px solid #eee; font-size: 16px; font-weight: 600; color: #333; }
+        .sso-modal { background: var(--surface, #fff); border-radius: 10px; width: 560px; max-width: 92vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+        .sso-modal-header { padding: 20px 24px; border-bottom: 1px solid var(--border-soft, #eee); font-size: 16px; font-weight: 600; color: var(--text, #333); }
         .sso-modal-body { padding: 20px 24px; }
-        .sso-modal-footer { padding: 16px 24px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 10px; }
+        .sso-modal-footer { padding: 16px 24px; border-top: 1px solid var(--border-soft, #eee); display: flex; justify-content: flex-end; gap: 10px; }
         .form-field { margin-bottom: 16px; }
-        .form-field label { display: block; font-size: 13px; font-weight: 600; color: #444; margin-bottom: 4px; }
-        .form-field .hint { font-size: 12px; color: #999; font-weight: 400; margin-bottom: 6px; }
-        .form-field input[type=text], .form-field input[type=password] { width: 100%; padding: 9px 11px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px; font-family: inherit; box-sizing: border-box; }
-        .form-field input:focus { outline: none; border-color: #546e7a; }
+        .form-field label { display: block; font-size: 13px; font-weight: 600; color: var(--text, #444); margin-bottom: 4px; }
+        .form-field .hint { font-size: 12px; color: var(--text-faint, #999); font-weight: 400; margin-bottom: 6px; }
+        .form-field input[type=text], .form-field input[type=password] { width: 100%; padding: 9px 11px; border: 1px solid var(--border, #ddd); border-radius: 5px; font-size: 13px; font-family: inherit; box-sizing: border-box; background: var(--surface, #fff); color: var(--text, #333); }
+        .form-field input:focus { outline: none; border-color: var(--sys-accent, #546e7a); }
+        .form-field select { background: var(--surface, #fff); color: var(--text, #333); }
         .issuer-row { display: flex; gap: 8px; }
         .issuer-row input { flex: 1; }
         .checkbox-field { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px; }
         .checkbox-field input { margin-top: 3px; }
-        .checkbox-field .cb-label { font-size: 13px; color: #444; }
+        .checkbox-field .cb-label { font-size: 13px; color: var(--text, #444); }
         .checkbox-field .cb-label strong { display: block; }
-        .checkbox-field .cb-label span { color: #999; font-size: 12px; }
+        .checkbox-field .cb-label span { color: var(--text-faint, #999); font-size: 12px; }
         .test-result { margin-top: 6px; font-size: 12px; padding: 8px 10px; border-radius: 5px; display: none; }
         .test-result.ok { display: block; background: #e8f5e9; color: #2e7d32; }
         .test-result.err { display: block; background: #ffebee; color: #c62828; }
+        .jit-off { color: #bbb; }
+        .tenant-global { color: var(--text-faint, #999); }
+
+        /* ---------- Dark mode overrides ----------
+           Light values above are deliberately unchanged; these only apply in dark. */
+        [data-theme-mode="dark"] .switch .slider { background: #4a5058; }
+        [data-theme-mode="dark"] .btn-primary:hover { background: var(--sys-accent-hover, #455a64); }
+        [data-theme-mode="dark"] .btn-secondary { color: #cfd8dc; }
+        [data-theme-mode="dark"] .btn-secondary:hover { background: #37474f; }
+        [data-theme-mode="dark"] .btn-test { border-color: #455a64; }
+        [data-theme-mode="dark"] .btn-test:hover { background: #2a3039; }
+        [data-theme-mode="dark"] .info-note { background: #20242b; }
+        [data-theme-mode="dark"] .add-btn:hover { background: var(--sys-accent-hover, #455a64); }
+        [data-theme-mode="dark"] .status-badge.on { background: #16331f; color: #86efac; }
+        [data-theme-mode="dark"] .status-badge.off { background: #2a3039; color: #8b95a3; }
+        [data-theme-mode="dark"] .badge-jit { background: #14324a; color: #7fc4f5; }
+        [data-theme-mode="dark"] .jit-off { color: #6b7280; }
+        [data-theme-mode="dark"] .table-action-btn { color: #90a4ae; }
+        [data-theme-mode="dark"] .table-action-btn.danger:hover { background: #3a1a1d; color: #fca5a5; }
+        [data-theme-mode="dark"] .test-result.ok { background: #16331f; color: #86efac; }
+        [data-theme-mode="dark"] .test-result.err { background: #3a1a1d; color: #fca5a5; }
     </style>
 </head>
 <body>
@@ -318,10 +352,10 @@ $redirectUri = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . BASE_U
         body.innerHTML = providers.map(p => `
             <tr>
                 <td><strong>${esc(p.display_name)}</strong></td>
-                ${MULTI_TENANT ? `<td>${p.tenant_name ? esc(p.tenant_name) : '<span style="color:#999;">' + window.t('system.sso.global_badge') + '</span>'}</td>` : ''}
+                ${MULTI_TENANT ? `<td>${p.tenant_name ? esc(p.tenant_name) : '<span class="tenant-global">' + window.t('system.sso.global_badge') + '</span>'}</td>` : ''}
                 <td class="issuer-cell" title="${esc(p.issuer_url)}">${esc(p.issuer_url)}</td>
                 <td><span class="status-badge ${p.enabled ? 'on' : 'off'}">${p.enabled ? window.t('system.sso.enabled') : window.t('system.sso.disabled')}</span></td>
-                <td>${p.auto_create_users ? '<span class="badge-jit">' + window.t('system.sso.jit_on') + '</span>' : '<span style="color:#bbb;">' + window.t('system.sso.jit_off') + '</span>'}</td>
+                <td>${p.auto_create_users ? '<span class="badge-jit">' + window.t('system.sso.jit_on') + '</span>' : '<span class="jit-off">' + window.t('system.sso.jit_off') + '</span>'}</td>
                 <td style="text-align:right;">
                     <button class="table-action-btn" data-edit="${p.id}">${window.t('system.sso.edit')}</button>
                     <button class="table-action-btn danger" data-del="${p.id}">${window.t('system.sso.delete')}</button>

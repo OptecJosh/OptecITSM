@@ -22,31 +22,44 @@ $translationNamespaces = ['common', 'system'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('system.companies.title')); ?></title>
-    <link rel="stylesheet" href="../../assets/css/theme.css?v=21">
+    <link rel="stylesheet" href="../../assets/css/theme.css?v=22">
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <style>
+        /* System module accent (blue-grey) — pin the generic --accent so shared
+           components (inbox.css, header) pick up the module colour. */
+        body {
+            /* System is the FIRST module whose DARK accent is a LIGHT colour (#90a4ae).
+               inbox.css renders .btn-primary/.add-btn as background:var(--accent) +
+               color:var(--on-accent) — and the global --on-accent stays WHITE in dark.
+               So pinning --accent alone would put white text on a light button. Pin
+               --on-accent too: it flips to near-black in dark. */
+            --accent: var(--sys-accent, #546e7a);
+            --accent-hover: var(--sys-accent-hover, #37474f);
+            --on-accent: var(--sys-on-accent, #fff);
+        }
+
         /* flex:1 (not a hardcoded 100vh-48px height) so a taller/wrapping header
            can't push the page off-screen — see the tickets/settings fix (#535). */
         .companies-container { flex: 1; overflow-y: auto; padding: 30px 20px; }
-        .page-title { font-size: 22px; font-weight: 600; color: #333; margin: 0 0 6px 0; }
-        .page-subtitle { font-size: 13px; color: #888; margin: 0 0 30px 0; }
+        .page-title { font-size: 22px; font-weight: 600; color: var(--text, #333); margin: 0 0 6px 0; }
+        .page-subtitle { font-size: 13px; color: var(--text-dim, #888); margin: 0 0 30px 0; }
 
-        .settings-card { background: #fff; border-radius: 8px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 24px; }
+        .settings-card { background: var(--surface, #fff); border-radius: 8px; padding: 24px; box-shadow: 0 1px 4px var(--shadow, rgba(0,0,0,0.08)); margin-bottom: 24px; }
 
         .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 6px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; transition: all 0.15s; }
-        .btn-primary { background: #546e7a; color: #fff; }
+        .btn-primary { background: var(--sys-accent, #546e7a); color: var(--sys-on-accent, #fff); }
         .btn-primary:hover { background: #455a64; }
-        .btn-secondary { background: #eceff1; color: #455a64; }
+        .btn-secondary { background: var(--sys-accent-soft, #eceff1); color: #455a64; }
         .btn-secondary:hover { background: #cfd8dc; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         /* Companies table */
         .companies-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-        .add-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: #546e7a; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .add-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--sys-accent, #546e7a); color: var(--sys-on-accent, #fff); border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
         .add-btn:hover { background: #455a64; }
         table.companies { width: 100%; border-collapse: collapse; font-size: 13px; }
-        table.companies th { text-align: left; color: #888; font-weight: 600; font-size: 12px; padding: 8px 10px; border-bottom: 1px solid #eee; }
-        table.companies td { padding: 10px; border-bottom: 1px solid #f2f2f2; color: #444; vertical-align: middle; }
+        table.companies th { text-align: left; color: var(--text-dim, #888); font-weight: 600; font-size: 12px; padding: 8px 10px; border-bottom: 1px solid var(--border-soft, #eee); }
+        table.companies td { padding: 10px; border-bottom: 1px solid var(--border-soft, #f2f2f2); color: var(--text, #444); vertical-align: middle; }
         table.companies tr:last-child td { border-bottom: none; }
         .status-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
         .status-badge.on { background: #e8f5e9; color: #2e7d32; }
@@ -55,54 +68,84 @@ $translationNamespaces = ['common', 'system'];
         .domain-chip { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; background: #ede7f6; color: #5e35b1; margin: 2px 4px 2px 0; }
 
         /* Public email domains card */
-        .card-title { font-size: 16px; font-weight: 600; color: #333; margin: 0 0 6px 0; }
-        .card-hint { font-size: 13px; color: #888; margin: 0 0 16px 0; line-height: 1.5; }
-        .freemail-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border-radius: 14px; font-size: 12px; background: #eceff1; color: #37474f; margin: 2px 6px 2px 0; }
+        .card-title { font-size: 16px; font-weight: 600; color: var(--text, #333); margin: 0 0 6px 0; }
+        .card-hint { font-size: 13px; color: var(--text-dim, #888); margin: 0 0 16px 0; line-height: 1.5; }
+        .freemail-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border-radius: 14px; font-size: 12px; background: var(--sys-accent-soft, #eceff1); color: #37474f; margin: 2px 6px 2px 0; }
         .freemail-chip button { background: none; border: none; cursor: pointer; color: #90a4ae; font-size: 14px; line-height: 1; padding: 0 2px; border-radius: 50%; }
         .freemail-chip button:hover { color: #c62828; }
-        .freemail-none { color: #aaa; font-size: 12px; font-style: italic; }
+        .freemail-none { color: var(--text-faint, #aaa); font-size: 12px; font-style: italic; }
         .builtin-freemail { margin-top: 16px; }
         .builtin-toggle { background: none; border: none; padding: 0; cursor: pointer; color: #607d8b; font-size: 12px; font-weight: 600; }
         .builtin-toggle:hover { text-decoration: underline; }
         #builtinFreemailList { margin-top: 8px; }
-        .builtin-chip { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; background: #f5f5f5; color: #999; margin: 2px 4px 2px 0; }
-        .domains-none { color: #bbb; }
+        .builtin-chip { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; background: var(--surface-3, #f5f5f5); color: var(--text-faint, #999); margin: 2px 4px 2px 0; }
+        .domains-none { color: var(--text-faint, #bbb); }
+        #freemailInput { background: var(--surface, #fff); color: var(--text, #333); }
         .table-action-btn { background: none; border: none; cursor: pointer; color: #607d8b; padding: 4px 8px; font-size: 13px; border-radius: 4px; }
-        .table-action-btn:hover { background: #eceff1; }
-        .empty-row td { text-align: center; color: #aaa; padding: 24px; font-style: italic; }
+        .table-action-btn:hover { background: var(--sys-accent-soft, #eceff1); }
+        .empty-row td { text-align: center; color: var(--text-faint, #aaa); padding: 24px; font-style: italic; }
 
         /* Modal — namespaced (co-) so it doesn't inherit inbox.css's global .modal
            framework, whose .modal rule sets opacity:0/visibility:hidden by default. */
         .co-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 2100; align-items: center; justify-content: center; }
         .co-modal-overlay.open { display: flex; }
-        .co-modal { background: #fff; border-radius: 10px; width: 480px; max-width: 92vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
-        .co-modal-header { padding: 20px 24px; border-bottom: 1px solid #eee; font-size: 16px; font-weight: 600; color: #333; }
+        .co-modal { background: var(--surface, #fff); border-radius: 10px; width: 480px; max-width: 92vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+        .co-modal-header { padding: 20px 24px; border-bottom: 1px solid var(--border-soft, #eee); font-size: 16px; font-weight: 600; color: var(--text, #333); }
         .co-modal-body { padding: 20px 24px; }
-        .co-modal-footer { padding: 16px 24px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 10px; }
+        .co-modal-footer { padding: 16px 24px; border-top: 1px solid var(--border-soft, #eee); display: flex; justify-content: flex-end; gap: 10px; }
         .form-field { margin-bottom: 16px; }
-        .form-field label { display: block; font-size: 13px; font-weight: 600; color: #444; margin-bottom: 4px; }
-        .form-field .hint { font-size: 12px; color: #999; font-weight: 400; margin-bottom: 6px; }
-        .form-field input[type=text] { width: 100%; padding: 9px 11px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px; font-family: inherit; box-sizing: border-box; }
-        .form-field input:focus { outline: none; border-color: #546e7a; }
+        .form-field label { display: block; font-size: 13px; font-weight: 600; color: var(--text, #444); margin-bottom: 4px; }
+        .form-field .hint { font-size: 12px; color: var(--text-faint, #999); font-weight: 400; margin-bottom: 6px; }
+        .form-field input[type=text] { width: 100%; padding: 9px 11px; border: 1px solid var(--border, #ddd); border-radius: 5px; font-size: 13px; font-family: inherit; box-sizing: border-box; background: var(--surface, #fff); color: var(--text, #333); }
+        .form-field input:focus { outline: none; border-color: var(--sys-accent, #546e7a); }
         .checkbox-field { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px; }
         .checkbox-field input { margin-top: 3px; }
-        .checkbox-field .cb-label { font-size: 13px; color: #444; }
+        .checkbox-field .cb-label { font-size: 13px; color: var(--text, #444); }
         .checkbox-field .cb-label strong { display: block; }
-        .checkbox-field .cb-label span { color: #999; font-size: 12px; }
+        .checkbox-field .cb-label span { color: var(--text-faint, #999); font-size: 12px; }
 
         /* "How email reaches this company" — derived routing summary panel */
-        .routing-panel { background: #f7f9fa; border: 1px solid #e3e8ea; border-radius: 6px; padding: 12px 14px; }
-        .routing-path { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid #eceff1; }
+        .routing-panel { background: #f7f9fa; border: 1px solid var(--border, #e3e8ea); border-radius: 6px; padding: 12px 14px; }
+        .routing-path { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border-soft, #eceff1); }
         .routing-path:last-child { border-bottom: none; }
         .routing-path .rp-icon { flex: 0 0 auto; font-size: 15px; line-height: 1.3; }
         .routing-path .rp-body { flex: 1; min-width: 0; }
-        .routing-path .rp-kind { font-size: 12px; font-weight: 600; color: #455a64; }
+        .routing-path .rp-kind { font-size: 12px; font-weight: 600; color: var(--text, #455a64); }
         .routing-path .rp-kind .rp-flag { font-weight: 600; color: #c62828; font-size: 11px; margin-left: 6px; }
-        .routing-path .rp-desc { font-size: 12px; color: #666; margin-top: 2px; }
-        .routing-path .rp-desc strong { color: #444; font-weight: 600; }
-        .routing-note { font-size: 12px; color: #777; margin-top: 10px; font-style: italic; }
+        .routing-path .rp-desc { font-size: 12px; color: var(--text-muted, #666); margin-top: 2px; }
+        .routing-path .rp-desc strong { color: var(--text, #444); font-weight: 600; }
+        .routing-note { font-size: 12px; color: var(--text-dim, #777); margin-top: 10px; font-style: italic; }
         .routing-warn { display: flex; gap: 8px; font-size: 12px; color: #8a5a00; background: #fff8e1; border: 1px solid #ffe0a3; border-radius: 5px; padding: 8px 10px; margin-top: 8px; }
-        .routing-empty { font-size: 12px; color: #aaa; font-style: italic; }
+        .routing-empty { font-size: 12px; color: var(--text-faint, #aaa); font-style: italic; }
+
+        /* Inline-rendered rows (domains / senders lists, JS-built) */
+        .domain-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; border: 1px solid var(--border, #eee); border-radius: 5px; margin-bottom: 6px; font-size: 13px; color: var(--text, #333); }
+        .list-none { color: var(--text-faint, #aaa); font-size: 12px; font-style: italic; padding: 6px 0; }
+
+        /* SSO help banner */
+        .sso-banner { display: flex; align-items: center; gap: 12px; text-decoration: none; background: linear-gradient(135deg, #eef2ff, #e0e7ff); border: 1px solid #c7d2fe; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; }
+        .sso-banner svg { flex-shrink: 0; }
+        .sso-banner .sso-text { flex: 1; color: #3730a3; font-size: 13.5px; line-height: 1.45; }
+        .sso-banner .sso-text strong { display: block; font-size: 14px; margin-bottom: 1px; }
+        .sso-banner .sso-arrow { color: #6366f1; font-weight: 700; font-size: 18px; }
+
+        /* ---- Dark mode overrides: pale washes / tinted pills that would glow ---- */
+        [data-theme-mode="dark"] .btn-primary:hover,
+        [data-theme-mode="dark"] .add-btn:hover { background: var(--sys-accent-hover, #455a64); color: var(--sys-on-accent, #fff); }
+        [data-theme-mode="dark"] .btn-secondary { color: var(--text, #eceff1); }
+        [data-theme-mode="dark"] .btn-secondary:hover { background: #37474f; }
+        [data-theme-mode="dark"] .freemail-chip { color: var(--text, #eceff1); }
+        [data-theme-mode="dark"] .builtin-toggle,
+        [data-theme-mode="dark"] .table-action-btn { color: var(--sys-accent, #90a4ae); }
+        [data-theme-mode="dark"] .status-badge.on { background: #16331f; color: #86efac; }
+        [data-theme-mode="dark"] .status-badge.off { background: #2b313a; color: #9aa3af; }
+        [data-theme-mode="dark"] .badge-default { background: #1e3a5f; color: #90caf9; }
+        [data-theme-mode="dark"] .domain-chip { background: #332a45; color: #c9b6ec; }
+        [data-theme-mode="dark"] .routing-panel { background: #20242b; }
+        [data-theme-mode="dark"] .routing-warn { color: #fcd34d; background: #3a2e12; border-color: #5a4a1e; }
+        [data-theme-mode="dark"] .routing-path .rp-kind .rp-flag,
+        [data-theme-mode="dark"] .freemail-chip button:hover { color: #fca5a5; }
+        [data-theme-mode="dark"] .sso-banner { filter: brightness(0.82); }
     </style>
 </head>
 <body>
@@ -112,10 +155,10 @@ $translationNamespaces = ['common', 'system'];
         <h1 class="page-title"><?php echo htmlspecialchars(t('system.companies.title')); ?></h1>
         <p class="page-subtitle"><?php echo htmlspecialchars(t('system.companies.subtitle')); ?></p>
 
-        <a href="../help/sso.php" style="display:flex;align-items:center;gap:12px;text-decoration:none;background:linear-gradient(135deg,#eef2ff,#e0e7ff);border:1px solid #c7d2fe;border-radius:8px;padding:14px 18px;margin-bottom:20px;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg>
-            <span style="flex:1;color:#3730a3;font-size:13.5px;line-height:1.45;"><strong style="display:block;font-size:14px;margin-bottom:1px;">Setting up single sign-on for the self-service portal?</strong>Click here for the step-by-step guide — it covers both single-company and multi-company (MSP) setups.</span>
-            <span style="color:#6366f1;font-weight:700;font-size:18px;">&rarr;</span>
+        <a href="../help/sso.php" class="sso-banner">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+            <span class="sso-text"><strong>Setting up single sign-on for the self-service portal?</strong>Click here for the step-by-step guide — it covers both single-company and multi-company (MSP) setups.</span>
+            <span class="sso-arrow">&rarr;</span>
         </a>
 
         <div class="settings-card">
@@ -316,11 +359,11 @@ $translationNamespaces = ['common', 'system'];
     function renderDomains() {
         const list = document.getElementById('domainsList');
         if (!currentDomains.length) {
-            list.innerHTML = '<div style="color:#aaa; font-size:12px; font-style:italic; padding:6px 0;">' + esc(window.t('system.companies.domains_none')) + '</div>';
+            list.innerHTML = '<div class="list-none">' + esc(window.t('system.companies.domains_none')) + '</div>';
             return;
         }
         list.innerHTML = currentDomains.map(d => `
-            <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 10px; border:1px solid #eee; border-radius:5px; margin-bottom:6px; font-size:13px;">
+            <div class="domain-row">
                 <span>${esc(d.domain)}</span>
                 <button type="button" class="table-action-btn" data-remove-domain="${d.id}">${esc(window.t('system.companies.domain_remove'))}</button>
             </div>`).join('');
@@ -381,11 +424,11 @@ $translationNamespaces = ['common', 'system'];
     function renderSenders() {
         const list = document.getElementById('sendersList');
         if (!currentSenders.length) {
-            list.innerHTML = '<div style="color:#aaa; font-size:12px; font-style:italic; padding:6px 0;">' + esc(window.t('system.companies.senders_none')) + '</div>';
+            list.innerHTML = '<div class="list-none">' + esc(window.t('system.companies.senders_none')) + '</div>';
             return;
         }
         list.innerHTML = currentSenders.map(s => `
-            <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 10px; border:1px solid #eee; border-radius:5px; margin-bottom:6px; font-size:13px;">
+            <div class="domain-row">
                 <span>${esc(s.email)}</span>
                 <button type="button" class="table-action-btn" data-remove-sender="${s.id}">${esc(window.t('system.companies.sender_remove'))}</button>
             </div>`).join('');

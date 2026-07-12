@@ -29,87 +29,116 @@ $apiBaseUrl = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . BASE_UR
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - API</title>
-    <link rel="stylesheet" href="../../assets/css/theme.css?v=21">
+    <link rel="stylesheet" href="../../assets/css/theme.css?v=22">
     <link rel="stylesheet" href="../../assets/css/inbox.css">
     <style>
-        .api-container { height: calc(100vh - 48px); overflow-y: auto; padding: 30px 20px; }
-        .page-title { font-size: 22px; font-weight: 600; color: #333; margin: 0 0 6px 0; }
-        .page-subtitle { font-size: 13px; color: #888; margin: 0 0 30px 0; }
+        /* System module accent (blue-grey) — pin the generic --accent to it. */
+        body {
+            /* System is the FIRST module whose DARK accent is a LIGHT colour (#90a4ae).
+               inbox.css renders .btn-primary/.add-btn as background:var(--accent) +
+               color:var(--on-accent) — and the global --on-accent stays WHITE in dark.
+               So pinning --accent alone would put white text on a light button. Pin
+               --on-accent too: it flips to near-black in dark. */
+            --accent: var(--sys-accent, #546e7a);
+            --accent-hover: var(--sys-accent-hover, #37474f);
+            --on-accent: var(--sys-on-accent, #fff);
+        }
 
-        .settings-card { background: #fff; border-radius: 8px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 24px; }
-        .settings-card h3 { font-size: 15px; font-weight: 600; color: #333; margin: 0 0 4px 0; }
-        .settings-card .card-desc { font-size: 13px; color: #888; margin: 0 0 20px 0; line-height: 1.5; }
+        .api-container { height: calc(100vh - 48px); overflow-y: auto; padding: 30px 20px; }
+        .page-title { font-size: 22px; font-weight: 600; color: var(--text, #333); margin: 0 0 6px 0; }
+        .page-subtitle { font-size: 13px; color: var(--text-dim, #888); margin: 0 0 30px 0; }
+
+        .settings-card { background: var(--surface, #fff); border-radius: 8px; padding: 24px; box-shadow: 0 1px 4px var(--shadow, rgba(0,0,0,0.08)); margin-bottom: 24px; }
+        .settings-card h3 { font-size: 15px; font-weight: 600; color: var(--text, #333); margin: 0 0 4px 0; }
+        .settings-card .card-desc { font-size: 13px; color: var(--text-dim, #888); margin: 0 0 20px 0; line-height: 1.5; }
 
         .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 6px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; transition: all 0.15s; text-decoration: none; }
-        .btn-primary { background: #546e7a; color: #fff; }
+        .btn-primary { background: var(--sys-accent, #546e7a); color: var(--sys-on-accent, #fff); }
         .btn-primary:hover { background: #455a64; }
-        .btn-secondary { background: #eceff1; color: #455a64; }
+        .btn-secondary { background: var(--sys-accent-soft, #eceff1); color: #455a64; }
         .btn-secondary:hover { background: #cfd8dc; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .info-note { background: #f5f7fa; border: 1px solid #e0e0e0; border-radius: 6px; padding: 14px 16px; font-size: 12px; color: #666; line-height: 1.6; }
-        .info-note strong { color: #333; }
+        .info-note { background: #f5f7fa; border: 1px solid var(--border, #e0e0e0); border-radius: 6px; padding: 14px 16px; font-size: 12px; color: var(--text-muted, #666); line-height: 1.6; }
+        .info-note strong { color: var(--text, #333); }
         .base-url-box { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
-        .base-url-box code { flex: 1; background: #fff; border: 1px solid #ddd; border-radius: 4px; padding: 8px 10px; font-size: 12px; color: #333; overflow-x: auto; white-space: nowrap; }
+        .base-url-box code { flex: 1; background: var(--surface, #fff); border: 1px solid var(--border, #ddd); border-radius: 4px; padding: 8px 10px; font-size: 12px; color: var(--text, #333); overflow-x: auto; white-space: nowrap; }
 
         .keys-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-        .add-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: #546e7a; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .add-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--sys-accent, #546e7a); color: var(--sys-on-accent, #fff); border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
         .add-btn:hover { background: #455a64; }
         table.keys { width: 100%; border-collapse: collapse; font-size: 13px; }
-        table.keys th { text-align: left; color: #888; font-weight: 600; font-size: 12px; padding: 8px 10px; border-bottom: 1px solid #eee; }
-        table.keys td { padding: 10px; border-bottom: 1px solid #f2f2f2; color: #444; vertical-align: middle; }
+        table.keys th { text-align: left; color: var(--text-dim, #888); font-weight: 600; font-size: 12px; padding: 8px 10px; border-bottom: 1px solid var(--border-soft, #eee); }
+        table.keys td { padding: 10px; border-bottom: 1px solid var(--border-soft, #f2f2f2); color: var(--text, #444); vertical-align: middle; }
         table.keys tr:last-child td { border-bottom: none; }
-        .key-prefix { font-family: Consolas, Monaco, monospace; font-size: 12px; color: #888; }
+        .key-prefix { font-family: Consolas, Monaco, monospace; font-size: 12px; color: var(--text-dim, #888); }
         .status-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
         .status-badge.on { background: #e8f5e9; color: #2e7d32; }
         .status-badge.off { background: #f0f0f0; color: #999; }
         .status-badge.expired { background: #fff3e0; color: #e65100; }
         .perm-count { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; background: #e3f2fd; color: #1565c0; }
         .table-action-btn { background: none; border: none; cursor: pointer; color: #607d8b; padding: 4px 8px; font-size: 13px; border-radius: 4px; }
-        .table-action-btn:hover { background: #eceff1; }
+        .table-action-btn:hover { background: var(--sys-accent-soft, #eceff1); }
         .table-action-btn.danger:hover { background: #ffebee; color: #c62828; }
-        .empty-row td { text-align: center; color: #aaa; padding: 24px; font-style: italic; }
+        .empty-row td { text-align: center; color: var(--text-faint, #aaa); padding: 24px; font-style: italic; }
 
         /* Modal — namespaced (apik-) so it doesn't inherit inbox.css's global
            .modal framework (opacity:0/visibility:hidden by default). */
         .apik-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 2100; align-items: center; justify-content: center; }
         .apik-modal-overlay.open { display: flex; }
-        .apik-modal { background: #fff; border-radius: 10px; width: 640px; max-width: 92vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
-        .apik-modal-header { padding: 20px 24px; border-bottom: 1px solid #eee; font-size: 16px; font-weight: 600; color: #333; }
+        .apik-modal { background: var(--surface, #fff); border-radius: 10px; width: 640px; max-width: 92vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+        .apik-modal-header { padding: 20px 24px; border-bottom: 1px solid var(--border-soft, #eee); font-size: 16px; font-weight: 600; color: var(--text, #333); }
         .apik-modal-body { padding: 20px 24px; }
-        .apik-modal-footer { padding: 16px 24px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 10px; }
+        .apik-modal-footer { padding: 16px 24px; border-top: 1px solid var(--border-soft, #eee); display: flex; justify-content: flex-end; gap: 10px; }
         .form-field { margin-bottom: 16px; }
-        .form-field label { display: block; font-size: 13px; font-weight: 600; color: #444; margin-bottom: 4px; }
-        .form-field .hint { font-size: 12px; color: #999; font-weight: 400; margin-bottom: 6px; }
+        .form-field label { display: block; font-size: 13px; font-weight: 600; color: var(--text, #444); margin-bottom: 4px; }
+        .form-field .hint { font-size: 12px; color: var(--text-faint, #999); font-weight: 400; margin-bottom: 6px; }
         .form-field input[type=text], .form-field input[type=number], .form-field input[type=date], .form-field select {
-            width: 100%; padding: 9px 11px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px; font-family: inherit; box-sizing: border-box; background: #fff;
+            width: 100%; padding: 9px 11px; border: 1px solid var(--border, #ddd); border-radius: 5px; font-size: 13px; font-family: inherit; box-sizing: border-box; background: var(--surface, #fff); color: var(--text, #333);
         }
-        .form-field input:focus, .form-field select:focus { outline: none; border-color: #546e7a; }
+        .form-field input:focus, .form-field select:focus { outline: none; border-color: var(--sys-accent, #546e7a); }
         .form-2col { display: flex; gap: 14px; }
         .form-2col .form-field { flex: 1; }
 
         /* Permission matrix */
-        .perm-matrix { border: 1px solid #eee; border-radius: 6px; overflow: hidden; }
-        .perm-row { display: flex; align-items: flex-start; padding: 10px 12px; border-bottom: 1px solid #f2f2f2; gap: 12px; }
+        .perm-matrix { border: 1px solid var(--border-soft, #eee); border-radius: 6px; overflow: hidden; }
+        .perm-row { display: flex; align-items: flex-start; padding: 10px 12px; border-bottom: 1px solid var(--border-soft, #f2f2f2); gap: 12px; }
         .perm-row:last-child { border-bottom: none; }
         .perm-row:nth-child(even) { background: #fafbfc; }
-        .perm-resource { width: 170px; flex: none; font-size: 13px; font-weight: 600; color: #444; padding-top: 2px; }
+        .perm-resource { width: 170px; flex: none; font-size: 13px; font-weight: 600; color: var(--text, #444); padding-top: 2px; }
         .perm-actions { display: flex; flex-wrap: wrap; gap: 4px 16px; flex: 1; }
-        .perm-action { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: #555; cursor: pointer; }
+        .perm-action { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-muted, #555); cursor: pointer; }
         .perm-action input { margin: 0; cursor: pointer; }
         .perm-toolbar { display: flex; justify-content: flex-end; gap: 14px; margin: 0 0 8px 0; font-size: 12px; }
-        .perm-toolbar a { color: #546e7a; cursor: pointer; text-decoration: underline; }
+        .perm-toolbar a { color: var(--sys-accent, #546e7a); cursor: pointer; text-decoration: underline; }
 
         /* Company scope */
         .scope-options { display: flex; flex-direction: column; gap: 8px; }
-        .scope-option { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #444; cursor: pointer; }
+        .scope-option { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text, #444); cursor: pointer; }
         .company-checks { margin: 8px 0 0 24px; display: flex; flex-direction: column; gap: 6px; max-height: 140px; overflow-y: auto; }
-        .company-checks label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #555; cursor: pointer; }
+        .company-checks label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted, #555); cursor: pointer; }
 
         /* New-key reveal */
-        .newkey-box { background: #f5f7fa; border: 1px solid #e0e0e0; border-radius: 6px; padding: 14px 16px; margin-top: 10px; }
-        .newkey-box code { display: block; background: #fff; border: 1px solid #ddd; border-radius: 4px; padding: 10px 12px; font-size: 13px; color: #333; word-break: break-all; margin: 8px 0; }
+        .newkey-box { background: #f5f7fa; border: 1px solid var(--border, #e0e0e0); border-radius: 6px; padding: 14px 16px; margin-top: 10px; color: var(--text, #333); }
+        .newkey-box code { display: block; background: var(--surface, #fff); border: 1px solid var(--border, #ddd); border-radius: 4px; padding: 10px 12px; font-size: 13px; color: var(--text, #333); word-break: break-all; margin: 8px 0; }
         .newkey-warning { font-size: 12px; color: #c62828; font-weight: 600; }
+
+        /* ---------- Dark mode overrides ----------
+           Light values above are deliberately unchanged; these only apply in dark. */
+        [data-theme-mode="dark"] .btn-primary:hover { background: var(--sys-accent-hover, #455a64); }
+        [data-theme-mode="dark"] .btn-secondary { color: #cfd8dc; }
+        [data-theme-mode="dark"] .btn-secondary:hover { background: #37474f; }
+        [data-theme-mode="dark"] .add-btn:hover { background: var(--sys-accent-hover, #455a64); }
+        [data-theme-mode="dark"] .info-note { background: #20242b; }
+        [data-theme-mode="dark"] .newkey-box { background: #20242b; }
+        [data-theme-mode="dark"] .newkey-warning { color: #fca5a5; }
+        [data-theme-mode="dark"] .perm-row:nth-child(even) { background: #20242b; }
+        [data-theme-mode="dark"] .status-badge.on { background: #16331f; color: #86efac; }
+        [data-theme-mode="dark"] .status-badge.off { background: #2a3039; color: #8b95a3; }
+        [data-theme-mode="dark"] .status-badge.expired { background: #3a2e12; color: #fcd34d; }
+        [data-theme-mode="dark"] .perm-count { background: #14324a; color: #7fc4f5; }
+        [data-theme-mode="dark"] .table-action-btn { color: #90a4ae; }
+        [data-theme-mode="dark"] .table-action-btn.danger:hover { background: #3a1a1d; color: #fca5a5; }
     </style>
     <?php echo Tz::scriptTag(); ?>
     <script src="../../assets/js/tz.js?v=1"></script>

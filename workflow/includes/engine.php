@@ -280,6 +280,110 @@ class WorkflowEngine
         return [];
     }
 
+    /**
+     * Payload objects that can be hydrated into a whole record under
+     * `<key>.full` — see enrichWithFullObjects() / fullObjectLoaders().
+     *
+     * ⚠️ MUST stay in step with the keys returned by fullObjectLoaders().
+     * It's a separate list only because the merge-code picker needs the key
+     * names without opening a database connection to build the loaders.
+     */
+    public const FULL_OBJECT_KEYS = [
+        'ticket', 'change', 'problem', 'task', 'asset', 'article',
+        'contract', 'supplier', 'calendar_event', 'software_licence', 'incident',
+    ];
+
+    /**
+     * The merge codes (`{{variables}}`) a workflow on `$trigger` can actually
+     * resolve — the catalogue behind the editor's variable picker.
+     *
+     * This is deliberately a DIFFERENT list from availableFields(): that one
+     * answers "what can I write a condition on" (scalars only), while this one
+     * answers "what can I paste into a message". The two overlap but aren't the
+     * same — `{{event}}` is a valid merge code and a useless condition field;
+     * `{{ticket.full}}` is a whole JSON object, meaningless in a comparison.
+     *
+     * Why it matters: renderTemplate() resolves an unknown path to an EMPTY
+     * STRING. So a knowledge.published workflow whose webhook body says
+     * {{ticket.subject}} doesn't fail — it silently posts a blank. Offering
+     * only the codes the trigger can really resolve is what stops that.
+     *
+     * Returns [['path' => ..., 'label' => ..., 'note' => ...], ...].
+     */
+    public static function availableVariables(string $trigger): array
+    {
+        $vars = [[
+            'path'  => 'event',
+            'label' => 'Event name',
+            'note'  => 'The trigger that fired — "' . $trigger . '"',
+        ]];
+
+        $fields = self::availableFields($trigger);
+        foreach ($fields as $path) {
+            $vars[] = ['path' => $path, 'label' => self::humaniseFieldPath($path), 'note' => ''];
+        }
+
+        // Whole-record codes, but only for objects this trigger actually carries
+        // AND that we know how to hydrate.
+        $seen = [];
+        foreach ($fields as $path) {
+            $obj = strpos($path, '.') === false ? null : explode('.', $path)[0];
+            if ($obj === null || isset($seen[$obj])) continue;
+            $seen[$obj] = true;
+            if (!in_array($obj, self::FULL_OBJECT_KEYS, true)) continue;
+            $vars[] = [
+                'path'  => $obj . '.full',
+                'label' => self::humaniseSegment($obj) . ' · whole record',
+                'note'  => 'The entire record as JSON — the same shape the REST API returns.',
+            ];
+        }
+
+        // A form's answers are keyed by the labels the form author chose, so
+        // they can't be enumerated ahead of time. Advertise the shape instead.
+        if ($trigger === 'form.submitted') {
+            $vars[] = [
+                'path'  => 'submission.fields.Your field label',
+                'label' => 'Submission · any answer, by field label',
+                'note'  => 'Replace "Your field label" with the exact label from your form, e.g. {{submission.fields.Start date}}.',
+            ];
+        }
+
+        return $vars;
+    }
+
+    /**
+     * Merge-code prefixes that are open-ended for this trigger — anything
+     * beneath them is valid even though it can't be listed up front.
+     *
+     * The editor uses this so its unknown-variable warning doesn't cry wolf
+     * over a legitimate {{submission.fields.Start date}}.
+     */
+    public static function variablePrefixes(string $trigger): array
+    {
+        return $trigger === 'form.submitted' ? ['submission.fields.'] : [];
+    }
+
+    /**
+     * 'ticket.requester_email' → 'Ticket · Requester email'.
+     * Derived rather than hand-mapped so it stays correct as the trigger
+     * catalogue grows — a hand-written label map would rot immediately.
+     */
+    private static function humaniseFieldPath(string $path): string
+    {
+        $parts = explode('.', $path);
+        return implode(' · ', array_map([self::class, 'humaniseSegment'], $parts));
+    }
+
+    private static function humaniseSegment(string $seg): string
+    {
+        $s = str_replace('_', ' ', $seg);
+        if ($s === 'id') return 'ID';
+        // A trailing "id" is noise in a label ("Status id" → "Status") — but
+        // only when something precedes it, or "ticket.id" would blank out.
+        $s = preg_replace('/\s+id$/', '', $s);
+        return ucfirst(trim($s));
+    }
+
     public static function availableOperators(): array
     {
         return [
@@ -747,6 +851,15 @@ class WorkflowEngine
         $stepLog = [];
         $status  = 'success';
         $errorMessage = null;
+
+        // Make the event name addressable as {{event}} — the send_webhook
+        // action's own default body template references it, so without this it
+        // renders empty on every real run. Set before the payload snapshot is
+        // stored so the audit shows exactly what the actions saw. A host module
+        // that already supplied an `event` key keeps its own value.
+        if (!array_key_exists('event', $payload)) {
+            $payload['event'] = $event;
+        }
 
         // Insert a "running" execution row so we have an id to update. The
         // workflow name is snapshotted so the run stays attributable after

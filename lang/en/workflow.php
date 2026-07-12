@@ -107,6 +107,18 @@ return [
         'aborted' => 'Aborted (loop protection)',
     ],
 
+    'vars' => [
+        'open'              => 'Edit with variables',
+        'title'             => 'Edit text',
+        'picker_heading'    => 'Insert a variable',
+        'picker_hint'       => 'Click to drop it in at the cursor. Only the variables this trigger can actually fill in are listed.',
+        'search_placeholder'=> 'Search variables…',
+        'no_match'          => 'No variable matches that search.',
+        'preview'           => 'Preview',
+        'preview_empty'     => 'Nothing to preview yet.',
+        'unknown'           => '%s will come out blank — not available on "%t".',
+    ],
+
     'dry_run' => [
         'pill'        => 'Dry run',
         'would_have'  => 'This run would have:',
@@ -233,7 +245,9 @@ return [
 
         // 5. Variables
         'variables_heading' => '5. Variables &mdash; <code>{{path.to.field}}</code>',
-        'variables_intro'   => 'Any free-text action arg supports variable substitution against the trigger\'s payload. The hint <em>"Supports variables like {{ticket.id}}"</em> appears under each variable-friendly field.',
+        'variables_intro'   => 'Any free-text action arg can pull values out of the event that fired it. You don\'t have to type the codes by hand: every variable-friendly field has an <strong>Edit with variables</strong> button that opens a roomy editor with a <strong>searchable list of variables down the side</strong> — click one and it drops in at your cursor. A live preview shows the finished text with each code swapped for what it stands for.',
+        'variables_scoped'  => '<strong>You are only ever offered variables the trigger can actually fill in.</strong> This matters more than it sounds: a missing variable doesn\'t raise an error, it quietly resolves to an <em>empty string</em>. So a workflow on <code>knowledge.published</code> whose message says <code>{{ticket.subject}}</code> wouldn\'t fail — it would just post a blank where the subject should be, and you\'d never know. There is no ticket in a knowledge event, so the picker doesn\'t offer ticket variables at all, and if you type one anyway the field warns you it will come out blank.',
+        'variables_full'    => 'Where a trigger carries a whole record, you also get <code>{{&lt;object&gt;.full}}</code> &mdash; e.g. <code>{{ticket.full}}</code> &mdash; which embeds the entire record as JSON, in the exact shape the REST API returns it. And <code>{{event}}</code> always resolves to the name of the trigger that fired.',
         'variables_common'  => 'Common variables for ticket triggers:',
         'variables_li1' => '<code>{{ticket.id}}</code>, <code>{{ticket.subject}}</code>, <code>{{ticket.priority_id}}</code>, <code>{{ticket.status_id}}</code>',
         'variables_li2' => '<code>{{ticket.department_id}}</code>, <code>{{ticket.type_id}}</code>, <code>{{ticket.assigned_analyst_id}}</code>',

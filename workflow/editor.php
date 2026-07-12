@@ -36,8 +36,14 @@ $triggers   = WorkflowEngine::availableTriggers();
 $ops        = WorkflowEngine::availableOperators();
 $actionDefs = WorkflowEngine::availableActions();
 $fieldsByTrigger = [];
+$varsByTrigger   = [];
+$varPrefixesByTrigger = [];
 foreach (array_keys($triggers) as $t) {
     $fieldsByTrigger[$t] = WorkflowEngine::availableFields($t);
+    // The merge codes this trigger can actually resolve — drives the variable
+    // picker, so a knowledge.published workflow is never offered {{ticket.subject}}.
+    $varsByTrigger[$t]   = WorkflowEngine::availableVariables($t);
+    $varPrefixesByTrigger[$t] = WorkflowEngine::variablePrefixes($t);
 }
 
 // Lookup values per normalised-id field — built once at page load and
@@ -85,7 +91,7 @@ foreach ($actionDefs as $actionKey => $def) {
     <title><?php echo htmlspecialchars($id ? t('workflow.editor.edit_title') : t('workflow.editor.new_title')); ?></title>
     <link rel="stylesheet" href="../assets/css/theme.css?v=20">
     <link rel="stylesheet" href="../assets/css/inbox.css">
-    <link rel="stylesheet" href="../assets/css/workflow.css?v=6">
+    <link rel="stylesheet" href="../assets/css/workflow.css?v=7">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <?php echo Tz::scriptTag(); ?>
     <script src="../assets/js/tz.js?v=1"></script>
@@ -244,6 +250,35 @@ foreach ($actionDefs as $actionKey => $def) {
         </div>
     </div>
 
+    <!-- Big editor for any action arg that supports {{variables}} — a roomy
+         writing surface plus a searchable list of the merge codes THIS trigger
+         can actually resolve. Opened by the Expand button beside the field. -->
+    <div class="modal" id="wfVarModal">
+        <div class="modal-content wf-var-modal">
+            <div class="modal-header" id="wfVarTitle"><?php echo htmlspecialchars(t('workflow.vars.title')); ?></div>
+            <div class="modal-body wf-var-body">
+                <div class="wf-var-editor">
+                    <textarea id="wfVarText" spellcheck="true"></textarea>
+                    <div class="wf-var-warn" id="wfVarWarn" style="display: none;"></div>
+                    <div class="wf-var-preview-wrap">
+                        <label><?php echo htmlspecialchars(t('workflow.vars.preview')); ?></label>
+                        <div class="wf-var-preview" id="wfVarPreview"></div>
+                    </div>
+                </div>
+                <aside class="wf-var-picker">
+                    <label for="wfVarSearch"><?php echo htmlspecialchars(t('workflow.vars.picker_heading')); ?></label>
+                    <p class="wf-var-picker-hint"><?php echo htmlspecialchars(t('workflow.vars.picker_hint')); ?></p>
+                    <input type="text" id="wfVarSearch" autocomplete="off" placeholder="<?php echo htmlspecialchars(t('workflow.vars.search_placeholder')); ?>">
+                    <div class="wf-var-list" id="wfVarList"></div>
+                </aside>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="WFE.closeVarModal()"><?php echo htmlspecialchars(t('common.cancel')); ?></button>
+                <button class="btn btn-primary" onclick="WFE.applyVarModal()"><?php echo htmlspecialchars(t('common.save')); ?></button>
+            </div>
+        </div>
+    </div>
+
     <!-- AI co-author modal — opened from the toolbar button -->
     <div class="modal" id="wfAiModal">
         <div class="modal-content wf-ai-modal">
@@ -303,6 +338,14 @@ foreach ($actionDefs as $actionKey => $def) {
         window.WF_OPS            = <?php echo json_encode($ops); ?>;
         window.WF_ACTION_DEFS    = <?php echo json_encode($actionDefs); ?>;
         window.WF_FIELDS_BY_TRIG = <?php echo json_encode($fieldsByTrigger); ?>;
+        // Merge codes ({{variables}}) per trigger — {path, label, note}. The
+        // engine resolves an unknown path to an empty string, so the picker
+        // only ever offers codes THIS trigger can actually fill in.
+        window.WF_VARS_BY_TRIG   = <?php echo json_encode($varsByTrigger); ?>;
+        // Open-ended prefixes (e.g. submission.fields.) — anything beneath one
+        // is valid even though it can't be listed, so the unknown-variable
+        // warning doesn't cry wolf over {{submission.fields.Start date}}.
+        window.WF_VAR_PREFIXES   = <?php echo json_encode($varPrefixesByTrigger); ?>;
         // Normalised id fields → list of {id, label} pairs from their lookup
         // table. Drives the condition value control's dropdown / multi-select.
         // Fields not in this map are free-text and use a plain input.
@@ -341,6 +384,6 @@ foreach ($actionDefs as $actionKey => $def) {
             });
         };
     </script>
-    <script src="../assets/js/workflow-editor.js?v=14"></script>
+    <script src="../assets/js/workflow-editor.js?v=15"></script>
 </body>
 </html>

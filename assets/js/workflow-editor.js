@@ -54,6 +54,11 @@ const WFE = (() => {
         bindCanvasEvents();
         bindWorkflowDetailEvents();
 
+        // The merge-code modal's own controls (bound once — the modal markup
+        // is static; only its contents change per field).
+        document.getElementById('wfVarSearch').addEventListener('input', e => renderVarList(e.target.value));
+        document.getElementById('wfVarText').addEventListener('input', refreshVarModal);
+
         if (window.WF_ID) {
             loadWorkflow(window.WF_ID);
         } else {
@@ -800,10 +805,30 @@ const WFE = (() => {
             fg.appendChild(ctrl);
 
             if (norm.supports_vars) {
-                const hint = document.createElement('small');
-                hint.style.cssText = 'display: block; color: #6b7280; margin-top: 4px; font-size: 11.5px;';
-                hint.textContent = 'Supports variables like {{ticket.id}}, {{ticket.subject}}, {{ticket.priority_id}}.';
-                fg.appendChild(hint);
+                // The old hint hardcoded {{ticket.*}} examples whatever the
+                // trigger was — actively misleading on, say, knowledge.published.
+                // Now: a button into the big editor (with a searchable list of
+                // the codes THIS trigger can resolve) plus a live warning for
+                // any code that would silently render empty.
+                const bar = document.createElement('div');
+                bar.className = 'wf-arg-varbar';
+
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'wf-arg-varbtn';
+                btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg><span>'
+                              + wfEsc(window.t('workflow.vars.open')) + '</span>';
+                btn.addEventListener('click', () => openVarModal(argName, norm, ctrl));
+                bar.appendChild(btn);
+
+                const warn = document.createElement('small');
+                warn.className = 'wf-arg-varwarn';
+                bar.appendChild(warn);
+                fg.appendChild(bar);
+
+                const refreshWarn = () => renderVarWarning(warn, ctrl.value);
+                ctrl.addEventListener('input', refreshWarn);
+                refreshWarn();
             }
             host.appendChild(fg);
 
@@ -873,6 +898,164 @@ const WFE = (() => {
 
     // Local HTML escaper (escHtml elsewhere is function-scoped, not shared).
     function wfEsc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+
+    // =========================================================
+    //  Merge codes ({{variables}})
+    //
+    //  The engine resolves an unknown path to an EMPTY STRING — it doesn't
+    //  error. So a knowledge.published workflow whose message says
+    //  {{ticket.subject}} posts a silent blank. Everything here exists to
+    //  make that impossible to do by accident: the picker only offers codes
+    //  the CURRENT trigger can resolve, and anything hand-typed that can't be
+    //  resolved is called out under the field.
+    // =========================================================
+
+    const VAR_RE = /\{\{\s*([^}]+?)\s*\}\}/g;
+
+    function currentVars() {
+        return (window.WF_VARS_BY_TRIG && window.WF_VARS_BY_TRIG[triggerEvent]) || [];
+    }
+
+    /** Open-ended prefixes, e.g. submission.fields.<the form author's label>. */
+    function currentVarPrefixes() {
+        return (window.WF_VAR_PREFIXES && window.WF_VAR_PREFIXES[triggerEvent]) || [];
+    }
+
+    function varLabel(path) {
+        const hit = currentVars().find(v => v.path === path);
+        return hit ? hit.label : null;
+    }
+
+    function isKnownVar(path) {
+        if (currentVars().some(v => v.path === path)) return true;
+        return currentVarPrefixes().some(p => path.startsWith(p) && path.length > p.length);
+    }
+
+    /** Every {{code}} in the text that this trigger cannot resolve. */
+    function unknownVarsIn(text) {
+        const out = [];
+        String(text || '').replace(VAR_RE, (_, p) => {
+            const path = p.trim();
+            if (!isKnownVar(path) && !out.includes(path)) out.push(path);
+            return '';
+        });
+        return out;
+    }
+
+    function renderVarWarning(el, text) {
+        const bad = unknownVarsIn(text);
+        if (!bad.length) { el.style.display = 'none'; el.textContent = ''; return; }
+        el.style.display = '';
+        el.innerHTML = wfEsc(
+            window.t('workflow.vars.unknown')
+                .replace('%s', bad.map(b => '{{' + b + '}}').join(', '))
+                .replace('%t', window.WF_TRIGGERS[triggerEvent] || triggerEvent)
+        );
+    }
+
+    // ---- The big editor modal --------------------------------------------
+
+    let varTarget = null;   // { argName, spec, ctrl }
+
+    function openVarModal(argName, spec, ctrl) {
+        varTarget = { argName, spec, ctrl };
+        document.getElementById('wfVarTitle').textContent = spec.label || argName;
+        const ta = document.getElementById('wfVarText');
+        ta.value = ctrl.value || '';
+        // A single-line arg (a subject, a URL) still gets the roomy surface,
+        // just not a tall one.
+        ta.rows = (spec.type === 'textarea') ? 12 : 3;
+
+        document.getElementById('wfVarSearch').value = '';
+        renderVarList('');
+        refreshVarModal();
+
+        document.getElementById('wfVarModal').classList.add('active');
+        setTimeout(() => ta.focus(), 80);
+    }
+
+    function closeVarModal() {
+        document.getElementById('wfVarModal').classList.remove('active');
+        varTarget = null;
+    }
+
+    function applyVarModal() {
+        if (!varTarget) return;
+        let val = document.getElementById('wfVarText').value;
+        // A single-line control can't hold newlines — collapse rather than
+        // silently truncating at the first one.
+        if (varTarget.spec.type !== 'textarea') val = val.replace(/\s*\n+\s*/g, ' ').trim();
+        varTarget.ctrl.value = val;
+        updateActionArgFromControl(varTarget.argName, varTarget.spec.type, varTarget.ctrl);
+        varTarget.ctrl.dispatchEvent(new Event('input'));   // refresh the inline warning
+        closeVarModal();
+    }
+
+    function renderVarList(query) {
+        const host = document.getElementById('wfVarList');
+        const q = String(query || '').toLowerCase().trim();
+        const vars = currentVars().filter(v =>
+            !q || v.path.toLowerCase().includes(q) || v.label.toLowerCase().includes(q)
+        );
+        if (!vars.length) {
+            host.innerHTML = '<div class="wf-var-empty">' + wfEsc(window.t('workflow.vars.no_match')) + '</div>';
+            return;
+        }
+        host.innerHTML = vars.map(v => `
+            <button type="button" class="wf-var-item" data-path="${wfEsc(v.path)}">
+                <span class="wf-var-item-label">${wfEsc(v.label)}</span>
+                <code class="wf-var-item-code">{{${wfEsc(v.path)}}}</code>
+                ${v.note ? '<span class="wf-var-item-note">' + wfEsc(v.note) + '</span>' : ''}
+            </button>
+        `).join('');
+        host.querySelectorAll('.wf-var-item').forEach(b => {
+            b.addEventListener('click', () => insertVar(b.dataset.path));
+        });
+    }
+
+    /** Insert {{path}} at the cursor (replacing any selection). */
+    function insertVar(path) {
+        const ta = document.getElementById('wfVarText');
+        const code = '{{' + path + '}}';
+        const start = ta.selectionStart ?? ta.value.length;
+        const end   = ta.selectionEnd   ?? ta.value.length;
+        ta.value = ta.value.slice(0, start) + code + ta.value.slice(end);
+        const caret = start + code.length;
+        ta.focus();
+        ta.setSelectionRange(caret, caret);
+        refreshVarModal();
+    }
+
+    /**
+     * Live feedback inside the modal: the unknown-code warning, plus a preview
+     * that swaps each code for its human label. We deliberately do NOT invent
+     * sample data — showing a fake ticket subject would be a lie about what
+     * the message will say. Showing the shape is honest and still useful.
+     */
+    function refreshVarModal() {
+        const text = document.getElementById('wfVarText').value;
+        renderVarWarning(document.getElementById('wfVarWarn'), text);
+
+        const preview = document.getElementById('wfVarPreview');
+        if (!text.trim()) {
+            preview.innerHTML = '<em class="wf-var-empty">' + wfEsc(window.t('workflow.vars.preview_empty')) + '</em>';
+            return;
+        }
+        let html = '';
+        let last = 0;
+        String(text).replace(VAR_RE, (match, p, offset) => {
+            html += wfEsc(text.slice(last, offset));
+            const path = p.trim();
+            const label = varLabel(path);
+            html += isKnownVar(path)
+                ? '<span class="wf-var-chip">' + wfEsc(label || path) + '</span>'
+                : '<span class="wf-var-chip bad">' + wfEsc(path) + '</span>';
+            last = offset + match.length;
+            return match;
+        });
+        html += wfEsc(text.slice(last));
+        preview.innerHTML = html.replace(/\n/g, '<br>');
+    }
 
     function webhookTestError(msg, heading) {
         const esc = wfEsc;
@@ -1450,6 +1633,7 @@ const WFE = (() => {
     return {
         addCondition, addAction, deleteSelected,
         save, testFire, dryRun,
+        closeVarModal, applyVarModal,
         updateTriggerFromDetail,
         updateConditionFromDetail,
         onConditionMultiToggle,

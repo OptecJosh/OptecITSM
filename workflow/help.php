@@ -32,7 +32,7 @@ $translationNamespaces = ['common', 'workflow'];
     <title><?php echo htmlspecialchars(t('workflow.help.page_title')); ?></title>
     <link rel="stylesheet" href="../assets/css/theme.css?v=20">
     <link rel="stylesheet" href="../assets/css/inbox.css">
-    <link rel="stylesheet" href="../assets/css/workflow.css?v=6">
+    <link rel="stylesheet" href="../assets/css/workflow.css?v=7">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <?php echo Tz::scriptTag(); ?>
     <script src="../assets/js/tz.js?v=1"></script>
@@ -210,6 +210,8 @@ $translationNamespaces = ['common', 'workflow'];
 
             <h3 id="variables"><?php echo t('workflow.help.variables_heading'); ?></h3>
             <p><?php echo t('workflow.help.variables_intro'); ?></p>
+            <div class="callout"><?php echo t('workflow.help.variables_scoped'); ?></div>
+            <p><?php echo t('workflow.help.variables_full'); ?></p>
             <p><?php echo htmlspecialchars(t('workflow.help.variables_common')); ?></p>
             <ul>
                 <li><?php echo t('workflow.help.variables_li1'); ?></li>

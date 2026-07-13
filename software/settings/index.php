@@ -11,7 +11,13 @@ require_once '../../includes/timezone.php';
 I18n::initFromSession();
 Tz::init();
 
+require_once '../../includes/settings_manifest.php';
 requireModuleAccess('software');
+
+// RBAC Layer 2: only the tabs this analyst may see are rendered.
+$settingsManifest = settingsManifestFor('software');
+$visibleTabs      = settingsVisibleTabs(connectToDatabase(), (int) $_SESSION['analyst_id'], $settingsManifest);
+$activeTabId      = settingsFirstTabId($visibleTabs);
 
 $current_page = 'settings';
 $path_prefix = '../../';
@@ -368,11 +374,10 @@ $translationNamespaces = ['common', 'software'];
     <?php include '../includes/header.php'; ?>
 
     <div class="settings-container">
-        <div class="tabs">
-            <button class="tab active" data-tab="api-keys" onclick="switchTab('api-keys')"><?php echo htmlspecialchars(t('software.settings.tab_api_keys')); ?></button>
-        </div>
+        <?php renderSettingsTabBar($visibleTabs, $activeTabId); ?>
 
-        <div class="tab-content active" id="api-keys-tab">
+        <?php if (settingsTabVisible($visibleTabs, 'api-keys')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'api-keys' ? ' active' : ''; ?>" id="api-keys-tab" data-capability="<?php echo Cap::SOFTWARE_API_KEYS; ?>">
             <div class="section-header">
                 <h3>
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -429,6 +434,7 @@ $translationNamespaces = ['common', 'software'];
                 </table>
             </div>
         </div>
+        <?php endif; ?>
     </div>
 
     <script>

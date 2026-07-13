@@ -111,20 +111,27 @@ function settingsHasAnyAdminTab(array $visibleTabs): bool
  * left bare, so the coverage report can tell "personal preference" apart from "someone
  * forgot to declare one".
  */
-function renderSettingsTabBar(array $visibleTabs, ?string $activeId): void
+function renderSettingsTabBar(array $visibleTabs, ?string $activeId, string $onclickFn = 'switchTab'): void
 {
     echo '<div class="tabs">' . "\n";
     foreach ($visibleTabs as $tab) {
         $id     = $tab['id'];
         $cap    = $tab['cap'] ?? null;
         $active = ($id === $activeId) ? ' active' : '';
+
+        // A tab names an i18n key, OR — for a module that is not translated — a plain
+        // label. Problem Management's tab bar is hardcoded English today, and half
+        // translating it here would be worse than being honest about it.
+        $label = isset($tab['label_key']) ? t($tab['label_key']) : ($tab['label'] ?? $id);
+
         printf(
-            '            <button class="tab%s" data-tab="%s" data-capability="%s" onclick="switchTab(\'%s\')">%s</button>' . "\n",
+            '            <button class="tab%s" data-tab="%s" data-capability="%s" onclick="%s(\'%s\')">%s</button>' . "\n",
             $active,
             htmlspecialchars($id),
             htmlspecialchars($cap ?? 'none'),
+            htmlspecialchars($onclickFn),   // not every module calls its switcher switchTab()
             htmlspecialchars($id),
-            htmlspecialchars(t($tab['label_key']))
+            htmlspecialchars($label)
         );
     }
     echo '        </div>' . "\n";

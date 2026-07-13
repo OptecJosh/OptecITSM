@@ -16,7 +16,13 @@ if (!isset($_SESSION['analyst_id'])) {
     header('Location: ../../login.php');
     exit;
 }
+require_once '../../includes/settings_manifest.php';
 requireModuleAccess('forms');
+
+// RBAC Layer 2: only the tabs this analyst may see are rendered.
+$settingsManifest = settingsManifestFor('forms');
+$visibleTabs      = settingsVisibleTabs(connectToDatabase(), (int) $_SESSION['analyst_id'], $settingsManifest);
+$activeTabId      = settingsFirstTabId($visibleTabs);
 
 $analyst_name = $_SESSION['analyst_name'] ?? 'Analyst';
 $current_page = 'settings';
@@ -266,13 +272,11 @@ $translationNamespaces = ['common', 'forms'];
     <?php include '../includes/header.php'; ?>
 
     <div class="container">
-        <div class="tabs">
-            <button class="tab active" data-tab="layout" onclick="switchTab('layout')"><?php echo htmlspecialchars(t('forms.settings.tab_layout')); ?></button>
-            <button class="tab" data-tab="ai" onclick="switchTab('ai')"><?php echo htmlspecialchars(t('forms.settings.tab_ai')); ?></button>
-        </div>
+        <?php renderSettingsTabBar($visibleTabs, $activeTabId); ?>
 
         <!-- Layout Tab -->
-        <div class="tab-content active" id="layout-tab">
+        <?php if (settingsTabVisible($visibleTabs, 'layout')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'layout' ? ' active' : ''; ?>" id="layout-tab" data-capability="<?php echo Cap::FORMS_LAYOUT; ?>">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('forms.settings.layout_heading')); ?></h2>
             </div>
@@ -309,7 +313,10 @@ $translationNamespaces = ['common', 'forms'];
 
         <!-- AI Tab — per-module billing. Provider, model, key + test
              connection. Saved settings drive api/forms/ai_generate.php. -->
-        <div class="tab-content" id="ai-tab">
+        <?php endif; ?>
+
+        <?php if (settingsTabVisible($visibleTabs, 'ai')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'ai' ? ' active' : ''; ?>" id="ai-tab" data-capability="<?php echo Cap::FORMS_AI; ?>">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('forms.settings.ai_heading')); ?></h2>
             </div>
@@ -319,6 +326,7 @@ $translationNamespaces = ['common', 'forms'];
 
             <?php renderAiSettingsPanel('forms_ai'); ?>
         </div>
+        <?php endif; ?>
     </div>
 
     <!-- Toast notification -->

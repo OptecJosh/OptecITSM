@@ -11,6 +11,7 @@
 session_start(['read_and_close' => true]);
 require_once '../../config.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/rbac.php';
 require_once '../../includes/encryption.php';
 require_once __DIR__ . '/_ai_helpers.php';   // for workflowEffectiveSslVerify()
 header('Content-Type: application/json');
@@ -20,6 +21,7 @@ if (!isset($_SESSION['analyst_id'])) {
     exit;
 }
 requireModuleAccessJson('workflow');
+requireCapabilityJson(Cap::WORKFLOW_AI);   // settings tab — see docs/design/rbac.md
 
 try {
     $data      = json_decode(file_get_contents('php://input'), true) ?: [];

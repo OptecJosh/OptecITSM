@@ -115,6 +115,45 @@ final class Cap
     const CMDB_CLASSES            = 'cmdb.classes';             // the CI schema itself
     const CMDB_RELATIONSHIP_TYPES = 'cmdb.relationship_types';
     const CMDB_AI                 = 'cmdb.ai';                  // AI provider + API key
+
+    // ---- Morning Checks ----------------------------------------------------
+    const MORNING_CHECKS_MANAGE   = 'morning_checks.manage';    // umbrella
+    const MORNING_CHECKS_CHECKS   = 'morning_checks.checks';
+    const MORNING_CHECKS_STATUSES = 'morning_checks.statuses';
+
+    // ---- Problem Management ------------------------------------------------
+    const PROBLEMS_MANAGE     = 'problems.manage';      // umbrella
+    const PROBLEMS_STATUSES   = 'problems.statuses';
+    const PROBLEMS_PRIORITIES = 'problems.priorities';
+    const PROBLEMS_AI         = 'problems.ai';          // AI provider + API key
+
+    // ---- Service Status ----------------------------------------------------
+    const SERVICE_STATUS_MANAGE   = 'service_status.manage';    // umbrella
+    const SERVICE_STATUS_SERVICES = 'service_status.services';
+    const SERVICE_STATUS_STATUSES = 'service_status.statuses';
+    const SERVICE_STATUS_IMPACTS  = 'service_status.impacts';
+
+    // ---- Calendar ----------------------------------------------------------
+    const CALENDAR_MANAGE     = 'calendar.manage';      // umbrella
+    const CALENDAR_CATEGORIES = 'calendar.categories';
+
+    // ---- Forms -------------------------------------------------------------
+    const FORMS_MANAGE = 'forms.manage';    // umbrella
+    const FORMS_LAYOUT = 'forms.layout';
+    const FORMS_AI     = 'forms.ai';        // AI provider + API key
+
+    // ---- Process Mapper ----------------------------------------------------
+    const PROCESS_MAPPER_MANAGE     = 'process_mapper.manage';    // umbrella
+    const PROCESS_MAPPER_STEP_TYPES = 'process_mapper.step_types';
+
+    // ---- Workflow ----------------------------------------------------------
+    const WORKFLOW_MANAGE  = 'workflow.manage';     // umbrella
+    const WORKFLOW_AI      = 'workflow.ai';         // AI provider + API key
+    const WORKFLOW_FORMATS = 'workflow.formats';
+
+    // ---- Software ----------------------------------------------------------
+    const SOFTWARE_MANAGE   = 'software.manage';     // umbrella
+    const SOFTWARE_API_KEYS = 'software.api_keys';   // mints credentials
 }
 
 /**

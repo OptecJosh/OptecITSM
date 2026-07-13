@@ -16,7 +16,13 @@ if (!isset($_SESSION['analyst_id'])) {
     exit;
 }
 
+require_once '../../includes/settings_manifest.php';
 requireModuleAccess('morning-checks');
+
+// RBAC Layer 2: only the tabs this analyst may see are rendered.
+$settingsManifest = settingsManifestFor('morning-checks');
+$visibleTabs      = settingsVisibleTabs(connectToDatabase(), (int) $_SESSION['analyst_id'], $settingsManifest);
+$activeTabId      = settingsFirstTabId($visibleTabs);
 
 $analyst_name = $_SESSION['analyst_name'] ?? 'Analyst';
 $current_page = 'settings';
@@ -180,13 +186,10 @@ $translationNamespaces = ['common', 'morning-checks'];
     <?php include '../includes/header.php'; ?>
 
     <div class="settings-container">
-        <div class="tabs">
-            <button class="tab active" data-tab="checks" onclick="switchTab('checks')"><?php echo htmlspecialchars(t('morning-checks.settings.tab_checks')); ?></button>
-            <button class="tab" data-tab="statuses" onclick="switchTab('statuses')"><?php echo htmlspecialchars(t('morning-checks.settings.tab_statuses')); ?></button>
-            <button class="tab" data-tab="chart" onclick="switchTab('chart')"><?php echo htmlspecialchars(t('morning-checks.settings.tab_chart')); ?></button>
-        </div>
+        <?php renderSettingsTabBar($visibleTabs, $activeTabId); ?>
 
-        <div class="tab-content active" id="checks-tab">
+        <?php if (settingsTabVisible($visibleTabs, 'checks')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'checks' ? ' active' : ''; ?>" id="checks-tab" data-capability="<?php echo Cap::MORNING_CHECKS_CHECKS; ?>">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('morning-checks.settings.checks_heading')); ?></h2>
                 <button class="add-btn" onclick="openAddModal()"><?php echo htmlspecialchars(t('morning-checks.settings.add')); ?></button>
@@ -200,7 +203,10 @@ $translationNamespaces = ['common', 'morning-checks'];
              dashboard buttons. Each status carries a label, colour, and
              a RequiresNotes flag (controls whether picking it pops the
              notes modal on the dashboard). -->
-        <div class="tab-content" id="statuses-tab">
+        <?php endif; ?>
+
+        <?php if (settingsTabVisible($visibleTabs, 'statuses')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'statuses' ? ' active' : ''; ?>" id="statuses-tab" data-capability="<?php echo Cap::MORNING_CHECKS_STATUSES; ?>">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('morning-checks.settings.statuses_heading')); ?></h2>
                 <button class="add-btn" onclick="openAddStatusModal()"><?php echo htmlspecialchars(t('morning-checks.settings.add')); ?></button>
@@ -250,7 +256,10 @@ $translationNamespaces = ['common', 'morning-checks'];
         <!-- Chart tab: visual options for the dashboard trend chart.
              Saved per-analyst via the generic user-preference API so
              different analysts can choose different looks. -->
-        <div class="tab-content" id="chart-tab">
+        <?php endif; ?>
+
+        <!-- Chart — a per-analyst display preference; no capability. -->
+        <div class="tab-content<?php echo $activeTabId === 'chart' ? ' active' : ''; ?>" id="chart-tab" data-capability="none">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('morning-checks.settings.chart_heading')); ?></h2>
             </div>

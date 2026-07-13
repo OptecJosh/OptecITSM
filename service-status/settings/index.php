@@ -11,7 +11,13 @@ require_once '../../includes/theme.php';
 require_once '../../includes/timezone.php';
 I18n::initFromSession();
 Tz::init();
+require_once '../../includes/settings_manifest.php';
 requireModuleAccess('service-status');
+
+// RBAC Layer 2: only the tabs this analyst may see are rendered.
+$settingsManifest = settingsManifestFor('service-status');
+$visibleTabs      = settingsVisibleTabs(connectToDatabase(), (int) $_SESSION['analyst_id'], $settingsManifest);
+$activeTabId      = settingsFirstTabId($visibleTabs);
 
 $current_page = 'settings';
 $path_prefix = '../../';
@@ -78,13 +84,10 @@ $translationNamespaces = ['common', 'service-status'];
     <?php include '../includes/header.php'; ?>
 
     <div class="container">
-        <div class="tabs">
-            <button class="tab active" data-tab="services" onclick="switchTab('services')"><?php echo htmlspecialchars(t('service-status.settings.tab_services')); ?></button>
-            <button class="tab" data-tab="statuses" onclick="switchTab('statuses')"><?php echo htmlspecialchars(t('service-status.settings.tab_statuses')); ?></button>
-            <button class="tab" data-tab="impacts" onclick="switchTab('impacts')"><?php echo htmlspecialchars(t('service-status.settings.tab_impacts')); ?></button>
-        </div>
+        <?php renderSettingsTabBar($visibleTabs, $activeTabId); ?>
 
-        <div class="tab-content active" id="services-tab">
+        <?php if (settingsTabVisible($visibleTabs, 'services')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'services' ? ' active' : ''; ?>" id="services-tab" data-capability="<?php echo Cap::SERVICE_STATUS_SERVICES; ?>">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('service-status.settings.services_heading')); ?></h2>
                 <button class="add-btn" onclick="openAddModal()"><?php echo htmlspecialchars(t('service-status.settings.add')); ?></button>
@@ -106,7 +109,10 @@ $translationNamespaces = ['common', 'service-status'];
         </div>
 
         <!-- Statuses Tab -->
-        <div class="tab-content" id="statuses-tab">
+        <?php endif; ?>
+
+        <?php if (settingsTabVisible($visibleTabs, 'statuses')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'statuses' ? ' active' : ''; ?>" id="statuses-tab" data-capability="<?php echo Cap::SERVICE_STATUS_STATUSES; ?>">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('service-status.settings.statuses_heading')); ?></h2>
                 <button class="add-btn" onclick="openLookupModal('status')"><?php echo htmlspecialchars(t('service-status.settings.add')); ?></button>
@@ -119,7 +125,10 @@ $translationNamespaces = ['common', 'service-status'];
         </div>
 
         <!-- Impact levels Tab -->
-        <div class="tab-content" id="impacts-tab">
+        <?php endif; ?>
+
+        <?php if (settingsTabVisible($visibleTabs, 'impacts')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'impacts' ? ' active' : ''; ?>" id="impacts-tab" data-capability="<?php echo Cap::SERVICE_STATUS_IMPACTS; ?>">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('service-status.settings.impacts_heading')); ?></h2>
                 <button class="add-btn" onclick="openLookupModal('impact')"><?php echo htmlspecialchars(t('service-status.settings.add')); ?></button>
@@ -130,6 +139,7 @@ $translationNamespaces = ['common', 'service-status'];
                 <tbody id="impacts-list"><tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-dim, #999);"><?php echo htmlspecialchars(t('service-status.settings.loading')); ?></td></tr></tbody>
             </table>
         </div>
+        <?php endif; ?>
     </div>
 
     <!-- Lookup edit modal (Statuses + Impact Levels share this) -->

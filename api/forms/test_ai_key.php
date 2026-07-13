@@ -11,6 +11,7 @@
 session_start(['read_and_close' => true]);
 require_once '../../config.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/rbac.php';
 require_once '../../includes/encryption.php';
 require_once __DIR__ . '/_ai_helpers.php';
 header('Content-Type: application/json');
@@ -23,6 +24,7 @@ if (!isset($_SESSION['analyst_id'])) {
 // Spends money against the configured AI provider, so it is not for anyone who merely
 // happens to be logged in. (Found by debug tool D005.)
 requireModuleAccessJson('forms');
+requireCapabilityJson(Cap::FORMS_AI);   // settings tab — see docs/design/rbac.md
 
 try {
     $data      = json_decode(file_get_contents('php://input'), true) ?: [];

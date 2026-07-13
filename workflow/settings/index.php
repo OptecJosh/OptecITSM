@@ -22,7 +22,13 @@ require_once '../../includes/timezone.php';
 I18n::initFromSession();
 Tz::init();
 
+require_once '../../includes/settings_manifest.php';
 requireModuleAccess('workflow');
+
+// RBAC Layer 2: only the tabs this analyst may see are rendered.
+$settingsManifest = settingsManifestFor('workflow');
+$visibleTabs      = settingsVisibleTabs(connectToDatabase(), (int) $_SESSION['analyst_id'], $settingsManifest);
+$activeTabId      = settingsFirstTabId($visibleTabs);
 
 $current_page = 'settings';
 $path_prefix  = '../../';
@@ -69,13 +75,11 @@ $translationNamespaces = ['common', 'workflow'];
     <?php include '../includes/header.php'; ?>
 
     <div class="container">
-        <div class="tabs">
-            <button class="tab active" data-tab="ai"><?php echo htmlspecialchars(t('workflow.settings_tabs.ai')); ?></button>
-            <button class="tab" data-tab="formats"><?php echo htmlspecialchars(t('workflow.settings_tabs.formats')); ?></button>
-        </div>
+        <?php renderSettingsTabBar($visibleTabs, $activeTabId); ?>
 
         <!-- AI tab -->
-        <div class="tab-content active" id="ai-tab">
+        <?php if (settingsTabVisible($visibleTabs, 'ai')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'ai' ? ' active' : ''; ?>" id="ai-tab" data-capability="<?php echo Cap::WORKFLOW_AI; ?>">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('workflow.ai_settings.title')); ?></h2>
             </div>
@@ -89,7 +93,10 @@ $translationNamespaces = ['common', 'workflow'];
         </div>
 
         <!-- Message formats tab -->
-        <div class="tab-content" id="formats-tab">
+        <?php endif; ?>
+
+        <?php if (settingsTabVisible($visibleTabs, 'formats')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'formats' ? ' active' : ''; ?>" id="formats-tab" data-capability="<?php echo Cap::WORKFLOW_FORMATS; ?>">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('workflow.formats.title')); ?></h2>
                 <button class="add-btn" onclick="WFF.openNew()"><?php echo htmlspecialchars(t('common.add')); ?></button>
@@ -116,6 +123,7 @@ $translationNamespaces = ['common', 'workflow'];
                 </tbody>
             </table>
         </div>
+        <?php endif; ?>
     </div>
 
     <!-- Add / edit a message format -->

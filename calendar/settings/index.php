@@ -17,7 +17,13 @@ if (!isset($_SESSION['analyst_id'])) {
     exit;
 }
 
+require_once '../../includes/settings_manifest.php';
 requireModuleAccess('calendar');
+
+// RBAC Layer 2: only the tabs this analyst may see are rendered.
+$settingsManifest = settingsManifestFor('calendar');
+$visibleTabs      = settingsVisibleTabs(connectToDatabase(), (int) $_SESSION['analyst_id'], $settingsManifest);
+$activeTabId      = settingsFirstTabId($visibleTabs);
 
 $analyst_name = $_SESSION['analyst_name'] ?? 'Analyst';
 $current_page = 'settings';
@@ -186,12 +192,10 @@ $translationNamespaces = ['common', 'calendar'];
         <!-- Tab bar. Just one tab today; structure matches the other
              modules' settings pages so the page can grow without
              restructuring (e.g. future Holidays / Working hours tabs). -->
-        <div class="tabs">
-            <button class="tab active" data-tab="categories" onclick="switchTab('categories')"><?php echo htmlspecialchars(t('calendar.settings.tab_categories')); ?></button>
-            <button class="tab" data-tab="left-panel" onclick="switchTab('left-panel')"><?php echo htmlspecialchars(t('common.left_panel.tab')); ?></button>
-        </div>
+        <?php renderSettingsTabBar($visibleTabs, $activeTabId); ?>
 
-        <div class="tab-content active" id="categories-tab">
+        <?php if (settingsTabVisible($visibleTabs, 'categories')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'categories' ? ' active' : ''; ?>" id="categories-tab" data-capability="<?php echo Cap::CALENDAR_CATEGORIES; ?>">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('calendar.settings.heading')); ?></h2>
                 <button class="add-btn" onclick="openCategoryModal()"><?php echo htmlspecialchars(t('calendar.settings.add')); ?></button>
@@ -214,7 +218,10 @@ $translationNamespaces = ['common', 'calendar'];
         </div>
 
         <!-- Left panel tab — per-analyst preference -->
-        <div class="tab-content" id="left-panel-tab">
+        <?php endif; ?>
+
+        <!-- Left panel — per-analyst display preference; no capability. -->
+        <div class="tab-content<?php echo $activeTabId === 'left-panel' ? ' active' : ''; ?>" id="left-panel-tab" data-capability="none">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('common.left_panel.tab')); ?></h2>
             </div>

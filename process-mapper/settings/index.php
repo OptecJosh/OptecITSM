@@ -23,7 +23,13 @@ require_once '../../includes/timezone.php';
 I18n::initFromSession();
 Tz::init();
 
+require_once '../../includes/settings_manifest.php';
 requireModuleAccess('process-mapper');
+
+// RBAC Layer 2: only the tabs this analyst may see are rendered.
+$settingsManifest = settingsManifestFor('process-mapper');
+$visibleTabs      = settingsVisibleTabs(connectToDatabase(), (int) $_SESSION['analyst_id'], $settingsManifest);
+$activeTabId      = settingsFirstTabId($visibleTabs);
 
 $current_page = 'settings';
 $path_prefix  = '../../';
@@ -143,13 +149,11 @@ $shapes = include '../includes/shapes.php';
 
     <div class="container">
         <!-- Tabs strip — matches tickets/settings -->
-        <div class="tabs">
-            <button class="tab active" data-tab="step-types" onclick="PMS.switchTab('step-types')"><?php echo htmlspecialchars(t('process-mapper.settings_tabs.step_types')); ?></button>
-            <button class="tab"        data-tab="left-panel" onclick="PMS.switchTab('left-panel')"><?php echo htmlspecialchars(t('process-mapper.settings_tabs.left_panel')); ?></button>
-        </div>
+        <?php renderSettingsTabBar($visibleTabs, $activeTabId); ?>
 
         <!-- Step types tab (existing content) -->
-        <div class="tab-content active" id="step-types-tab">
+        <?php if (settingsTabVisible($visibleTabs, 'step-types')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'step-types' ? ' active' : ''; ?>" id="step-types-tab" data-capability="<?php echo Cap::PROCESS_MAPPER_STEP_TYPES; ?>">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('process-mapper.settings.title')); ?></h2>
                 <button class="add-btn" onclick="PMS.openAdd()"><?php echo htmlspecialchars(t('common.add')); ?></button>
@@ -174,7 +178,10 @@ $shapes = include '../includes/shapes.php';
         </div>
 
         <!-- Left panel tab — per-analyst preference -->
-        <div class="tab-content" id="left-panel-tab">
+        <?php endif; ?>
+
+        <!-- Left panel — per-analyst display preference; no capability. -->
+        <div class="tab-content<?php echo $activeTabId === 'left-panel' ? ' active' : ''; ?>" id="left-panel-tab" data-capability="none">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('process-mapper.left_panel.title')); ?></h2>
             </div>

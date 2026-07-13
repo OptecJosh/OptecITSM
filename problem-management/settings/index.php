@@ -7,7 +7,13 @@ require_once __DIR__ . '/../../includes/theme.php';
 require_once __DIR__ . '/../../includes/timezone.php';
 Tz::init();
 
+require_once __DIR__ . '/../../includes/settings_manifest.php';
 requireModuleAccess('problems');
+
+// RBAC Layer 2: only the tabs this analyst may see are rendered.
+$settingsManifest = settingsManifestFor('problems');
+$visibleTabs      = settingsVisibleTabs(connectToDatabase(), (int) $_SESSION['analyst_id'], $settingsManifest);
+$activeTabId      = settingsFirstTabId($visibleTabs);
 
 $current_page = 'settings';
 $path_prefix = '../../';
@@ -46,29 +52,33 @@ $path_prefix = '../../';
     <div class="container">
         <h1>Problem Management settings</h1>
 
-        <div class="tabs">
-            <button class="tab active" data-tab="statuses" onclick="pmsTab('statuses')">Statuses</button>
-            <button class="tab" data-tab="priorities" onclick="pmsTab('priorities')">Priorities</button>
-            <button class="tab" data-tab="ai" onclick="pmsTab('ai')">Problem AI</button>
-        </div>
+        <?php renderSettingsTabBar($visibleTabs, $activeTabId, 'pmsTab'); ?>
 
-        <div class="tab-content active" id="tab-statuses">
+        <?php if (settingsTabVisible($visibleTabs, 'statuses')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'statuses' ? ' active' : ''; ?>" id="tab-statuses" data-capability="<?php echo Cap::PROBLEMS_STATUSES; ?>">
             <div class="section-header"><h2>Statuses</h2><button class="add-btn" onclick="pmsOpen('status')">Add</button></div>
             <table><thead><tr><th>Name</th><th>Closed?</th><th>Default</th><th>Active</th><th>Actions</th></tr></thead>
             <tbody id="pmsStatusRows"><tr><td colspan="5">Loading…</td></tr></tbody></table>
         </div>
 
-        <div class="tab-content" id="tab-priorities">
+        <?php endif; ?>
+
+        <?php if (settingsTabVisible($visibleTabs, 'priorities')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'priorities' ? ' active' : ''; ?>" id="tab-priorities" data-capability="<?php echo Cap::PROBLEMS_PRIORITIES; ?>">
             <div class="section-header"><h2>Priorities</h2><button class="add-btn" onclick="pmsOpen('priority')">Add</button></div>
             <table><thead><tr><th>Name</th><th>Default</th><th>Active</th><th>Actions</th></tr></thead>
             <tbody id="pmsPriorityRows"><tr><td colspan="4">Loading…</td></tr></tbody></table>
         </div>
 
-        <div class="tab-content" id="tab-ai">
+        <?php endif; ?>
+
+        <?php if (settingsTabVisible($visibleTabs, 'ai')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'ai' ? ' active' : ''; ?>" id="tab-ai" data-capability="<?php echo Cap::PROBLEMS_AI; ?>">
             <h2 style="margin-top:0;">Problem AI</h2>
             <p style="color:var(--text-muted, #555);">Used by “Draft root cause” and “Detect problems”. Bring your own provider and key.</p>
             <?php renderAiSettingsPanel('problem_ai'); ?>
         </div>
+        <?php endif; ?>
     </div>
     </div><!-- /.settings-shell -->
 

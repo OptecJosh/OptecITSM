@@ -52,9 +52,12 @@
  * '<module>.manage' is the per-module umbrella (holding it satisfies every capability
  * in that module — see capExpandUmbrellas()).
  *
- * Phase 3 adds one constant per settings tab as each module is converted. Only the LMS
- * is declared today; it is the pilot, and its 'manage' is an umbrella over a module that
- * is unusual in being almost entirely an admin surface.
+ * One constant per settings tab, added as each module is converted. The DETAILS of each
+ * capability — its module, its description, whether it is sensitive, which stored settings
+ * it guards — are NOT here: they live in that module's settings manifest, and everything
+ * else derives from it. These constants are only the names, because a name is the one
+ * thing that has to exist in the code for a typo to be a fatal error rather than a silent
+ * 403. capSelfCheck() proves every constant below is claimed by exactly one manifest.
  */
 final class Cap
 {
@@ -106,6 +109,12 @@ final class Cap
     const KNOWLEDGE_AI          = 'knowledge.ai';           // AI provider + API key
     const KNOWLEDGE_EMBEDDINGS  = 'knowledge.embeddings';   // spends money re-embedding
     const KNOWLEDGE_RECYCLE_BIN = 'knowledge.recycle_bin';
+
+    // ---- CMDB --------------------------------------------------------------
+    const CMDB_MANAGE             = 'cmdb.manage';              // umbrella
+    const CMDB_CLASSES            = 'cmdb.classes';             // the CI schema itself
+    const CMDB_RELATIONSHIP_TYPES = 'cmdb.relationship_types';
+    const CMDB_AI                 = 'cmdb.ai';                  // AI provider + API key
 }
 
 /**

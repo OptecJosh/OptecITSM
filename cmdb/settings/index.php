@@ -16,7 +16,13 @@ if (!isset($_SESSION['analyst_id'])) {
     header('Location: ../../login.php');
     exit;
 }
+require_once '../../includes/settings_manifest.php';
 requireModuleAccess('cmdb');
+
+// RBAC Layer 2: only the tabs this analyst may see are rendered.
+$settingsManifest = settingsManifestFor('cmdb');
+$visibleTabs      = settingsVisibleTabs(connectToDatabase(), (int) $_SESSION['analyst_id'], $settingsManifest);
+$activeTabId      = settingsFirstTabId($visibleTabs);
 
 $analyst_name = $_SESSION['analyst_name'] ?? 'Analyst';
 $current_page = 'settings';
@@ -208,15 +214,11 @@ $translationNamespaces = ['common', 'cmdb'];
     <?php include '../includes/header.php'; ?>
 
     <div class="container">
-        <div class="tabs">
-            <button class="tab active" data-tab="classes" onclick="switchTab('classes')"><?php echo htmlspecialchars(t('cmdb.settings.tab_classes')); ?></button>
-            <button class="tab" data-tab="relationship-types" onclick="switchTab('relationship-types')"><?php echo htmlspecialchars(t('cmdb.settings.tab_rel_types')); ?></button>
-            <button class="tab" data-tab="ai" onclick="switchTab('ai')"><?php echo htmlspecialchars(t('cmdb.settings.tab_ai')); ?></button>
-            <button class="tab" data-tab="left-panel" onclick="switchTab('left-panel')"><?php echo htmlspecialchars(t('common.left_panel.tab')); ?></button>
-        </div>
+        <?php renderSettingsTabBar($visibleTabs, $activeTabId); ?>
 
         <!-- Classes Tab -->
-        <div class="tab-content active" id="classes-tab">
+        <?php if (settingsTabVisible($visibleTabs, 'classes')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'classes' ? ' active' : ''; ?>" id="classes-tab" data-capability="<?php echo Cap::CMDB_CLASSES; ?>">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('cmdb.settings.classes_heading')); ?></h2>
                 <button class="add-btn" onclick="openClassModal()"><?php echo htmlspecialchars(t('cmdb.settings.add')); ?></button>
@@ -243,7 +245,10 @@ $translationNamespaces = ['common', 'cmdb'];
         </div>
 
         <!-- Relationship Types Tab -->
-        <div class="tab-content" id="relationship-types-tab">
+        <?php endif; ?>
+
+        <?php if (settingsTabVisible($visibleTabs, 'relationship-types')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'relationship-types' ? ' active' : ''; ?>" id="relationship-types-tab" data-capability="<?php echo Cap::CMDB_RELATIONSHIP_TYPES; ?>">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('cmdb.settings.rel_types_heading')); ?></h2>
                 <button class="add-btn" onclick="openRelTypeModal()"><?php echo htmlspecialchars(t('cmdb.settings.add')); ?></button>
@@ -269,7 +274,10 @@ $translationNamespaces = ['common', 'cmdb'];
         </div>
 
         <!-- AI Integration Tab -->
-        <div class="tab-content" id="ai-tab">
+        <?php endif; ?>
+
+        <?php if (settingsTabVisible($visibleTabs, 'ai')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'ai' ? ' active' : ''; ?>" id="ai-tab" data-capability="<?php echo Cap::CMDB_AI; ?>">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('cmdb.settings.ai_heading')); ?></h2>
             </div>
@@ -298,7 +306,10 @@ $translationNamespaces = ['common', 'cmdb'];
         </div>
 
         <!-- Left panel tab — per-analyst preference -->
-        <div class="tab-content" id="left-panel-tab">
+        <?php endif; ?>
+
+        <!-- Left panel — per-analyst display preference; no capability. -->
+        <div class="tab-content<?php echo $activeTabId === 'left-panel' ? ' active' : ''; ?>" id="left-panel-tab" data-capability="none">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('common.left_panel.tab')); ?></h2>
             </div>

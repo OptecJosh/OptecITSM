@@ -220,6 +220,19 @@ $critical = [];   // writes with NO auth at all
 $high     = [];   // writes behind "logged in" only
 $info     = [];   // reads behind "logged in" only
 $stringly = [];   // capability passed as a string rather than a Cap:: constant
+$fatal    = [];   // guard present but its code was never require'd → fatals on every call
+
+// A guard that isn't loaded is WORSE than no guard: the endpoint looks protected, and
+// instead it dies with "Call to undefined function requireCapabilityJson()" — which PHP
+// serves as HTTP **200**, so a test that only checks status codes reads it as a PASS.
+// (That is exactly how it slipped through once. Hence this check.)
+foreach ($rows as $r) {
+    if (!in_array($r['level'], ['capability', 'capability_string'], true)) continue;
+    $src = (string) file_get_contents($appRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $r['rel']));
+    if (!preg_match('#require(_once)?[^;\n]*(rbac\.php|lms_access\.php|settings_manifest\.php)#', $src)) {
+        $fatal[] = $r;
+    }
+}
 
 $byDesign = [];
 foreach ($rows as $r) {
@@ -263,8 +276,26 @@ $sum[] = sprintf('Public by design (login / self-service / REST / webhooks), exc
     count(array_filter($rows, fn($r) => $r['public'])));
 addSection($sections, 'SUMMARY', $sum);
 
+if ($fatal) {
+    $b = [
+        'These name a capability guard, but never require the file that DEFINES it. Every',
+        'call dies with "Call to undefined function requireCapabilityJson()" — and PHP',
+        'serves a fatal as HTTP 200, so a test that only checks status codes reads it as a',
+        'PASS. The endpoint is broken for EVERYONE, including administrators.',
+        '',
+        'Fix: require includes/rbac.php (watch the path style — some endpoints use',
+        '__DIR__ . \'/../../includes/…\' rather than a relative path).',
+        '',
+    ];
+    foreach ($fatal as $r) $b[] = sprintf('  %-50s %s', substr($r['rel'], strlen('api/')), $r['detail']);
+    addSection($sections, '💥 BROKEN — capability guard present but not loaded (' . count($fatal) . ')', $b);
+}
+
 $verdict = [];
-if ($critical) {
+if ($fatal) {
+    $verdict[] = 'BROKEN — one or more endpoints have a guard whose code was never loaded.';
+    $verdict[] = 'They fatal on every call, for everyone. Fix these before anything else.';
+} elseif ($critical) {
     $verdict[] = 'CRITICAL — these endpoints CHANGE DATA and have NO authentication at all.';
     $verdict[] = 'Anyone who can reach the URL can call them. Fix these first.';
 } elseif ($high) {

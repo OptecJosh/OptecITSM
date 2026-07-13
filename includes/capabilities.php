@@ -83,6 +83,14 @@ final class Cap
     const CONTRACTS_CONTRACT_TERMS     = 'contracts.contract_terms';
     const CONTRACTS_RFP_DEPARTMENTS    = 'contracts.rfp_departments';
     const CONTRACTS_RFP_AI             = 'contracts.rfp_ai';              // AI provider + API key
+
+    // ---- Change Management -------------------------------------------------
+    const CHANGES_MANAGE     = 'changes.manage';      // umbrella
+    const CHANGES_FIELDS     = 'changes.fields';
+    const CHANGES_STATUSES   = 'changes.statuses';
+    const CHANGES_PRIORITIES = 'changes.priorities';
+    const CHANGES_TYPES      = 'changes.types';
+    const CHANGES_IMPACTS    = 'changes.impacts';
 }
 
 /**

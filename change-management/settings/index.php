@@ -16,7 +16,14 @@ if (!isset($_SESSION['analyst_id'])) {
     exit;
 }
 
+require_once '../../includes/settings_manifest.php';
 requireModuleAccess('changes');
+
+// RBAC Layer 2: only the tabs this analyst may see are rendered — a tab they lack is
+// never emitted, so there is nothing to un-hide. Administrators hold everything.
+$settingsManifest = settingsManifestFor('changes');
+$visibleTabs      = settingsVisibleTabs(connectToDatabase(), (int) $_SESSION['analyst_id'], $settingsManifest);
+$activeTabId      = settingsFirstTabId($visibleTabs);
 
 $analyst_name = $_SESSION['analyst_name'] ?? 'Analyst';
 $current_page = 'settings';
@@ -268,17 +275,11 @@ $translationNamespaces = ['common', 'change-management'];
     <?php include '../includes/header.php'; ?>
 
     <div class="container">
-        <div class="tabs">
-            <button class="tab active" data-tab="fields" onclick="switchTab('fields')"><?php echo htmlspecialchars(t('change-management.settings.tab_fields')); ?></button>
-            <button class="tab" data-tab="statuses" onclick="switchTab('statuses')"><?php echo htmlspecialchars(t('change-management.settings.tab_statuses')); ?></button>
-            <button class="tab" data-tab="priorities" onclick="switchTab('priorities')"><?php echo htmlspecialchars(t('change-management.settings.tab_priorities')); ?></button>
-            <button class="tab" data-tab="types" onclick="switchTab('types')"><?php echo htmlspecialchars(t('change-management.settings.tab_types')); ?></button>
-            <button class="tab" data-tab="impacts" onclick="switchTab('impacts')"><?php echo htmlspecialchars(t('change-management.settings.tab_impacts')); ?></button>
-            <button class="tab" data-tab="left-panel" onclick="switchTab('left-panel')"><?php echo htmlspecialchars(t('common.left_panel.tab')); ?></button>
-        </div>
+        <?php renderSettingsTabBar($visibleTabs, $activeTabId); ?>
 
+        <?php if (settingsTabVisible($visibleTabs, 'fields')): ?>
         <!-- Form Fields Tab -->
-        <div class="tab-content active" id="fields-tab">
+        <div class="tab-content<?php echo $activeTabId === 'fields' ? ' active' : ''; ?>" id="fields-tab" data-capability="<?php echo Cap::CHANGES_FIELDS; ?>">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('change-management.settings.fields_heading')); ?></h2>
             </div>
@@ -293,7 +294,10 @@ $translationNamespaces = ['common', 'change-management'];
         </div>
 
         <!-- Statuses Tab -->
-        <div class="tab-content" id="statuses-tab">
+        <?php endif; ?>
+
+        <?php if (settingsTabVisible($visibleTabs, 'statuses')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'statuses' ? ' active' : ''; ?>" id="statuses-tab" data-capability="<?php echo Cap::CHANGES_STATUSES; ?>">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('change-management.settings.statuses_heading')); ?></h2>
                 <button class="add-btn" onclick="openLookupModal('status')"><?php echo htmlspecialchars(t('change-management.settings.add')); ?></button>
@@ -306,7 +310,10 @@ $translationNamespaces = ['common', 'change-management'];
         </div>
 
         <!-- Priorities Tab -->
-        <div class="tab-content" id="priorities-tab">
+        <?php endif; ?>
+
+        <?php if (settingsTabVisible($visibleTabs, 'priorities')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'priorities' ? ' active' : ''; ?>" id="priorities-tab" data-capability="<?php echo Cap::CHANGES_PRIORITIES; ?>">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('change-management.settings.priorities_heading')); ?></h2>
                 <button class="add-btn" onclick="openLookupModal('priority')"><?php echo htmlspecialchars(t('change-management.settings.add')); ?></button>
@@ -319,7 +326,10 @@ $translationNamespaces = ['common', 'change-management'];
         </div>
 
         <!-- Types Tab -->
-        <div class="tab-content" id="types-tab">
+        <?php endif; ?>
+
+        <?php if (settingsTabVisible($visibleTabs, 'types')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'types' ? ' active' : ''; ?>" id="types-tab" data-capability="<?php echo Cap::CHANGES_TYPES; ?>">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('change-management.settings.types_heading')); ?></h2>
                 <button class="add-btn" onclick="openLookupModal('type')"><?php echo htmlspecialchars(t('change-management.settings.add')); ?></button>
@@ -332,7 +342,10 @@ $translationNamespaces = ['common', 'change-management'];
         </div>
 
         <!-- Impacts Tab -->
-        <div class="tab-content" id="impacts-tab">
+        <?php endif; ?>
+
+        <?php if (settingsTabVisible($visibleTabs, 'impacts')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'impacts' ? ' active' : ''; ?>" id="impacts-tab" data-capability="<?php echo Cap::CHANGES_IMPACTS; ?>">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('change-management.settings.impacts_heading')); ?></h2>
                 <button class="add-btn" onclick="openLookupModal('impact')"><?php echo htmlspecialchars(t('change-management.settings.add')); ?></button>
@@ -345,7 +358,10 @@ $translationNamespaces = ['common', 'change-management'];
         </div>
 
         <!-- Left panel tab — per-analyst preference -->
-        <div class="tab-content" id="left-panel-tab">
+        <?php endif; ?>
+
+        <!-- Left panel — a per-analyst display preference, so it declares no capability. -->
+        <div class="tab-content<?php echo $activeTabId === 'left-panel' ? ' active' : ''; ?>" id="left-panel-tab" data-capability="none">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('common.left_panel.tab')); ?></h2>
             </div>

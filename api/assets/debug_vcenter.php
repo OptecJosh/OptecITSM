@@ -7,6 +7,7 @@
 session_start(['read_and_close' => true]);
 require_once '../../config.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/rbac.php';
 require_once '../../includes/encryption.php';
 
 header('Content-Type: application/json');
@@ -15,6 +16,12 @@ if (!isset($_SESSION['analyst_id'])) {
     echo json_encode(['success' => false, 'error' => 'Not authenticated']);
     exit;
 }
+
+// Dumps every raw field vCenter returns, so it belongs to whoever administers the
+// vCenter connection — not to anyone who happens to be logged in. It had no module
+// guard at all before this.
+requireModuleAccessJson('assets');
+requireCapabilityJson(Cap::ASSETS_VCENTER);
 
 set_time_limit(300);
 

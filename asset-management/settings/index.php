@@ -8,9 +8,17 @@ require_once '../../includes/functions.php';
 require_once '../../includes/i18n.php';
 require_once '../../includes/theme.php';
 require_once '../../includes/timezone.php';
+require_once '../../includes/settings_manifest.php';
 I18n::initFromSession();
 Tz::init();
 requireModuleAccess('assets');
+
+// RBAC Layer 2: which of these tabs may this analyst see? Everything below is rendered
+// from the manifest, so a tab they lack the capability for is never emitted — there is
+// no hidden panel to un-hide. Administrators hold every capability and see the lot.
+$settingsManifest = require __DIR__ . '/manifest.php';
+$visibleTabs      = settingsVisibleTabs(connectToDatabase(), (int) $_SESSION['analyst_id'], $settingsManifest);
+$activeTabId      = settingsFirstTabId($visibleTabs);
 
 $current_page = 'settings';
 $path_prefix = '../../';
@@ -250,19 +258,10 @@ $translationNamespaces = ['common', 'asset-management'];
     <?php include '../includes/header.php'; ?>
 
     <div class="container">
-        <div class="tabs">
-            <button class="tab active" data-tab="asset-types" onclick="switchTab('asset-types')"><?php echo htmlspecialchars(t('asset-management.settings.tab_asset_types')); ?></button>
-            <button class="tab" data-tab="asset-statuses" onclick="switchTab('asset-statuses')"><?php echo htmlspecialchars(t('asset-management.settings.tab_asset_statuses')); ?></button>
-            <button class="tab" data-tab="locations" onclick="switchTab('locations')"><?php echo htmlspecialchars(t('asset-management.settings.tab_locations')); ?></button>
-            <button class="tab" data-tab="suppliers" onclick="switchTab('suppliers')"><?php echo htmlspecialchars(t('asset-management.settings.tab_suppliers')); ?></button>
-            <button class="tab" data-tab="warranty" onclick="switchTab('warranty')"><?php echo htmlspecialchars(t('asset-management.settings.tab_warranty')); ?></button>
-            <button class="tab" data-tab="vcenter" onclick="switchTab('vcenter')"><?php echo htmlspecialchars(t('asset-management.settings.tab_vcenter')); ?></button>
-            <button class="tab" data-tab="intune" onclick="switchTab('intune')"><?php echo htmlspecialchars(t('asset-management.settings.tab_intune')); ?></button>
-            <button class="tab" data-tab="left-panel" onclick="switchTab('left-panel')"><?php echo htmlspecialchars(t('common.left_panel.tab')); ?></button>
-        </div>
+        <?php renderSettingsTabBar($visibleTabs, $activeTabId); ?>
 
-        <!-- Left panel tab — per-analyst preference -->
-        <div class="tab-content" id="left-panel-tab">
+        <!-- Left panel tab — per-analyst preference, so it declares no capability and is never gated -->
+        <div class="tab-content<?php echo $activeTabId === 'left-panel' ? ' active' : ''; ?>" id="left-panel-tab" data-capability="none">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('common.left_panel.tab')); ?></h2>
             </div>
@@ -289,8 +288,9 @@ $translationNamespaces = ['common', 'asset-management'];
             </form>
         </div>
 
+        <?php if (settingsTabVisible($visibleTabs, 'asset-types')): ?>
         <!-- Asset Types Tab -->
-        <div class="tab-content active" id="asset-types-tab">
+        <div class="tab-content<?php echo $activeTabId === 'asset-types' ? ' active' : ''; ?>" id="asset-types-tab" data-capability="<?php echo Cap::ASSETS_TYPES; ?>">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('asset-management.settings.tab_asset_types')); ?></h2>
                 <button class="add-btn" onclick="openAddModal('asset-type')"><?php echo htmlspecialchars(t('asset-management.common.add')); ?></button>
@@ -314,8 +314,11 @@ $translationNamespaces = ['common', 'asset-management'];
             </table>
         </div>
 
+        <?php endif; ?>
+
+        <?php if (settingsTabVisible($visibleTabs, 'asset-statuses')): ?>
         <!-- Asset Statuses Tab -->
-        <div class="tab-content" id="asset-statuses-tab">
+        <div class="tab-content<?php echo $activeTabId === 'asset-statuses' ? ' active' : ''; ?>" id="asset-statuses-tab" data-capability="<?php echo Cap::ASSETS_STATUSES; ?>">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('asset-management.settings.tab_asset_statuses')); ?></h2>
                 <button class="add-btn" onclick="openAddModal('asset-status')"><?php echo htmlspecialchars(t('asset-management.common.add')); ?></button>
@@ -339,8 +342,11 @@ $translationNamespaces = ['common', 'asset-management'];
             </table>
         </div>
 
+        <?php endif; ?>
+
+        <?php if (settingsTabVisible($visibleTabs, 'locations')): ?>
         <!-- Locations Tab -->
-        <div class="tab-content" id="locations-tab">
+        <div class="tab-content<?php echo $activeTabId === 'locations' ? ' active' : ''; ?>" id="locations-tab" data-capability="<?php echo Cap::ASSETS_LOCATIONS; ?>">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('asset-management.settings.tab_locations')); ?></h2>
                 <button class="add-btn" onclick="openAddLocation(null)"><?php echo htmlspecialchars(t('asset-management.common.add')); ?></button>
@@ -353,8 +359,11 @@ $translationNamespaces = ['common', 'asset-management'];
             </div>
         </div>
 
+        <?php endif; ?>
+
+        <?php if (settingsTabVisible($visibleTabs, 'suppliers')): ?>
         <!-- Suppliers Tab -->
-        <div class="tab-content" id="suppliers-tab">
+        <div class="tab-content<?php echo $activeTabId === 'suppliers' ? ' active' : ''; ?>" id="suppliers-tab" data-capability="<?php echo Cap::ASSETS_SUPPLIERS; ?>">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('asset-management.settings.tab_suppliers')); ?></h2>
             </div>
@@ -380,8 +389,11 @@ $translationNamespaces = ['common', 'asset-management'];
             </table>
         </div>
 
+        <?php endif; ?>
+
+        <?php if (settingsTabVisible($visibleTabs, 'warranty')): ?>
         <!-- Warranty alerts Tab -->
-        <div class="tab-content" id="warranty-tab">
+        <div class="tab-content<?php echo $activeTabId === 'warranty' ? ' active' : ''; ?>" id="warranty-tab" data-capability="<?php echo Cap::ASSETS_WARRANTY; ?>">
             <div class="settings-section">
                 <div class="settings-section-header">
                     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -416,8 +428,11 @@ $translationNamespaces = ['common', 'asset-management'];
             </div>
         </div>
 
+        <?php endif; ?>
+
+        <?php if (settingsTabVisible($visibleTabs, 'vcenter')): ?>
         <!-- vCenter Tab -->
-        <div class="tab-content" id="vcenter-tab">
+        <div class="tab-content<?php echo $activeTabId === 'vcenter' ? ' active' : ''; ?>" id="vcenter-tab" data-capability="<?php echo Cap::ASSETS_VCENTER; ?>">
             <div class="settings-section">
                 <div class="settings-section-header">
                     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -458,8 +473,11 @@ $translationNamespaces = ['common', 'asset-management'];
             </div>
         </div>
 
+        <?php endif; ?>
+
+        <?php if (settingsTabVisible($visibleTabs, 'intune')): ?>
         <!-- InTune Tab -->
-        <div class="tab-content" id="intune-tab">
+        <div class="tab-content<?php echo $activeTabId === 'intune' ? ' active' : ''; ?>" id="intune-tab" data-capability="<?php echo Cap::ASSETS_INTUNE; ?>">
             <div class="settings-section">
                 <div class="settings-section-header">
                     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -539,6 +557,7 @@ $translationNamespaces = ['common', 'asset-management'];
                 </div>
             </div>
         </div>
+        <?php endif; ?>
     </div>
 
     <!-- Edit/Add Modal -->

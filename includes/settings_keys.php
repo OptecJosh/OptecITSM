@@ -58,20 +58,20 @@ require_once __DIR__ . '/capabilities.php';
 function settingKeyOwners(): array
 {
     return [
-        // --- Asset Management ------------------------------------------------
+        // --- Asset Management (CONVERTED, phase 3b) ---------------------------
         // Warranty tab
-        'asset_warranty_surface'  => ['module' => 'assets', 'cap' => null, 'tab' => 'warranty'],
-        'asset_warranty_days'     => ['module' => 'assets', 'cap' => null, 'tab' => 'warranty'],
+        'asset_warranty_surface'  => ['module' => 'assets', 'cap' => Cap::ASSETS_WARRANTY, 'tab' => 'warranty'],
+        'asset_warranty_days'     => ['module' => 'assets', 'cap' => Cap::ASSETS_WARRANTY, 'tab' => 'warranty'],
         // vCenter tab — credentials
-        'vcenter_server'          => ['module' => 'assets', 'cap' => null, 'tab' => 'vcenter'],
-        'vcenter_user'            => ['module' => 'assets', 'cap' => null, 'tab' => 'vcenter'],
-        'vcenter_password'        => ['module' => 'assets', 'cap' => null, 'tab' => 'vcenter'],
+        'vcenter_server'          => ['module' => 'assets', 'cap' => Cap::ASSETS_VCENTER, 'tab' => 'vcenter'],
+        'vcenter_user'            => ['module' => 'assets', 'cap' => Cap::ASSETS_VCENTER, 'tab' => 'vcenter'],
+        'vcenter_password'        => ['module' => 'assets', 'cap' => Cap::ASSETS_VCENTER, 'tab' => 'vcenter'],
         // Intune tab — credentials
-        'intune_tenant_id'        => ['module' => 'assets', 'cap' => null, 'tab' => 'intune'],
-        'intune_client_id'        => ['module' => 'assets', 'cap' => null, 'tab' => 'intune'],
-        'intune_client_secret'    => ['module' => 'assets', 'cap' => null, 'tab' => 'intune'],
-        'intune_verify_ssl'       => ['module' => 'assets', 'cap' => null, 'tab' => 'intune'],
-        'intune_app_batch_size'   => ['module' => 'assets', 'cap' => null, 'tab' => 'intune'],
+        'intune_tenant_id'        => ['module' => 'assets', 'cap' => Cap::ASSETS_INTUNE, 'tab' => 'intune'],
+        'intune_client_id'        => ['module' => 'assets', 'cap' => Cap::ASSETS_INTUNE, 'tab' => 'intune'],
+        'intune_client_secret'    => ['module' => 'assets', 'cap' => Cap::ASSETS_INTUNE, 'tab' => 'intune'],
+        'intune_verify_ssl'       => ['module' => 'assets', 'cap' => Cap::ASSETS_INTUNE, 'tab' => 'intune'],
+        'intune_app_batch_size'   => ['module' => 'assets', 'cap' => Cap::ASSETS_INTUNE, 'tab' => 'intune'],
 
         // --- Tickets ---------------------------------------------------------
         // General tab

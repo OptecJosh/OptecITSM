@@ -61,10 +61,18 @@ final class Cap
     // ---- LMS ---------------------------------------------------------------
     const LMS_MANAGE = 'lms.manage';
 
-    // Further modules land here as phase 3 converts them, e.g.
-    //   const ASSETS_MANAGE  = 'assets.manage';    // umbrella
-    //   const ASSETS_VCENTER = 'assets.vcenter';
-    //   const ASSETS_INTUNE  = 'assets.intune';
+    // ---- Asset Management --------------------------------------------------
+    // One per settings tab. The point of the split is visible here: VCENTER and
+    // INTUNE hold integration credentials, and sit on the same tab bar as TYPES,
+    // which is a lookup list. A single 'assets.manage' could not tell them apart.
+    const ASSETS_MANAGE    = 'assets.manage';      // umbrella
+    const ASSETS_TYPES     = 'assets.types';
+    const ASSETS_STATUSES  = 'assets.statuses';
+    const ASSETS_LOCATIONS = 'assets.locations';
+    const ASSETS_SUPPLIERS = 'assets.suppliers';
+    const ASSETS_WARRANTY  = 'assets.warranty';
+    const ASSETS_VCENTER   = 'assets.vcenter';     // credentials
+    const ASSETS_INTUNE    = 'assets.intune';      // credentials
 }
 
 /**
@@ -74,7 +82,8 @@ final class Cap
 function capModules(): array
 {
     return [
-        'lms' => 'LMS',
+        'assets' => 'Asset management',
+        'lms'    => 'LMS',
     ];
 }
 
@@ -92,6 +101,57 @@ function capModules(): array
 function capRegistry(): array
 {
     return [
+        // ---- Asset Management ----------------------------------------------
+        Cap::ASSETS_MANAGE => [
+            'module'    => 'assets',
+            'umbrella'  => true,
+            'sensitive' => true,   // implies vCenter + Intune, so it reaches credentials
+            'label'     => 'Manage everything in Asset management settings',
+        ],
+        Cap::ASSETS_TYPES => [
+            'module'    => 'assets',
+            'umbrella'  => false,
+            'sensitive' => false,
+            'label'     => 'Manage asset types',
+        ],
+        Cap::ASSETS_STATUSES => [
+            'module'    => 'assets',
+            'umbrella'  => false,
+            'sensitive' => false,
+            'label'     => 'Manage asset statuses',
+        ],
+        Cap::ASSETS_LOCATIONS => [
+            'module'    => 'assets',
+            'umbrella'  => false,
+            'sensitive' => false,
+            'label'     => 'Manage locations',
+        ],
+        Cap::ASSETS_SUPPLIERS => [
+            'module'    => 'assets',
+            'umbrella'  => false,
+            'sensitive' => false,
+            'label'     => 'Manage suppliers',
+        ],
+        Cap::ASSETS_WARRANTY => [
+            'module'    => 'assets',
+            'umbrella'  => false,
+            'sensitive' => false,
+            'label'     => 'Configure warranty expiry surfacing',
+        ],
+        Cap::ASSETS_VCENTER => [
+            'module'    => 'assets',
+            'umbrella'  => false,
+            'sensitive' => true,
+            'label'     => 'Configure the vCenter connection, including its credentials',
+        ],
+        Cap::ASSETS_INTUNE => [
+            'module'    => 'assets',
+            'umbrella'  => false,
+            'sensitive' => true,
+            'label'     => 'Configure the Intune connection and run syncs, including its credentials',
+        ],
+
+        // ---- LMS -----------------------------------------------------------
         Cap::LMS_MANAGE => [
             'module'    => 'lms',
             'umbrella'  => true,

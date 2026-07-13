@@ -136,6 +136,61 @@ function settingKeyOwner(string $key): ?array
 }
 
 /**
+ * May this analyst manage the AI configuration for a namespace ('knowledge_ai', 'cmdb_ai',
+ * 'tickets_reply_cleanup', …)?
+ *
+ * The AI settings panel is SHARED by seven modules and posts to one endpoint
+ * (api/system/ai/*), passing its namespace. So — like the shared settings writer — a single
+ * guard on that file cannot be right for seven different audiences, and until now it simply
+ * demanded is_admin: fine, but it meant a module's AI tab could never be delegated.
+ *
+ * A namespace's settings ARE system_settings keys ('<ns>_api_key' and friends), so this
+ * reuses the ownership map rather than inventing a second mechanism:
+ *
+ *   - the module has been CONVERTED (its manifest claims those keys) → the tab's capability;
+ *   - it has NOT been converted yet                                  → is_admin, exactly as
+ *     today, so nothing loosens by accident.
+ */
+function analystCanManageAiNamespace(PDO $conn, int $analystId, string $ns): bool
+{
+    $key = $ns . '_api_key';
+    if (settingKeyOwner($key) !== null) {
+        return analystCanWriteSettingKey($conn, $analystId, $key);
+    }
+    return analystIsAdmin($conn, $analystId);
+}
+
+/**
+ * May this analyst manage the AI settings of ANY namespace?
+ *
+ * For the shared model-list endpoint, which has no namespace of its own but is needed by
+ * the panel to populate its model dropdown. Anyone who can configure at least one module's
+ * AI can fetch the list; nobody else can.
+ */
+function analystCanManageAnyAiNamespace(PDO $conn, int $analystId): bool
+{
+    require_once __DIR__ . '/ai_settings.php';
+    foreach (array_keys(aiSettingsRegistry()) as $ns) {
+        if (analystCanManageAiNamespace($conn, $analystId, $ns)) return true;
+    }
+    return false;
+}
+
+/**
+ * The API twin: refuse with a 403 unless this analyst may manage the namespace's AI config.
+ */
+function requireAiNamespaceJson(PDO $conn, string $ns): void
+{
+    $analystId = (int) ($_SESSION['analyst_id'] ?? 0);
+    if ($analystId <= 0 || !analystCanManageAiNamespace($conn, $analystId, $ns)) {
+        http_response_code(403);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'error' => 'You do not have permission to manage these AI settings']);
+        exit;
+    }
+}
+
+/**
  * May this analyst write this setting key?
  *
  * Once a module converts (phase 3b) its keys name a capability, and that capability is

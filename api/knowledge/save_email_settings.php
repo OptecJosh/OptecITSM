@@ -1,10 +1,21 @@
 <?php
 /**
  * API Endpoint: Save knowledge email settings
+ *
+ * Despite the name this writes THREE tabs' worth of settings — the Email tab's SMTP
+ * credentials, the Recycle bin's retention, and (by a legacy path) the AI and OpenAI API
+ * keys. Each is a separate permission, so a single guard at the top of the file could
+ * never be right: it would have to cover three audiences at once.
+ *
+ * So authorisation is PER KEY, against the keys this request will actually write, using
+ * the same helper and ownership map as every other shared settings writer (#829). The map
+ * derives from knowledge/settings/manifest.php.
  */
 session_start(['read_and_close' => true]);
 require_once '../../config.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/rbac.php';
+require_once '../../includes/settings_keys.php';
 require_once '../../includes/encryption.php';
 
 header('Content-Type: application/json');
@@ -28,18 +39,32 @@ if (!$settings) {
 try {
     $conn = connectToDatabase();
 
-    // Settings to save (prefix with knowledge_email_)
-    $settingsToSave = [
-        'knowledge_email_method' => $settings['email_method'] ?? 'disabled',
-        'knowledge_email_smtp_host' => $settings['smtp_host'] ?? '',
-        'knowledge_email_smtp_port' => $settings['smtp_port'] ?? '587',
-        'knowledge_email_smtp_encryption' => $settings['smtp_encryption'] ?? 'tls',
-        'knowledge_email_smtp_auth' => $settings['smtp_auth'] ?? 'yes',
-        'knowledge_email_smtp_username' => $settings['smtp_username'] ?? '',
-        'knowledge_email_smtp_from_email' => $settings['smtp_from_email'] ?? '',
-        'knowledge_email_smtp_from_name' => $settings['smtp_from_name'] ?? '',
-        'knowledge_email_mailbox_id' => $settings['mailbox_id'] ?? ''
+    // Only write the email settings if this request is actually SAVING them.
+    //
+    // These used to be built unconditionally, with a default for every absent field. But
+    // this endpoint also serves the Recycle bin tab, whose form posts nothing except
+    // recycle_bin_days — so saving the retention period silently rewrote the entire email
+    // configuration to its defaults: method back to 'disabled', the mailbox unset, the SMTP
+    // host blanked. Article sharing would just stop working, with nothing to show why.
+    $emailFields = [
+        'knowledge_email_method'          => ['email_method',     'disabled'],
+        'knowledge_email_smtp_host'       => ['smtp_host',        ''],
+        'knowledge_email_smtp_port'       => ['smtp_port',        '587'],
+        'knowledge_email_smtp_encryption' => ['smtp_encryption',  'tls'],
+        'knowledge_email_smtp_auth'       => ['smtp_auth',        'yes'],
+        'knowledge_email_smtp_username'   => ['smtp_username',    ''],
+        'knowledge_email_smtp_from_email' => ['smtp_from_email',  ''],
+        'knowledge_email_smtp_from_name'  => ['smtp_from_name',   ''],
+        'knowledge_email_mailbox_id'      => ['mailbox_id',       ''],
     ];
+
+    $settingsToSave = [];
+    // The email form always posts email_method, so that's the marker for "this is an email save".
+    if (array_key_exists('email_method', $settings)) {
+        foreach ($emailFields as $dbKey => [$field, $default]) {
+            $settingsToSave[$dbKey] = $settings[$field] ?? $default;
+        }
+    }
 
     // Only update password if provided (not empty)
     if (!empty($settings['smtp_password'])) {
@@ -60,6 +85,21 @@ try {
     if (isset($settings['recycle_bin_days'])) {
         $days = max(0, min(999, (int)$settings['recycle_bin_days']));
         $settingsToSave['knowledge_recycle_bin_days'] = (string)$days;
+    }
+
+    // Authorise EVERY key this request would write, BEFORE writing any of them — so a
+    // partly-permitted save is refused whole rather than half-applied. A key no tab claims
+    // is refused outright.
+    $analystId = (int) $_SESSION['analyst_id'];
+    foreach (array_keys($settingsToSave) as $key) {
+        if (!analystCanWriteSettingKey($conn, $analystId, $key)) {
+            http_response_code(403);
+            echo json_encode([
+                'success' => false,
+                'error'   => 'You do not have permission to change this setting: ' . $key,
+            ]);
+            exit;
+        }
     }
 
     // Use UPDATE/INSERT upsert pattern

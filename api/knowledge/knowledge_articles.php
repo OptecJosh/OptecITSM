@@ -13,6 +13,10 @@ if (!isset($_SESSION['analyst_id'])) {
     exit;
 }
 
+// Reachable from more than one module, so a single-module gate would break the others —
+// but it had NO module check at all, and it spends the AI budget. (Found by D005.)
+requireAnyModuleAccessJson(['knowledge', 'tickets', 'lms']);
+
 $search = trim($_GET['search'] ?? '');
 $tagIds = isset($_GET['tags']) ? array_filter(explode(',', $_GET['tags'])) : [];
 

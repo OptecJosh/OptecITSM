@@ -6,8 +6,9 @@
  */
 session_start(['read_and_close' => true]);
 require_once '../../../config.php';
-require_once '../../../includes/admin_api_guard.php'; // System admins only (issue #34)
 require_once '../../../includes/functions.php';
+require_once '../../../includes/rbac.php';
+require_once '../../../includes/settings_keys.php';
 require_once '../../../includes/ai_settings.php';
 
 header('Content-Type: application/json');
@@ -26,6 +27,12 @@ if (!aiSettingsIsValidNs($ns)) {
 
 try {
     $conn = connectToDatabase();
+
+    // Seven modules share this endpoint, so one guard cannot be right for all of them.
+    // Authorise the NAMESPACE: a converted module defers to its AI tab's capability; an
+    // unconverted one still requires is_admin, exactly as this file did before.
+    requireAiNamespaceJson($conn, $ns);
+
     aiSettingsSave($conn, $ns, [
         'provider'   => $data['provider']   ?? 'anthropic',
         'model'      => $data['model']       ?? '',

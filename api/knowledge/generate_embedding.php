@@ -6,6 +6,7 @@
 session_start(['read_and_close' => true]);
 require_once '../../config.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/rbac.php';
 require_once '../../includes/encryption.php';
 
 header('Content-Type: application/json');
@@ -15,6 +16,7 @@ if (!isset($_SESSION['analyst_id'])) {
     exit;
 }
 requireModuleAccessJson('knowledge');
+requireCapabilityJson(Cap::KNOWLEDGE_EMBEDDINGS);   // Knowledge settings tab — see docs/design/rbac.md
 
 $input = json_decode(file_get_contents('php://input'), true);
 $articleId = intval($input['article_id'] ?? 0);

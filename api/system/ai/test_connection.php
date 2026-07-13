@@ -6,8 +6,9 @@
  */
 session_start(['read_and_close' => true]);
 require_once '../../../config.php';
-require_once '../../../includes/admin_api_guard.php'; // System admins only (issue #34)
 require_once '../../../includes/functions.php';
+require_once '../../../includes/rbac.php';
+require_once '../../../includes/settings_keys.php';
 require_once '../../../includes/ai_settings.php';
 
 header('Content-Type: application/json');
@@ -26,6 +27,11 @@ if (!aiSettingsIsValidNs($ns)) {
 
 try {
     $conn = connectToDatabase();
+
+    // Spends money against the provider, so it belongs to whoever administers this
+    // namespace's AI settings — a converted module's capability, else is_admin.
+    requireAiNamespaceJson($conn, $ns);
+
     $cfg  = aiSettingsLoad($conn, $ns);
     if ($cfg['api_key'] === '') {
         echo json_encode(['success' => false, 'error' => 'No API key saved yet — save a key first.']);

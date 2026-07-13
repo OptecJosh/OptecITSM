@@ -5,6 +5,7 @@
 session_start(['read_and_close' => true]);
 require_once '../../config.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/rbac.php';
 
 header('Content-Type: application/json');
 
@@ -14,6 +15,7 @@ if (!isset($_SESSION['analyst_id'])) {
     exit;
 }
 requireModuleAccessJson('knowledge');
+requireCapabilityJson(Cap::KNOWLEDGE_EMAIL);   // Knowledge settings tab — see docs/design/rbac.md
 
 // Get JSON input
 $input = json_decode(file_get_contents('php://input'), true);

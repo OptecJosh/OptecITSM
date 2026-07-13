@@ -240,6 +240,46 @@ function requireModuleAccess(string $moduleKey, ?PDO $conn = null): void {
 }
 
 /**
+ * Hard gate for an endpoint shared by SEVERAL modules: allow if the analyst can use ANY
+ * of them, refuse otherwise.
+ *
+ * Some features are genuinely reachable from more than one place. Asking the knowledge
+ * base a question is offered both in Knowledge and from the ticket reading pane, so
+ * requiring 'knowledge' alone would break the inbox for an analyst who only works
+ * tickets — while requiring nothing at all (which is what these endpoints did) lets
+ * anyone with a login spend your AI budget.
+ *
+ * "Any of these modules" is the honest gate. Use it sparingly: if an endpoint belongs to
+ * ONE module, use requireModuleAccessJson().
+ *
+ * @param array<int,string> $moduleKeys
+ */
+function requireAnyModuleAccessJson(array $moduleKeys, ?PDO $conn = null): void {
+    if (!isset($_SESSION['analyst_id'])) {
+        http_response_code(401);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'error' => 'Not authenticated']);
+        exit;
+    }
+    $ok = false;
+    try {
+        if ($conn === null) $conn = connectToDatabase();
+        $analystId = (int) $_SESSION['analyst_id'];
+        foreach ($moduleKeys as $key) {
+            if (analystCanAccessModule($conn, $analystId, $key)) { $ok = true; break; }
+        }
+    } catch (Throwable $e) {
+        $ok = false; // fail closed
+    }
+    if (!$ok) {
+        http_response_code(403);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'error' => 'You do not have access to this feature']);
+        exit;
+    }
+}
+
+/**
  * Hard gate for a module's JSON write APIs: refuse a denied analyst with a 403.
  * Authoritative (DB-checked). The API twin of requireModuleAccess(). Call right
  * after connecting, e.g. requireModuleAccessJson('assets', $conn);

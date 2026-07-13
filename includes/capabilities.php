@@ -99,6 +99,13 @@ final class Cap
     const TASKS_CALENDAR   = 'tasks.calendar';
     const TASKS_CARD       = 'tasks.card';
     const TASKS_TAGS       = 'tasks.tags';
+
+    // ---- Knowledge ---------------------------------------------------------
+    const KNOWLEDGE_MANAGE      = 'knowledge.manage';       // umbrella
+    const KNOWLEDGE_EMAIL       = 'knowledge.email';        // SMTP credentials
+    const KNOWLEDGE_AI          = 'knowledge.ai';           // AI provider + API key
+    const KNOWLEDGE_EMBEDDINGS  = 'knowledge.embeddings';   // spends money re-embedding
+    const KNOWLEDGE_RECYCLE_BIN = 'knowledge.recycle_bin';
 }
 
 /**

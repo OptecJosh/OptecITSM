@@ -17,7 +17,13 @@ if (!isset($_SESSION['analyst_id'])) {
     header('Location: ../../login.php');
     exit;
 }
+require_once '../../includes/settings_manifest.php';
 requireModuleAccess('knowledge');
+
+// RBAC Layer 2: only the tabs this analyst may see are rendered.
+$settingsManifest = settingsManifestFor('knowledge');
+$visibleTabs      = settingsVisibleTabs(connectToDatabase(), (int) $_SESSION['analyst_id'], $settingsManifest);
+$activeTabId      = settingsFirstTabId($visibleTabs);
 
 $analyst_name = $_SESSION['analyst_name'] ?? 'Analyst';
 $current_page = 'settings';
@@ -237,16 +243,11 @@ $translationNamespaces = ['common', 'knowledge'];
     <?php include '../includes/header.php'; ?>
 
     <div class="container">
-        <div class="tabs">
-            <button class="tab active" data-tab="email" onclick="switchTab('email')"><?php echo htmlspecialchars(t('knowledge.settings.tab_email')); ?></button>
-            <button class="tab" data-tab="ai" onclick="switchTab('ai')"><?php echo htmlspecialchars(t('knowledge.settings.tab_ai')); ?></button>
-            <button class="tab" data-tab="embeddings" onclick="switchTab('embeddings')"><?php echo htmlspecialchars(t('knowledge.settings.tab_embeddings')); ?></button>
-            <button class="tab" data-tab="recycle-bin" onclick="switchTab('recycle-bin')"><?php echo htmlspecialchars(t('knowledge.settings.tab_recycle')); ?></button>
-            <button class="tab" data-tab="left-panel" onclick="switchTab('left-panel')"><?php echo htmlspecialchars(t('knowledge.settings.tab_left_panel')); ?></button>
-        </div>
+        <?php renderSettingsTabBar($visibleTabs, $activeTabId); ?>
 
         <!-- Email Tab -->
-        <div class="tab-content active" id="email-tab">
+        <?php if (settingsTabVisible($visibleTabs, 'email')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'email' ? ' active' : ''; ?>" id="email-tab" data-capability="<?php echo Cap::KNOWLEDGE_EMAIL; ?>">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('knowledge.settings.email_heading')); ?></h2>
             </div>
@@ -362,7 +363,10 @@ $translationNamespaces = ['common', 'knowledge'];
         </div>
 
         <!-- AI Assistant Tab -->
-        <div class="tab-content" id="ai-tab">
+        <?php endif; ?>
+
+        <?php if (settingsTabVisible($visibleTabs, 'ai')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'ai' ? ' active' : ''; ?>" id="ai-tab" data-capability="<?php echo Cap::KNOWLEDGE_AI; ?>">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('knowledge.settings.ai_heading')); ?></h2>
             </div>
@@ -387,7 +391,10 @@ $translationNamespaces = ['common', 'knowledge'];
         </div>
 
         <!-- Embeddings Tab -->
-        <div class="tab-content" id="embeddings-tab">
+        <?php endif; ?>
+
+        <?php if (settingsTabVisible($visibleTabs, 'embeddings')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'embeddings' ? ' active' : ''; ?>" id="embeddings-tab" data-capability="<?php echo Cap::KNOWLEDGE_EMBEDDINGS; ?>">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('knowledge.settings.embeddings_heading')); ?></h2>
             </div>
@@ -416,7 +423,10 @@ $translationNamespaces = ['common', 'knowledge'];
         </div>
 
         <!-- Recycle Bin Tab -->
-        <div class="tab-content" id="recycle-bin-tab">
+        <?php endif; ?>
+
+        <?php if (settingsTabVisible($visibleTabs, 'recycle-bin')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'recycle-bin' ? ' active' : ''; ?>" id="recycle-bin-tab" data-capability="<?php echo Cap::KNOWLEDGE_RECYCLE_BIN; ?>">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('knowledge.settings.recycle_heading')); ?></h2>
             </div>
@@ -434,7 +444,10 @@ $translationNamespaces = ['common', 'knowledge'];
         </div>
 
         <!-- Left panel tab — per-analyst preference -->
-        <div class="tab-content" id="left-panel-tab">
+        <?php endif; ?>
+
+        <!-- Left panel — per-analyst display preference; no capability. -->
+        <div class="tab-content<?php echo $activeTabId === 'left-panel' ? ' active' : ''; ?>" id="left-panel-tab" data-capability="none">
             <div class="section-header">
                 <h2><?php echo htmlspecialchars(t('knowledge.settings.left_panel_heading')); ?></h2>
             </div>

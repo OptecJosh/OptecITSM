@@ -17,6 +17,10 @@ if (!isset($_SESSION['analyst_id'])) {
     exit;
 }
 
+// Reachable from more than one module, so a single-module gate would break the others —
+// but it had NO module check at all, and it spends the AI budget. (Found by D005.)
+requireAnyModuleAccessJson(['knowledge', 'tickets']);
+
 $input = json_decode(file_get_contents('php://input'), true);
 $question = trim($input['question'] ?? '');
 $includeArchived = !empty($input['include_archived']);

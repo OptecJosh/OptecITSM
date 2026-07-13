@@ -16,7 +16,7 @@ requireModuleAccess('assets');
 // RBAC Layer 2: which of these tabs may this analyst see? Everything below is rendered
 // from the manifest, so a tab they lack the capability for is never emitted — there is
 // no hidden panel to un-hide. Administrators hold every capability and see the lot.
-$settingsManifest = require __DIR__ . '/manifest.php';
+$settingsManifest = settingsManifestFor('assets');
 $visibleTabs      = settingsVisibleTabs(connectToDatabase(), (int) $_SESSION['analyst_id'], $settingsManifest);
 $activeTabId      = settingsFirstTabId($visibleTabs);
 

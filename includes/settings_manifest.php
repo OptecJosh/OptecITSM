@@ -35,51 +35,12 @@ require_once __DIR__ . '/rbac.php';
 require_once __DIR__ . '/settings_keys.php';
 
 /**
- * Prove a manifest agrees with the code it depends on.
- *
- * The manifest names capabilities and setting keys; capabilities.php and settings_keys.php
- * are what actually ENFORCE them. Two lists that must agree is exactly the shape of bug
- * this whole design exists to prevent, so don't ask anyone to keep them in step by hand —
- * check it. Run from the coverage report and from the verification harness.
- *
- * @return array<int,string> human-readable problems; empty means healthy
+ * (settingsManifestSelfCheck() used to live here. It compared the manifest against the
+ * capability registry and the setting-key map — three hand-written lists that had to
+ * agree. All three are now DERIVED from the manifest, so they cannot disagree, and the
+ * check has nothing left to find. The one seam derivation doesn't cross — a Cap::
+ * constant no manifest claims — is checked by capSelfCheck().)
  */
-function settingsManifestSelfCheck(array $manifest): array
-{
-    $problems = [];
-    $module   = $manifest['module'] ?? '(none)';
-    $seen     = [];
-
-    foreach ($manifest['tabs'] as $tab) {
-        $id  = $tab['id'] ?? '(no id)';
-        $cap = $tab['cap'] ?? null;
-
-        if (isset($seen[$id])) $problems[] = "Tab '{$id}' is declared twice.";
-        $seen[$id] = true;
-
-        if ($cap !== null && !capExists($cap)) {
-            $problems[] = "Tab '{$id}' names capability '{$cap}', which capabilities.php does not declare.";
-        }
-        if ($cap !== null && capModule($cap) !== $module) {
-            $problems[] = "Tab '{$id}' names capability '{$cap}', which belongs to module '" . capModule($cap) . "', not '{$module}'.";
-        }
-        if (empty($tab['label_key'])) {
-            $problems[] = "Tab '{$id}' has no label_key.";
-        }
-
-        // A setting key the tab claims but settings_keys.php does not own is NOT guarded —
-        // it would be refused outright by save_system_settings.php, so the tab's save breaks.
-        foreach (($tab['setting_keys'] ?? []) as $key) {
-            $owner = settingKeyOwner($key);
-            if ($owner === null) {
-                $problems[] = "Tab '{$id}' claims setting key '{$key}', but settings_keys.php does not own it — saving that tab would be refused.";
-            } elseif ($owner['cap'] !== $cap) {
-                $problems[] = "Tab '{$id}' (cap '{$cap}') claims setting key '{$key}', but settings_keys.php guards it with '" . var_export($owner['cap'], true) . "'.";
-            }
-        }
-    }
-    return $problems;
-}
 
 /**
  * The tabs this analyst may see, in manifest order.

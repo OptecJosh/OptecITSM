@@ -17,6 +17,11 @@ I18n::initFromSession();
 Tz::init();
 
 requireModuleAccess('lms');
+// The LMS settings page held only a module-access check, so a LEARNER could open it by
+// typing the URL — the AI provider settings for the authoring helpers. Managing the LMS
+// is what this page is for. (Found while deriving the registry from the manifests.)
+require_once __DIR__ . '/../../includes/rbac.php';
+requireCapability(Cap::LMS_MANAGE);
 
 $current_page = 'settings';
 $path_prefix  = '../../';

@@ -57,38 +57,47 @@ require_once __DIR__ . '/capabilities.php';
  */
 function settingKeyOwners(): array
 {
-    return [
-        // --- Asset Management (CONVERTED, phase 3b) ---------------------------
-        // Warranty tab
-        'asset_warranty_surface'  => ['module' => 'assets', 'cap' => Cap::ASSETS_WARRANTY, 'tab' => 'warranty'],
-        'asset_warranty_days'     => ['module' => 'assets', 'cap' => Cap::ASSETS_WARRANTY, 'tab' => 'warranty'],
-        // vCenter tab — credentials
-        'vcenter_server'          => ['module' => 'assets', 'cap' => Cap::ASSETS_VCENTER, 'tab' => 'vcenter'],
-        'vcenter_user'            => ['module' => 'assets', 'cap' => Cap::ASSETS_VCENTER, 'tab' => 'vcenter'],
-        'vcenter_password'        => ['module' => 'assets', 'cap' => Cap::ASSETS_VCENTER, 'tab' => 'vcenter'],
-        // Intune tab — credentials
-        'intune_tenant_id'        => ['module' => 'assets', 'cap' => Cap::ASSETS_INTUNE, 'tab' => 'intune'],
-        'intune_client_id'        => ['module' => 'assets', 'cap' => Cap::ASSETS_INTUNE, 'tab' => 'intune'],
-        'intune_client_secret'    => ['module' => 'assets', 'cap' => Cap::ASSETS_INTUNE, 'tab' => 'intune'],
-        'intune_verify_ssl'       => ['module' => 'assets', 'cap' => Cap::ASSETS_INTUNE, 'tab' => 'intune'],
-        'intune_app_batch_size'   => ['module' => 'assets', 'cap' => Cap::ASSETS_INTUNE, 'tab' => 'intune'],
+    static $owners = null;
+    if ($owners !== null) return $owners;
 
-        // --- Tickets ---------------------------------------------------------
-        // General tab
-        'system_name'             => ['module' => 'tickets', 'cap' => null, 'tab' => 'general'],
+    // CONVERTED MODULES — derived from their manifests, so the tab that shows a setting
+    // and the permission that guards it are the same declaration. They cannot disagree.
+    $owners = [];
+    foreach (settingsManifests() as $m) {
+        foreach ($m['tabs'] ?? [] as $tab) {
+            foreach ($tab['setting_keys'] ?? [] as $key) {
+                $owners[$key] = [
+                    'module' => $m['module'],
+                    'cap'    => $tab['cap'] ?? null,
+                    'tab'    => $tab['id'],
+                ];
+            }
+        }
+    }
 
-        // --- System (admin-only; 'system' => is_admin) -------------------------
-        // Security area — the lockout policy. An analyst able to raise max_failed_logins
-        // could switch off brute-force protection, which is why this one matters most.
-        'trusted_device_days'     => ['module' => 'system', 'cap' => null, 'tab' => 'security'],
-        'password_expiry_days'    => ['module' => 'system', 'cap' => null, 'tab' => 'security'],
-        'max_failed_logins'       => ['module' => 'system', 'cap' => null, 'tab' => 'security'],
-        'max_ip_attempts'         => ['module' => 'system', 'cap' => null, 'tab' => 'security'],
-        'min_ip_attempts'         => ['module' => 'system', 'cap' => null, 'tab' => 'security'],
-        'lockout_duration_minutes'=> ['module' => 'system', 'cap' => null, 'tab' => 'security'],
-        // SSO area
-        'sso_enabled'             => ['module' => 'system', 'cap' => null, 'tab' => 'sso'],
-        'local_login_enabled'     => ['module' => 'system', 'cap' => null, 'tab' => 'sso'],
+    // NOT YET CONVERTED — modules and System areas whose settings pages still predate the
+    // manifest. They fall back to Layer 1 module access ('cap' => null), which is exactly
+    // what reaching those pages requires today, so nothing breaks. Each entry MOVES INTO
+    // ITS MODULE'S MANIFEST as that module converts, and this list shrinks to nothing.
+    //
+    // Module 'system' resolves to is_admin via analystCanAccessModule(), so the System
+    // areas are administrator-only without any special-casing here.
+    return $owners += [
+        // --- Tickets: General tab ---
+        'system_name'              => ['module' => 'tickets', 'cap' => null, 'tab' => 'general'],
+
+        // --- System: Security area. The lockout policy — an analyst able to raise
+        // max_failed_logins could switch off brute-force protection entirely. ---
+        'trusted_device_days'      => ['module' => 'system', 'cap' => null, 'tab' => 'security'],
+        'password_expiry_days'     => ['module' => 'system', 'cap' => null, 'tab' => 'security'],
+        'max_failed_logins'        => ['module' => 'system', 'cap' => null, 'tab' => 'security'],
+        'max_ip_attempts'          => ['module' => 'system', 'cap' => null, 'tab' => 'security'],
+        'min_ip_attempts'          => ['module' => 'system', 'cap' => null, 'tab' => 'security'],
+        'lockout_duration_minutes' => ['module' => 'system', 'cap' => null, 'tab' => 'security'],
+
+        // --- System: SSO area ---
+        'sso_enabled'              => ['module' => 'system', 'cap' => null, 'tab' => 'sso'],
+        'local_login_enabled'      => ['module' => 'system', 'cap' => null, 'tab' => 'sso'],
     ];
 }
 

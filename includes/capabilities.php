@@ -76,89 +76,108 @@ final class Cap
 }
 
 /**
- * Modules that own capabilities, and how to name them in the Roles picker.
- * Keys match the module slugs used by Layer 1 (getAnalystAllowedModules()).
+ * Every module's settings manifest, loaded once.
+ *
+ * ---------------------------------------------------------------------------
+ * THE MANIFEST IS THE SINGLE DECLARATION
+ * ---------------------------------------------------------------------------
+ * A module declares its settings tabs — and therefore its capabilities — in exactly one
+ * file: <module>/settings/manifest.php. Everything else is DERIVED from that:
+ *
+ *   capRegistry()      the capabilities, their module, label and sensitivity
+ *   capModules()       the module list for the Roles picker
+ *   settingKeyOwners() who may write each shared system_settings key
+ *   the tab bar        rendered from the same list (includes/settings_manifest.php)
+ *
+ * The earlier design had all four written out by hand and a self-check to catch them
+ * drifting apart. Needing that check WAS the bug: four copies of one fact, kept in step
+ * by discipline. They can't disagree now, because there is only one of them.
+ *
+ * The Cap:: constants above are the one thing that cannot be derived — they are the type,
+ * and their whole value is that a typo at a call site is a fatal error rather than a
+ * silent 403. capSelfCheck() proves every constant is claimed by exactly one manifest.
+ *
+ * Discovery is a glob, so adding a module means adding its manifest — nothing to register.
+ *
+ * @return array<int,array> the manifests, in module order
  */
-function capModules(): array
+function settingsManifests(): array
 {
-    return [
-        'assets' => 'Asset management',
-        'lms'    => 'LMS',
-    ];
+    static $manifests = null;
+    if ($manifests !== null) return $manifests;
+
+    $manifests = [];
+    foreach (glob(__DIR__ . '/../*/settings/manifest.php') ?: [] as $path) {
+        $m = require $path;
+        if (is_array($m) && !empty($m['module'])) $manifests[] = $m;
+    }
+    usort($manifests, fn($a, $b) => strcmp($a['module'], $b['module']));
+    return $manifests;
+}
+
+/** The manifest for one module, or null. */
+function settingsManifestFor(string $module): ?array
+{
+    foreach (settingsManifests() as $m) {
+        if ($m['module'] === $module) return $m;
+    }
+    return null;
 }
 
 /**
- * The registry: metadata for every capability key.
+ * Modules that own capabilities, and how to name them in the Roles picker.
+ * DERIVED from the manifests. Keys are the Layer 1 module slugs.
+ */
+function capModules(): array
+{
+    $out = [];
+    foreach (settingsManifests() as $m) {
+        $out[$m['module']] = $m['label'] ?? $m['module'];
+    }
+    return $out;
+}
+
+/**
+ * The capability registry — DERIVED from the manifests.
  *
- * This is the ONLY place a capability's module, label and sensitivity are declared.
- * The Roles picker is generated from it, so a capability cannot exist in code but be
- * missing from the UI, or vice versa — capSelfCheck() proves it.
+ * A tab's 'cap' becomes a capability; its 'grant' is the description shown in the Roles
+ * picker; 'sensitive' badges it. The module's 'umbrella' becomes the "manage everything
+ * here" capability. Tabs declaring 'cap' => null are personal preferences and contribute
+ * nothing — they are not administration and there is nothing to grant.
  *
- * 'umbrella'  — holding this satisfies every other capability in the same module.
- * 'sensitive' — reaches credentials, email, money or the audit trail. The Roles UI
- *               badges these; granting one should make you think.
+ * @return array<string,array{module:string,umbrella:bool,sensitive:bool,label:string}>
  */
 function capRegistry(): array
 {
-    return [
-        // ---- Asset Management ----------------------------------------------
-        Cap::ASSETS_MANAGE => [
-            'module'    => 'assets',
-            'umbrella'  => true,
-            'sensitive' => true,   // implies vCenter + Intune, so it reaches credentials
-            'label'     => 'Manage everything in Asset management settings',
-        ],
-        Cap::ASSETS_TYPES => [
-            'module'    => 'assets',
-            'umbrella'  => false,
-            'sensitive' => false,
-            'label'     => 'Manage asset types',
-        ],
-        Cap::ASSETS_STATUSES => [
-            'module'    => 'assets',
-            'umbrella'  => false,
-            'sensitive' => false,
-            'label'     => 'Manage asset statuses',
-        ],
-        Cap::ASSETS_LOCATIONS => [
-            'module'    => 'assets',
-            'umbrella'  => false,
-            'sensitive' => false,
-            'label'     => 'Manage locations',
-        ],
-        Cap::ASSETS_SUPPLIERS => [
-            'module'    => 'assets',
-            'umbrella'  => false,
-            'sensitive' => false,
-            'label'     => 'Manage suppliers',
-        ],
-        Cap::ASSETS_WARRANTY => [
-            'module'    => 'assets',
-            'umbrella'  => false,
-            'sensitive' => false,
-            'label'     => 'Configure warranty expiry surfacing',
-        ],
-        Cap::ASSETS_VCENTER => [
-            'module'    => 'assets',
-            'umbrella'  => false,
-            'sensitive' => true,
-            'label'     => 'Configure the vCenter connection, including its credentials',
-        ],
-        Cap::ASSETS_INTUNE => [
-            'module'    => 'assets',
-            'umbrella'  => false,
-            'sensitive' => true,
-            'label'     => 'Configure the Intune connection and run syncs, including its credentials',
-        ],
+    static $registry = null;
+    if ($registry !== null) return $registry;
 
-        // ---- LMS -----------------------------------------------------------
-        Cap::LMS_MANAGE => [
-            'module'    => 'lms',
-            'umbrella'  => true,
-            'sensitive' => false,
-            'label'     => 'Manage courses, learning groups and assignments, and view everyone\'s progress',
-        ],
-    ];
+    $registry = [];
+    foreach (settingsManifests() as $m) {
+        $module = $m['module'];
+
+        if (!empty($m['umbrella']['cap'])) {
+            $registry[$m['umbrella']['cap']] = [
+                'module'    => $module,
+                'umbrella'  => true,
+                'sensitive' => !empty($m['umbrella']['sensitive']),
+                'label'     => $m['umbrella']['grant'] ?? ('Manage everything in ' . ($m['label'] ?? $module) . ' settings'),
+            ];
+        }
+
+        foreach ($m['tabs'] ?? [] as $tab) {
+            $cap = $tab['cap'] ?? null;
+            if ($cap === null) continue;               // a personal preference — nothing to grant
+            if (isset($registry[$cap])) continue;      // already declared (e.g. a tab reusing the umbrella)
+            $registry[$cap] = [
+                'module'    => $module,
+                'umbrella'  => false,
+                'sensitive' => !empty($tab['sensitive']),
+                'label'     => $tab['grant'] ?? $tab['id'],
+            ];
+        }
+    }
+    return $registry;
 }
 
 /**
@@ -310,14 +329,18 @@ function capGroups(): array
 }
 
 /**
- * Self-check: prove the constants, the registry and the module list agree.
+ * Self-check: the things derivation CANNOT rule out.
  *
- * Types catch a typo at a call site. They cannot catch a HALF-ADDED capability — a
- * Cap:: constant with no registry entry (invisible in the Roles UI, so grantable by
- * nobody, so a permanent silent 403 — the exact bug this file exists to prevent), or a
- * registry entry naming a module that isn't declared. Only an audit catches those, so:
- * this runs in the coverage report, and any new capability should be added with both
- * halves in the same commit.
+ * Most of what this used to check is now impossible by construction — the registry, the
+ * module list and the setting-key map are all derived from the manifests, so they cannot
+ * disagree with them. What's left is the seam that derivation doesn't cross: the Cap::
+ * constants are hand-written (they have to be — they're the type), so a constant can
+ * still be declared and then never claimed by any manifest.
+ *
+ * That is not a cosmetic problem. An unclaimed constant is a capability nobody can be
+ * granted, so any guard using it 403s everyone except administrators — permanently, and
+ * invisibly to the administrator, who bypasses the check. It is exactly the failure this
+ * whole file exists to prevent, arriving by a different door.
  *
  * @return array<int,string> human-readable problems; empty means healthy
  */
@@ -325,33 +348,29 @@ function capSelfCheck(): array
 {
     $problems = [];
     $registry = capRegistry();
-    $modules  = capModules();
 
-    // Every Cap:: constant must have a registry entry.
-    $constants = (new ReflectionClass('Cap'))->getConstants();
-    foreach ($constants as $name => $value) {
+    // Every Cap:: constant must be claimed by some manifest.
+    foreach ((new ReflectionClass('Cap'))->getConstants() as $name => $value) {
         if (!isset($registry[$value])) {
-            $problems[] = "Cap::{$name} ('{$value}') has no capRegistry() entry — it can never be granted, so any guard using it will 403 everyone but admins.";
+            $problems[] = "Cap::{$name} ('{$value}') is not claimed by any settings manifest — it can never be granted, so any guard using it will 403 everyone but administrators, silently.";
         }
     }
 
-    // …and every registry entry must have a constant, a known module, and a label.
-    $declared = array_flip($constants);
+    // A manifest must not invent a capability with no constant behind it — call sites
+    // would then have to spell it as a bare string, which is the dangerous form.
+    $declared = array_flip((new ReflectionClass('Cap'))->getConstants());
     foreach ($registry as $key => $meta) {
         if (!isset($declared[$key])) {
-            $problems[] = "capRegistry() declares '{$key}' but there is no Cap:: constant for it — call sites would have to spell it as a string.";
-        }
-        if (!isset($modules[$meta['module']])) {
-            $problems[] = "Capability '{$key}' names module '{$meta['module']}', which is not in capModules() — it will not appear in the Roles picker.";
+            $problems[] = "A manifest declares capability '{$key}', but there is no Cap:: constant for it — guards would have to name it as a string.";
         }
         if (empty($meta['label'])) {
-            $problems[] = "Capability '{$key}' has no label — the Roles picker would show the raw key.";
+            $problems[] = "Capability '{$key}' has no description ('grant') — the Roles picker would show the raw key.";
         }
     }
 
-    // At most one umbrella per module, or capUmbrella() is ambiguous.
-    foreach ($modules as $module => $_label) {
-        $umbrellas = array_filter(capsForModule($module), 'capIsUmbrella');
+    // One umbrella per module, or capUmbrella() is ambiguous.
+    foreach (array_keys(capModules()) as $module) {
+        $umbrellas = array_values(array_filter(capsForModule($module), 'capIsUmbrella'));
         if (count($umbrellas) > 1) {
             $problems[] = "Module '{$module}' declares more than one umbrella capability (" . implode(', ', $umbrellas) . ").";
         }
@@ -361,6 +380,23 @@ function capSelfCheck(): array
     foreach (capAliases() as $old => $new) {
         if (!capExists($new)) {
             $problems[] = "Alias '{$old}' points at '{$new}', which is not a declared capability.";
+        }
+    }
+
+    // Every setting key a manifest claims must be enforced by settings_keys.php, and with
+    // the SAME capability — otherwise the tab's save is either unguarded or refused.
+    if (function_exists('settingKeyOwner')) {
+        foreach (settingsManifests() as $m) {
+            foreach ($m['tabs'] ?? [] as $tab) {
+                foreach ($tab['setting_keys'] ?? [] as $key) {
+                    $owner = settingKeyOwner($key);
+                    if ($owner === null) {
+                        $problems[] = "Tab '{$m['module']}/{$tab['id']}' claims setting key '{$key}', but nothing owns it — saving that tab would be refused.";
+                    } elseif (($owner['cap'] ?? null) !== ($tab['cap'] ?? null)) {
+                        $problems[] = "Setting key '{$key}' is guarded by '" . var_export($owner['cap'] ?? null, true) . "' but its tab '{$m['module']}/{$tab['id']}' requires '" . var_export($tab['cap'] ?? null, true) . "'.";
+                    }
+                }
+            }
         }
     }
 

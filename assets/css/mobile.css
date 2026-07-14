@@ -539,17 +539,27 @@
        so never triggers the reflow. Desktop keeps the table, untouched.
        ==================================================================== */
 
+    /* Drop the scroll area's top padding for THIS sheet only: the shared
+       .ms-body has padding-top, which makes the sticky day heading stick to the
+       content-box top — i.e. below that padding — leaving a transparent strip
+       under the header where scrolling rows show through above the stuck date.
+       With it removed the date tucks flush under the header and its own opaque
+       top padding (below) is the only gap, so nothing can scroll past it. */
+    .mobile-sheet-audit .ms-body { padding-top: 0; }
+
     /* Loading / empty / error line inside the audit sheet. */
     .mobile-sheet-audit .ma-note { color: var(--text-muted, #888); padding: 8px 0; }
     .mobile-sheet-audit .ma-note.error { color: var(--danger, #c62828); }
 
     /* Sticky day heading — the date is said once per day rather than repeated
-       on every row, which is most of what the Date column spent its width on. */
+       on every row, which is most of what the Date column spent its width on.
+       Its background is opaque and its top padding sits flush under the header,
+       so rows scroll cleanly beneath it with no peek-through gap. */
     .ma-day {
         position: sticky;
         top: 0;
         z-index: 1;
-        padding: 14px 0 6px;
+        padding: 9px 0 7px;
         background: var(--surface, #fff);
         font-size: 12px;
         font-weight: 600;

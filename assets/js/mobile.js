@@ -308,6 +308,103 @@
         toolbar.appendChild(panel);
     }
 
+    // ---- Audit history: table -> day-grouped feed (LAYER 10) ---------------
+    // inbox.js injects a 5-column table (Date/Analyst/Field/Old/New) into a
+    // 900px modal. Five columns don't fit a phone, so on mobile we re-render
+    // the rows it just built as one card per change. The rows are read back out
+    // of the DOM rather than refetched, so there's no second API call and no
+    // change to inbox.js. Desktop never reaches this (mq gate) and keeps the
+    // table exactly as it is.
+    if (typeof window.showAuditHistory === 'function') {
+        var _showAudit = window.showAuditHistory;
+        window.showAuditHistory = function () {
+            var r = _showAudit.apply(this, arguments);
+            if (mq.matches) {
+                if (r && typeof r.then === 'function') r.then(mobiliseAudit);
+                else mobiliseAudit();
+            }
+            return r;
+        };
+    }
+
+    // Split "Mon, 14 Jul 2026 09:32 AM" (formatFullDateTime's shape) into the
+    // day — said once, as a sticky heading — and the time, kept per entry.
+    // If the format ever changes and the time can't be found, the whole stamp
+    // rides in the time slot and the day headings simply don't appear.
+    function splitStamp(text) {
+        var m = /^(.*?)[\s,]*(\d{1,2}:\d{2}(?:\s?[AP]M)?)$/i.exec((text || '').trim());
+        return m ? { day: m[1].trim(), time: m[2] } : { day: '', time: (text || '').trim() };
+    }
+
+    function span(cls, text) {
+        var el = document.createElement('span');
+        el.className = cls;
+        el.textContent = text;         // textContent — no re-escaping needed
+        return el;
+    }
+
+    function mobiliseAudit() {
+        var modal = document.getElementById('auditModal');
+        if (!modal || modal.classList.contains('mobile-audit')) return;
+        modal.classList.add('mobile-audit');
+
+        // "Audit History - REF" is too long for a phone header: keep the title
+        // short and hang the reference off it in a quieter weight.
+        var email = getCurrentEmail();
+        var h3 = modal.querySelector('.modal-header h3');
+        if (h3) {
+            h3.textContent = 'History';
+            h3.appendChild(span('ma-ref', (email && email.ticket_number) || ''));
+        }
+
+        var table = modal.querySelector('.audit-table');
+        if (!table) return;            // no history — inbox.js's message stands
+
+        var feed = document.createElement('div');
+        feed.className = 'ma-feed';
+        var lastDay = null;
+
+        Array.prototype.forEach.call(table.querySelectorAll('tbody tr'), function (tr) {
+            var c = tr.children;
+            if (c.length < 5) return;
+            var stamp = splitStamp(c[0].textContent);
+            var who   = c[1].textContent.trim();
+            var field = c[2].textContent.trim();
+            var oldV  = c[3].textContent.trim();
+            var newV  = c[4].textContent.trim();
+
+            if (stamp.day && stamp.day !== lastDay) {
+                lastDay = stamp.day;
+                feed.appendChild(span('ma-day', stamp.day));
+            }
+
+            var entry = document.createElement('div');
+            entry.className = 'ma-entry';
+
+            var top = document.createElement('div');
+            top.className = 'ma-top';
+            top.appendChild(span('ma-field', field));
+            top.appendChild(span('ma-time', stamp.time));
+            entry.appendChild(top);
+
+            // A first-time set (old value "-") reads better as just the new
+            // value than as "- → Open".
+            var vals = document.createElement('div');
+            vals.className = 'ma-vals';
+            if (oldV && oldV !== '-') {
+                vals.appendChild(span('ma-old', oldV));
+                vals.appendChild(span('ma-arrow', '→'));
+            }
+            vals.appendChild(span('ma-new', (newV && newV !== '-') ? newV : '—'));
+            entry.appendChild(vals);
+
+            entry.appendChild(span('ma-who', who));
+            feed.appendChild(entry);
+        });
+
+        table.parentNode.replaceChild(feed, table);
+    }
+
     // Close the overflow panel when tapping outside it (or its button).
     document.addEventListener('click', function (e) {
         if (!mq.matches || !e.target.closest) return;

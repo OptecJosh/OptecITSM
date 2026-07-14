@@ -526,4 +526,109 @@
     }
     .ai-chat-panel.active { right: 0; }
     .ai-chat-input-area textarea { font-size: 16px; }
+
+    /* ====================================================================
+       LAYER 10 — Audit history: a wide table is the wrong shape for a phone.
+       inbox.js builds a 5-column table (Date/Analyst/Field/Old/New) in a
+       900px modal; five columns cannot fit at 360px, so it either squeezes
+       every value to one word per line or scrolls sideways. On mobile,
+       mobile.js re-renders the very rows it injected as a day-grouped feed
+       of one card per change — field + time on top, old → new beneath, who
+       did it underneath — and the modal becomes a plain full-screen panel
+       (no centred box, header pinned, feed scrolling under it).
+       Desktop keeps the table untouched: none of this exists above 768px,
+       and the JS that rewrites the rows is gated on the same media query.
+       ==================================================================== */
+    #auditModal .modal-content {
+        display: flex;
+        flex-direction: column;
+        box-shadow: none;
+    }
+    #auditModal .modal-header {
+        flex-shrink: 0;
+        border-radius: 0;
+        gap: 10px;
+    }
+    #auditModal .modal-header h3 {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        min-width: 0;
+        font-size: 18px;
+    }
+    /* Ticket reference rides alongside the title, quieter than it. */
+    #auditModal .ma-ref {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-muted, #777);
+        white-space: nowrap;
+    }
+    #auditModal .modal-close { font-size: 26px; padding: 0 4px; }
+    #auditModal .modal-body {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        padding: 0 14px calc(20px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* Sticky day heading — the timestamp's date is said once per day rather
+       than repeated on every row, which is most of what the Date column was
+       spending its width on. */
+    .ma-day {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        padding: 14px 0 6px;
+        background: var(--surface, #fff);
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--text-muted, #888);
+    }
+
+    .ma-entry {
+        padding: 10px 0 12px;
+        border-bottom: 1px solid var(--border-soft, #eee);
+    }
+    .ma-entry:last-child { border-bottom: none; }
+
+    .ma-top {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+    }
+    .ma-field {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text, #333);
+    }
+    .ma-time {
+        margin-left: auto;
+        flex-shrink: 0;
+        font-size: 12px;
+        color: var(--text-muted, #999);
+    }
+
+    /* old → new. Wraps to two lines when the values are long rather than
+       truncating them — the values are the point of the screen. */
+    .ma-vals {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 6px;
+        margin-top: 4px;
+        font-size: 14px;
+        line-height: 1.4;
+        overflow-wrap: anywhere;
+    }
+    .ma-old { color: var(--text-muted, #999); text-decoration: line-through; }
+    .ma-arrow { color: var(--text-muted, #bbb); flex-shrink: 0; }
+    .ma-new { color: var(--text, #333); font-weight: 500; }
+
+    .ma-who {
+        margin-top: 4px;
+        font-size: 12px;
+        color: var(--text-muted, #888);
+    }
 }

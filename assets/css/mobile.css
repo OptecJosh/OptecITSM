@@ -556,11 +556,20 @@
        Its background is opaque and its top padding sits flush under the header,
        so rows scroll cleanly beneath it with no peek-through gap. */
     .ma-day {
+        /* block so the shaded bar fills the width (the heading node is a
+           <span>, which would otherwise shrink-wrap the text). */
+        display: block;
         position: sticky;
         top: 0;
         z-index: 1;
-        padding: 9px 0 7px;
-        background: var(--surface, #fff);
+        /* Full-bleed shaded bar: the negative side margins exactly cancel the
+           .ms-body side padding so it runs edge-to-edge, and the matching side
+           padding keeps the text aligned with the rows. Margins == padding, so
+           it can never widen the sheet. */
+        margin: 0 -16px;
+        padding: 9px 16px 7px;
+        background: var(--surface-hover, #f0f0f0);
+        border-bottom: 1px solid var(--border, #e0e0e0);
         font-size: 12px;
         font-weight: 600;
         text-transform: uppercase;

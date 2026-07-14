@@ -308,28 +308,55 @@
         toolbar.appendChild(panel);
     }
 
-    // ---- Audit history: table -> day-grouped feed (LAYER 10) ---------------
-    // inbox.js injects a 5-column table (Date/Analyst/Field/Old/New) into a
-    // 900px modal. Five columns don't fit a phone, so on mobile we re-render
-    // the rows it just built as one card per change. The rows are read back out
-    // of the DOM rather than refetched, so there's no second API call and no
-    // change to inbox.js. Desktop never reaches this (mq gate) and keeps the
-    // table exactly as it is.
+    // ---- Audit history: its own full-screen sheet (LAYER 10) ---------------
+    // The desktop path (showAuditHistory) builds a 5-column table in a centred
+    // .modal-overlay. On a phone that table is wider than the screen, which on
+    // iOS makes Safari widen the layout to a desktop width — and at that width
+    // the max-width:768px rules switch off, so the modal falls back to the
+    // centred desktop box (the same "spills wide → reflows to desktop" failure
+    // seen with the reply modal). Rather than fight that, mobile routes audit
+    // through the SAME .mobile-sheet mechanism the Links/Properties/Time/Objects
+    // sheets use — a position:fixed; inset:0 panel that's always full-screen —
+    // and fills it with the narrow day-grouped feed, which can never spill.
+    // Audit history isn't in the reading pane to relocate, so it's fetched on
+    // demand (the same endpoint inbox.js uses). Desktop is untouched.
+    var auditSheet = document.createElement('div');
+    auditSheet.className = 'mobile-sheet mobile-sheet-audit';
+    auditSheet.style.display = 'none';
+    auditSheet.innerHTML =
+        '<div class="ms-head"><span>History</span>' +
+        '<button type="button" class="ms-close" aria-label="Close">✕</button></div>' +
+        '<div class="ms-body"></div>';
+    document.body.appendChild(auditSheet);
+    var auditBody = auditSheet.querySelector('.ms-body');
+    auditSheet.querySelector('.ms-close').addEventListener('click', function () { auditSheet.style.display = 'none'; });
+
+    // On mobile, intercept the audit action entirely: open our sheet instead of
+    // letting inbox.js build the desktop table modal. Desktop calls straight
+    // through, unchanged.
     if (typeof window.showAuditHistory === 'function') {
         var _showAudit = window.showAuditHistory;
         window.showAuditHistory = function () {
-            var r = _showAudit.apply(this, arguments);
-            if (mq.matches) {
-                if (r && typeof r.then === 'function') r.then(mobiliseAudit);
-                else mobiliseAudit();
-            }
-            return r;
+            if (mq.matches) { openAuditSheet(); return; }
+            return _showAudit.apply(this, arguments);
         };
     }
 
+    function openAuditSheet() {
+        var email = getCurrentEmail();
+        if (!email || !email.ticket_id) return;
+        auditBody.innerHTML = '<p class="ma-note">Loading…</p>';
+        auditSheet.style.display = 'flex';
+        var base = (typeof API_BASE !== 'undefined') ? API_BASE : 'api/';
+        fetch(base + 'get_ticket_audit.php?ticket_id=' + encodeURIComponent(email.ticket_id))
+            .then(function (r) { return r.json(); })
+            .then(function (data) { renderAuditFeed((data && data.success && data.audit) ? data.audit : []); })
+            .catch(function () { auditBody.innerHTML = '<p class="ma-note error">Failed to load history.</p>'; });
+    }
+
     // Split "Mon, 14 Jul 2026 09:32 AM" (formatFullDateTime's shape) into the
-    // day — said once, as a sticky heading — and the time, kept per entry.
-    // If the format ever changes and the time can't be found, the whole stamp
+    // day — said once, as a sticky heading — and the time, kept per entry. If
+    // the format ever changes and the time can't be found, the whole stamp
     // rides in the time slot and the day headings simply don't appear.
     function splitStamp(text) {
         var m = /^(.*?)[\s,]*(\d{1,2}:\d{2}(?:\s?[AP]M)?)$/i.exec((text || '').trim());
@@ -339,43 +366,33 @@
     function span(cls, text) {
         var el = document.createElement('span');
         el.className = cls;
-        el.textContent = text;         // textContent — no re-escaping needed
+        el.textContent = text;         // textContent — safe, no manual escaping
         return el;
     }
 
-    function mobiliseAudit() {
-        var modal = document.getElementById('auditModal');
-        if (!modal || modal.classList.contains('mobile-audit')) return;
-        modal.classList.add('mobile-audit');
-
-        // "Audit History - REF" is too long for a phone header: keep the title
-        // short and hang the reference off it in a quieter weight.
-        var email = getCurrentEmail();
-        var h3 = modal.querySelector('.modal-header h3');
-        if (h3) {
-            h3.textContent = 'History';
-            h3.appendChild(span('ma-ref', (email && email.ticket_number) || ''));
+    // Build the day-grouped card feed from the audit rows (newest first, as the
+    // endpoint returns them). One card per change: field + time on top, old →
+    // new beneath, who did it under that; the date is a sticky heading said
+    // once per day.
+    function renderAuditFeed(entries) {
+        auditBody.innerHTML = '';
+        if (!entries.length) {
+            auditBody.appendChild(span('ma-note', 'No history for this ticket.'));
+            return;
         }
-
-        var table = modal.querySelector('.audit-table');
-        if (!table) return;            // no history — inbox.js's message stands
-
-        var feed = document.createElement('div');
-        feed.className = 'ma-feed';
         var lastDay = null;
-
-        Array.prototype.forEach.call(table.querySelectorAll('tbody tr'), function (tr) {
-            var c = tr.children;
-            if (c.length < 5) return;
-            var stamp = splitStamp(c[0].textContent);
-            var who   = c[1].textContent.trim();
-            var field = c[2].textContent.trim();
-            var oldV  = c[3].textContent.trim();
-            var newV  = c[4].textContent.trim();
+        entries.forEach(function (e) {
+            var stampText = (typeof formatFullDateTime === 'function')
+                ? formatFullDateTime(e.created_datetime) : (e.created_datetime || '');
+            var stamp = splitStamp(stampText);
+            var field = (e.field_name || '').trim();
+            var oldV  = (e.old_value || '').trim();
+            var newV  = (e.new_value || '').trim();
+            var who   = (e.analyst_name || 'Unknown').trim();
 
             if (stamp.day && stamp.day !== lastDay) {
                 lastDay = stamp.day;
-                feed.appendChild(span('ma-day', stamp.day));
+                auditBody.appendChild(span('ma-day', stamp.day));
             }
 
             var entry = document.createElement('div');
@@ -391,7 +408,7 @@
             // value than as "- → Open".
             var vals = document.createElement('div');
             vals.className = 'ma-vals';
-            if (oldV && oldV !== '-') {
+            if (oldV && oldV !== '-' && oldV !== '') {
                 vals.appendChild(span('ma-old', oldV));
                 vals.appendChild(span('ma-arrow', '→'));
             }
@@ -399,10 +416,8 @@
             entry.appendChild(vals);
 
             entry.appendChild(span('ma-who', who));
-            feed.appendChild(entry);
+            auditBody.appendChild(entry);
         });
-
-        table.parentNode.replaceChild(feed, table);
     }
 
     // Close the overflow panel when tapping outside it (or its button).

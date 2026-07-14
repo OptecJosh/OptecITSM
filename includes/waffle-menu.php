@@ -256,12 +256,35 @@ $modules = [
         align-items: center;
         justify-content: center;
         margin-bottom: 8px;
+        /* Idle shadow is present-but-invisible so hover only animates its
+           spread/opacity — no shadow "pop-in" on the first frame. */
+        box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+        transition: transform 0.16s cubic-bezier(0.34, 1.4, 0.64, 1), box-shadow 0.16s ease;
+    }
+
+    .waffle-module-link:hover .waffle-module-icon,
+    .waffle-module-link:focus-visible .waffle-module-icon {
+        transform: translateY(-2px) scale(1.09);
+        box-shadow: 0 5px 12px rgba(0, 0, 0, 0.22);
+    }
+
+    /* Settle back down while the click is held. */
+    .waffle-module-link:active .waffle-module-icon {
+        transform: translateY(-1px) scale(1.03);
+        transition-duration: 0.06s;
     }
 
     .waffle-module-icon svg {
         width: 24px;
         height: 24px;
         color: #fff;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .waffle-module-icon { transition: none; }
+        .waffle-module-link:hover .waffle-module-icon,
+        .waffle-module-link:focus-visible .waffle-module-icon,
+        .waffle-module-link:active .waffle-module-icon { transform: none; }
     }
 
     <?php foreach (getModuleColors() as $key => $c): ?>

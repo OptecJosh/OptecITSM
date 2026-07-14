@@ -69,7 +69,14 @@ $translationNamespaces = ['common', 'tickets'];
          * behaviour is unchanged. <body> keeps the inbox.css default (no flex),
          * so injected extension nodes can't disrupt the layout.
          * .container also drops the shared 1200px cap so settings fills the full
-         * width (#268-#270); padding-bottom clears the viewport bottom edge. */
+         * width (#268-#270); padding-bottom clears the viewport bottom edge.
+         *
+         * NOTE the `width: 100%; margin: 0` — dropping max-width is NOT enough on its
+         * own. inbox.css sets `.container { margin: 30px auto }`, and inside a flex
+         * column an AUTO CROSS-AXIS MARGIN cancels the default stretch: the item shrinks
+         * to fit its content and centres itself. So the page kept its 1200-ish gutters
+         * even with `max-width: none` applied, which reads exactly like the cap was still
+         * there. Reset the margin too. (LMS and Problem Management already did.) */
         .settings-shell {
             display: flex;
             flex-direction: column;
@@ -80,7 +87,10 @@ $translationNamespaces = ['common', 'tickets'];
             min-height: 0;
             overflow-y: auto;
             max-width: none;
-            padding-bottom: 24px;
+            width: 100%;
+            margin: 0;
+            box-sizing: border-box;
+            padding: 24px 32px 40px;
         }
 
         /* Intro-paragraph spacing on tabs that lead with a description block.

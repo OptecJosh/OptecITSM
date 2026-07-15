@@ -52,7 +52,7 @@ try {
         }
     } else {
         if ($owner === null) {
-            throw new Exception('Shared locations are managed from the MSP (default) company.');
+            throw new Exception('That location belongs to the Default company — switch to it to manage that location.');
         }
         if ($owner !== $activeId) {
             throw new Exception('That location belongs to another company.');

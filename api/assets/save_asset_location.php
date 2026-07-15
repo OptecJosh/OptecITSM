@@ -2,12 +2,12 @@
 /**
  * API Endpoint: Save an asset location (create or update) — multi-tenancy aware.
  *
- * A location is one node in an arbitrary-depth tree. Per company: a save in the
- * MSP/Default context is a SHARED location (tenant_id NULL); a save in a client
- * company's context is that company's own. A node's parent must be visible in
- * the same scope — a company may nest under a shared location or its own, but
- * not under another company's, and a shared location nests only under shared.
- * Re-parenting rejects cycles (a node can't sit inside its own subtree).
+ * A location is one node in an arbitrary-depth tree, and locations are PER
+ * COMPANY (a client's sites are its own — there are no shared locations). A save
+ * in the Default context is the Default company's (tenant_id NULL); a save in a
+ * client company's context is that company's own. A node's parent must belong to
+ * the same company. Re-parenting rejects cycles (a node can't sit inside its own
+ * subtree).
  */
 session_start(['read_and_close' => true]);
 require_once '../../config.php';
@@ -46,16 +46,15 @@ try {
     $defaultId    = getDefaultTenantId($conn);
     $isDefaultCtx = (!$multi || $activeId === $defaultId);
 
-    // Scope this location targets: NULL = shared, else this company.
+    // Scope this location targets: NULL = the Default company, else this company.
     $scopeTenant = $isDefaultCtx ? null : $activeId;
 
-    // Validate the chosen parent exists AND is visible in this scope (shared, or
-    // owned by this company). NULL-safe match on the owner side.
+    // Validate the chosen parent exists AND belongs to the active company (the
+    // same data scope as the list). Default also owns NULL-tenant locations.
     if ($parentId !== null) {
-        $chk = $conn->prepare(
-            "SELECT id FROM asset_locations WHERE id = ? AND (tenant_id IS NULL OR tenant_id <=> ?)"
-        );
-        $chk->execute([$parentId, $scopeTenant]);
+        [$pfSql, $pfArgs] = activeTenantFilter($conn, $analystId, '');
+        $chk = $conn->prepare("SELECT id FROM asset_locations WHERE id = ?" . $pfSql);
+        $chk->execute(array_merge([$parentId], $pfArgs));
         if (!$chk->fetchColumn()) {
             throw new Exception('Selected parent location is not available here');
         }
@@ -76,7 +75,7 @@ try {
             }
         } else {
             if ($owner === null) {
-                throw new Exception('Shared locations are managed from the MSP (default) company.');
+                throw new Exception('That location belongs to the Default company — switch to it to manage that location.');
             }
             if ($owner !== $activeId) {
                 throw new Exception('That location belongs to another company.');

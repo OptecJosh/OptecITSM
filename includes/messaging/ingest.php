@@ -194,7 +194,7 @@ function getOrCreateChannelUser(PDO $conn, string $from, string $displayName, st
 /** The origin id for a channel type (e.g. the seeded 'WhatsApp' origin), or null. */
 function getChannelOriginId(PDO $conn, string $channelType): ?int
 {
-    $name = $channelType === 'whatsapp' ? 'WhatsApp' : ucfirst($channelType);
+    $name = $channelType === 'whatsapp' ? 'WhatsApp' : ($channelType === 'webchat' ? 'Web chat' : ucfirst($channelType));
     try {
         $stmt = $conn->prepare("SELECT id FROM ticket_origins WHERE name = ? ORDER BY (tenant_id IS NULL) DESC, id ASC LIMIT 1");
         $stmt->execute([$name]);
@@ -208,7 +208,7 @@ function getChannelOriginId(PDO $conn, string $channelType): ?int
 /** A short, human ticket subject from the first line of the first message. */
 function buildChannelSubject(string $channelType, string $displayName, string $body): string
 {
-    $label = $channelType === 'whatsapp' ? 'WhatsApp' : ucfirst($channelType);
+    $label = $channelType === 'whatsapp' ? 'WhatsApp' : ($channelType === 'webchat' ? 'Web chat' : ucfirst($channelType));
     $firstLine = trim(strtok($body, "\n"));
     if ($firstLine === '' || $firstLine === '[empty message]') {
         return "$label message from $displayName";

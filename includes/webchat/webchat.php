@@ -129,3 +129,115 @@ function webchatOriginAllowed(array $allowed, ?string $origin): bool
     $origin = rtrim(trim($origin), '/');
     return in_array($origin, $allowed, true);
 }
+
+/**
+ * Find-or-create the requester for a web chat conversation, keyed by the real email
+ * the visitor gave. Returns the user id, or null if the users table is unavailable.
+ */
+function webchatGetOrCreateUser(PDO $conn, string $email, string $name): ?int
+{
+    $email = trim($email);
+    if ($email === '') {
+        return null;
+    }
+    try {
+        $stmt = $conn->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
+        $stmt->execute([$email]);
+        $id = $stmt->fetchColumn();
+        if ($id) {
+            if ($name !== '') {
+                $conn->prepare("UPDATE users SET display_name = ? WHERE id = ? AND (display_name IS NULL OR display_name = '')")
+                     ->execute([$name, (int) $id]);
+            }
+            return (int) $id;
+        }
+        $ins = $conn->prepare("INSERT INTO users (email, display_name, created_at) VALUES (?, ?, UTC_TIMESTAMP())");
+        $ins->execute([$email, $name !== '' ? $name : $email]);
+        return (int) $conn->lastInsertId();
+    } catch (Exception $e) {
+        return null;
+    }
+}
+
+/**
+ * Ingest one inbound visitor message for a web chat conversation. On the first
+ * message it opens a ticket and pins the conversation to it (so one conversation ==
+ * one ticket); afterwards it appends. Stores the message in the shared `emails` table
+ * with channel='webchat', so the reading-pane thread and reply path work unchanged.
+ * Returns the ticket id.
+ */
+function webchatIngestMessage(PDO $conn, array $conversation, array $channel, string $body): int
+{
+    require_once __DIR__ . '/../messaging/ingest.php';
+
+    $body = trim($body);
+    if ($body === '') {
+        $body = '[empty message]';
+    }
+
+    $email       = trim((string) ($conversation['visitor_email'] ?? ''));
+    $name        = trim((string) ($conversation['visitor_name'] ?? ''));
+    $displayName = $name !== '' ? $name : ($email !== '' ? $email : 'Website visitor');
+    // The emails.from_address threads the conversation; use the visitor's email if given,
+    // else a stable per-conversation pseudo-identifier derived from the token.
+    $from = $email !== '' ? $email : ('web-' . ($conversation['token'] ?? ''));
+
+    $ticketId  = !empty($conversation['ticket_id']) ? (int) $conversation['ticket_id'] : 0;
+    $isInitial = $ticketId ? 0 : 1;
+
+    if (!$ticketId) {
+        $userId       = webchatGetOrCreateUser($conn, $email, $name);
+        $ticketNumber = messagingGenerateTicketNumber($conn);
+        $tenantId     = $channel['tenant_id'] !== null ? (int) $channel['tenant_id'] : null;
+        $originId     = getChannelOriginId($conn, 'webchat');
+        $subject      = buildChannelSubject('webchat', $displayName, $body);
+
+        $sql = "INSERT INTO tickets (
+                    ticket_number, subject, status_id, priority_id,
+                    created_datetime, updated_datetime, last_inbound_at,
+                    user_id, tenant_id, origin_id
+                ) VALUES (
+                    ?, ?,
+                    (SELECT id FROM ticket_statuses   WHERE name = 'Open'   LIMIT 1),
+                    (SELECT id FROM ticket_priorities WHERE name = 'Normal' LIMIT 1),
+                    UTC_TIMESTAMP(), UTC_TIMESTAMP(), UTC_TIMESTAMP(),
+                    ?, ?, ?
+                )";
+        $conn->prepare($sql)->execute([$ticketNumber, $subject, $userId, $tenantId, $originId]);
+        $ticketId = (int) $conn->lastInsertId();
+
+        $conn->prepare("UPDATE webchat_conversations SET ticket_id = ?, last_activity_datetime = UTC_TIMESTAMP() WHERE id = ?")
+             ->execute([$ticketId, (int) $conversation['id']]);
+    } else {
+        $conn->prepare("UPDATE tickets SET updated_datetime = UTC_TIMESTAMP(), last_inbound_at = UTC_TIMESTAMP() WHERE id = ?")
+             ->execute([$ticketId]);
+        $conn->prepare("UPDATE webchat_conversations SET last_activity_datetime = UTC_TIMESTAMP() WHERE id = ?")
+             ->execute([(int) $conversation['id']]);
+    }
+
+    $ins = $conn->prepare(
+        "INSERT INTO emails (
+            exchange_message_id, subject, from_address, from_name, to_recipients,
+            received_datetime, body_content, body_type, has_attachments, is_read,
+            processed_datetime, ticket_id, is_initial, direction, channel, channel_id
+        ) VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP(), ?, 'text', 0, 0, UTC_TIMESTAMP(), ?, ?, 'Inbound', 'webchat', ?)"
+    );
+    $ins->execute([
+        'wc_in_' . bin2hex(random_bytes(12)),
+        $isInitial ? buildChannelSubject('webchat', $displayName, $body) : null,
+        $from,
+        $displayName,
+        $channel['name'] ?? 'Web chat',
+        $body,
+        $ticketId,
+        $isInitial,
+        (int) $channel['id'],
+    ]);
+
+    try {
+        $conn->prepare("UPDATE messaging_channels SET last_inbound_datetime = UTC_TIMESTAMP() WHERE id = ?")
+             ->execute([(int) $channel['id']]);
+    } catch (Exception $e) { /* non-fatal */ }
+
+    return $ticketId;
+}

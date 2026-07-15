@@ -69,9 +69,15 @@ try {
     $windowOpen = false;
     $channelProvider = '';
     if ($ticketChannel !== 'email') {
-        $ts = $conn->prepare("SELECT last_inbound_at FROM tickets WHERE id = ?");
-        $ts->execute([$ticketId]);
-        $windowOpen = channelWindowOpen($ts->fetchColumn() ?: null);
+        // Web chat is self-hosted — there's no provider 24h window, so replies are
+        // always allowed. Other channels honour the provider service window.
+        if ($ticketChannel === 'webchat') {
+            $windowOpen = true;
+        } else {
+            $ts = $conn->prepare("SELECT last_inbound_at FROM tickets WHERE id = ?");
+            $ts->execute([$ticketId]);
+            $windowOpen = channelWindowOpen($ts->fetchColumn() ?: null);
+        }
 
         try {
             $pp = $conn->prepare(

@@ -69,11 +69,15 @@ try {
         throw new Exception('The channel this ticket arrived on is inactive.');
     }
 
-    // 24h service window — free-text replies are only allowed inside it.
-    $win = $conn->prepare("SELECT last_inbound_at FROM tickets WHERE id = ?");
-    $win->execute([$ticketId]);
-    if (!channelWindowOpen($win->fetchColumn() ?: null)) {
-        throw new Exception('The 24-hour reply window has closed. A pre-approved template message is required to reopen the conversation (coming in a later release).');
+    // 24h service window — free-text replies are only allowed inside it. Web chat is
+    // self-hosted with no provider window, so it's exempt (the visitor simply sees the
+    // reply next time their widget polls).
+    if ($channelType !== 'webchat') {
+        $win = $conn->prepare("SELECT last_inbound_at FROM tickets WHERE id = ?");
+        $win->execute([$ticketId]);
+        if (!channelWindowOpen($win->fetchColumn() ?: null)) {
+            throw new Exception('The 24-hour reply window has closed. A pre-approved template message is required to reopen the conversation (coming in a later release).');
+        }
     }
 
     // Send via the provider.

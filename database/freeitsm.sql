@@ -859,6 +859,30 @@ CREATE TABLE IF NOT EXISTS `webchat_widgets` (
     CONSTRAINT `fk_webchat_widget_channel` FOREIGN KEY (`channel_id`) REFERENCES `messaging_channels` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- One website chat conversation. Created when a visitor opens the widget and (if the
+-- widget asks for it) gives their name + email. `token` is the browser's capability
+-- for THIS conversation — it is stored in the visitor's browser and presented on every
+-- send/poll, so knowing it is the only thing that lets you read or post to the chat
+-- (the widget key alone can't: it can only START a conversation). `ticket_id` is set
+-- lazily on the first message, so one conversation maps to exactly one ticket. visitor_ip
+-- is kept only for rate limiting. Rows are disposable once their ticket is closed.
+CREATE TABLE IF NOT EXISTS `webchat_conversations` (
+    `id`                     INT NOT NULL AUTO_INCREMENT,
+    `channel_id`             INT NOT NULL,
+    `token`                  VARCHAR(64) NOT NULL,
+    `ticket_id`              INT NULL,
+    `visitor_name`           VARCHAR(150) NULL,
+    `visitor_email`          VARCHAR(255) NULL,
+    `visitor_ip`             VARCHAR(45) NULL,
+    `created_datetime`       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `last_activity_datetime` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_webchat_conversation_token` (`token`),
+    KEY `ix_webchat_conversation_channel` (`channel_id`),
+    KEY `ix_webchat_conversation_ticket` (`ticket_id`),
+    CONSTRAINT `fk_webchat_conversation_channel` FOREIGN KEY (`channel_id`) REFERENCES `messaging_channels` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `ticket_recordings` (
     `id`                  INT NOT NULL AUTO_INCREMENT,
     `ticket_id`           INT NULL,

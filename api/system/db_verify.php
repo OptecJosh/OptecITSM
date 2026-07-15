@@ -504,6 +504,21 @@ $schema = [
         'created_datetime' => 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP',
     ],
 
+    // One website chat conversation. token is the visitor's browser-held capability for
+    // this chat (needed on every send/poll); ticket_id is set lazily on the first
+    // message so a conversation maps to exactly one ticket. visitor_ip is for rate limits.
+    'webchat_conversations' => [
+        'id'                     => 'INT NOT NULL AUTO_INCREMENT',
+        'channel_id'             => 'INT NOT NULL',
+        'token'                  => 'VARCHAR(64) NOT NULL',
+        'ticket_id'              => 'INT NULL',
+        'visitor_name'           => 'VARCHAR(150) NULL',
+        'visitor_email'          => 'VARCHAR(255) NULL',
+        'visitor_ip'             => 'VARCHAR(45) NULL',
+        'created_datetime'       => 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP',
+        'last_activity_datetime' => 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
     // Which analysts may access which tenants (only consulted when an analyst
     // is NOT flagged can_access_all_tenants).
     'analyst_tenant_access' => [
@@ -2944,6 +2959,19 @@ try {
             try { $conn->exec("ALTER TABLE webchat_widgets ADD CONSTRAINT fk_webchat_widget_channel FOREIGN KEY (channel_id) REFERENCES messaging_channels (id) ON DELETE CASCADE"); } catch (Exception $e) {}
         }
     }
+    // Web chat conversation → its channel. CASCADE so removing the widget/channel clears
+    // its conversations. The token UNIQUE key is built from $uniqueIndexes below.
+    if ($tableExists('webchat_conversations') && $tableExists('messaging_channels') && $colExists('webchat_conversations', 'channel_id')) {
+        if (!$idxExists('webchat_conversations', 'ix_webchat_conversation_channel')) {
+            try { $conn->exec("ALTER TABLE webchat_conversations ADD KEY ix_webchat_conversation_channel (channel_id)"); } catch (Exception $e) {}
+        }
+        if (!$idxExists('webchat_conversations', 'ix_webchat_conversation_ticket')) {
+            try { $conn->exec("ALTER TABLE webchat_conversations ADD KEY ix_webchat_conversation_ticket (ticket_id)"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('webchat_conversations', 'fk_webchat_conversation_channel')) {
+            try { $conn->exec("ALTER TABLE webchat_conversations ADD CONSTRAINT fk_webchat_conversation_channel FOREIGN KEY (channel_id) REFERENCES messaging_channels (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+    }
     // Seed the WhatsApp ticket origin (global default) if absent, so channel tickets
     // can be tagged by origin out of the box. Single-company installs see it like any
     // other origin; it can be hidden per-company via the add+hide model.
@@ -2954,6 +2982,15 @@ try {
             if ((int) $chk->fetchColumn() === 0) {
                 $conn->exec("INSERT INTO ticket_origins (name, description, display_order, is_active, tenant_id) VALUES ('WhatsApp', 'Messages received via WhatsApp', 50, 1, NULL)");
                 $results[] = ['table' => 'ticket_origins', 'status' => 'updated', 'details' => ['Seeded the WhatsApp ticket origin']];
+            }
+        } catch (Exception $e) {}
+        // Web chat origin — same treatment, for tickets raised from a website chat widget.
+        try {
+            $chk = $conn->prepare("SELECT COUNT(*) FROM ticket_origins WHERE name = 'Web chat' AND tenant_id IS NULL");
+            $chk->execute();
+            if ((int) $chk->fetchColumn() === 0) {
+                $conn->exec("INSERT INTO ticket_origins (name, description, display_order, is_active, tenant_id) VALUES ('Web chat', 'Messages received via the website chat widget', 51, 1, NULL)");
+                $results[] = ['table' => 'ticket_origins', 'status' => 'updated', 'details' => ['Seeded the Web chat ticket origin']];
             }
         } catch (Exception $e) {}
     }
@@ -4606,6 +4643,7 @@ try {
         ['tenant_channel_senders', 'uq_tenant_channel_sender_identifier', '(`identifier`)'],
         ['webchat_widgets', 'uq_webchat_widget_key', '(`widget_key`)'],
         ['webchat_widgets', 'uq_webchat_widget_channel', '(`channel_id`)'],
+        ['webchat_conversations', 'uq_webchat_conversation_token', '(`token`)'],
         ['problem_tickets', 'uq_problem_ticket', '(`problem_id`, `ticket_id`)'],
         ['change_tickets',  'uq_change_ticket',  '(`change_id`, `ticket_id`)'],
         ['ticket_links',    'uq_ticket_link',    '(`source_ticket_id`, `target_ticket_id`, `relation_type`)'],

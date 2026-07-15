@@ -815,6 +815,35 @@ $translationNamespaces = ['common', 'tickets'];
             </table>
         </div>
 
+        <!-- Web chat Tab -->
+        <?php endif; ?>
+
+        <?php if (settingsTabVisible($visibleTabs, 'webchat')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'webchat' ? ' active' : ''; ?>" id="webchat-tab" data-capability="<?php echo Cap::TICKETS_WEBCHAT; ?>">
+            <div class="section-header">
+                <h2><?php echo htmlspecialchars(t('tickets.settings.webchat.heading')); ?></h2>
+                <button class="add-btn" onclick="openWidgetModal()"><?php echo htmlspecialchars(t('common.add')); ?></button>
+            </div>
+            <p>
+                <?php echo htmlspecialchars(t('tickets.settings.webchat.intro')); ?>
+            </p>
+            <div id="widgetsResult" style="margin-bottom:12px;"></div>
+            <table>
+                <thead>
+                    <tr>
+                        <th><?php echo htmlspecialchars(t('tickets.settings.columns.name')); ?></th>
+                        <th><?php echo htmlspecialchars(t('tickets.settings.webchat.col_origins')); ?></th>
+                        <th><?php echo htmlspecialchars(t('tickets.settings.webchat.col_key')); ?></th>
+                        <th><?php echo htmlspecialchars(t('tickets.settings.columns.status')); ?></th>
+                        <th><?php echo htmlspecialchars(t('tickets.settings.columns.actions')); ?></th>
+                    </tr>
+                </thead>
+                <tbody id="widgets-list">
+                    <tr><td colspan="5" style="text-align: center;"><?php echo htmlspecialchars(t('tickets.settings.loading')); ?></td></tr>
+                </tbody>
+            </table>
+        </div>
+
         <!-- Email Templates Tab -->
         <?php endif; ?>
 
@@ -1395,6 +1424,77 @@ $translationNamespaces = ['common', 'tickets'];
         </div>
     </div>
 
+    <!-- Web chat Widget Modal -->
+    <div class="modal" id="widgetModal">
+        <div class="modal-content" style="max-width: 640px;">
+            <div class="modal-header" id="widgetModalTitle"><?php echo htmlspecialchars(t('tickets.settings.webchat.add_title')); ?></div>
+            <div class="modal-body">
+            <form id="widgetForm" autocomplete="off">
+                <input type="hidden" id="widgetId">
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label for="widgetName"><?php echo htmlspecialchars(t('tickets.settings.webchat.name')); ?> *</label>
+                        <input type="text" id="widgetName" required placeholder="<?php echo htmlspecialchars(t('tickets.settings.webchat.name_placeholder')); ?>">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="widgetAccent"><?php echo htmlspecialchars(t('tickets.settings.webchat.accent')); ?></label>
+                        <input type="text" id="widgetAccent" placeholder="#2563eb">
+                    </div>
+
+                    <!-- Multi-tenancy: only shown when more than one company exists (populated by JS). -->
+                    <div class="form-group" id="widgetCompanyGroup" style="display:none; grid-column: span 2;">
+                        <label for="widgetCompany"><?php echo htmlspecialchars(t('tickets.settings.webchat.company')); ?></label>
+                        <select id="widgetCompany"></select>
+                        <small style="color:var(--text-muted, #666); display:block; margin-top:4px;"><?php echo htmlspecialchars(t('tickets.settings.webchat.company_help')); ?></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="widgetGreeting"><?php echo htmlspecialchars(t('tickets.settings.webchat.greeting')); ?></label>
+                        <input type="text" id="widgetGreeting" placeholder="<?php echo htmlspecialchars(t('tickets.settings.webchat.greeting_placeholder')); ?>">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="widgetLauncher"><?php echo htmlspecialchars(t('tickets.settings.webchat.launcher')); ?></label>
+                        <input type="text" id="widgetLauncher" placeholder="<?php echo htmlspecialchars(t('tickets.settings.webchat.launcher_placeholder')); ?>">
+                    </div>
+
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label for="widgetOrigins"><?php echo htmlspecialchars(t('tickets.settings.webchat.origins')); ?></label>
+                        <textarea id="widgetOrigins" rows="3" placeholder="https://example.com"></textarea>
+                        <small style="color:var(--text-muted, #666);"><?php echo htmlspecialchars(t('tickets.settings.webchat.origins_help')); ?></small>
+                    </div>
+
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label for="widgetOffline"><?php echo htmlspecialchars(t('tickets.settings.webchat.offline')); ?></label>
+                        <textarea id="widgetOffline" rows="2" placeholder="<?php echo htmlspecialchars(t('tickets.settings.webchat.offline_placeholder')); ?>"></textarea>
+                    </div>
+
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label><input type="checkbox" id="widgetRequireEmail" checked> <?php echo htmlspecialchars(t('tickets.settings.webchat.require_email')); ?></label>
+                    </div>
+
+                    <div class="form-group">
+                        <label><input type="checkbox" id="widgetActive" checked> <?php echo htmlspecialchars(t('tickets.settings.webchat.active')); ?></label>
+                    </div>
+
+                    <!-- Embed snippet: populated by JS after the widget is saved (or on edit). -->
+                    <div class="form-group" id="widgetEmbedGroup" style="grid-column: span 2;">
+                        <label for="widgetEmbed"><?php echo htmlspecialchars(t('tickets.settings.webchat.embed_label')); ?></label>
+                        <textarea id="widgetEmbed" rows="7" readonly onclick="this.select()" style="font-family: monospace; font-size: 12px;"></textarea>
+                        <small style="color:var(--text-muted, #666);"><?php echo htmlspecialchars(t('tickets.settings.webchat.embed_help')); ?></small>
+                    </div>
+                </div>
+            </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeWidgetModal()"><?php echo htmlspecialchars(t('common.cancel')); ?></button>
+                <button type="submit" form="widgetForm" class="btn btn-primary"><?php echo htmlspecialchars(t('common.save')); ?></button>
+            </div>
+        </div>
+    </div>
+
     <!-- Messaging Template Modal -->
     <div class="modal" id="msgTemplateModal">
         <div class="modal-content" style="max-width: 600px;">
@@ -1710,6 +1810,7 @@ $translationNamespaces = ['common', 'tickets'];
             loadRotaLocations();
             loadMailboxes();
             loadChannels();
+            loadWidgets();
             loadMsgTemplates();
             loadEmailTemplates();
             loadRotaShifts();
@@ -2864,6 +2965,174 @@ $translationNamespaces = ['common', 'tickets'];
                     showToast('Error: ' + (data.error || ''), 'error');
                 }
             } catch (err) { showToast('Failed to save channel', 'error'); }
+        });
+
+        // ---- Web chat widgets ------------------------------------------------
+        const WEBCHAT_API = '../../api/webchat/';
+        let widgets = [];
+
+        async function loadWidgets() {
+            const tbody = document.getElementById('widgets-list');
+            if (!tbody) return; // tab not visible for this analyst
+            try {
+                await loadMailboxCompanies(); // reuse the company lookup
+                const res = await fetch(WEBCHAT_API + 'get_widgets.php');
+                const data = await res.json();
+                if (data.success) {
+                    widgets = data.widgets;
+                    renderWidgets(widgets);
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:red;">Error: ${escapeHtml(data.error || '')}</td></tr>`;
+                }
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:red;">Failed to load widgets.</td></tr>';
+            }
+        }
+
+        function renderWidgets(list) {
+            const tbody = document.getElementById('widgets-list');
+            if (!tbody) return;
+            if (!list.length) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">${escapeHtml(t('tickets.settings.webchat.intro'))}</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = list.map(w => {
+                const activeBadge = w.is_active ? '' : ' <span class="status-badge status-inactive">Inactive</span>';
+                let companyBadge = '';
+                if (mailboxMultiCompany) {
+                    companyBadge = (w.tenant_id && mailboxCompaniesById[w.tenant_id])
+                        ? ` <span class="status-badge" style="background:#ede7f6;color:#5e35b1;">${escapeHtml(mailboxCompaniesById[w.tenant_id])}</span>`
+                        : ` <span class="status-badge" style="background:#fff3e0;color:#ef6c00;">Shared</span>`;
+                }
+                const origins = (w.allowed_origins || '').split(/[\r\n,]+/).map(s => s.trim()).filter(Boolean);
+                const originsCell = origins.length
+                    ? origins.map(o => escapeHtml(o)).join('<br>')
+                    : `<span style="color:var(--text-muted, #999);">${escapeHtml(t('tickets.settings.webchat.any_origin'))}</span>`;
+                const statusBadge = w.is_active
+                    ? '<span class="status-badge status-active">Active</span>'
+                    : '<span class="status-badge status-inactive">Inactive</span>';
+                const safeName = escapeHtml(w.name).replace(/'/g, "\\'");
+                const actions = `
+                    <button class="action-btn" onclick="editWidget(${w.id})" title="${t('common.edit')}">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    </button>
+                    <button class="action-btn delete" onclick="deleteWidget(${w.id}, '${safeName}')" title="${t('common.delete')}">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>`;
+                return `
+                    <tr>
+                        <td><strong>${escapeHtml(w.name)}</strong>${activeBadge}${companyBadge}</td>
+                        <td>${originsCell}</td>
+                        <td><code style="font-size:11px;cursor:pointer;" title="Click to select" onclick="const r=document.createRange();r.selectNodeContents(this);const s=getSelection();s.removeAllRanges();s.addRange(r);">${escapeHtml(w.widget_key)}</code></td>
+                        <td>${statusBadge}</td>
+                        <td>${actions}</td>
+                    </tr>`;
+            }).join('');
+        }
+
+        function populateWidgetCompanies(selectedTenantId) {
+            const group = document.getElementById('widgetCompanyGroup');
+            const sel = document.getElementById('widgetCompany');
+            if (!mailboxMultiCompany) { group.style.display = 'none'; return; }
+            group.style.display = '';
+            let opts = '<option value="">Shared (no company)</option>';
+            Object.keys(mailboxCompaniesById).forEach(id => {
+                opts += `<option value="${id}" ${String(selectedTenantId) === String(id) ? 'selected' : ''}>${escapeHtml(mailboxCompaniesById[id])}</option>`;
+            });
+            sel.innerHTML = opts;
+        }
+
+        function openWidgetModal(widget = null) {
+            document.getElementById('widgetForm').reset();
+            document.getElementById('widgetId').value = widget ? widget.id : '';
+            document.getElementById('widgetModalTitle').textContent = widget
+                ? t('tickets.settings.webchat.edit_title')
+                : t('tickets.settings.webchat.add_title');
+            document.getElementById('widgetName').value = widget ? (widget.name || '') : '';
+            document.getElementById('widgetAccent').value = widget ? (widget.accent_colour || '') : '';
+            document.getElementById('widgetGreeting').value = widget ? (widget.greeting || '') : '';
+            document.getElementById('widgetLauncher').value = widget ? (widget.launcher_text || '') : '';
+            document.getElementById('widgetOrigins').value = widget ? (widget.allowed_origins || '') : '';
+            document.getElementById('widgetOffline').value = widget ? (widget.offline_message || '') : '';
+            document.getElementById('widgetRequireEmail').checked = widget ? !!widget.require_email : true;
+            document.getElementById('widgetActive').checked = widget ? !!widget.is_active : true;
+
+            const embedGroup = document.getElementById('widgetEmbedGroup');
+            const embedField = document.getElementById('widgetEmbed');
+            if (widget && widget.embed_snippet) {
+                embedGroup.style.display = '';
+                embedField.value = widget.embed_snippet;
+            } else {
+                embedGroup.style.display = 'none';
+                embedField.value = '';
+            }
+
+            populateWidgetCompanies(widget ? widget.tenant_id : null);
+            document.getElementById('widgetModal').classList.add('active');
+        }
+
+        function editWidget(id) {
+            const w = widgets.find(x => x.id === id);
+            if (w) openWidgetModal(w);
+        }
+
+        function closeWidgetModal() {
+            document.getElementById('widgetModal').classList.remove('active');
+        }
+
+        async function deleteWidget(id, name) {
+            if (!confirm(`Delete web chat widget "${name}"? Past tickets are kept; only new conversations on this widget stop.`)) return;
+            try {
+                const res = await fetch(WEBCHAT_API + 'delete_widget.php', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+                const data = await res.json();
+                if (data.success) { showToast('Widget deleted', 'success'); loadWidgets(); }
+                else showToast('Error: ' + (data.error || ''), 'error');
+            } catch (e) { showToast('Failed to delete widget', 'error'); }
+        }
+
+        document.getElementById('widgetForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const payload = {
+                id: document.getElementById('widgetId').value || null,
+                name: document.getElementById('widgetName').value.trim(),
+                accent_colour: document.getElementById('widgetAccent').value.trim(),
+                greeting: document.getElementById('widgetGreeting').value.trim(),
+                launcher_text: document.getElementById('widgetLauncher').value.trim(),
+                allowed_origins: document.getElementById('widgetOrigins').value.trim(),
+                offline_message: document.getElementById('widgetOffline').value.trim(),
+                require_email: document.getElementById('widgetRequireEmail').checked,
+                is_active: document.getElementById('widgetActive').checked,
+                tenant_id: document.getElementById('widgetCompany').value || null
+            };
+            if (!payload.name) { showToast('Name is required', 'error'); return; }
+            try {
+                const res = await fetch(WEBCHAT_API + 'save_widget.php', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message || 'Saved', 'success');
+                    loadWidgets();
+                    // On first save, keep the modal open and reveal the embed snippet so
+                    // the admin can copy it straight away; flip the form into edit mode.
+                    if (data.embed_snippet) {
+                        document.getElementById('widgetId').value = data.id;
+                        document.getElementById('widgetModalTitle').textContent = t('tickets.settings.webchat.edit_title');
+                        const embedGroup = document.getElementById('widgetEmbedGroup');
+                        embedGroup.style.display = '';
+                        document.getElementById('widgetEmbed').value = data.embed_snippet;
+                        embedGroup.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    } else {
+                        closeWidgetModal();
+                    }
+                } else {
+                    showToast('Error: ' + (data.error || ''), 'error');
+                }
+            } catch (err) { showToast('Failed to save widget', 'error'); }
         });
 
         // ===== Messaging templates =====

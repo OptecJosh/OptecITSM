@@ -171,6 +171,7 @@ final class Cap
     const TICKETS_ROTA            = 'tickets.rota';
     const TICKETS_MAILBOXES       = 'tickets.mailboxes';        // OAuth credentials + mail routing
     const TICKETS_MESSAGING       = 'tickets.messaging';        // Twilio/Meta credentials
+    const TICKETS_WEBCHAT         = 'tickets.webchat';          // website chat widgets
     const TICKETS_EMAIL_TEMPLATES = 'tickets.email_templates';
     const TICKETS_GENERAL         = 'tickets.general';
     const TICKETS_REPLY_CLEANUP   = 'tickets.reply_cleanup';    // AI provider + API key

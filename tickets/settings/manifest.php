@@ -110,6 +110,15 @@ return [
             'sensitive' => true,
         ],
         [
+            // Embeddable website chat widgets. Not sensitive: the widget key is public
+            // (it ships in the customer's page source) and there are no stored secrets —
+            // abuse is contained by each widget's origin allowlist + rate limiting.
+            'id'        => 'webchat',
+            'cap'       => Cap::TICKETS_WEBCHAT,
+            'label_key' => 'tickets.settings.tab_webchat',
+            'grant'     => 'Manage the website chat widgets that raise tickets',
+        ],
+        [
             'id'        => 'email-templates',
             'cap'       => Cap::TICKETS_EMAIL_TEMPLATES,
             'label_key' => 'tickets.settings.tabs.email_templates',

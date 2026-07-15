@@ -487,6 +487,23 @@ $schema = [
         'created_datetime' => 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP',
     ],
 
+    // Embed config for one website chat widget. Drives a messaging_channels row
+    // (channel_type='webchat', provider='freeitsm'); company routing + active flag
+    // live there. widget_key is public (ships in the site's <script>) — abuse is
+    // contained by allowed_origins + rate limiting, not by hiding this.
+    'webchat_widgets' => [
+        'id'               => 'INT NOT NULL AUTO_INCREMENT',
+        'channel_id'       => 'INT NOT NULL',
+        'widget_key'       => 'VARCHAR(64) NOT NULL',
+        'allowed_origins'  => 'LONGTEXT NULL',
+        'greeting'         => 'VARCHAR(500) NULL',
+        'accent_colour'    => 'VARCHAR(20) NULL',
+        'launcher_text'    => 'VARCHAR(60) NULL',
+        'offline_message'  => 'VARCHAR(500) NULL',
+        'require_email'    => 'TINYINT(1) NOT NULL DEFAULT 1',
+        'created_datetime' => 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
     // Which analysts may access which tenants (only consulted when an analyst
     // is NOT flagged can_access_all_tenants).
     'analyst_tenant_access' => [
@@ -2920,6 +2937,13 @@ try {
             try { $conn->exec("ALTER TABLE messaging_templates ADD CONSTRAINT fk_messaging_templates_tenant FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE SET NULL"); } catch (Exception $e) {}
         }
     }
+    // Web chat widget → its messaging channel (1:1). CASCADE so deleting the channel
+    // removes its widget config. The two UNIQUE keys are built from $uniqueIndexes below.
+    if ($tableExists('webchat_widgets') && $tableExists('messaging_channels') && $colExists('webchat_widgets', 'channel_id')) {
+        if (!$fkExists('webchat_widgets', 'fk_webchat_widget_channel')) {
+            try { $conn->exec("ALTER TABLE webchat_widgets ADD CONSTRAINT fk_webchat_widget_channel FOREIGN KEY (channel_id) REFERENCES messaging_channels (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+    }
     // Seed the WhatsApp ticket origin (global default) if absent, so channel tickets
     // can be tagged by origin out of the box. Single-company installs see it like any
     // other origin; it can be hidden per-company via the add+hide model.
@@ -4580,6 +4604,8 @@ try {
         ['user_sso_identities', 'uq_user_sso_provider_user', '(`provider_id`, `user_id`)'],
         ['freemail_domains', 'uq_freemail_domains_domain', '(`domain`)'],
         ['tenant_channel_senders', 'uq_tenant_channel_sender_identifier', '(`identifier`)'],
+        ['webchat_widgets', 'uq_webchat_widget_key', '(`widget_key`)'],
+        ['webchat_widgets', 'uq_webchat_widget_channel', '(`channel_id`)'],
         ['problem_tickets', 'uq_problem_ticket', '(`problem_id`, `ticket_id`)'],
         ['change_tickets',  'uq_change_ticket',  '(`change_id`, `ticket_id`)'],
         ['ticket_links',    'uq_ticket_link',    '(`source_ticket_id`, `target_ticket_id`, `relation_type`)'],

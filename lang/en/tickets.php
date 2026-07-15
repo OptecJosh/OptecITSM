@@ -672,6 +672,7 @@ return [
 
         // Tab label not mirrored in the headings group.
         'tab_messaging' => 'Messaging',
+        'tab_webchat'   => 'Web chat',
 
         // Extra table column headers used by individual tabs.
         'cols' => [
@@ -709,6 +710,35 @@ return [
             'base_url_help'         => 'The address providers use to reach this install. Set it and the webhook URLs below become copy-paste-ready. Leave blank to use whatever address you\'re browsing from. Testing locally? Run <code>ngrok http 80</code> and paste the <code>https://…ngrok-free.dev</code> address it prints.',
             'templates_heading'     => 'Message templates',
             'templates_intro'       => 'Pre-approved templates let an analyst reply <strong>after the 24-hour window has closed</strong>. WhatsApp only allows free text within 24 hours of the customer\'s last message; outside that, only a template Meta/Twilio has approved can be sent. Create &amp; approve the template at your provider, then add its definition here (with <code>{{1}}</code>, <code>{{2}}</code> placeholders) so analysts can pick and fill it.',
+        ],
+
+        // Web chat tab (embeddable website chat widgets)
+        'webchat' => [
+            'heading'              => 'Web chat widgets',
+            'intro'                => 'Put a chat window on any website — a visitor types a message, it becomes a ticket, and analysts reply from the inbox like any other channel. Add a widget below, then paste its embed snippet into the site.',
+            'col_key'              => 'Widget key',
+            'col_origins'          => 'Website(s)',
+            'any_origin'           => 'Any (not restricted)',
+            'add_title'            => 'Add web chat widget',
+            'edit_title'           => 'Edit web chat widget',
+            'name'                 => 'Name',
+            'name_placeholder'     => 'e.g. Acme website',
+            'company'              => 'Company',
+            'company_help'         => 'Pin every conversation from this widget to one company. Leave unset on a single-company install.',
+            'greeting'             => 'Greeting',
+            'greeting_placeholder' => 'Hi! How can we help?',
+            'accent'               => 'Accent colour',
+            'launcher'             => 'Launcher text',
+            'launcher_placeholder' => 'Chat with us',
+            'origins'              => 'Allowed website(s)',
+            'origins_help'         => 'One origin per line (e.g. https://acme.com). Only these sites may show the widget. Leave blank to allow any site (testing only).',
+            'offline'              => 'Offline message',
+            'offline_placeholder'  => 'We\'re not available right now — leave your message and we\'ll email you back.',
+            'require_email'        => 'Ask visitors for their name and email before chatting',
+            'active'               => 'Active',
+            'embed_label'          => 'Embed snippet',
+            'embed_help'           => 'Paste this just before the closing &lt;/body&gt; tag on every page that should show the chat window.',
+            'embed_after_save'     => 'The embed snippet appears here once you save the widget.',
         ],
 
         // Mailboxes tab — OAuth success banner.

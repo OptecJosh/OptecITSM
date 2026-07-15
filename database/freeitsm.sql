@@ -824,6 +824,41 @@ CREATE TABLE IF NOT EXISTS `messaging_templates` (
     CONSTRAINT `fk_messaging_templates_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ----------------------------------------------------------
+-- Web chat widgets (embeddable website chat → tickets)
+-- ----------------------------------------------------------
+
+-- The public/embed config for one website chat widget. A widget is the self-hosted
+-- twin of a WhatsApp number: it drives exactly one `messaging_channels` row
+-- (channel_type='webchat', provider='freeitsm'), so once a visitor's message is
+-- ingested it flows through the same ticket membrane, inbox and reply pipeline as
+-- every other channel. Company routing and the active flag live on that channel row;
+-- this table holds only what the browser widget needs.
+--
+--   widget_key       the public id embedded in the customer's <script> snippet. NOT a
+--                    secret (it ships in page source) — abuse is contained by the
+--                    origin allowlist + rate limiting, not by keeping this hidden.
+--   allowed_origins  newline-separated list of site origins permitted to embed this
+--                    widget (e.g. https://acme.com). Empty = allow any (dev only).
+--   require_email    pre-chat gate: when 1, the visitor must give a name + email before
+--                    the conversation opens, so every ticket has a real requester.
+CREATE TABLE IF NOT EXISTS `webchat_widgets` (
+    `id`               INT NOT NULL AUTO_INCREMENT,
+    `channel_id`       INT NOT NULL,
+    `widget_key`       VARCHAR(64) NOT NULL,
+    `allowed_origins`  LONGTEXT NULL,
+    `greeting`         VARCHAR(500) NULL,
+    `accent_colour`    VARCHAR(20) NULL,
+    `launcher_text`    VARCHAR(60) NULL,
+    `offline_message`  VARCHAR(500) NULL,
+    `require_email`    TINYINT(1) NOT NULL DEFAULT 1,
+    `created_datetime` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_webchat_widget_key` (`widget_key`),
+    UNIQUE KEY `uq_webchat_widget_channel` (`channel_id`),
+    CONSTRAINT `fk_webchat_widget_channel` FOREIGN KEY (`channel_id`) REFERENCES `messaging_channels` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `ticket_recordings` (
     `id`                  INT NOT NULL AUTO_INCREMENT,
     `ticket_id`           INT NULL,

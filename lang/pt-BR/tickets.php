@@ -597,6 +597,7 @@ Obrigado por entrar em contato conosco…',
         'loading' => 'Carregando...',
 
         'tab_messaging' => 'Mensagens',
+        'tab_webchat'   => 'Chat no site',
 
         'cols' => [
             'pause_sla' => 'Pausar SLA',
@@ -629,6 +630,35 @@ Obrigado por entrar em contato conosco…',
             'base_url_help' => 'O endereço que os provedores usam para acessar esta instalação. Defina-o e os URLs de webhook abaixo ficam prontos para copiar e colar. Deixe em branco para usar o endereço de onde você está navegando. Testando localmente? Execute <code>ngrok http 80</code> e cole o endereço <code>https://…ngrok-free.dev</code> que ele exibe.',
             'templates_heading' => 'Modelos de mensagem',
             'templates_intro' => 'Modelos pré-aprovados permitem que um analista responda <strong>após o encerramento da janela de 24 horas</strong>. O WhatsApp só permite texto livre em até 24 horas após a última mensagem do cliente; fora disso, só pode ser enviado um modelo aprovado pela Meta/Twilio. Crie &amp; aprove o modelo no seu provedor e adicione sua definição aqui (com marcadores <code>{{1}}</code>, <code>{{2}}</code>) para que os analistas possam selecioná-lo e preenchê-lo.',
+        ],
+
+        // Aba de chat no site (widgets de chat incorporáveis)
+        'webchat' => [
+            'heading'              => 'Widgets de chat no site',
+            'intro'                => 'Coloque uma janela de chat em qualquer site — o visitante digita uma mensagem, ela vira um ticket e os analistas respondem pela caixa de entrada como em qualquer outro canal. Adicione um widget abaixo e cole o trecho de incorporação no site.',
+            'col_key'              => 'Chave do widget',
+            'col_origins'          => 'Site(s)',
+            'any_origin'           => 'Qualquer (sem restrição)',
+            'add_title'            => 'Adicionar widget de chat no site',
+            'edit_title'           => 'Editar widget de chat no site',
+            'name'                 => 'Nome',
+            'name_placeholder'     => 'ex.: Site da Acme',
+            'company'              => 'Empresa',
+            'company_help'         => 'Vincule todas as conversas deste widget a uma empresa. Deixe em branco em uma instalação de empresa única.',
+            'greeting'             => 'Saudação',
+            'greeting_placeholder' => 'Olá! Como podemos ajudar?',
+            'accent'               => 'Cor de destaque',
+            'launcher'             => 'Texto do botão',
+            'launcher_placeholder' => 'Fale conosco',
+            'origins'              => 'Site(s) permitido(s)',
+            'origins_help'         => 'Uma origem por linha (ex.: https://acme.com). Somente estes sites podem exibir o widget. Deixe em branco para permitir qualquer site (apenas testes).',
+            'offline'              => 'Mensagem offline',
+            'offline_placeholder'  => 'Não estamos disponíveis agora — deixe sua mensagem e responderemos por e-mail.',
+            'require_email'        => 'Pedir nome e e-mail do visitante antes de conversar',
+            'active'               => 'Ativo',
+            'embed_label'          => 'Trecho de incorporação',
+            'embed_help'           => 'Cole isto logo antes da tag &lt;/body&gt; em cada página que deve exibir a janela de chat.',
+            'embed_after_save'     => 'O trecho de incorporação aparece aqui após você salvar o widget.',
         ],
 
         'oauth' => [

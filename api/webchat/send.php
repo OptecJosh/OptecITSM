@@ -54,7 +54,7 @@ $mode      = (($widget['ai_mode'] ?? 'assist') === 'deflect') ? 'deflect' : 'ass
 $calId     = ($widget['business_calendar_id'] ?? null) !== null ? (int) $widget['business_calendar_id'] : null;
 $isOpen    = webchatIsOpenNow($conn, $calId);
 $hasTicket = !empty($conv['ticket_id']);
-$offline   = (string) ($widget['offline_message'] ?? '');
+$offline   = webchatOfflineMessage($widget); // custom message, or a sensible default
 
 $resp = ['success' => true];
 

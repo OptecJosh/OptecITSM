@@ -30,6 +30,19 @@ function webchatGenerateKey(): string
 }
 
 /**
+ * The message shown to a visitor when the widget is closed (out of office hours). Uses
+ * the admin's custom offline message if set, else a sensible default — so a closed widget
+ * is never silent, even if no message was configured.
+ */
+function webchatOfflineMessage(array $widget): string
+{
+    $custom = trim((string) ($widget['offline_message'] ?? ''));
+    return $custom !== ''
+        ? $custom
+        : "Thanks for your message — we're currently closed, but we'll get back to you as soon as we can.";
+}
+
+/**
  * Public base URL + app root used to build widget asset / API URLs. Reuses the
  * messaging public base (system setting or derived from the request) and derives
  * the app root from SCRIPT_NAME so it works under any sub-path. Only ever called

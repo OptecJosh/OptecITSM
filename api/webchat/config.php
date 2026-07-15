@@ -27,7 +27,9 @@ echo json_encode([
         'accent'          => $widget['accent_colour'] ?: '#2563eb',
         'launcher_text'   => $widget['launcher_text'] ?: '',
         'require_email'   => (bool) $widget['require_email'],
-        'offline_message' => $widget['offline_message'] ?: '',
+        // Resolved offline notice (custom or a sensible default) — the widget shows it
+        // when closed, so a closed widget is never silent.
+        'offline_message' => webchatOfflineMessage($widget),
         'is_open'         => $isOpen,
         // AI answers + which escalation routes the widget should offer. Only meaningful
         // while open — a closed widget takes the enquiry as a ticket regardless.

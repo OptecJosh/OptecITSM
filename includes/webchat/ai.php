@@ -70,3 +70,34 @@ function webchatAiReply(PDO $conn, string $question, array $history = []): array
 
     return ['ok' => true, 'answer' => $answer, 'articles' => $articles, 'error' => null];
 }
+
+/**
+ * Summarise a web chat transcript into a short support-ticket description for a human
+ * agent — used as the ticket body on an "email me back" escalation. Returns '' when AI
+ * is unconfigured or the call fails, so the caller can fall back to the raw transcript.
+ */
+function webchatAiSummarise(PDO $conn, string $transcript): string
+{
+    if (trim($transcript) === '') {
+        return '';
+    }
+    try {
+        $cfg = aiSettingsLoad($conn, 'knowledge_ai');
+    } catch (Exception $e) {
+        return '';
+    }
+    if (($cfg['api_key'] ?? '') === '') {
+        return '';
+    }
+
+    $system = "You are helping a support team triage a website chat. Summarise the conversation below into a "
+        . "short ticket description for a human agent: state the visitor's question or issue and any useful "
+        . "details they gave (name, order, product, etc.). Write 2 to 4 plain sentences, no preamble, no sign-off.";
+
+    try {
+        $r = aiProviderChat($cfg, ['system' => $system, 'user' => $transcript, 'max_tokens' => 400]);
+        return trim((string) ($r['content'] ?? ''));
+    } catch (Exception $e) {
+        return '';
+    }
+}

@@ -28,8 +28,27 @@ $messages = [];
 $lastId   = $after;
 $closed   = false;
 $ticketId = (int) ($conv['ticket_id'] ?? 0);
+$aiEnabled = !empty($widget['ai_enabled']);
 
-if ($ticketId > 0) {
+if ($aiEnabled) {
+    // AI widget: webchat_messages is the visitor's transcript. Pull any new analyst
+    // replies (Outbound emails) into it first, then read the transcript. The `after`
+    // cursor is a webchat_messages id, not an emails id, in this mode.
+    webchatMirrorAgentReplies($conn, $conv);
+    $botName = (string) ($widget['name'] ?? 'Assistant');
+    foreach (webchatGetMessages($conn, (int) $conv['id'], $after) as $m) {
+        $sender = (string) $m['sender'];
+        $messages[] = [
+            'id'   => (int) $m['id'],
+            'from' => $sender === 'visitor' ? 'visitor' : 'agent',
+            'kind' => $sender, // visitor|ai|agent|system — lets the widget style it
+            'name' => ($sender === 'ai' || $sender === 'agent') ? $botName : '',
+            'body' => (string) $m['body'],
+            'at'   => $m['created_datetime'],
+        ];
+        $lastId = (int) $m['id'];
+    }
+} elseif ($ticketId > 0) {
     $st = $conn->prepare(
         "SELECT id, direction, from_name, body_content, received_datetime
          FROM emails
@@ -47,8 +66,10 @@ if ($ticketId > 0) {
         ];
         $lastId = (int) $m['id'];
     }
+}
 
-    // Let the widget show a "conversation closed" state when the ticket is resolved.
+// Let the widget show a "conversation closed" state when the ticket is resolved.
+if ($ticketId > 0) {
     try {
         $cs = $conn->prepare(
             "SELECT ts.is_closed FROM tickets t

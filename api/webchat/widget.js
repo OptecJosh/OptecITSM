@@ -32,6 +32,7 @@
     var lastId = 0;
     var pollTimer = null;
     var pollInFlight = false;
+    var typingTimer = null;
     var opened = false;
     var started = false;      // conversation created (have a token) and chat view shown
     var closed = false;
@@ -103,7 +104,14 @@
         '.intro input:focus { outline: none; border-color: ' + accent + '; }' +
         '.intro .start { margin-top: 16px; width: 100%; border: 0; background: ' + accent + '; color: #fff; border-radius: 10px; padding: 11px; cursor: pointer; font: 600 15px inherit; }' +
         '.err { color: #c0392b; font-size: 12px; margin-top: 8px; min-height: 14px; }' +
-        '.notice { text-align: center; color: #666; font-size: 12px; padding: 8px; }';
+        '.notice { text-align: center; color: #666; font-size: 12px; padding: 8px; }' +
+        // "Agent is typing" bubble — three blinking dots on the agent side.
+        '.typing .bubble { display: inline-flex; align-items: center; gap: 4px; }' +
+        '.typing .dot { width: 7px; height: 7px; border-radius: 50%; background: #b0b6be;' +
+        '  animation: wc-blink 1.4s infinite both; }' +
+        '.typing .dot:nth-child(2) { animation-delay: .2s; }' +
+        '.typing .dot:nth-child(3) { animation-delay: .4s; }' +
+        '@keyframes wc-blink { 0%, 80%, 100% { opacity: .3; } 40% { opacity: 1; } }';
     }
 
     function build() {
@@ -126,6 +134,25 @@
     function scrollDown() {
         var b = el('.body');
         if (b) { b.scrollTop = b.scrollHeight; }
+    }
+
+    function showTyping() {
+        var body = el('.body');
+        if (!body || el('.typing')) { return; }
+        var row = document.createElement('div');
+        row.className = 'msg agent typing';
+        row.innerHTML = '<div class="bubble"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>';
+        body.appendChild(row);
+        scrollDown();
+        // Safety net: never leave the dots spinning if a reply never comes.
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(hideTyping, 30000);
+    }
+
+    function hideTyping() {
+        clearTimeout(typingTimer);
+        var t = el('.typing');
+        if (t && t.parentNode) { t.parentNode.removeChild(t); }
     }
 
     function escBarHtml() {
@@ -265,6 +292,11 @@
         var text = ta.value.trim();
         if (!text || !token) { return; }
         ta.value = '';
+        // Echo the visitor's message immediately — the send round trip waits for the AI
+        // answer, and that shouldn't hold up showing what they just typed.
+        addMessage({ from: 'visitor', body: text });
+        // Show "typing…" while a reply is genuinely expected (AI on and within hours).
+        if (cfg && cfg.ai_enabled && cfg.is_open !== false) { showTyping(); }
         var btn = el('.foot .send');
         if (btn) { btn.disabled = true; }
         fetch(api('send.php'), {
@@ -273,13 +305,18 @@
         }).then(function (r) { return r.json(); }).then(function (d) {
             if (btn) { btn.disabled = false; }
             if (!d.success) {
+                hideTyping();
                 addMessage({ from: 'agent', name: '', body: d.error || 'Message could not be sent.' });
                 return;
             }
-            if (d.notice) { addMessage({ kind: 'system', body: d.notice }); }
-            poll(); // pull the just-stored message(s) straight back so they show immediately
+            // Advance the poll cursor past our own just-echoed message, so the follow-up
+            // poll brings back only the reply — never a duplicate of what we showed.
+            if (typeof d.msg_id === 'number' && d.msg_id > lastId) { lastId = d.msg_id; }
+            if (d.notice) { hideTyping(); addMessage({ kind: 'system', body: d.notice }); }
+            poll(); // pull the reply straight back so it shows immediately
         }).catch(function () {
             if (btn) { btn.disabled = false; }
+            hideTyping();
             addMessage({ from: 'agent', name: '', body: 'Network error — message not sent.' });
         });
     }
@@ -295,6 +332,7 @@
             .then(function (d) {
                 pollInFlight = false;
                 if (!d.success) { return; }
+                if ((d.messages || []).length) { hideTyping(); }
                 (d.messages || []).forEach(function (m) { addMessage(m); });
                 if (typeof d.last_id === 'number') { lastId = d.last_id; }
                 if (d.closed && !closed) {

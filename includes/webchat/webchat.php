@@ -281,7 +281,7 @@ function webchatInsertOutbound(PDO $conn, int $ticketId, array $channel, string 
  * message it opens a ticket and pins the conversation to it; afterwards it appends.
  * Returns the ticket id. (Thin orchestration over webchatOpenTicket + webchatInsertInbound.)
  */
-function webchatIngestMessage(PDO $conn, array $conversation, array $channel, string $body): int
+function webchatIngestMessage(PDO $conn, array $conversation, array $channel, string $body, ?int &$emailId = null): int
 {
     require_once __DIR__ . '/../messaging/ingest.php';
 
@@ -303,7 +303,9 @@ function webchatIngestMessage(PDO $conn, array $conversation, array $channel, st
              ->execute([(int) $conversation['id']]);
     }
 
-    webchatInsertInbound($conn, $ticketId, $conversation, $channel, $body, $isInitial);
+    // $emailId (out) is the stored inbound emails.id — a plain widget polls the emails
+    // table, so the caller returns it as the cursor to skip its own optimistic echo.
+    $emailId = webchatInsertInbound($conn, $ticketId, $conversation, $channel, $body, $isInitial);
 
     return $ticketId;
 }
@@ -366,9 +368,11 @@ function webchatAddMessage(PDO $conn, int $conversationId, string $sender, strin
         "INSERT INTO webchat_messages (conversation_id, sender, body, source_email_id, created_datetime)
          VALUES (?, ?, ?, ?, UTC_TIMESTAMP())"
     )->execute([$conversationId, $sender, $body, $sourceEmailId]);
+    // Capture the id before the UPDATE below — a following statement can clear lastInsertId().
+    $id = (int) $conn->lastInsertId();
     $conn->prepare("UPDATE webchat_conversations SET last_activity_datetime = UTC_TIMESTAMP() WHERE id = ?")
          ->execute([$conversationId]);
-    return (int) $conn->lastInsertId();
+    return $id;
 }
 
 /** Read a conversation's transcript messages after $afterId (ascending). */

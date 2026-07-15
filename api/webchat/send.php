@@ -60,7 +60,9 @@ $resp = ['success' => true];
 
 if (!$aiEnabled) {
     // ---- Plain widget: every message is a ticket message. --------------------
-    $resp['ticket_id'] = webchatIngestMessage($conn, $conv, $channel, $message);
+    $emailId = null;
+    $resp['ticket_id'] = webchatIngestMessage($conn, $conv, $channel, $message, $emailId);
+    $resp['msg_id']    = $emailId; // emails.id — the plain-widget poll cursor
     if (!$isOpen && $offline !== '') {
         $resp['notice'] = $offline;
     }
@@ -81,7 +83,9 @@ foreach (webchatGetMessages($conn, (int) $conv['id']) as $m) {
     ];
 }
 
-webchatAddMessage($conn, (int) $conv['id'], 'visitor', $message);
+// The webchat_messages id of the visitor's message is the AI-widget poll cursor — the
+// widget advances past it so its optimistic echo isn't re-fetched as a duplicate.
+$resp['msg_id'] = webchatAddMessage($conn, (int) $conv['id'], 'visitor', $message);
 
 // Does this message also land on a ticket now? assist always; deflect only once the
 // visitor has escalated (hasTicket) or when we're closed (capture to answer later).

@@ -67,6 +67,12 @@ return [
             'grant'     => 'Manage ticket origins',
         ],
         [
+            'id'        => 'categories',
+            'cap'       => Cap::TICKETS_CATEGORIES,
+            'label_key' => 'tickets.settings.tabs.categories',
+            'grant'     => 'Manage ticket categories and subcategories',
+        ],
+        [
             'id'        => 'statuses',
             'cap'       => Cap::TICKETS_STATUSES,
             'label_key' => 'tickets.settings.tabs.statuses',

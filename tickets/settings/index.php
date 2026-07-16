@@ -360,6 +360,32 @@ $translationNamespaces = ['common', 'tickets'];
             </table>
         </div>
 
+        <!-- Categories Tab -->
+        <?php endif; ?>
+
+        <?php if (settingsTabVisible($visibleTabs, 'categories')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'categories' ? ' active' : ''; ?>" id="categories-tab" data-capability="<?php echo Cap::TICKETS_CATEGORIES; ?>">
+            <div class="section-header">
+                <h2><?php echo htmlspecialchars(t('tickets.settings.headings.categories')); ?></h2>
+                <button class="add-btn" onclick="openAddModal('category')"><?php echo htmlspecialchars(t('common.add')); ?></button>
+            </div>
+            <p style="margin-bottom: 20px; color: var(--text-muted, #666);"><?php echo t('tickets.settings.intros.categories'); ?></p>
+            <table>
+                <thead>
+                    <tr>
+                        <th><?php echo htmlspecialchars(t('tickets.settings.columns.name')); ?></th>
+                        <th><?php echo htmlspecialchars(t('tickets.settings.columns.description')); ?></th>
+                        <th><?php echo htmlspecialchars(t('tickets.settings.columns.order')); ?></th>
+                        <th><?php echo htmlspecialchars(t('tickets.settings.columns.status')); ?></th>
+                        <th><?php echo htmlspecialchars(t('tickets.settings.columns.actions')); ?></th>
+                    </tr>
+                </thead>
+                <tbody id="categories-list">
+                    <tr><td colspan="5" style="text-align: center;"><?php echo htmlspecialchars(t('tickets.settings.loading')); ?></td></tr>
+                </tbody>
+            </table>
+        </div>
+
         <!-- Statuses Tab -->
         <?php endif; ?>
 
@@ -1131,6 +1157,67 @@ $translationNamespaces = ['common', 'tickets'];
         </div>
     </div>
 
+    <!-- Subcategories Modal (per category) -->
+    <div class="modal" id="subcategoriesModal">
+        <div class="modal-content">
+            <div class="modal-header" id="subcategoriesModalTitle"><?php echo htmlspecialchars(t('tickets.categories.subcategories_title')); ?></div>
+            <div class="modal-body">
+                <div class="section-header" style="margin-bottom: 10px;">
+                    <button type="button" class="add-btn" onclick="openAddSubcategoryForm()"><?php echo htmlspecialchars(t('common.add')); ?></button>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th><?php echo htmlspecialchars(t('tickets.settings.columns.name')); ?></th>
+                            <th><?php echo htmlspecialchars(t('tickets.settings.columns.description')); ?></th>
+                            <th><?php echo htmlspecialchars(t('tickets.settings.columns.order')); ?></th>
+                            <th><?php echo htmlspecialchars(t('tickets.settings.columns.status')); ?></th>
+                            <th><?php echo htmlspecialchars(t('tickets.settings.columns.actions')); ?></th>
+                        </tr>
+                    </thead>
+                    <tbody id="subcategories-list">
+                        <tr><td colspan="5" style="text-align: center;"><?php echo htmlspecialchars(t('tickets.settings.loading')); ?></td></tr>
+                    </tbody>
+                </table>
+
+                <!-- Inline add/edit form for a subcategory, shown on demand. -->
+                <form id="subcategoryForm" style="display:none; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-soft, #eee);">
+                    <input type="hidden" id="subcatId">
+                    <input type="hidden" id="subcatCategoryId">
+
+                    <div class="form-group">
+                        <label for="subcatName"><?php echo htmlspecialchars(t('tickets.settings.columns.name')); ?></label>
+                        <input type="text" id="subcatName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="subcatDescription"><?php echo htmlspecialchars(t('tickets.settings.columns.description')); ?></label>
+                        <textarea id="subcatDescription"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="subcatOrder"><?php echo htmlspecialchars(t('tickets.settings.modals.lookup.display_order_label')); ?></label>
+                        <input type="number" id="subcatOrder" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label class="toggle-label">
+                            <span class="toggle-switch">
+                                <input type="checkbox" id="subcatActive" checked>
+                                <span class="toggle-slider"></span>
+                            </span>
+                            <?php echo htmlspecialchars(t('tickets.settings.modals.lookup.active_label')); ?>
+                        </label>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeSubcategoryForm()"><?php echo htmlspecialchars(t('common.cancel')); ?></button>
+                        <button type="submit" class="btn btn-primary"><?php echo htmlspecialchars(t('common.save')); ?></button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeSubcategoriesModal()"><?php echo htmlspecialchars(t('common.close')); ?></button>
+            </div>
+        </div>
+    </div>
+
     <!-- Mailbox Modal -->
     <div class="modal" id="mailboxModal">
         <div class="modal-content" style="max-width: 700px;">
@@ -1846,6 +1933,7 @@ $translationNamespaces = ['common', 'tickets'];
             });
             loadTicketTypes();
             loadTicketOrigins();
+            loadTicketCategories();
             loadTicketStatuses();
             loadTicketPriorities();
             loadRotaLocations();
@@ -2266,6 +2354,307 @@ $translationNamespaces = ['common', 'tickets'];
             }
         }
 
+        // Load ticket categories
+        async function loadTicketCategories() {
+            try {
+                const response = await fetch(API_BASE + 'get_ticket_categories.php?manage=1');
+                const data = await response.json();
+
+                if (data.success) {
+                    renderTicketCategories(data);
+                } else {
+                    showToast('Error loading categories: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function ticketCategoryRowEditable(cat) {
+            return `
+                <tr>
+                    <td><strong>${escapeHtml(cat.name)}</strong></td>
+                    <td>${escapeHtml(cat.description || '')}</td>
+                    <td>${cat.display_order}</td>
+                    <td><span class="status-badge status-${cat.is_active ? 'active' : 'inactive'}">${cat.is_active ? 'Active' : 'Inactive'}</span></td>
+                    <td>
+                        <button class="action-btn" onclick="openManageSubcategories(${cat.id}, '${escapeHtml(cat.name).replace(/'/g, "\\'")}')" title="${escapeHtml(t('tickets.categories.manage_subcategories'))}">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                        </button>
+                        <button class="action-btn" onclick="editItem('category', ${cat.id})" title="${t('common.edit')}">${TT_EDIT_SVG}</button>
+                        <button class="action-btn delete" onclick="deleteItem('category', ${cat.id}, '${escapeHtml(cat.name)}')" title="${t('common.delete')}">${TT_DELETE_SVG}</button>
+                    </td>
+                </tr>`;
+        }
+
+        function renderTicketCategories(data) {
+            const tbody = document.getElementById('categories-list');
+
+            if (data && data.scoped && data.scoped.is_default === false) {
+                renderTicketCategoriesScoped(tbody, data.scoped);
+                return;
+            }
+
+            const cats = (data && data.ticket_categories) ? data.ticket_categories : [];
+            if (cats.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No categories found</td></tr>';
+                return;
+            }
+            tbody.innerHTML = cats.map(ticketCategoryRowEditable).join('');
+        }
+
+        function renderTicketCategoriesScoped(tbody, scoped) {
+            const groupRow = (label, hint) =>
+                `<tr class="tt-group-row"><td colspan="5" style="background:#f7f9fa;border-top:1px solid #e3e8ea;font-size:12px;font-weight:600;color:#455a64;padding:10px;">${escapeHtml(label)}${hint ? ` <span style="font-weight:400;color:#90a4ae;">— ${escapeHtml(hint)}</span>` : ''}</td></tr>`;
+
+            let html = '';
+            html += groupRow(`${scoped.company.name}’s own categories`);
+            if (!scoped.own.length) {
+                html += '<tr><td colspan="5" style="color:#aaa;font-style:italic;padding:10px;">None yet — use Add to create a category just for this company.</td></tr>';
+            } else {
+                html += scoped.own.map(ticketCategoryRowEditable).join('');
+            }
+
+            html += groupRow('Shared defaults', `inherited by ${scoped.company.name}`);
+            html += scoped.globals.map(c => {
+                const dim = c.hidden ? 'opacity:0.5;' : '';
+                const statusCell = c.hidden
+                    ? '<span class="status-badge status-inactive">Hidden here</span>'
+                    : `<span class="status-badge status-${c.is_active ? 'active' : 'inactive'}">${c.is_active ? 'Active' : 'Inactive'}</span>`;
+                const toggle = c.hidden
+                    ? `<button class="action-btn" onclick="toggleTicketCategoryHidden(${c.id}, false)" title="Hidden from this company — click to show">${TT_EYE_OFF_SVG}</button>`
+                    : `<button class="action-btn" onclick="toggleTicketCategoryHidden(${c.id}, true)" title="Visible to this company — click to hide">${TT_EYE_SVG}</button>`;
+                return `
+                    <tr style="${dim}">
+                        <td><strong>${escapeHtml(c.name)}</strong></td>
+                        <td>${escapeHtml(c.description || '')}</td>
+                        <td>${c.display_order}</td>
+                        <td>${statusCell}</td>
+                        <td>
+                            <button class="action-btn" onclick="openManageSubcategories(${c.id}, '${escapeHtml(c.name).replace(/'/g, "\\'")}')" title="${escapeHtml(t('tickets.categories.manage_subcategories'))}">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                            </button>
+                            ${toggle}
+                        </td>
+                    </tr>`;
+            }).join('');
+
+            tbody.innerHTML = html;
+        }
+
+        // Hide / show a shared default category for the active company (add+hide model).
+        async function toggleTicketCategoryHidden(id, hidden) {
+            try {
+                const response = await fetch(API_BASE + 'set_ticket_category_hidden.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ticket_category_id: id, hidden: hidden })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showToast(hidden ? 'Hidden from this company' : 'Shown for this company', 'success');
+                    loadTicketCategories();
+                } else {
+                    showToast(data.error || 'Could not update', 'error');
+                }
+            } catch (error) {
+                showToast('Could not update', 'error');
+            }
+        }
+
+        // ===== Subcategories (per category) =====
+        let currentSubcategoryCategoryId = null;
+        let subcategoriesCache = [];
+
+        function openManageSubcategories(categoryId, categoryName) {
+            currentSubcategoryCategoryId = categoryId;
+            document.getElementById('subcategoriesModalTitle').textContent =
+                t('tickets.categories.subcategories_title') + ': ' + categoryName;
+            closeSubcategoryForm();
+            loadSubcategoriesModal();
+            document.getElementById('subcategoriesModal').classList.add('active');
+        }
+
+        function closeSubcategoriesModal() {
+            document.getElementById('subcategoriesModal').classList.remove('active');
+            currentSubcategoryCategoryId = null;
+        }
+
+        async function loadSubcategoriesModal() {
+            if (!currentSubcategoryCategoryId) return;
+            const tbody = document.getElementById('subcategories-list');
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center;">${escapeHtml(t('tickets.settings.loading'))}</td></tr>`;
+            try {
+                const response = await fetch(API_BASE + 'get_ticket_subcategories.php?manage=1&category_id=' + currentSubcategoryCategoryId);
+                const data = await response.json();
+                if (data.success) {
+                    renderSubcategoriesModal(data);
+                } else {
+                    showToast('Error loading subcategories: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function subcategoryRowEditable(sub) {
+            return `
+                <tr>
+                    <td><strong>${escapeHtml(sub.name)}</strong></td>
+                    <td>${escapeHtml(sub.description || '')}</td>
+                    <td>${sub.display_order}</td>
+                    <td><span class="status-badge status-${sub.is_active ? 'active' : 'inactive'}">${sub.is_active ? 'Active' : 'Inactive'}</span></td>
+                    <td>
+                        <button class="action-btn" onclick="editSubcategoryItem(${sub.id})" title="${t('common.edit')}">${TT_EDIT_SVG}</button>
+                        <button class="action-btn delete" onclick="deleteSubcategoryItem(${sub.id}, '${escapeHtml(sub.name).replace(/'/g, "\\'")}')" title="${t('common.delete')}">${TT_DELETE_SVG}</button>
+                    </td>
+                </tr>`;
+        }
+
+        function renderSubcategoriesModal(data) {
+            const tbody = document.getElementById('subcategories-list');
+            subcategoriesCache = data.ticket_subcategories || [];
+
+            if (data && data.scoped && data.scoped.is_default === false) {
+                subcategoriesCache = [...data.scoped.own, ...data.scoped.globals];
+                const groupRow = (label, hint) =>
+                    `<tr class="tt-group-row"><td colspan="5" style="background:#f7f9fa;border-top:1px solid #e3e8ea;font-size:12px;font-weight:600;color:#455a64;padding:10px;">${escapeHtml(label)}${hint ? ` <span style="font-weight:400;color:#90a4ae;">— ${escapeHtml(hint)}</span>` : ''}</td></tr>`;
+                let html = '';
+                html += groupRow(`${data.scoped.company.name}’s own subcategories`);
+                html += data.scoped.own.length
+                    ? data.scoped.own.map(subcategoryRowEditable).join('')
+                    : '<tr><td colspan="5" style="color:#aaa;font-style:italic;padding:10px;">None yet.</td></tr>';
+                html += groupRow('Shared defaults', `inherited by ${data.scoped.company.name}`);
+                html += data.scoped.globals.map(s => {
+                    const dim = s.hidden ? 'opacity:0.5;' : '';
+                    const statusCell = s.hidden
+                        ? '<span class="status-badge status-inactive">Hidden here</span>'
+                        : `<span class="status-badge status-${s.is_active ? 'active' : 'inactive'}">${s.is_active ? 'Active' : 'Inactive'}</span>`;
+                    const toggle = s.hidden
+                        ? `<button class="action-btn" onclick="toggleSubcategoryHidden(${s.id}, false)" title="Hidden from this company — click to show">${TT_EYE_OFF_SVG}</button>`
+                        : `<button class="action-btn" onclick="toggleSubcategoryHidden(${s.id}, true)" title="Visible to this company — click to hide">${TT_EYE_SVG}</button>`;
+                    return `
+                        <tr style="${dim}">
+                            <td><strong>${escapeHtml(s.name)}</strong></td>
+                            <td>${escapeHtml(s.description || '')}</td>
+                            <td>${s.display_order}</td>
+                            <td>${statusCell}</td>
+                            <td>${toggle}</td>
+                        </tr>`;
+                }).join('');
+                tbody.innerHTML = html;
+                return;
+            }
+
+            if (subcategoriesCache.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No subcategories found</td></tr>';
+                return;
+            }
+            tbody.innerHTML = subcategoriesCache.map(subcategoryRowEditable).join('');
+        }
+
+        async function toggleSubcategoryHidden(id, hidden) {
+            try {
+                const response = await fetch(API_BASE + 'set_ticket_subcategory_hidden.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ticket_subcategory_id: id, hidden: hidden })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    loadSubcategoriesModal();
+                } else {
+                    showToast(data.error || 'Could not update', 'error');
+                }
+            } catch (error) {
+                showToast('Could not update', 'error');
+            }
+        }
+
+        function openAddSubcategoryForm() {
+            document.getElementById('subcatId').value = '';
+            document.getElementById('subcatCategoryId').value = currentSubcategoryCategoryId;
+            document.getElementById('subcatName').value = '';
+            document.getElementById('subcatDescription').value = '';
+            document.getElementById('subcatOrder').value = '0';
+            document.getElementById('subcatActive').checked = true;
+            document.getElementById('subcategoryForm').style.display = '';
+        }
+
+        function editSubcategoryItem(id) {
+            const item = subcategoriesCache.find(s => s.id == id);
+            if (!item) return;
+            document.getElementById('subcatId').value = item.id;
+            document.getElementById('subcatCategoryId').value = currentSubcategoryCategoryId;
+            document.getElementById('subcatName').value = item.name;
+            document.getElementById('subcatDescription').value = item.description || '';
+            document.getElementById('subcatOrder').value = item.display_order;
+            document.getElementById('subcatActive').checked = !!item.is_active;
+            document.getElementById('subcategoryForm').style.display = '';
+        }
+
+        function closeSubcategoryForm() {
+            document.getElementById('subcategoryForm').style.display = 'none';
+        }
+
+        async function deleteSubcategoryItem(id, name) {
+            const ok = await showConfirm({
+                title: 'Delete',
+                message: `Are you sure you want to delete "${name}"?`,
+                okLabel: 'Delete',
+                okClass: 'danger'
+            });
+            if (!ok) return;
+            try {
+                const response = await fetch(API_BASE + 'delete_ticket_subcategory.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: id })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showToast('Deleted', 'success');
+                    loadSubcategoriesModal();
+                    loadTicketCategories();
+                } else {
+                    showToast('Error deleting item: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Failed to delete item', 'error');
+            }
+        }
+
+        document.getElementById('subcategoryForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = {
+                id: document.getElementById('subcatId').value || null,
+                category_id: document.getElementById('subcatCategoryId').value,
+                name: document.getElementById('subcatName').value,
+                description: document.getElementById('subcatDescription').value,
+                display_order: parseInt(document.getElementById('subcatOrder').value),
+                is_active: document.getElementById('subcatActive').checked ? 1 : 0
+            };
+            try {
+                const response = await fetch(API_BASE + 'save_ticket_subcategory.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showToast('Saved', 'success');
+                    closeSubcategoryForm();
+                    loadSubcategoriesModal();
+                } else {
+                    showToast('Error saving: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Failed to save', 'error');
+            }
+        });
+
         // Render ticket origins
         function ticketOriginRowEditable(origin) {
             return `
@@ -2415,6 +2804,7 @@ $translationNamespaces = ['common', 'tickets'];
                 'department':    t('tickets.settings.modals.lookup.add.department'),
                 'ticket-type':   t('tickets.settings.modals.lookup.add.ticket_type'),
                 'ticket-origin': t('tickets.settings.modals.lookup.add.ticket_origin'),
+                'category':      t('tickets.settings.modals.lookup.add.category'),
                 'team':          t('tickets.settings.modals.lookup.add.team'),
                 'status':        t('tickets.settings.modals.lookup.add.status'),
                 'priority':      t('tickets.settings.modals.lookup.add.priority'),
@@ -2441,6 +2831,7 @@ $translationNamespaces = ['common', 'tickets'];
                 'department': API_BASE + 'get_departments.php',
                 'ticket-type': API_BASE + 'get_ticket_types.php',
                 'ticket-origin': API_BASE + 'get_ticket_origins.php',
+                'category': API_BASE + 'get_ticket_categories.php',
                 'team': API_BASE + 'get_teams.php',
                 'status': API_BASE + 'get_ticket_statuses.php',
                 'priority': API_BASE + 'get_ticket_priorities.php',
@@ -2450,6 +2841,7 @@ $translationNamespaces = ['common', 'tickets'];
                 'department':    t('tickets.settings.modals.lookup.edit.department'),
                 'ticket-type':   t('tickets.settings.modals.lookup.edit.ticket_type'),
                 'ticket-origin': t('tickets.settings.modals.lookup.edit.ticket_origin'),
+                'category':      t('tickets.settings.modals.lookup.edit.category'),
                 'team':          t('tickets.settings.modals.lookup.edit.team'),
                 'status':        t('tickets.settings.modals.lookup.edit.status'),
                 'priority':      t('tickets.settings.modals.lookup.edit.priority'),
@@ -2466,6 +2858,7 @@ $translationNamespaces = ['common', 'tickets'];
                     if (type === 'department') items = data.departments;
                     else if (type === 'ticket-type') items = data.ticket_types;
                     else if (type === 'ticket-origin') items = data.origins;
+                    else if (type === 'category') items = data.ticket_categories;
                     else if (type === 'team') items = data.teams;
                     else if (type === 'status') items = data.statuses;
                     else if (type === 'priority') items = data.priorities;
@@ -2508,6 +2901,7 @@ $translationNamespaces = ['common', 'tickets'];
                 'department': API_BASE + 'delete_department.php',
                 'ticket-type': API_BASE + 'delete_ticket_type.php',
                 'ticket-origin': API_BASE + 'delete_ticket_origin.php',
+                'category': API_BASE + 'delete_ticket_category.php',
                 'team': API_BASE + 'delete_team.php',
                 'status': API_BASE + 'delete_ticket_status.php',
                 'priority': API_BASE + 'delete_ticket_priority.php',
@@ -2531,6 +2925,8 @@ $translationNamespaces = ['common', 'tickets'];
                         loadTicketTypes();
                     } else if (type === 'ticket-origin') {
                         loadTicketOrigins();
+                    } else if (type === 'category') {
+                        loadTicketCategories();
                     } else if (type === 'team') {
                         loadTeams().then(() => {
                             loadDepartments();
@@ -2668,6 +3064,7 @@ $translationNamespaces = ['common', 'tickets'];
                 'department': API_BASE + 'save_department.php',
                 'ticket-type': API_BASE + 'save_ticket_type.php',
                 'ticket-origin': API_BASE + 'save_ticket_origin.php',
+                'category': API_BASE + 'save_ticket_category.php',
                 'team': API_BASE + 'save_team.php',
                 'status': API_BASE + 'save_ticket_status.php',
                 'priority': API_BASE + 'save_ticket_priority.php',
@@ -2723,6 +3120,8 @@ $translationNamespaces = ['common', 'tickets'];
                         loadTicketTypes();
                     } else if (type === 'ticket-origin') {
                         loadTicketOrigins();
+                    } else if (type === 'category') {
+                        loadTicketCategories();
                     } else if (type === 'team') {
                         loadTeams().then(() => {
                             loadDepartments();

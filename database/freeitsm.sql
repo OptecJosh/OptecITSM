@@ -265,6 +265,41 @@ CREATE TABLE IF NOT EXISTS `ticket_origins` (
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Ticket categories: hierarchical (category -> subcategory), tenant-scoped the
+-- same way as ticket_types (NULL tenant_id = global default; set = a company's
+-- own addition). Hiding a global category/subcategory for one company reuses
+-- the generic tenant_config_hidden table (entity_type 'ticket_category' /
+-- 'ticket_subcategory') rather than a bespoke hide table.
+CREATE TABLE IF NOT EXISTS `ticket_categories` (
+    `id`                INT NOT NULL AUTO_INCREMENT,
+    `name`              VARCHAR(100) NOT NULL,
+    `description`       VARCHAR(255) NULL,
+    `is_active`         TINYINT(1) NULL DEFAULT 1,
+    `display_order`     INT NULL DEFAULT 0,
+    `tenant_id`         INT NULL,
+    `created_datetime`  DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_ticket_categories_tenant_name` (`tenant_id`, `name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `ticket_subcategories` (
+    `id`                INT NOT NULL AUTO_INCREMENT,
+    `category_id`       INT NOT NULL,
+    `name`              VARCHAR(100) NOT NULL,
+    `description`       VARCHAR(255) NULL,
+    `is_active`         TINYINT(1) NULL DEFAULT 1,
+    `display_order`     INT NULL DEFAULT 0,
+    -- Mirrors the parent category's tenant_id; enforced in the service layer
+    -- (a subcategory belongs to exactly one category, which already carries
+    -- the tenant scope), not re-validated at the DB level.
+    `tenant_id`         INT NULL,
+    `created_datetime`  DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_ticket_subcategories_cat_name` (`category_id`, `name`),
+    KEY `ix_ticket_subcategories_category_id` (`category_id`),
+    CONSTRAINT `fk_ticket_subcategories_category` FOREIGN KEY (`category_id`) REFERENCES `ticket_categories` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `ticket_prefixes` (
     `id`            INT NOT NULL AUTO_INCREMENT,
     `prefix`        VARCHAR(3) NOT NULL,
@@ -474,6 +509,8 @@ CREATE TABLE IF NOT EXISTS `tickets` (
     `priority_id`           INT NULL,
     `department_id`         INT NULL,
     `ticket_type_id`        INT NULL,
+    `category_id`           INT NULL,
+    `subcategory_id`        INT NULL,
     `assigned_analyst_id`   INT NULL,
     `created_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
@@ -498,6 +535,8 @@ CREATE TABLE IF NOT EXISTS `tickets` (
     KEY `ix_tickets_created_datetime` (`created_datetime`),
     KEY `ix_tickets_tenant_id` (`tenant_id`),
     KEY `ix_tickets_deleted_datetime` (`deleted_datetime`),
+    KEY `ix_tickets_category_id` (`category_id`),
+    KEY `ix_tickets_subcategory_id` (`subcategory_id`),
     CONSTRAINT `fk_tickets_analysts` FOREIGN KEY (`assigned_analyst_id`) REFERENCES `analysts` (`id`),
     CONSTRAINT `fk_tickets_departments` FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`),
     CONSTRAINT `fk_tickets_origin` FOREIGN KEY (`origin_id`) REFERENCES `ticket_origins` (`id`),
@@ -505,7 +544,9 @@ CREATE TABLE IF NOT EXISTS `tickets` (
     CONSTRAINT `fk_tickets_users` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
     CONSTRAINT `fk_tickets_status` FOREIGN KEY (`status_id`) REFERENCES `ticket_statuses` (`id`),
     CONSTRAINT `fk_tickets_priority` FOREIGN KEY (`priority_id`) REFERENCES `ticket_priorities` (`id`),
-    CONSTRAINT `fk_tickets_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`)
+    CONSTRAINT `fk_tickets_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`),
+    CONSTRAINT `fk_tickets_category` FOREIGN KEY (`category_id`) REFERENCES `ticket_categories` (`id`),
+    CONSTRAINT `fk_tickets_subcategory` FOREIGN KEY (`subcategory_id`) REFERENCES `ticket_subcategories` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `ticket_audit` (

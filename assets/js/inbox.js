@@ -114,6 +114,9 @@ function hydrateEmailBodies(root) {
 let departments = [];
 let ticketTypes = [];
 let ticketOrigins = [];
+let ticketCategories = [];
+let ticketSubcategoriesByCategory = {};   // category_id -> active subcategories (fetched lazily, cached)
+let ticketSubcategoriesById = {};         // flat id -> subcategory, populated as categories are fetched
 let ticketStatuses = [];
 // Multi-tenancy: companies this analyst can move tickets into. Empty / length<=1 on a
 // single-company install, so the "Company" picker + wrong-company warning stay hidden.
@@ -172,6 +175,12 @@ function getDisplayName(type, id) {
     } else if (type === 'origin') {
         const o = ticketOrigins.find(x => x.id == id);
         return o ? o.name : id;
+    } else if (type === 'category') {
+        const c = ticketCategories.find(x => x.id == id);
+        return c ? c.name : id;
+    } else if (type === 'subcategory') {
+        const s = ticketSubcategoriesById[id];
+        return s ? s.name : id;
     } else if (type === 'owner') {
         const a = analysts.find(x => x.id == id);
         return a ? a.full_name : id;
@@ -229,6 +238,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadDepartments();
     loadTicketTypes();
     loadTicketOrigins();
+    loadTicketCategories();
     loadTicketStatuses();
     loadTicketPriorities();
     loadAnalysts();
@@ -439,6 +449,42 @@ async function loadTicketOrigins() {
     } catch (error) {
         console.error('Error loading ticket origins:', error);
     }
+}
+
+// Load ticket categories
+async function loadTicketCategories() {
+    try {
+        const response = await fetch(API_BASE + 'get_ticket_categories.php');
+        const data = await response.json();
+
+        if (data.success) {
+            ticketCategories = data.ticket_categories.filter(c => c.is_active);
+        }
+    } catch (error) {
+        console.error('Error loading ticket categories:', error);
+    }
+}
+
+// Load the subcategories for one category (cached per category_id). Only
+// active subcategories are offered in pickers.
+async function loadTicketSubcategories(categoryId) {
+    if (!categoryId) return [];
+    if (ticketSubcategoriesByCategory[categoryId]) {
+        return ticketSubcategoriesByCategory[categoryId];
+    }
+    try {
+        const response = await fetch(API_BASE + 'get_ticket_subcategories.php?category_id=' + encodeURIComponent(categoryId));
+        const data = await response.json();
+        if (data.success) {
+            const active = data.ticket_subcategories.filter(s => s.is_active);
+            ticketSubcategoriesByCategory[categoryId] = active;
+            active.forEach(s => { ticketSubcategoriesById[s.id] = s; });
+            return active;
+        }
+    } catch (error) {
+        console.error('Error loading ticket subcategories:', error);
+    }
+    return [];
 }
 
 // Load the companies this analyst can move tickets into (multi-company installs only).
@@ -1252,6 +1298,12 @@ function displayEmail(email, recordings) {
         `<option value="${type.id}" ${email.ticket_type_id == type.id ? 'selected' : ''}>${escapeHtml(type.name)}</option>`
     ).join('');
 
+    // Build category dropdown. Subcategory options depend on the selected
+    // category and are populated asynchronously after render (populateSubcategorySelect).
+    const categoryOptions = ticketCategories.map(cat =>
+        `<option value="${cat.id}" ${email.category_id == cat.id ? 'selected' : ''}>${escapeHtml(cat.name)}</option>`
+    ).join('');
+
     // Build status dropdown from the active ticket_statuses lookup
     const statusOptions = ticketStatuses.map(s =>
         `<option value="${escapeHtml(s.name)}" ${email.status === s.name ? 'selected' : ''}>${escapeHtml(s.name)}</option>`
@@ -1340,6 +1392,19 @@ function displayEmail(email, recordings) {
                         <select class="toolbar-select" id="ticketTypeSelect" onchange="assignTicketType()">
                             <option value=""></option>
                             ${ticketTypeOptions}
+                        </select>
+                    </div>
+                    <div class="toolbar-field">
+                        <label class="toolbar-label">${escapeHtml(t('tickets.reading_pane.field_category'))}</label>
+                        <select class="toolbar-select" id="categorySelect" onchange="assignCategory()">
+                            <option value=""></option>
+                            ${categoryOptions}
+                        </select>
+                    </div>
+                    <div class="toolbar-field">
+                        <label class="toolbar-label">${escapeHtml(t('tickets.reading_pane.field_subcategory'))}</label>
+                        <select class="toolbar-select" id="subcategorySelect" onchange="assignSubcategory()" disabled>
+                            <option value=""></option>
                         </select>
                     </div>
                     <div class="toolbar-field">
@@ -1472,6 +1537,9 @@ function displayEmail(email, recordings) {
     loadCmdbObjects(email.ticket_id);
     loadTimeEntries(email.ticket_id);
     loadSlaState(email.ticket_id);
+
+    // Subcategory options depend on the selected category — populate after render.
+    populateSubcategorySelect(email.category_id);
 
     // A ticket is now displayed — apply popout class if the saved pref says so.
     syncPopoutToTicketState(true);
@@ -2177,6 +2245,89 @@ async function assignTicketType() {
         console.error('Error:', error);
         showToast('Failed to assign ticket type', 'error');
     }
+}
+
+// Assign category — clears subcategory (which belongs to the old category)
+// and repopulates the subcategory picker for the new category.
+async function assignCategory() {
+    const categoryId = document.getElementById('categorySelect').value;
+    const oldValue = getDisplayName('category', currentEmail.category_id);
+    const newValue = getDisplayName('category', categoryId);
+    const oldSubValue = getDisplayName('subcategory', currentEmail.subcategory_id);
+
+    try {
+        const response = await fetch(API_BASE + 'assign_ticket.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ticket_id: currentEmail.ticket_id,
+                category_id: categoryId || null,
+                subcategory_id: null
+            })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            await logAudit(currentEmail.ticket_id, 'Category', oldValue, newValue);
+            if (currentEmail.subcategory_id) {
+                await logAudit(currentEmail.ticket_id, 'Subcategory', oldSubValue, null);
+            }
+            currentEmail.category_id = categoryId || null;
+            currentEmail.subcategory_id = null;
+            await populateSubcategorySelect(categoryId);
+        } else {
+            showToast('Error assigning category: ' + data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('Failed to assign category', 'error');
+    }
+}
+
+// Assign subcategory
+async function assignSubcategory() {
+    const subcategoryId = document.getElementById('subcategorySelect').value;
+    const oldValue = getDisplayName('subcategory', currentEmail.subcategory_id);
+    const newValue = getDisplayName('subcategory', subcategoryId);
+
+    try {
+        const response = await fetch(API_BASE + 'assign_ticket.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ticket_id: currentEmail.ticket_id,
+                subcategory_id: subcategoryId || null
+            })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            await logAudit(currentEmail.ticket_id, 'Subcategory', oldValue, newValue);
+            currentEmail.subcategory_id = subcategoryId || null;
+        } else {
+            showToast('Error assigning subcategory: ' + data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('Failed to assign subcategory', 'error');
+    }
+}
+
+// (Re)populate the reading-pane subcategory select for the given category,
+// preselecting currentEmail.subcategory_id if it's still valid for it.
+async function populateSubcategorySelect(categoryId) {
+    const sel = document.getElementById('subcategorySelect');
+    if (!sel) return;
+    if (!categoryId) {
+        sel.innerHTML = '<option value=""></option>';
+        sel.disabled = true;
+        return;
+    }
+    const subs = await loadTicketSubcategories(categoryId);
+    sel.disabled = false;
+    sel.innerHTML = '<option value=""></option>' + subs.map(s =>
+        `<option value="${s.id}" ${currentEmail && currentEmail.subcategory_id == s.id ? 'selected' : ''}>${escapeHtml(s.name)}</option>`
+    ).join('');
 }
 
 // Assign status
@@ -3443,6 +3594,14 @@ function openNewTicketModal() {
     typeSelect.innerHTML = '<option value="">-- Select --</option>' +
         ticketTypes.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
 
+    // Populate category dropdown; subcategory stays empty/disabled until a category is chosen.
+    const catSelect = document.getElementById('newTicketCategory');
+    catSelect.innerHTML = '<option value="">-- Select --</option>' +
+        ticketCategories.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+    const subcatSelect = document.getElementById('newTicketSubcategory');
+    subcatSelect.innerHTML = '<option value="">-- Select --</option>';
+    subcatSelect.disabled = true;
+
     // Populate priority dropdown from the CONFIGURED priorities (active only) so
     // custom ones like Urgent/Critical appear instead of a hardcoded Low/Normal/High
     // subset (#40). The value is the priority NAME — createTicket resolves name→id.
@@ -3503,6 +3662,21 @@ function closeNewTicketModal() {
     document.getElementById('newTicketModal').classList.remove('active');
 }
 
+// Repopulate the New Ticket modal's subcategory dropdown when its category changes.
+async function onNewTicketCategoryChange() {
+    const categoryId = document.getElementById('newTicketCategory').value;
+    const subcatSelect = document.getElementById('newTicketSubcategory');
+    if (!categoryId) {
+        subcatSelect.innerHTML = '<option value="">-- Select --</option>';
+        subcatSelect.disabled = true;
+        return;
+    }
+    const subs = await loadTicketSubcategories(categoryId);
+    subcatSelect.disabled = false;
+    subcatSelect.innerHTML = '<option value="">-- Select --</option>' +
+        subs.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+}
+
 async function createNewTicket() {
     const fromName = document.getElementById('newTicketFromName').value.trim();
     const fromEmail = document.getElementById('newTicketFromEmail').value.trim();
@@ -3510,6 +3684,8 @@ async function createNewTicket() {
     const body = document.getElementById('newTicketBody').value.trim();
     const departmentId = document.getElementById('newTicketDepartment').value;
     const ticketTypeId = document.getElementById('newTicketType').value;
+    const categoryId = document.getElementById('newTicketCategory').value;
+    const subcategoryId = document.getElementById('newTicketSubcategory').value;
     const priority = document.getElementById('newTicketPriority').value;
     const mailboxId = document.getElementById('newTicketMailbox').value;
 
@@ -3544,6 +3720,8 @@ async function createNewTicket() {
                 body: body,
                 department_id: departmentId || null,
                 ticket_type_id: ticketTypeId || null,
+                category_id: categoryId || null,
+                subcategory_id: subcategoryId || null,
                 priority: priority,
                 mailbox_id: mailboxId || null
             })

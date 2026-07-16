@@ -45,6 +45,8 @@ try {
         'priority'            => $input['priority'] ?? 'Normal',
         'department_id'       => $input['department_id'] ?? null,
         'ticket_type_id'      => $input['ticket_type_id'] ?? null,
+        'category_id'         => $input['category_id'] ?? null,
+        'subcategory_id'      => $input['subcategory_id'] ?? null,
         'mailbox_id'          => $input['mailbox_id'] ?? null,
     ];
     if (!empty($input['assigned_analyst_id'])) {

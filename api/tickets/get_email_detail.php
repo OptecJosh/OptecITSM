@@ -57,6 +57,8 @@ try {
                 t.priority_id,
                 t.department_id,
                 t.ticket_type_id,
+                t.category_id,
+                t.subcategory_id,
                 t.assigned_analyst_id,
                 t.origin_id,
                 t.first_time_fix,

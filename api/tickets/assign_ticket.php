@@ -1,7 +1,7 @@
 <?php
 /**
- * API Endpoint: Update a ticket (department / type / status / origin / priority /
- * assignment / first-time-fix / IT-training).
+ * API Endpoint: Update a ticket (department / type / category / subcategory /
+ * status / origin / priority / assignment / first-time-fix / IT-training).
  * Thin UI adapter over TicketsService::updateTicket. writeAudit=false — the UI
  * writes its audit trail client-side (log_ticket_audit.php). The shared rules
  * (closed_datetime, owner sync, template emails, CSAT, workflow dispatches) run
@@ -27,7 +27,7 @@ try {
 
     // Only the ticket-field keys the detail panel edits (the service ignores the rest).
     $in = [];
-    foreach (['department_id', 'ticket_type_id', 'status', 'origin_id', 'first_time_fix', 'it_training_provided', 'priority_id', 'assigned_analyst_id'] as $k) {
+    foreach (['department_id', 'ticket_type_id', 'category_id', 'subcategory_id', 'status', 'origin_id', 'first_time_fix', 'it_training_provided', 'priority_id', 'assigned_analyst_id'] as $k) {
         if (array_key_exists($k, $data)) $in[$k] = $data[$k];
     }
 

@@ -193,6 +193,20 @@ $translationNamespaces = ['common', 'tickets'];
                         <select class="form-select" id="newTicketPriority"></select>
                     </div>
                 </div>
+                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label class="form-label"><?php echo htmlspecialchars(t('tickets.new_ticket_modal.category')); ?></label>
+                        <select class="form-select" id="newTicketCategory" onchange="onNewTicketCategoryChange()">
+                            <option value=""><?php echo htmlspecialchars(t('tickets.new_ticket_modal.select_placeholder')); ?></option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label"><?php echo htmlspecialchars(t('tickets.new_ticket_modal.subcategory')); ?></label>
+                        <select class="form-select" id="newTicketSubcategory" disabled>
+                            <option value=""><?php echo htmlspecialchars(t('tickets.new_ticket_modal.select_placeholder')); ?></option>
+                        </select>
+                    </div>
+                </div>
                 <div class="form-group">
                     <label class="form-label"><?php echo htmlspecialchars(t('tickets.new_ticket_modal.description')); ?></label>
                     <textarea class="form-textarea" id="newTicketBody" rows="8" placeholder="<?php echo htmlspecialchars(t('tickets.new_ticket_modal.description_placeholder')); ?>"></textarea>

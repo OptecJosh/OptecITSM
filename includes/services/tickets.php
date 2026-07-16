@@ -77,10 +77,12 @@ class TicketsService
             $priorityRes = $row ? [(int)$row['id'], $row['name']] : [null, null];
         }
 
-        $departmentId = isset($in['department_id']) && $in['department_id'] !== '' ? (int)$in['department_id'] : null;
-        $typeId       = isset($in['ticket_type_id']) && $in['ticket_type_id'] !== '' ? (int)$in['ticket_type_id'] : null;
-        $originId     = isset($in['origin_id']) && $in['origin_id'] !== '' ? (int)$in['origin_id'] : null;
-        $mailboxId    = isset($in['mailbox_id']) && $in['mailbox_id'] !== '' ? (int)$in['mailbox_id'] : null;
+        $departmentId  = isset($in['department_id']) && $in['department_id'] !== '' ? (int)$in['department_id'] : null;
+        $typeId        = isset($in['ticket_type_id']) && $in['ticket_type_id'] !== '' ? (int)$in['ticket_type_id'] : null;
+        $originId      = isset($in['origin_id']) && $in['origin_id'] !== '' ? (int)$in['origin_id'] : null;
+        $mailboxId     = isset($in['mailbox_id']) && $in['mailbox_id'] !== '' ? (int)$in['mailbox_id'] : null;
+        $categoryId    = isset($in['category_id']) && $in['category_id'] !== '' ? (int)$in['category_id'] : null;
+        $subcategoryId = isset($in['subcategory_id']) && $in['subcategory_id'] !== '' ? (int)$in['subcategory_id'] : null;
 
         $analystId = $defaultAnalystId;
         if (isset($in['assigned_analyst_id']) && $in['assigned_analyst_id'] !== '') {
@@ -90,6 +92,18 @@ class TicketsService
         self::validateLookupId($conn, 'departments', $departmentId, 'department');
         self::validateLookupId($conn, 'ticket_types', $typeId, 'ticket type');
         self::validateLookupId($conn, 'ticket_origins', $originId, 'origin');
+        self::validateLookupId($conn, 'ticket_categories', $categoryId, 'category');
+        if ($subcategoryId !== null) {
+            $sStmt = $conn->prepare("SELECT category_id FROM ticket_subcategories WHERE id = ? LIMIT 1");
+            $sStmt->execute([$subcategoryId]);
+            $subCategoryOwner = $sStmt->fetchColumn();
+            if ($subCategoryOwner === false) {
+                throw new ServiceError('validation', 'invalid_field', "Unknown subcategory id: {$subcategoryId}");
+            }
+            if ($categoryId === null || (int)$subCategoryOwner !== $categoryId) {
+                throw new ServiceError('validation', 'invalid_field', 'Subcategory does not belong to the selected category.');
+            }
+        }
         if ($analystId !== null) {
             $aStmt = $conn->prepare("SELECT id FROM analysts WHERE id = ? AND is_active = 1");
             $aStmt->execute([$analystId]);
@@ -127,12 +141,12 @@ class TicketsService
             $conn->prepare(
                 "INSERT INTO tickets (
                     tenant_id, ticket_number, subject, status_id, priority_id, department_id,
-                    ticket_type_id, origin_id, assigned_analyst_id, owner_id, user_id,
+                    ticket_type_id, category_id, subcategory_id, origin_id, assigned_analyst_id, owner_id, user_id,
                     created_datetime, updated_datetime
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())"
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())"
             )->execute([
                 $tenantId, $ticketNumber, $subject, $statusRes[0], $priorityRes[0], $departmentId,
-                $typeId, $originId, $analystId, $analystId, $userId,
+                $typeId, $categoryId, $subcategoryId, $originId, $analystId, $analystId, $userId,
             ]);
             $ticketId = (int)$conn->lastInsertId();
 
@@ -247,6 +261,7 @@ class TicketsService
             'department_id'  => ['departments',    'department',  'Department',  'department_name'],
             'ticket_type_id' => ['ticket_types',   'ticket type', 'Ticket Type', 'type_name'],
             'origin_id'      => ['ticket_origins', 'origin',      'Origin',      'origin_name'],
+            'category_id'    => ['ticket_categories', 'category', 'Category',    'category_name'],
         ] as $field => [$table, $label, $auditField, $currentNameKey]) {
             if (!array_key_exists($field, $in)) {
                 continue;
@@ -257,6 +272,36 @@ class TicketsService
                 $updates[] = "$field = ?";
                 $args[]    = $newId;
                 $audits[]  = [$auditField, $current[$currentNameKey], $newName];
+            }
+        }
+
+        // Subcategory: interdependent with category (unlike the fields above), so it
+        // can't go through the independent-field loop — it must be validated against
+        // whichever category applies AFTER the category change above is resolved.
+        if (array_key_exists('subcategory_id', $in)) {
+            $newSubcatId = ($in['subcategory_id'] === '' || $in['subcategory_id'] === null) ? null : (int)$in['subcategory_id'];
+            // The category in effect after this update: the incoming value if the
+            // caller sent one, otherwise the ticket's current category.
+            $effectiveCategoryId = array_key_exists('category_id', $in)
+                ? (($in['category_id'] === '' || $in['category_id'] === null) ? null : (int)$in['category_id'])
+                : ($current['category_id'] !== null ? (int)$current['category_id'] : null);
+            $newSubcatName = null;
+            if ($newSubcatId !== null) {
+                $sStmt = $conn->prepare("SELECT name, category_id FROM ticket_subcategories WHERE id = ? LIMIT 1");
+                $sStmt->execute([$newSubcatId]);
+                $sRow = $sStmt->fetch(PDO::FETCH_ASSOC);
+                if (!$sRow) {
+                    throw new ServiceError('validation', 'invalid_field', "Unknown subcategory id: {$newSubcatId}");
+                }
+                if ($effectiveCategoryId === null || (int)$sRow['category_id'] !== $effectiveCategoryId) {
+                    throw new ServiceError('validation', 'invalid_field', 'Subcategory does not belong to the selected category.');
+                }
+                $newSubcatName = $sRow['name'];
+            }
+            if ($newSubcatId !== ($current['subcategory_id'] !== null ? (int)$current['subcategory_id'] : null)) {
+                $updates[] = 'subcategory_id = ?';
+                $args[]    = $newSubcatId;
+                $audits[]  = ['Subcategory', $current['subcategory_name'], $newSubcatName];
             }
         }
 
@@ -574,7 +619,9 @@ class TicketsService
                     tor.name AS origin_name,
                     d.name AS department_name,
                     a.full_name AS analyst_name,
-                    tn.name AS company_name
+                    tn.name AS company_name,
+                    tc.name AS category_name,
+                    tsc.name AS subcategory_name
              FROM tickets t
              LEFT JOIN ticket_statuses   ts  ON ts.id  = t.status_id
              LEFT JOIN ticket_priorities tp  ON tp.id  = t.priority_id
@@ -583,6 +630,8 @@ class TicketsService
              LEFT JOIN departments       d   ON d.id   = t.department_id
              LEFT JOIN analysts          a   ON a.id   = t.assigned_analyst_id
              LEFT JOIN tenants           tn  ON tn.id  = t.tenant_id
+             LEFT JOIN ticket_categories tc  ON tc.id  = t.category_id
+             LEFT JOIN ticket_subcategories tsc ON tsc.id = t.subcategory_id
              WHERE t.id = ?"
         );
         $stmt->execute([$ticketId]);

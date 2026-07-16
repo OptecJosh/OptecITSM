@@ -215,6 +215,31 @@ $schema = [
         'created_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
     ],
 
+    // Ticket categories/subcategories: hierarchical, tenant-scoped the same way
+    // as ticket_types (NULL tenant_id = global default; set = a company's own
+    // addition). Hiding reuses tenant_config_hidden (entity_type
+    // 'ticket_category' / 'ticket_subcategory').
+    'ticket_categories' => [
+        'id'                => 'INT NOT NULL AUTO_INCREMENT',
+        'name'              => 'VARCHAR(100) NOT NULL',
+        'description'       => 'VARCHAR(255) NULL',
+        'is_active'         => 'TINYINT(1) NULL DEFAULT 1',
+        'display_order'     => 'INT NULL DEFAULT 0',
+        'tenant_id'         => 'INT NULL',
+        'created_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
+    'ticket_subcategories' => [
+        'id'                => 'INT NOT NULL AUTO_INCREMENT',
+        'category_id'       => 'INT NOT NULL',
+        'name'              => 'VARCHAR(100) NOT NULL',
+        'description'       => 'VARCHAR(255) NULL',
+        'is_active'         => 'TINYINT(1) NULL DEFAULT 1',
+        'display_order'     => 'INT NULL DEFAULT 0',
+        'tenant_id'         => 'INT NULL',
+        'created_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
     // Multi-tenancy: the per-company "hide" layer for global config (the add+hide
     // override model — design §7). A row means "this company does NOT want global
     // <entity_type> #<entity_id> in its lists". Generic so one table serves every
@@ -355,6 +380,8 @@ $schema = [
         'priority_id'           => 'INT NULL',
         'department_id'         => 'INT NULL',
         'ticket_type_id'        => 'INT NULL',
+        'category_id'           => 'INT NULL',
+        'subcategory_id'        => 'INT NULL',
         'assigned_analyst_id'   => 'INT NULL',
         'created_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
         'updated_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
@@ -3048,6 +3075,42 @@ try {
         }
         if (!$idxExists('ticket_types', 'uq_ticket_types_tenant_name')) {
             try { $conn->exec("ALTER TABLE ticket_types ADD UNIQUE KEY uq_ticket_types_tenant_name (tenant_id, name)"); } catch (Exception $e) {}
+        }
+    }
+    // Ticket categories/subcategories (mirrors ticket_types above).
+    if ($tableExists('ticket_categories') && $tableExists('tenants') && $colExists('ticket_categories', 'tenant_id')) {
+        if (!$fkExists('ticket_categories', 'fk_ticket_categories_tenant')) {
+            try { $conn->exec("ALTER TABLE ticket_categories ADD CONSTRAINT fk_ticket_categories_tenant FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if (!$idxExists('ticket_categories', 'uq_ticket_categories_tenant_name')) {
+            try { $conn->exec("ALTER TABLE ticket_categories ADD UNIQUE KEY uq_ticket_categories_tenant_name (tenant_id, name)"); } catch (Exception $e) {}
+        }
+    }
+    if ($tableExists('ticket_subcategories') && $tableExists('ticket_categories')) {
+        if (!$fkExists('ticket_subcategories', 'fk_ticket_subcategories_category')) {
+            try { $conn->exec("ALTER TABLE ticket_subcategories ADD CONSTRAINT fk_ticket_subcategories_category FOREIGN KEY (category_id) REFERENCES ticket_categories (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if (!$idxExists('ticket_subcategories', 'ix_ticket_subcategories_category_id')) {
+            try { $conn->exec("ALTER TABLE ticket_subcategories ADD INDEX ix_ticket_subcategories_category_id (category_id)"); } catch (Exception $e) {}
+        }
+        if (!$idxExists('ticket_subcategories', 'uq_ticket_subcategories_cat_name')) {
+            try { $conn->exec("ALTER TABLE ticket_subcategories ADD UNIQUE KEY uq_ticket_subcategories_cat_name (category_id, name)"); } catch (Exception $e) {}
+        }
+    }
+    if ($tableExists('tickets') && $tableExists('ticket_categories') && $colExists('tickets', 'category_id')) {
+        if (!$fkExists('tickets', 'fk_tickets_category')) {
+            try { $conn->exec("ALTER TABLE tickets ADD CONSTRAINT fk_tickets_category FOREIGN KEY (category_id) REFERENCES ticket_categories (id)"); } catch (Exception $e) {}
+        }
+        if (!$idxExists('tickets', 'ix_tickets_category_id')) {
+            try { $conn->exec("ALTER TABLE tickets ADD INDEX ix_tickets_category_id (category_id)"); } catch (Exception $e) {}
+        }
+    }
+    if ($tableExists('tickets') && $tableExists('ticket_subcategories') && $colExists('tickets', 'subcategory_id')) {
+        if (!$fkExists('tickets', 'fk_tickets_subcategory')) {
+            try { $conn->exec("ALTER TABLE tickets ADD CONSTRAINT fk_tickets_subcategory FOREIGN KEY (subcategory_id) REFERENCES ticket_subcategories (id)"); } catch (Exception $e) {}
+        }
+        if (!$idxExists('tickets', 'ix_tickets_subcategory_id')) {
+            try { $conn->exec("ALTER TABLE tickets ADD INDEX ix_tickets_subcategory_id (subcategory_id)"); } catch (Exception $e) {}
         }
     }
 

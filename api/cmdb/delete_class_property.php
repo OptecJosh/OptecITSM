@@ -25,15 +25,16 @@ try {
 
     $conn = connectToDatabase();
 
-    $cnt = $conn->prepare("SELECT COUNT(*) FROM cmdb_object_properties WHERE property_id = ?");
+    // Definitions + values now live in the generalized custom_field_* tables.
+    $cnt = $conn->prepare("SELECT COUNT(*) FROM custom_field_values WHERE entity_type = 'cmdb_object' AND field_id = ?");
     $cnt->execute([$id]);
     $valueCount = (int)$cnt->fetchColumn();
     if ($valueCount > 0) {
         throw new Exception("Cannot delete: $valueCount object(s) have a value set for this property. Clear those values first.");
     }
 
-    $name = $conn->query("SELECT label FROM cmdb_class_properties WHERE id = " . (int)$id)->fetchColumn() ?: null;
-    $stmt = $conn->prepare("DELETE FROM cmdb_class_properties WHERE id = ?");
+    $name = $conn->query("SELECT label FROM custom_field_definitions WHERE id = " . (int)$id . " AND entity_type = 'cmdb_object'")->fetchColumn() ?: null;
+    $stmt = $conn->prepare("DELETE FROM custom_field_definitions WHERE id = ? AND entity_type = 'cmdb_object'");
     $stmt->execute([$id]);
 
     wf_emit('cmdb_property', 'deleted', (int)$id, $name);

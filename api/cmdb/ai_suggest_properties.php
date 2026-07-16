@@ -46,7 +46,7 @@ try {
     if (!$cls) throw new Exception('Class not found');
 
     // Pull existing properties to avoid duplicate suggestions
-    $propsStmt = $conn->prepare("SELECT label, property_key FROM cmdb_class_properties WHERE class_id = ?");
+    $propsStmt = $conn->prepare("SELECT label, field_key AS property_key FROM custom_field_definitions WHERE entity_type = 'cmdb_object' AND class_id = ?");
     $propsStmt->execute([$classId]);
     $existing = $propsStmt->fetchAll(PDO::FETCH_ASSOC);
     $existingKeys   = array_map('strtolower', array_column($existing, 'property_key'));

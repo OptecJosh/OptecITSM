@@ -2439,6 +2439,45 @@ $schema = [
         'value_object_id'   => 'INT NULL',
     ],
 
+    // Generalized custom-field engine — the shared, entity-typed twin of the CMDB
+    // property tables above. CMDB data is migrated in (id-preserving) by the
+    // one-time backfill further down; ticket custom fields use it directly.
+    'custom_field_definitions' => [
+        'id'                 => 'INT NOT NULL AUTO_INCREMENT',
+        'entity_type'        => 'VARCHAR(50) NOT NULL',
+        'class_id'           => 'INT NULL',
+        'tenant_id'          => 'INT NULL',
+        'field_key'          => 'VARCHAR(100) NOT NULL',
+        'label'              => 'VARCHAR(150) NOT NULL',
+        'field_type'         => 'VARCHAR(20) NOT NULL',
+        'target_entity_type' => 'VARCHAR(50) NULL',
+        'target_class_id'    => 'INT NULL',
+        'is_required'        => 'TINYINT(1) NULL DEFAULT 0',
+        'display_order'      => 'INT NULL DEFAULT 0',
+        'is_active'          => 'TINYINT(1) NULL DEFAULT 1',
+        'created_datetime'   => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
+    'custom_field_options' => [
+        'id'              => 'INT NOT NULL AUTO_INCREMENT',
+        'field_id'        => 'INT NOT NULL',
+        'option_value'    => 'VARCHAR(255) NOT NULL',
+        'colour'          => 'VARCHAR(7) NULL',
+        'display_order'   => 'INT NULL DEFAULT 0',
+    ],
+
+    'custom_field_values' => [
+        'id'              => 'INT NOT NULL AUTO_INCREMENT',
+        'entity_type'     => 'VARCHAR(50) NOT NULL',
+        'entity_id'       => 'INT NOT NULL',
+        'field_id'        => 'INT NOT NULL',
+        'value_text'      => 'TEXT NULL',
+        'value_number'    => 'DECIMAL(20,4) NULL',
+        'value_date'      => 'DATETIME NULL',
+        'value_boolean'   => 'TINYINT(1) NULL',
+        'value_ref_id'    => 'INT NULL',
+    ],
+
     'cmdb_relationship_types' => [
         'id'                => 'INT NOT NULL AUTO_INCREMENT',
         'verb'              => 'VARCHAR(100) NOT NULL',
@@ -3111,6 +3150,107 @@ try {
         }
         if (!$idxExists('tickets', 'ix_tickets_subcategory_id')) {
             try { $conn->exec("ALTER TABLE tickets ADD INDEX ix_tickets_subcategory_id (subcategory_id)"); } catch (Exception $e) {}
+        }
+    }
+
+    // --- Generalized custom-field engine: unique keys, indexes, FKs -----------
+    if ($tableExists('custom_field_definitions')) {
+        if (!$idxExists('custom_field_definitions', 'uq_custom_field_def_key')) {
+            try { $conn->exec("ALTER TABLE custom_field_definitions ADD UNIQUE KEY uq_custom_field_def_key (entity_type, class_id, tenant_id, field_key)"); } catch (Exception $e) {}
+        }
+        if (!$idxExists('custom_field_definitions', 'ix_custom_field_def_entity')) {
+            try { $conn->exec("ALTER TABLE custom_field_definitions ADD INDEX ix_custom_field_def_entity (entity_type, class_id)"); } catch (Exception $e) {}
+        }
+        if ($tableExists('cmdb_classes')) {
+            if (!$fkExists('custom_field_definitions', 'fk_custom_field_def_class')) {
+                try { $conn->exec("ALTER TABLE custom_field_definitions ADD CONSTRAINT fk_custom_field_def_class FOREIGN KEY (class_id) REFERENCES cmdb_classes (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+            }
+            if (!$fkExists('custom_field_definitions', 'fk_custom_field_def_target_class')) {
+                try { $conn->exec("ALTER TABLE custom_field_definitions ADD CONSTRAINT fk_custom_field_def_target_class FOREIGN KEY (target_class_id) REFERENCES cmdb_classes (id)"); } catch (Exception $e) {}
+            }
+        }
+    }
+    if ($tableExists('custom_field_options') && $tableExists('custom_field_definitions')) {
+        if (!$idxExists('custom_field_options', 'ix_custom_field_options_field_id')) {
+            try { $conn->exec("ALTER TABLE custom_field_options ADD INDEX ix_custom_field_options_field_id (field_id)"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('custom_field_options', 'fk_custom_field_options_field')) {
+            try { $conn->exec("ALTER TABLE custom_field_options ADD CONSTRAINT fk_custom_field_options_field FOREIGN KEY (field_id) REFERENCES custom_field_definitions (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+    }
+    if ($tableExists('custom_field_values') && $tableExists('custom_field_definitions')) {
+        if (!$idxExists('custom_field_values', 'uq_custom_field_values_entity_field')) {
+            try { $conn->exec("ALTER TABLE custom_field_values ADD UNIQUE KEY uq_custom_field_values_entity_field (entity_type, entity_id, field_id)"); } catch (Exception $e) {}
+        }
+        if (!$idxExists('custom_field_values', 'ix_custom_field_values_field_id')) {
+            try { $conn->exec("ALTER TABLE custom_field_values ADD INDEX ix_custom_field_values_field_id (field_id)"); } catch (Exception $e) {}
+        }
+        if (!$idxExists('custom_field_values', 'ix_custom_field_values_value_ref')) {
+            try { $conn->exec("ALTER TABLE custom_field_values ADD INDEX ix_custom_field_values_value_ref (value_ref_id)"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('custom_field_values', 'fk_custom_field_values_field')) {
+            try { $conn->exec("ALTER TABLE custom_field_values ADD CONSTRAINT fk_custom_field_values_field FOREIGN KEY (field_id) REFERENCES custom_field_definitions (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+    }
+
+    // --- One-time CMDB → custom_field_* migration (id-preserving) -------------
+    // Copies the legacy CMDB property engine into the generalized tables as a
+    // verbatim mirror: same row ids, plus an entity_type='cmdb_object' discriminator
+    // and the renamed columns (property_id→field_id, value_object_id→value_ref_id).
+    // Guarded so it runs exactly once: only when the new definitions table is EMPTY
+    // and the legacy table has rows. Read-only on the legacy tables (never dropped
+    // or mutated), so reverting the code is a clean rollback. Wrapped in a
+    // transaction; a failure rolls the whole copy back and leaves CMDB on its
+    // legacy tables untouched.
+    if ($tableExists('custom_field_definitions') && $tableExists('cmdb_class_properties')) {
+        try {
+            $already = (int) $conn->query("SELECT COUNT(*) FROM custom_field_definitions WHERE entity_type = 'cmdb_object'")->fetchColumn();
+            $legacyDefs = (int) $conn->query("SELECT COUNT(*) FROM cmdb_class_properties")->fetchColumn();
+            if ($already === 0 && $legacyDefs > 0) {
+                $conn->beginTransaction();
+                // Definitions (preserve id). object_ref → target_entity_type 'cmdb_object'.
+                $conn->exec(
+                    "INSERT INTO custom_field_definitions
+                        (id, entity_type, class_id, tenant_id, field_key, label, field_type,
+                         target_entity_type, target_class_id, is_required, display_order, is_active, created_datetime)
+                     SELECT id, 'cmdb_object', class_id, NULL, property_key, label, property_type,
+                            CASE WHEN property_type = 'object_ref' THEN 'cmdb_object' ELSE NULL END,
+                            target_class_id, is_required, display_order, 1, created_datetime
+                       FROM cmdb_class_properties"
+                );
+                // Options (preserve id; property_id → field_id).
+                $conn->exec(
+                    "INSERT INTO custom_field_options (id, field_id, option_value, colour, display_order)
+                     SELECT id, property_id, option_value, colour, display_order
+                       FROM cmdb_class_property_options"
+                );
+                // Values (preserve id; object_id → entity_id, property_id → field_id,
+                // value_object_id → value_ref_id).
+                $conn->exec(
+                    "INSERT INTO custom_field_values
+                        (id, entity_type, entity_id, field_id, value_text, value_number, value_date, value_boolean, value_ref_id)
+                     SELECT id, 'cmdb_object', object_id, property_id, value_text, value_number, value_date, value_boolean, value_object_id
+                       FROM cmdb_object_properties"
+                );
+                // Row-count parity check before committing.
+                $legacyOpts = (int) $conn->query("SELECT COUNT(*) FROM cmdb_class_property_options")->fetchColumn();
+                $legacyVals = (int) $conn->query("SELECT COUNT(*) FROM cmdb_object_properties")->fetchColumn();
+                $newDefs = (int) $conn->query("SELECT COUNT(*) FROM custom_field_definitions WHERE entity_type = 'cmdb_object'")->fetchColumn();
+                $newOpts = (int) $conn->query("SELECT COUNT(*) FROM custom_field_options")->fetchColumn();
+                $newVals = (int) $conn->query("SELECT COUNT(*) FROM custom_field_values WHERE entity_type = 'cmdb_object'")->fetchColumn();
+                if ($newDefs === $legacyDefs && $newOpts === $legacyOpts && $newVals === $legacyVals) {
+                    $conn->commit();
+                    $results[] = ['table' => 'custom_field_definitions', 'status' => 'migrated',
+                        'details' => ["Migrated CMDB properties into the generalized custom-field engine: {$newDefs} definitions, {$newOpts} options, {$newVals} values (legacy cmdb_* tables retained as a rollback net)"]];
+                } else {
+                    $conn->rollBack();
+                    $results[] = ['table' => 'custom_field_definitions', 'status' => 'error',
+                        'details' => ["CMDB migration aborted (row-count mismatch: defs {$newDefs}/{$legacyDefs}, options {$newOpts}/{$legacyOpts}, values {$newVals}/{$legacyVals}) — rolled back; CMDB still on its legacy tables"]];
+                }
+            }
+        } catch (Exception $e) {
+            if ($conn->inTransaction()) $conn->rollBack();
+            $results[] = ['table' => 'custom_field_definitions', 'status' => 'error', 'details' => ['CMDB migration failed: ' . $e->getMessage()]];
         }
     }
 

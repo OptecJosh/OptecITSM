@@ -3,7 +3,7 @@
  * API: Get all CMDB objects related to a given object, across three buckets:
  *   - outgoing: cmdb_object_relationships where this object is from_object_id
  *   - incoming: cmdb_object_relationships where this object is to_object_id
- *   - property: cmdb_object_properties where value_object_id = this id
+ *   - property: custom_field_values (entity_type 'cmdb_object') where value_ref_id = this id
  *               (other objects referencing this one via an object_ref property)
  *
  * Used by Network Mapper's "Add related objects" flow to pull CMDB neighbours
@@ -112,12 +112,12 @@ try {
         "SELECT o.id AS object_id, o.name, o.is_planned,
                 c.id AS class_id, c.name AS class_name, i.icon_key AS class_icon,
                 p.label AS label
-           FROM cmdb_object_properties op
-           JOIN cmdb_objects o ON o.id = op.object_id
+           FROM custom_field_values op
+           JOIN cmdb_objects o ON o.id = op.entity_id
            JOIN cmdb_classes c ON c.id = o.class_id
       LEFT JOIN cmdb_icons   i ON i.id = c.icon_id
-           JOIN cmdb_class_properties p ON p.id = op.property_id
-          WHERE op.value_object_id = ?
+           JOIN custom_field_definitions p ON p.id = op.field_id
+          WHERE op.entity_type = 'cmdb_object' AND op.value_ref_id = ?
        ORDER BY p.label, o.name"
     );
     $propStmt->execute([$id]);

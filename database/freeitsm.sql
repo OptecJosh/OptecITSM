@@ -3516,6 +3516,65 @@ CREATE TABLE IF NOT EXISTS `cmdb_object_relationships` (
     CONSTRAINT `fk_cmdb_or_type` FOREIGN KEY (`relationship_type_id`) REFERENCES `cmdb_relationship_types` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ============================================================================
+-- Generalized custom fields — a shared, entity-typed twin of the CMDB property
+-- engine (cmdb_class_properties / _options / cmdb_object_properties). One engine
+-- serves every module that wants typed custom attributes: `entity_type`
+-- discriminates ('cmdb_object', 'ticket', …). CMDB's data is migrated into these
+-- tables (id-preserving) by db_verify.php; the legacy cmdb_* property tables are
+-- retained, unused, for one release as a rollback net.
+--
+-- Typed value columns (not a single generic value blob) are deliberate: they keep
+-- aggregation/reporting fast and indexable (e.g. SUM(value_number)).
+CREATE TABLE IF NOT EXISTS `custom_field_definitions` (
+    `id`                 INT NOT NULL AUTO_INCREMENT,
+    `entity_type`        VARCHAR(50) NOT NULL,      -- 'cmdb_object' | 'ticket' | future
+    `class_id`           INT NULL,                  -- CMDB-only: scopes the field to one cmdb_classes row
+    `tenant_id`          INT NULL,                  -- ticket fields: NULL = global default, set = a company's own
+    `field_key`          VARCHAR(100) NOT NULL,
+    `label`              VARCHAR(150) NOT NULL,
+    `field_type`         VARCHAR(20) NOT NULL,      -- text | number | date | boolean | dropdown | object_ref
+    `target_entity_type` VARCHAR(50) NULL,          -- object_ref: what the reference points at ('cmdb_object')
+    `target_class_id`    INT NULL,                  -- object_ref: narrows to one cmdb_classes row
+    `is_required`        TINYINT(1) NULL DEFAULT 0,
+    `display_order`      INT NULL DEFAULT 0,
+    `is_active`          TINYINT(1) NULL DEFAULT 1,
+    `created_datetime`   DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_custom_field_def_key` (`entity_type`, `class_id`, `tenant_id`, `field_key`),
+    KEY `ix_custom_field_def_entity` (`entity_type`, `class_id`),
+    CONSTRAINT `fk_custom_field_def_class` FOREIGN KEY (`class_id`) REFERENCES `cmdb_classes` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_custom_field_def_target_class` FOREIGN KEY (`target_class_id`) REFERENCES `cmdb_classes` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `custom_field_options` (
+    `id`              INT NOT NULL AUTO_INCREMENT,
+    `field_id`        INT NOT NULL,
+    `option_value`    VARCHAR(255) NOT NULL,
+    `colour`          VARCHAR(7) NULL,              -- hex "#22c55e", optional
+    `display_order`   INT NULL DEFAULT 0,
+    PRIMARY KEY (`id`),
+    KEY `ix_custom_field_options_field_id` (`field_id`),
+    CONSTRAINT `fk_custom_field_options_field` FOREIGN KEY (`field_id`) REFERENCES `custom_field_definitions` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `custom_field_values` (
+    `id`              INT NOT NULL AUTO_INCREMENT,
+    `entity_type`     VARCHAR(50) NOT NULL,         -- denormalised copy of the definition's entity_type
+    `entity_id`       INT NOT NULL,                 -- tickets.id / cmdb_objects.id / … (polymorphic — no FK)
+    `field_id`        INT NOT NULL,
+    `value_text`      TEXT NULL,
+    `value_number`    DECIMAL(20,4) NULL,
+    `value_date`      DATETIME NULL,
+    `value_boolean`   TINYINT(1) NULL,
+    `value_ref_id`    INT NULL,                     -- object_ref target id (polymorphic — no FK)
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_custom_field_values_entity_field` (`entity_type`, `entity_id`, `field_id`),
+    KEY `ix_custom_field_values_field_id` (`field_id`),
+    KEY `ix_custom_field_values_value_ref` (`value_ref_id`),
+    CONSTRAINT `fk_custom_field_values_field` FOREIGN KEY (`field_id`) REFERENCES `custom_field_definitions` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Join table linking tickets to CMDB objects (M:N).
 -- Drives the "Affected CMDB Objects" section on the ticket reading pane and
 -- the "Activity" panel on the CMDB object detail page.

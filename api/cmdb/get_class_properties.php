@@ -19,13 +19,16 @@ try {
 
     $conn = connectToDatabase();
 
+    // Definitions now live in the generalized custom_field_definitions table
+    // (entity_type = 'cmdb_object'); field_key/field_type are aliased back to the
+    // legacy property_key/property_type names so the response shape is unchanged.
     $stmt = $conn->prepare(
-        "SELECT p.id, p.class_id, p.property_key, p.label, p.property_type,
+        "SELECT p.id, p.class_id, p.field_key AS property_key, p.label, p.field_type AS property_type,
                 p.target_class_id, p.is_required, p.display_order,
                 tc.name AS target_class_name
-           FROM cmdb_class_properties p
+           FROM custom_field_definitions p
       LEFT JOIN cmdb_classes tc ON tc.id = p.target_class_id
-          WHERE p.class_id = ?
+          WHERE p.entity_type = 'cmdb_object' AND p.class_id = ?
        ORDER BY p.display_order, p.label"
     );
     $stmt->execute([$classId]);
@@ -34,10 +37,10 @@ try {
     // Pull dropdown options per property in one pass.
     // Returns objects (value + colour) so the row-based editor can render swatches.
     $optStmt = $conn->prepare(
-        "SELECT o.property_id, o.option_value, o.colour, o.display_order
-           FROM cmdb_class_property_options o
-           JOIN cmdb_class_properties p ON p.id = o.property_id
-          WHERE p.class_id = ?
+        "SELECT o.field_id AS property_id, o.option_value, o.colour, o.display_order
+           FROM custom_field_options o
+           JOIN custom_field_definitions p ON p.id = o.field_id
+          WHERE p.entity_type = 'cmdb_object' AND p.class_id = ?
        ORDER BY o.display_order, o.id"
     );
     $optStmt->execute([$classId]);

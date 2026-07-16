@@ -486,10 +486,12 @@ function apiNmObjectProperties(PDO $conn, array $nodeRows): array {
     $objectIds = array_keys($classByObject);
     $ph = implode(',', array_fill(0, count($objectIds), '?'));
     $vals = $conn->prepare(
-        "SELECT op.*, ro.name AS ref_name
-         FROM cmdb_object_properties op
-         LEFT JOIN cmdb_objects ro ON ro.id = op.value_object_id
-         WHERE op.object_id IN ($ph)"
+        "SELECT op.entity_id AS object_id, op.field_id AS property_id,
+                op.value_text, op.value_number, op.value_date, op.value_boolean,
+                op.value_ref_id AS value_object_id, ro.name AS ref_name
+         FROM custom_field_values op
+         LEFT JOIN cmdb_objects ro ON ro.id = op.value_ref_id
+         WHERE op.entity_type = 'cmdb_object' AND op.entity_id IN ($ph)"
     );
     $vals->execute($objectIds);
     $valuesByObjectProp = [];
@@ -621,15 +623,15 @@ function apiNmSuggestionsList(PDO $conn, array $apiKey, array $params, array $bo
         JOIN cmdb_relationship_types rt ON rt.id = r.relationship_type_id
         WHERE r.to_object_id IN ($ph) AND r.from_object_id NOT IN ($phAll)
         UNION ALL
-        SELECT op.object_id, op.value_object_id, 'property', cp.label, NULL
-        FROM cmdb_object_properties op
-        JOIN cmdb_class_properties cp ON cp.id = op.property_id
-        WHERE op.value_object_id IN ($ph) AND op.object_id NOT IN ($phAll)
+        SELECT op.entity_id, op.value_ref_id, 'property', cp.label, NULL
+        FROM custom_field_values op
+        JOIN custom_field_definitions cp ON cp.id = op.field_id
+        WHERE op.entity_type = 'cmdb_object' AND op.value_ref_id IN ($ph) AND op.entity_id NOT IN ($phAll)
         UNION ALL
-        SELECT op.value_object_id, op.object_id, 'property', cp.label, NULL
-        FROM cmdb_object_properties op
-        JOIN cmdb_class_properties cp ON cp.id = op.property_id
-        WHERE op.object_id IN ($ph) AND op.value_object_id IS NOT NULL AND op.value_object_id NOT IN ($phAll)";
+        SELECT op.value_ref_id, op.entity_id, 'property', cp.label, NULL
+        FROM custom_field_values op
+        JOIN custom_field_definitions cp ON cp.id = op.field_id
+        WHERE op.entity_type = 'cmdb_object' AND op.entity_id IN ($ph) AND op.value_ref_id IS NOT NULL AND op.value_ref_id NOT IN ($phAll)";
     $stmt = $conn->prepare($sql);
     $stmt->execute(array_merge($scope, $onDiagram, $scope, $onDiagram, $scope, $onDiagram, $scope, $onDiagram));
 

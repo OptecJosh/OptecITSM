@@ -58,10 +58,14 @@ try {
     $conn = connectToDatabase();
     $conn->beginTransaction();
 
+    // Property definitions now live in the generalized custom_field_definitions
+    // table (entity_type = 'cmdb_object'); property_key/type map to field_key/type.
+    $targetEntityType = $type === 'object_ref' ? 'cmdb_object' : null;
+
     if ($id === null) {
         // Auto-resolve key collisions inside the same class
         $base = $key; $n = 2;
-        $check = $conn->prepare("SELECT id FROM cmdb_class_properties WHERE class_id = ? AND property_key = ?");
+        $check = $conn->prepare("SELECT id FROM custom_field_definitions WHERE entity_type = 'cmdb_object' AND class_id = ? AND field_key = ?");
         while (true) {
             $check->execute([$classId, $key]);
             if (!$check->fetch()) break;
@@ -70,26 +74,26 @@ try {
         }
 
         $stmt = $conn->prepare(
-            "INSERT INTO cmdb_class_properties
-                 (class_id, property_key, label, property_type, target_class_id, is_required, display_order, created_datetime)
-             VALUES (?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())"
+            "INSERT INTO custom_field_definitions
+                 (entity_type, class_id, tenant_id, field_key, label, field_type, target_entity_type, target_class_id, is_required, display_order, is_active, created_datetime)
+             VALUES ('cmdb_object', ?, NULL, ?, ?, ?, ?, ?, ?, ?, 1, UTC_TIMESTAMP())"
         );
-        $stmt->execute([$classId, $key, $label, $type, $targetClassId, $isRequired, $displayOrder]);
+        $stmt->execute([$classId, $key, $label, $type, $targetEntityType, $targetClassId, $isRequired, $displayOrder]);
         $newId = (int)$conn->lastInsertId();
     } else {
         // Refuse a key change that would collide
-        $check = $conn->prepare("SELECT id FROM cmdb_class_properties WHERE class_id = ? AND property_key = ? AND id <> ?");
+        $check = $conn->prepare("SELECT id FROM custom_field_definitions WHERE entity_type = 'cmdb_object' AND class_id = ? AND field_key = ? AND id <> ?");
         $check->execute([$classId, $key, $id]);
         if ($check->fetch()) {
             throw new Exception('Another property in this class already uses that key');
         }
 
         $stmt = $conn->prepare(
-            "UPDATE cmdb_class_properties
-                SET property_key = ?, label = ?, property_type = ?, target_class_id = ?, is_required = ?, display_order = ?
-              WHERE id = ? AND class_id = ?"
+            "UPDATE custom_field_definitions
+                SET field_key = ?, label = ?, field_type = ?, target_entity_type = ?, target_class_id = ?, is_required = ?, display_order = ?
+              WHERE id = ? AND class_id = ? AND entity_type = 'cmdb_object'"
         );
-        $stmt->execute([$key, $label, $type, $targetClassId, $isRequired, $displayOrder, $id, $classId]);
+        $stmt->execute([$key, $label, $type, $targetEntityType, $targetClassId, $isRequired, $displayOrder, $id, $classId]);
         $newId = $id;
     }
 
@@ -97,8 +101,8 @@ try {
     // Each option may be either a plain string (legacy / from AI suggest flow)
     // or an object {value, colour} from the new row-based editor.
     if ($type === 'dropdown' && is_array($options)) {
-        $conn->prepare("DELETE FROM cmdb_class_property_options WHERE property_id = ?")->execute([$newId]);
-        $insOpt = $conn->prepare("INSERT INTO cmdb_class_property_options (property_id, option_value, colour, display_order) VALUES (?, ?, ?, ?)");
+        $conn->prepare("DELETE FROM custom_field_options WHERE field_id = ?")->execute([$newId]);
+        $insOpt = $conn->prepare("INSERT INTO custom_field_options (field_id, option_value, colour, display_order) VALUES (?, ?, ?, ?)");
         $order = 0;
         foreach ($options as $opt) {
             if (is_array($opt)) {
@@ -118,7 +122,7 @@ try {
         }
     } elseif ($type !== 'dropdown') {
         // Switching away from dropdown — clear any leftover options.
-        $conn->prepare("DELETE FROM cmdb_class_property_options WHERE property_id = ?")->execute([$newId]);
+        $conn->prepare("DELETE FROM custom_field_options WHERE field_id = ?")->execute([$newId]);
     }
 
     $conn->commit();

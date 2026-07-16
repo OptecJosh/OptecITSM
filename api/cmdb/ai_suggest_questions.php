@@ -36,7 +36,7 @@ try {
     if (!$cls) throw new Exception('Class not found');
 
     // Existing properties to avoid asking redundant questions
-    $propsStmt = $conn->prepare("SELECT label FROM cmdb_class_properties WHERE class_id = ?");
+    $propsStmt = $conn->prepare("SELECT label FROM custom_field_definitions WHERE entity_type = 'cmdb_object' AND class_id = ?");
     $propsStmt->execute([$classId]);
     $existingLabels = array_column($propsStmt->fetchAll(PDO::FETCH_ASSOC), 'label');
 

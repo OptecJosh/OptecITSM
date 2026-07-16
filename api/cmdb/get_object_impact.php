@@ -65,11 +65,11 @@ try {
     // Objects that reference THIS object as the value of an object_ref property
     $propRefStmt = $conn->prepare(
         "SELECT o.id, o.name, c.name AS class_name, p.label AS property_label
-           FROM cmdb_object_properties op
-           JOIN cmdb_objects o ON o.id = op.object_id
+           FROM custom_field_values op
+           JOIN cmdb_objects o ON o.id = op.entity_id
            JOIN cmdb_classes c ON c.id = o.class_id
-           JOIN cmdb_class_properties p ON p.id = op.property_id
-          WHERE op.value_object_id = ?
+           JOIN custom_field_definitions p ON p.id = op.field_id
+          WHERE op.entity_type = 'cmdb_object' AND op.value_ref_id = ?
        ORDER BY c.name, o.name"
     );
     $propRefStmt->execute([$id]);

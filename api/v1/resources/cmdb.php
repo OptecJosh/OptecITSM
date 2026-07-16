@@ -73,20 +73,20 @@ function apiCmdbClassesGet(PDO $conn, array $apiKey, array $params, array $body)
     }
 
     $props = $conn->prepare(
-        "SELECT p.id, p.property_key, p.label, p.property_type, p.target_class_id,
+        "SELECT p.id, p.field_key AS property_key, p.label, p.field_type AS property_type, p.target_class_id,
                 tc.name AS target_class_name, p.is_required, p.display_order
-         FROM cmdb_class_properties p
+         FROM custom_field_definitions p
          LEFT JOIN cmdb_classes tc ON tc.id = p.target_class_id
-         WHERE p.class_id = ? ORDER BY p.display_order, p.id"
+         WHERE p.entity_type = 'cmdb_object' AND p.class_id = ? ORDER BY p.display_order, p.id"
     );
     $props->execute([$params[0]]);
     $propRows = $props->fetchAll(PDO::FETCH_ASSOC);
 
     $opts = $conn->prepare(
-        "SELECT o.property_id, o.option_value, o.colour
-         FROM cmdb_class_property_options o
-         JOIN cmdb_class_properties p ON p.id = o.property_id
-         WHERE p.class_id = ? ORDER BY o.display_order, o.id"
+        "SELECT o.field_id AS property_id, o.option_value, o.colour
+         FROM custom_field_options o
+         JOIN custom_field_definitions p ON p.id = o.field_id
+         WHERE p.entity_type = 'cmdb_object' AND p.class_id = ? ORDER BY o.display_order, o.id"
     );
     $opts->execute([$params[0]]);
     $optionsByProp = [];
@@ -148,8 +148,8 @@ function apiCmdbSerializeObject(array $r): array {
 /** Property definitions for a class, keyed by property_key. */
 function apiCmdbClassDefs(PDO $conn, int $classId): array {
     $stmt = $conn->prepare(
-        "SELECT id, property_key, label, property_type, target_class_id, is_required
-         FROM cmdb_class_properties WHERE class_id = ? ORDER BY display_order, id"
+        "SELECT id, field_key AS property_key, label, field_type AS property_type, target_class_id, is_required
+         FROM custom_field_definitions WHERE entity_type = 'cmdb_object' AND class_id = ? ORDER BY display_order, id"
     );
     $stmt->execute([$classId]);
     $defs = [];
@@ -235,11 +235,13 @@ function apiCmdbObjectsGet(PDO $conn, array $apiKey, array $params, array $body)
 
     // Typed property values, hydrated like get_object.php.
     $vals = $conn->prepare(
-        "SELECT op.*, ro.name AS ref_name, rc.name AS ref_class_name
-         FROM cmdb_object_properties op
-         LEFT JOIN cmdb_objects ro ON ro.id = op.value_object_id
+        "SELECT op.field_id AS property_id, op.value_text, op.value_number, op.value_date,
+                op.value_boolean, op.value_ref_id AS value_object_id,
+                ro.name AS ref_name, rc.name AS ref_class_name
+         FROM custom_field_values op
+         LEFT JOIN cmdb_objects ro ON ro.id = op.value_ref_id
          LEFT JOIN cmdb_classes rc ON rc.id = ro.class_id
-         WHERE op.object_id = ?"
+         WHERE op.entity_type = 'cmdb_object' AND op.entity_id = ?"
     );
     $vals->execute([$params[0]]);
     $valuesByProp = [];
@@ -397,11 +399,11 @@ function apiCmdbObjectImpact(PDO $conn, array $apiKey, array $params, array $bod
 
     $propRef = $conn->prepare(
         "SELECT o.id, o.name, c.name AS class_name, p.label AS property_label
-         FROM cmdb_object_properties op
-         JOIN cmdb_objects o ON o.id = op.object_id
+         FROM custom_field_values op
+         JOIN cmdb_objects o ON o.id = op.entity_id
          JOIN cmdb_classes c ON c.id = o.class_id
-         JOIN cmdb_class_properties p ON p.id = op.property_id
-         WHERE op.value_object_id = ? ORDER BY c.name, o.name"
+         JOIN custom_field_definitions p ON p.id = op.field_id
+         WHERE op.entity_type = 'cmdb_object' AND op.value_ref_id = ? ORDER BY c.name, o.name"
     );
     $propRef->execute([$params[0]]);
 

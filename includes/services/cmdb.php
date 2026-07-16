@@ -28,6 +28,7 @@
  */
 
 require_once __DIR__ . '/../service_context.php';
+require_once __DIR__ . '/custom_fields.php';
 require_once dirname(__DIR__, 2) . '/workflow/includes/engine.php';
 
 class CmdbService
@@ -76,8 +77,9 @@ class CmdbService
         self::validateParent($conn, null, $parentId);
         $isPlanned = !empty($in['is_planned']) ? 1 : 0;
 
-        $values = self::normaliseProperties($conn, $classId, $in);
-        self::checkRequired($conn, $classId, $values, true);
+        $defs   = CustomFieldsService::fieldDefsForClass($conn, $classId);
+        $values = self::normaliseProperties($in, $defs);
+        CustomFieldsService::checkRequired($defs, $values, true);
 
         $conn->beginTransaction();
         try {
@@ -86,7 +88,7 @@ class CmdbService
                  VALUES (?, ?, ?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())"
             )->execute([$classId, $name, $parentId, $isPlanned]);
             $objectId = (int)$conn->lastInsertId();
-            self::writeProperties($conn, $objectId, $classId, $values);
+            CustomFieldsService::writeValues($conn, 'cmdb_object', $objectId, $defs, $values);
             $conn->commit();
         } catch (Exception $e) {
             if ($conn->inTransaction()) $conn->rollBack();
@@ -128,8 +130,9 @@ class CmdbService
             self::validateParent($conn, $objectId, $newParent);
         }
 
-        $values = self::normaliseProperties($conn, $classId, $in);
-        self::checkRequired($conn, $classId, $values, false);
+        $defs   = CustomFieldsService::fieldDefsForClass($conn, $classId);
+        $values = self::normaliseProperties($in, $defs);
+        CustomFieldsService::checkRequired($defs, $values, false);
 
         $conn->beginTransaction();
         try {
@@ -141,7 +144,7 @@ class CmdbService
                      ->execute([$newName, $newParent, $objectId]);
             }
             if ($values) {
-                self::writeProperties($conn, $objectId, $classId, $values);
+                CustomFieldsService::writeValues($conn, 'cmdb_object', $objectId, $defs, $values);
             }
             $conn->commit();
         } catch (Exception $e) {
@@ -163,8 +166,8 @@ class CmdbService
 
         $conn->beginTransaction();
         try {
-            $conn->prepare("UPDATE cmdb_object_properties SET value_object_id = NULL WHERE value_object_id IN ($ph)")->execute($ids);
-            $conn->prepare("DELETE FROM cmdb_object_properties WHERE object_id IN ($ph)")->execute($ids);
+            $conn->prepare("UPDATE custom_field_values SET value_ref_id = NULL WHERE entity_type = 'cmdb_object' AND value_ref_id IN ($ph)")->execute($ids);
+            $conn->prepare("DELETE FROM custom_field_values WHERE entity_type = 'cmdb_object' AND entity_id IN ($ph)")->execute($ids);
             // Network Mapper: null connector provenance, then remove diagram nodes/connectors.
             $conn->prepare("UPDATE network_diagram_connectors c JOIN cmdb_object_relationships r ON r.id = c.cmdb_relationship_id
                             SET c.cmdb_relationship_id = NULL
@@ -272,37 +275,22 @@ class CmdbService
         return $row;
     }
 
-    /** Property definitions for a class, keyed by property_key. */
-    private static function classDefs(PDO $conn, int $classId): array
-    {
-        $stmt = $conn->prepare(
-            "SELECT id, property_key, label, property_type, target_class_id, is_required
-             FROM cmdb_class_properties WHERE class_id = ? ORDER BY display_order, id"
-        );
-        $stmt->execute([$classId]);
-        $defs = [];
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $d) {
-            $defs[$d['property_key']] = $d;
-        }
-        return $defs;
-    }
-
     /**
-     * Normalise the two accepted property shapes to a { property_key: value } map.
+     * Normalise the two accepted property shapes to a { field_key: value } map.
      * The API's `properties` map passes through (unknown keys -> 422 later); the
-     * UI's `property_values` id-list is translated, dropping ids not in the class.
+     * UI's `property_values` id-list is translated against the scoped definitions,
+     * dropping ids not in the class. Typed validation + writes are delegated to
+     * CustomFieldsService (the shared engine).
      */
-    private static function normaliseProperties(PDO $conn, int $classId, array $in): array
+    private static function normaliseProperties(array $in, array $defs): array
     {
         if (isset($in['properties']) && is_array($in['properties'])) {
             return $in['properties'];
         }
         if (isset($in['property_values']) && is_array($in['property_values'])) {
             $idToKey = [];
-            $stmt = $conn->prepare("SELECT id, property_key FROM cmdb_class_properties WHERE class_id = ?");
-            $stmt->execute([$classId]);
-            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $d) {
-                $idToKey[(int)$d['id']] = $d['property_key'];
+            foreach ($defs as $key => $d) {
+                $idToKey[(int)$d['id']] = $key;
             }
             $out = [];
             foreach ($in['property_values'] as $entry) {
@@ -314,105 +302,6 @@ class CmdbService
             return $out;
         }
         return [];
-    }
-
-    /** Dropdown option values for one property. */
-    private static function propertyOptionValues(PDO $conn, int $propertyId): array
-    {
-        $stmt = $conn->prepare("SELECT option_value FROM cmdb_class_property_options WHERE property_id = ? ORDER BY display_order, id");
-        $stmt->execute([$propertyId]);
-        return $stmt->fetchAll(PDO::FETCH_COLUMN);
-    }
-
-    /** Validate + write property values (keyed by property_key). Unknown keys -> 422. */
-    private static function writeProperties(PDO $conn, int $objectId, int $classId, array $values): void
-    {
-        $defs = self::classDefs($conn, $classId);
-        $del = $conn->prepare("DELETE FROM cmdb_object_properties WHERE object_id = ? AND property_id = ?");
-        $ins = $conn->prepare(
-            "INSERT INTO cmdb_object_properties
-                 (object_id, property_id, value_text, value_number, value_date, value_boolean, value_object_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?)"
-        );
-
-        foreach ($values as $key => $rawValue) {
-            if (!isset($defs[$key])) {
-                throw new ServiceError('validation', 'invalid_field', "Unknown property '{$key}' for this class. See GET /cmdb/classes/{$classId}.");
-            }
-            $def = $defs[$key];
-            $pid = (int)$def['id'];
-            $del->execute([$objectId, $pid]);
-
-            if ($rawValue === null || $rawValue === '') {
-                continue; // clear this property
-            }
-
-            $vText = null; $vNumber = null; $vDate = null; $vBool = null; $vObj = null;
-            switch ($def['property_type']) {
-                case 'text':
-                    $vText = (string)$rawValue;
-                    break;
-                case 'dropdown':
-                    $vText = (string)$rawValue;
-                    $allowed = self::propertyOptionValues($conn, $pid);
-                    if ($allowed && !in_array($vText, $allowed, true)) {
-                        throw new ServiceError('validation', 'invalid_field', "Property '{$def['label']}' must be one of: " . implode(', ', $allowed));
-                    }
-                    break;
-                case 'number':
-                    if (!is_numeric($rawValue)) {
-                        throw new ServiceError('validation', 'invalid_field', "Property '{$def['label']}' expects a number.");
-                    }
-                    $vNumber = (float)$rawValue;
-                    break;
-                case 'date':
-                    $vDate = self::parseDate((string)$rawValue, $key);
-                    break;
-                case 'boolean':
-                    $vBool = ($rawValue === true || $rawValue === 1 || $rawValue === '1' || $rawValue === 'true') ? 1 : 0;
-                    break;
-                case 'object_ref':
-                    $vObj = (int)$rawValue;
-                    if ($vObj <= 0) {
-                        continue 2;
-                    }
-                    if ($vObj === $objectId) {
-                        throw new ServiceError('validation', 'invalid_field', "Property '{$def['label']}' can't reference its own object.");
-                    }
-                    $rs = $conn->prepare("SELECT class_id FROM cmdb_objects WHERE id = ?");
-                    $rs->execute([$vObj]);
-                    $refClassId = $rs->fetchColumn();
-                    if ($refClassId === false) {
-                        throw new ServiceError('validation', 'invalid_field', "Property '{$def['label']}' references an object that doesn't exist.");
-                    }
-                    if ($def['target_class_id'] !== null && (int)$refClassId !== (int)$def['target_class_id']) {
-                        throw new ServiceError('validation', 'invalid_field', "Property '{$def['label']}' can only reference objects of its target class.");
-                    }
-                    break;
-                default:
-                    throw new ServiceError('validation', 'invalid_field', "Unknown property type: {$def['property_type']}");
-            }
-
-            $ins->execute([$objectId, $pid, $vText, $vNumber, $vDate, $vBool, $vObj]);
-        }
-    }
-
-    /** Required-property enforcement — create/update asymmetry. */
-    private static function checkRequired(PDO $conn, int $classId, array $values, bool $isCreate): void
-    {
-        foreach (self::classDefs($conn, $classId) as $key => $def) {
-            if ((int)$def['is_required'] !== 1) {
-                continue;
-            }
-            if (array_key_exists($key, $values)) {
-                $v = $values[$key];
-                if ($v === null || $v === '' || (is_array($v) && empty($v))) {
-                    throw new ServiceError('validation', 'missing_field', "Required property missing: {$def['label']}");
-                }
-            } elseif ($isCreate) {
-                throw new ServiceError('validation', 'missing_field', "Required property missing: {$def['label']}");
-            }
-        }
     }
 
     /** Parent validation incl. the cycle walk. */

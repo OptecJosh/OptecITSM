@@ -64,27 +64,28 @@ try {
     foreach ($children as &$c) { $c['id'] = (int)$c['id']; $c['class_id'] = (int)$c['class_id']; }
     $obj['children'] = $children;
 
-    // Property definitions for this class
+    // Property definitions for this class (now in custom_field_definitions;
+    // field_key/field_type aliased back to the legacy names for an unchanged shape).
     $propStmt = $conn->prepare(
-        "SELECT p.id, p.property_key, p.label, p.property_type, p.target_class_id, p.is_required, p.display_order,
+        "SELECT p.id, p.field_key AS property_key, p.label, p.field_type AS property_type, p.target_class_id, p.is_required, p.display_order,
                 tc.name AS target_class_name
-           FROM cmdb_class_properties p
+           FROM custom_field_definitions p
       LEFT JOIN cmdb_classes tc ON tc.id = p.target_class_id
-          WHERE p.class_id = ?
+          WHERE p.entity_type = 'cmdb_object' AND p.class_id = ?
        ORDER BY p.display_order, p.label"
     );
     $propStmt->execute([$obj['class_id']]);
     $propDefs = $propStmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Existing values for this object — keyed by property_id
+    // Existing values for this object — keyed by property_id (field_id aliased back).
     $valStmt = $conn->prepare(
-        "SELECT op.property_id, op.value_text, op.value_number, op.value_date,
-                op.value_boolean, op.value_object_id,
+        "SELECT op.field_id AS property_id, op.value_text, op.value_number, op.value_date,
+                op.value_boolean, op.value_ref_id AS value_object_id,
                 refo.name AS value_object_name, refoc.name AS value_object_class_name
-           FROM cmdb_object_properties op
-      LEFT JOIN cmdb_objects refo ON refo.id = op.value_object_id
+           FROM custom_field_values op
+      LEFT JOIN cmdb_objects refo ON refo.id = op.value_ref_id
       LEFT JOIN cmdb_classes refoc ON refoc.id = refo.class_id
-          WHERE op.object_id = ?"
+          WHERE op.entity_type = 'cmdb_object' AND op.entity_id = ?"
     );
     $valStmt->execute([$id]);
     $valuesByProp = [];
@@ -95,10 +96,10 @@ try {
     // Dropdown options for any dropdown-typed properties on this class.
     // Returned as {value, colour} so the detail page can render coloured pills.
     $optStmt = $conn->prepare(
-        "SELECT o.property_id, o.option_value, o.colour
-           FROM cmdb_class_property_options o
-           JOIN cmdb_class_properties p ON p.id = o.property_id
-          WHERE p.class_id = ?
+        "SELECT o.field_id AS property_id, o.option_value, o.colour
+           FROM custom_field_options o
+           JOIN custom_field_definitions p ON p.id = o.field_id
+          WHERE p.entity_type = 'cmdb_object' AND p.class_id = ?
        ORDER BY o.display_order, o.id"
     );
     $optStmt->execute([$obj['class_id']]);

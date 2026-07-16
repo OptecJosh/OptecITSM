@@ -51,14 +51,14 @@ try {
     // Properties with type-aware values, including the linked-object name for
     // object_ref properties so the prompt has names not opaque IDs
     $propStmt = $conn->prepare(
-        "SELECT p.label, p.property_type,
+        "SELECT p.label, p.field_type AS property_type,
                 op.value_text, op.value_number, op.value_date, op.value_boolean,
                 refo.name AS value_object_name, refoc.name AS value_object_class
-           FROM cmdb_class_properties p
-      LEFT JOIN cmdb_object_properties op ON op.property_id = p.id AND op.object_id = ?
-      LEFT JOIN cmdb_objects refo ON refo.id = op.value_object_id
+           FROM custom_field_definitions p
+      LEFT JOIN custom_field_values op ON op.field_id = p.id AND op.entity_type = 'cmdb_object' AND op.entity_id = ?
+      LEFT JOIN cmdb_objects refo ON refo.id = op.value_ref_id
       LEFT JOIN cmdb_classes refoc ON refoc.id = refo.class_id
-          WHERE p.class_id = (SELECT class_id FROM cmdb_objects WHERE id = ?)
+          WHERE p.entity_type = 'cmdb_object' AND p.class_id = (SELECT class_id FROM cmdb_objects WHERE id = ?)
        ORDER BY p.display_order, p.label"
     );
     $propStmt->execute([$id, $id]);
@@ -118,11 +118,11 @@ try {
     // Impact via property-references (other objects pointing at THIS via object_ref)
     $propRefStmt = $conn->prepare(
         "SELECT o.name, c.name AS class_name, p.label AS property_label
-           FROM cmdb_object_properties op
-           JOIN cmdb_objects o ON o.id = op.object_id
+           FROM custom_field_values op
+           JOIN cmdb_objects o ON o.id = op.entity_id
            JOIN cmdb_classes c ON c.id = o.class_id
-           JOIN cmdb_class_properties p ON p.id = op.property_id
-          WHERE op.value_object_id = ?"
+           JOIN custom_field_definitions p ON p.id = op.field_id
+          WHERE op.entity_type = 'cmdb_object' AND op.value_ref_id = ?"
     );
     $propRefStmt->execute([$id]);
     $propRefs = $propRefStmt->fetchAll(PDO::FETCH_ASSOC);

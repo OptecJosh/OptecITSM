@@ -165,6 +165,7 @@ final class Cap
     const TICKETS_TICKET_TYPES    = 'tickets.ticket_types';
     const TICKETS_TICKET_ORIGINS  = 'tickets.ticket_origins';
     const TICKETS_CATEGORIES      = 'tickets.categories';
+    const TICKETS_CUSTOM_FIELDS   = 'tickets.custom_fields';
     const TICKETS_STATUSES        = 'tickets.statuses';
     const TICKETS_PRIORITIES      = 'tickets.priorities';
     const TICKETS_SLA             = 'tickets.sla';

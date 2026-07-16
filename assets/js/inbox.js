@@ -1521,6 +1521,7 @@ function displayEmail(email, recordings) {
                 ${emailBodyHost(email.body_content, 'email-body-content')}
             </div>
             <div id="cmdbObjectsContainer"></div>
+            <div id="customFieldsContainer"></div>
             <div id="slaContainer"></div>
             <div id="timeEntriesContainer"></div>
             <div id="notesContainer"></div>
@@ -1537,6 +1538,7 @@ function displayEmail(email, recordings) {
     loadCmdbObjects(email.ticket_id);
     loadTimeEntries(email.ticket_id);
     loadSlaState(email.ticket_id);
+    loadTicketCustomFieldsPane(email.ticket_id);
 
     // Subcategory options depend on the selected category — populate after render.
     populateSubcategorySelect(email.category_id);
@@ -2328,6 +2330,95 @@ async function populateSubcategorySelect(categoryId) {
     sel.innerHTML = '<option value=""></option>' + subs.map(s =>
         `<option value="${s.id}" ${currentEmail && currentEmail.subcategory_id == s.id ? 'selected' : ''}>${escapeHtml(s.name)}</option>`
     ).join('');
+}
+
+// ===== Ticket custom fields (dynamically rendered on the reading pane) =====
+// Fetch the tenant's custom-field definitions + this ticket's values in one call
+// and render one type-appropriate input per field. Each input saves on change.
+async function loadTicketCustomFieldsPane(ticketId) {
+    const container = document.getElementById('customFieldsContainer');
+    if (!container) return;
+    try {
+        const r = await fetch(API_BASE + 'get_ticket_custom_fields.php?ticket_id=' + encodeURIComponent(ticketId));
+        const d = await r.json();
+        if (!d.success || !d.custom_fields || !d.custom_fields.length) {
+            container.innerHTML = '';
+            return;
+        }
+        container.innerHTML = renderTicketCustomFields(d.custom_fields);
+    } catch (e) {
+        container.innerHTML = '';
+    }
+}
+
+function renderTicketCustomFields(fields) {
+    const rows = fields.map(f => {
+        const reqStar = f.is_required ? ' <span style="color:#dc2626;">*</span>' : '';
+        return `
+            <div class="toolbar-field" style="margin-bottom:10px;">
+                <label class="toolbar-label">${escapeHtml(f.label)}${reqStar}</label>
+                ${renderCustomFieldInput(f)}
+            </div>`;
+    }).join('');
+    return `
+        <div class="ticket-custom-fields" style="margin-top:16px;padding:14px 16px;border:1px solid var(--border-soft,#e3e8ea);border-radius:8px;">
+            <div style="font-weight:600;font-size:13px;color:#455a64;margin-bottom:12px;">${escapeHtml(t('tickets.custom_fields.section_pane_title'))}</div>
+            ${rows}
+        </div>`;
+}
+
+function renderCustomFieldInput(f) {
+    const key = escapeHtml(f.field_key);
+    const onchg = `onchange="saveTicketCustomField('${key}', this)"`;
+    switch (f.field_type) {
+        case 'number':
+            return `<input type="number" class="toolbar-select" data-cf-key="${key}" value="${f.value !== null && f.value !== undefined ? escapeHtml(String(f.value)) : ''}" ${onchg}>`;
+        case 'date': {
+            const dateVal = f.value ? String(f.value).substring(0, 10) : '';
+            return `<input type="date" class="toolbar-select" data-cf-key="${key}" value="${escapeHtml(dateVal)}" ${onchg}>`;
+        }
+        case 'boolean':
+            return `<select class="toolbar-select" data-cf-key="${key}" ${onchg}>
+                <option value="" ${f.value === null || f.value === undefined ? 'selected' : ''}>--</option>
+                <option value="1" ${f.value === true ? 'selected' : ''}>${escapeHtml(t('tickets.reading_pane.opt_yes'))}</option>
+                <option value="0" ${f.value === false ? 'selected' : ''}>${escapeHtml(t('tickets.reading_pane.opt_no'))}</option>
+            </select>`;
+        case 'dropdown': {
+            const opts = (f.options || []).map(o =>
+                `<option value="${escapeHtml(o.value)}" ${f.value === o.value ? 'selected' : ''}>${escapeHtml(o.value)}</option>`
+            ).join('');
+            return `<select class="toolbar-select" data-cf-key="${key}" ${onchg}><option value=""></option>${opts}</select>`;
+        }
+        case 'object_ref': {
+            const hint = f.value_object ? ` <span style="color:#90a4ae;font-size:12px;">(${escapeHtml(f.value_object.name || '')})</span>` : '';
+            return `<input type="number" class="toolbar-select" data-cf-key="${key}" placeholder="CMDB object id" value="${f.value !== null && f.value !== undefined ? escapeHtml(String(f.value)) : ''}" ${onchg}>${hint}`;
+        }
+        case 'text':
+        default:
+            return `<input type="text" class="toolbar-select" data-cf-key="${key}" value="${f.value !== null && f.value !== undefined ? escapeHtml(String(f.value)) : ''}" ${onchg}>`;
+    }
+}
+
+// Save one custom-field value for the current ticket. Sends the raw value keyed
+// by field_key; the server validates by type and audits the change.
+async function saveTicketCustomField(fieldKey, inputEl) {
+    if (!currentEmail) return;
+    const value = inputEl.value === '' ? null : inputEl.value;
+    try {
+        const r = await fetch(API_BASE + 'save_ticket_custom_field_values.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticket_id: currentEmail.ticket_id, values: { [fieldKey]: value } })
+        });
+        const d = await r.json();
+        if (!d.success) {
+            showToast('Error saving field: ' + d.error, 'error');
+            // Reload to reflect the true stored state after a rejected value.
+            loadTicketCustomFieldsPane(currentEmail.ticket_id);
+        }
+    } catch (e) {
+        showToast('Failed to save field', 'error');
+    }
 }
 
 // Assign status

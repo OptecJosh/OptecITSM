@@ -386,6 +386,33 @@ $translationNamespaces = ['common', 'tickets'];
             </table>
         </div>
 
+        <!-- Custom Fields Tab -->
+        <?php endif; ?>
+
+        <?php if (settingsTabVisible($visibleTabs, 'custom-fields')): ?>
+        <div class="tab-content<?php echo $activeTabId === 'custom-fields' ? ' active' : ''; ?>" id="custom-fields-tab" data-capability="<?php echo Cap::TICKETS_CUSTOM_FIELDS; ?>">
+            <div class="section-header">
+                <h2><?php echo htmlspecialchars(t('tickets.custom_fields.heading')); ?></h2>
+                <button class="add-btn" onclick="openAddCustomField()"><?php echo htmlspecialchars(t('common.add')); ?></button>
+            </div>
+            <p style="margin-bottom: 20px; color: var(--text-muted, #666);"><?php echo t('tickets.settings.intros.custom_fields'); ?></p>
+            <table>
+                <thead>
+                    <tr>
+                        <th><?php echo htmlspecialchars(t('tickets.custom_fields.col_label')); ?></th>
+                        <th><?php echo htmlspecialchars(t('tickets.custom_fields.field_key')); ?></th>
+                        <th><?php echo htmlspecialchars(t('tickets.custom_fields.col_type')); ?></th>
+                        <th><?php echo htmlspecialchars(t('tickets.custom_fields.col_required')); ?></th>
+                        <th><?php echo htmlspecialchars(t('tickets.settings.columns.order')); ?></th>
+                        <th><?php echo htmlspecialchars(t('tickets.settings.columns.actions')); ?></th>
+                    </tr>
+                </thead>
+                <tbody id="custom-fields-list">
+                    <tr><td colspan="6" style="text-align: center;"><?php echo htmlspecialchars(t('tickets.settings.loading')); ?></td></tr>
+                </tbody>
+            </table>
+        </div>
+
         <!-- Statuses Tab -->
         <?php endif; ?>
 
@@ -1218,6 +1245,57 @@ $translationNamespaces = ['common', 'tickets'];
         </div>
     </div>
 
+    <!-- Custom Field Modal -->
+    <div class="modal" id="customFieldModal">
+        <div class="modal-content">
+            <div class="modal-header" id="customFieldModalTitle"><?php echo htmlspecialchars(t('tickets.custom_fields.add')); ?></div>
+            <form id="customFieldForm">
+                <input type="hidden" id="cfId">
+                <div class="form-group">
+                    <label for="cfLabel"><?php echo htmlspecialchars(t('tickets.custom_fields.field_label')); ?></label>
+                    <input type="text" id="cfLabel" required>
+                </div>
+                <div class="form-group">
+                    <label for="cfType"><?php echo htmlspecialchars(t('tickets.custom_fields.field_type')); ?></label>
+                    <select id="cfType" onchange="onCustomFieldTypeChange()">
+                        <option value="text"><?php echo htmlspecialchars(t('tickets.custom_fields.type_text')); ?></option>
+                        <option value="number"><?php echo htmlspecialchars(t('tickets.custom_fields.type_number')); ?></option>
+                        <option value="date"><?php echo htmlspecialchars(t('tickets.custom_fields.type_date')); ?></option>
+                        <option value="boolean"><?php echo htmlspecialchars(t('tickets.custom_fields.type_boolean')); ?></option>
+                        <option value="dropdown"><?php echo htmlspecialchars(t('tickets.custom_fields.type_dropdown')); ?></option>
+                        <option value="object_ref"><?php echo htmlspecialchars(t('tickets.custom_fields.type_object_ref')); ?></option>
+                    </select>
+                </div>
+                <div class="form-group" id="cfTargetClassGroup" style="display:none;">
+                    <label for="cfTargetClass"><?php echo htmlspecialchars(t('tickets.custom_fields.target_class')); ?></label>
+                    <select id="cfTargetClass"></select>
+                </div>
+                <div class="form-group" id="cfOptionsGroup" style="display:none;">
+                    <label><?php echo htmlspecialchars(t('tickets.custom_fields.field_options')); ?></label>
+                    <div id="cfOptionsList"></div>
+                    <button type="button" class="btn btn-secondary" style="margin-top:8px;" onclick="addCustomFieldOptionRow()"><?php echo htmlspecialchars(t('tickets.custom_fields.add_option')); ?></button>
+                </div>
+                <div class="form-group">
+                    <label for="cfOrder"><?php echo htmlspecialchars(t('tickets.settings.modals.lookup.display_order_label')); ?></label>
+                    <input type="number" id="cfOrder" value="0">
+                </div>
+                <div class="form-group">
+                    <label class="toggle-label">
+                        <span class="toggle-switch">
+                            <input type="checkbox" id="cfRequired">
+                            <span class="toggle-slider"></span>
+                        </span>
+                        <?php echo htmlspecialchars(t('tickets.custom_fields.field_required')); ?>
+                    </label>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeCustomFieldModal()"><?php echo htmlspecialchars(t('common.cancel')); ?></button>
+                    <button type="submit" class="btn btn-primary"><?php echo htmlspecialchars(t('common.save')); ?></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Mailbox Modal -->
     <div class="modal" id="mailboxModal">
         <div class="modal-content" style="max-width: 700px;">
@@ -1934,6 +2012,7 @@ $translationNamespaces = ['common', 'tickets'];
             loadTicketTypes();
             loadTicketOrigins();
             loadTicketCategories();
+            loadTicketCustomFields();
             loadTicketStatuses();
             loadTicketPriorities();
             loadRotaLocations();
@@ -2653,6 +2732,175 @@ $translationNamespaces = ['common', 'tickets'];
                 console.error('Error:', error);
                 showToast('Failed to save', 'error');
             }
+        });
+
+        // ===== Ticket custom fields =====
+        let customFieldsCache = [];
+        let cmdbClassesCache = null;
+
+        const CF_TYPE_LABELS = {
+            text:       t('tickets.custom_fields.type_text'),
+            number:     t('tickets.custom_fields.type_number'),
+            date:       t('tickets.custom_fields.type_date'),
+            boolean:    t('tickets.custom_fields.type_boolean'),
+            dropdown:   t('tickets.custom_fields.type_dropdown'),
+            object_ref: t('tickets.custom_fields.type_object_ref')
+        };
+
+        async function loadTicketCustomFields() {
+            try {
+                const response = await fetch(API_BASE + 'get_ticket_custom_fields.php');
+                const data = await response.json();
+                if (data.success) {
+                    customFieldsCache = data.custom_fields || [];
+                    renderTicketCustomFields();
+                } else {
+                    showToast('Error loading custom fields: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function renderTicketCustomFields() {
+            const tbody = document.getElementById('custom-fields-list');
+            if (!tbody) return;
+            if (!customFieldsCache.length) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#aaa;">${escapeHtml(t('tickets.custom_fields.none_yet'))}</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = customFieldsCache.map(f => `
+                <tr>
+                    <td><strong>${escapeHtml(f.label)}</strong></td>
+                    <td><code style="font-size:12px;">${escapeHtml(f.field_key)}</code></td>
+                    <td>${escapeHtml(CF_TYPE_LABELS[f.field_type] || f.field_type)}</td>
+                    <td>${f.is_required ? '<span class="status-badge status-active">Yes</span>' : '<span style="color:var(--text-faint,#999);">No</span>'}</td>
+                    <td>${f.display_order}</td>
+                    <td>
+                        <button class="action-btn" onclick="editCustomField(${f.id})" title="${t('common.edit')}">${TT_EDIT_SVG}</button>
+                        <button class="action-btn delete" onclick="deleteCustomField(${f.id}, '${escapeHtml(f.label).replace(/'/g, "\\'")}')" title="${t('common.delete')}">${TT_DELETE_SVG}</button>
+                    </td>
+                </tr>`).join('');
+        }
+
+        async function ensureCmdbClasses() {
+            if (cmdbClassesCache !== null) return cmdbClassesCache;
+            try {
+                const r = await fetch('../../api/cmdb/get_classes.php');
+                const d = await r.json();
+                cmdbClassesCache = (d.success && d.classes) ? d.classes : [];
+            } catch (e) { cmdbClassesCache = []; }
+            return cmdbClassesCache;
+        }
+
+        function onCustomFieldTypeChange() {
+            const type = document.getElementById('cfType').value;
+            document.getElementById('cfOptionsGroup').style.display = type === 'dropdown' ? '' : 'none';
+            const tcGroup = document.getElementById('cfTargetClassGroup');
+            tcGroup.style.display = type === 'object_ref' ? '' : 'none';
+            if (type === 'object_ref') {
+                ensureCmdbClasses().then(classes => {
+                    const sel = document.getElementById('cfTargetClass');
+                    const cur = sel.value;
+                    sel.innerHTML = '<option value="">--</option>' +
+                        classes.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+                    if (cur) sel.value = cur;
+                });
+            }
+        }
+
+        function addCustomFieldOptionRow(value, colour) {
+            const list = document.getElementById('cfOptionsList');
+            const row = document.createElement('div');
+            row.className = 'cf-option-row';
+            row.style.cssText = 'display:flex;gap:8px;margin-bottom:6px;align-items:center;';
+            row.innerHTML = `
+                <input type="text" class="cf-option-value" placeholder="${escapeHtml(t('tickets.custom_fields.option_placeholder'))}" value="${value ? escapeHtml(value) : ''}" style="flex:1;">
+                <input type="color" class="cf-option-colour" value="${colour || '#2563eb'}" style="width:44px;height:32px;padding:2px;">
+                <button type="button" class="action-btn delete" onclick="this.closest('.cf-option-row').remove()" title="${t('common.delete')}">${TT_DELETE_SVG}</button>`;
+            list.appendChild(row);
+        }
+
+        function collectCustomFieldOptions() {
+            const rows = document.querySelectorAll('#cfOptionsList .cf-option-row');
+            const out = [];
+            rows.forEach(r => {
+                const value = r.querySelector('.cf-option-value').value.trim();
+                const colour = r.querySelector('.cf-option-colour').value;
+                if (value !== '') out.push({ value: value, colour: colour });
+            });
+            return out;
+        }
+
+        function openAddCustomField() {
+            document.getElementById('customFieldModalTitle').textContent = t('tickets.custom_fields.add');
+            document.getElementById('cfId').value = '';
+            document.getElementById('cfLabel').value = '';
+            document.getElementById('cfType').value = 'text';
+            document.getElementById('cfOrder').value = '0';
+            document.getElementById('cfRequired').checked = false;
+            document.getElementById('cfOptionsList').innerHTML = '';
+            document.getElementById('cfTargetClass').value = '';
+            onCustomFieldTypeChange();
+            document.getElementById('customFieldModal').classList.add('active');
+        }
+
+        function editCustomField(id) {
+            const f = customFieldsCache.find(x => x.id == id);
+            if (!f) return;
+            document.getElementById('customFieldModalTitle').textContent = t('tickets.custom_fields.edit');
+            document.getElementById('cfId').value = f.id;
+            document.getElementById('cfLabel').value = f.label;
+            document.getElementById('cfType').value = f.field_type;
+            document.getElementById('cfOrder').value = f.display_order;
+            document.getElementById('cfRequired').checked = !!f.is_required;
+            document.getElementById('cfOptionsList').innerHTML = '';
+            (f.options || []).forEach(o => addCustomFieldOptionRow(o.value, o.colour));
+            document.getElementById('cfTargetClass').value = f.target_class_id || '';
+            onCustomFieldTypeChange();
+            if (f.field_type === 'object_ref') {
+                ensureCmdbClasses().then(() => { document.getElementById('cfTargetClass').value = f.target_class_id || ''; });
+            }
+            document.getElementById('customFieldModal').classList.add('active');
+        }
+
+        function closeCustomFieldModal() {
+            document.getElementById('customFieldModal').classList.remove('active');
+        }
+
+        async function deleteCustomField(id, label) {
+            const ok = await showConfirm({ title: 'Delete', message: `Are you sure you want to delete "${label}"?`, okLabel: 'Delete', okClass: 'danger' });
+            if (!ok) return;
+            try {
+                const response = await fetch(API_BASE + 'delete_ticket_custom_field.php', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: id })
+                });
+                const data = await response.json();
+                if (data.success) { showToast('Deleted', 'success'); loadTicketCustomFields(); }
+                else { showToast('Error deleting: ' + data.error, 'error'); }
+            } catch (error) { showToast('Failed to delete', 'error'); }
+        }
+
+        document.getElementById('customFieldForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const type = document.getElementById('cfType').value;
+            const payload = {
+                id: document.getElementById('cfId').value || null,
+                label: document.getElementById('cfLabel').value,
+                field_type: type,
+                display_order: parseInt(document.getElementById('cfOrder').value) || 0,
+                is_required: document.getElementById('cfRequired').checked ? 1 : 0,
+                options: type === 'dropdown' ? collectCustomFieldOptions() : [],
+                target_class_id: type === 'object_ref' ? (document.getElementById('cfTargetClass').value || null) : null
+            };
+            try {
+                const response = await fetch(API_BASE + 'save_ticket_custom_field.php', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (data.success) { showToast('Saved', 'success'); closeCustomFieldModal(); loadTicketCustomFields(); }
+                else { showToast('Error saving: ' + data.error, 'error'); }
+            } catch (error) { showToast('Failed to save', 'error'); }
         });
 
         // Render ticket origins

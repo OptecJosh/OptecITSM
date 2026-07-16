@@ -35,6 +35,7 @@
 
 require_once __DIR__ . '/../service_context.php';
 require_once __DIR__ . '/../tenancy.php';
+require_once __DIR__ . '/custom_fields.php';
 require_once dirname(__DIR__, 2) . '/workflow/includes/engine.php';
 
 class TicketsService
@@ -449,6 +450,65 @@ class TicketsService
             }
         } catch (Exception $wfEx) {
             error_log('Workflow dispatch error in TicketsService update: ' . $wfEx->getMessage());
+        }
+    }
+
+    // ======================================================================
+    //  Custom fields
+    // ======================================================================
+
+    /**
+     * Write custom field values on a ticket (keyed by field_key), auditing each
+     * change server-side. Custom fields don't fit updateTicket's single-scalar
+     * diff loop — each ticket can have N fields of mixed types — so they get their
+     * own path, delegating typed validation + storage to CustomFieldsService.
+     *
+     * "Required" is deliberately NOT enforced here: it's a UI-level nudge only, so
+     * inline edits and the non-UI creation channels (email/self-service/webchat/
+     * API) can never be hard-blocked by a tenant's required custom field.
+     */
+    public static function updateTicketCustomFields(PDO $conn, ActorContext $ctx, int $ticketId, array $values): void
+    {
+        $current = self::loadTicket($conn, $ctx, $ticketId);   // 404 / out-of-scope
+        if ($current['deleted_datetime'] !== null) {
+            throw new ServiceError('conflict', 'conflict', 'Ticket is in the trash. Restore it before updating.');
+        }
+        if (!$values) {
+            return; // nothing to do
+        }
+
+        $tenantId = $current['tenant_id'] !== null ? (int)$current['tenant_id'] : getDefaultTenantId($conn);
+        $defs = CustomFieldsService::fieldDefsForTicket($conn, $tenantId);
+
+        // Snapshot before-values for the audit diff (keyed by field_id).
+        $before = CustomFieldsService::readValues($conn, 'ticket', $ticketId);
+
+        $conn->beginTransaction();
+        try {
+            CustomFieldsService::writeValues($conn, 'ticket', $ticketId, $defs, $values);
+            $conn->prepare("UPDATE tickets SET updated_datetime = UTC_TIMESTAMP() WHERE id = ?")->execute([$ticketId]);
+            $conn->commit();
+        } catch (Exception $e) {
+            if ($conn->inTransaction()) $conn->rollBack();
+            throw $e;
+        }
+
+        // Audit each field that actually changed, using human-readable values.
+        $after = CustomFieldsService::readValues($conn, 'ticket', $ticketId);
+        foreach ($values as $key => $raw) {
+            if (!isset($defs[$key])) {
+                continue;
+            }
+            $def = $defs[$key];
+            $fid = (int)$def['id'];
+            $oldStr = CustomFieldsService::presentValue($def, $before[$fid] ?? null);
+            $newStr = CustomFieldsService::presentValue($def, $after[$fid] ?? null);
+            if ($oldStr !== $newStr) {
+                self::auditWrite($conn, $ticketId, $ctx->actorId, 'Custom: ' . $def['label'], $oldStr, $newStr);
+                if (function_exists('wf_emit')) {
+                    try { wf_emit('ticket_custom_field', 'updated', $ticketId, $def['label']); } catch (Exception $e) { /* non-blocking */ }
+                }
+            }
         }
     }
 

@@ -73,6 +73,12 @@ return [
             'grant'     => 'Manage ticket categories and subcategories',
         ],
         [
+            'id'        => 'custom-fields',
+            'cap'       => Cap::TICKETS_CUSTOM_FIELDS,
+            'label_key' => 'tickets.settings.tabs.custom_fields',
+            'grant'     => 'Manage custom fields on tickets',
+        ],
+        [
             'id'        => 'statuses',
             'cap'       => Cap::TICKETS_STATUSES,
             'label_key' => 'tickets.settings.tabs.statuses',

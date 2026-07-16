@@ -150,6 +150,33 @@ return [
         'change_link'     => 'Link to change',
     ],
 
+    // Custom fields settings tab + the dynamically-rendered ticket fields.
+    'custom_fields' => [
+        'heading'            => 'Custom fields',
+        'section_title'      => 'Custom fields',
+        'add'                => 'Add custom field',
+        'edit'               => 'Edit custom field',
+        'col_label'          => 'Label',
+        'col_type'           => 'Type',
+        'col_required'       => 'Required',
+        'field_label'        => 'Label',
+        'field_key'          => 'Key',
+        'field_type'         => 'Type',
+        'field_required'     => 'Required',
+        'field_options'      => 'Dropdown options',
+        'option_placeholder' => 'Option value',
+        'add_option'         => 'Add option',
+        'target_class'       => 'Target class',
+        'type_text'          => 'Text',
+        'type_number'        => 'Number',
+        'type_date'          => 'Date',
+        'type_boolean'       => 'Yes / No',
+        'type_dropdown'      => 'Dropdown',
+        'type_object_ref'    => 'CMDB object reference',
+        'none_yet'           => 'No custom fields yet — use Add to create one.',
+        'section_pane_title' => 'Custom fields',
+    ],
+
     // Categories settings tab (tickets/settings/index.php) — the subcategories
     // modal opened per-category, and the New Ticket modal's category picker.
     'categories' => [
@@ -313,6 +340,7 @@ return [
             'ticket_types'    => 'Ticket types',
             'ticket_origins'  => 'Ticket origins',
             'categories'      => 'Categories',
+            'custom_fields'   => 'Custom fields',
             'statuses'        => 'Statuses',
             'priorities'      => 'Priorities',
             'sla'             => 'SLA',
@@ -334,6 +362,7 @@ return [
             'ticket_types'     => 'Ticket types',
             'ticket_origins'   => 'Ticket origins',
             'categories'       => 'Categories',
+            'custom_fields'    => 'Custom fields',
             'statuses'         => 'Statuses',
             'priorities'       => 'Priorities',
             'rota_locations'   => 'Rota locations',
@@ -711,6 +740,7 @@ return [
             'ticket_types'    => 'Ticket types classify what a request is (e.g. Incident, Service Request) — define the types analysts can set on a ticket.',
             'ticket_origins'  => 'Ticket origins record how a ticket came in (e.g. Email, Phone, Portal) — define the origins analysts can choose from.',
             'categories'      => 'Categories (and their subcategories) classify what a ticket is about — define the ones your service desk uses, then manage each category\'s subcategories from its row.',
+            'custom_fields'   => 'Custom fields let you capture data on tickets that the default fields don\'t cover — add your own typed fields (text, number, date, yes/no, dropdown) and they appear on every ticket, platform-wide.',
             'mailboxes'       => 'Mailboxes connect FreeITSM to email accounts so incoming messages become tickets and replies go back out — add and authenticate the ones your service desk monitors.',
             'rota_shifts'     => 'Shifts are the working-pattern templates (e.g. Early, Late, On-call) that analysts are assigned on the staff rota — define them here before building the rota.',
             'analysts'        => 'Analysts are the staff who log in and work tickets — add them, reset passwords, and assign them to teams to control their access.',

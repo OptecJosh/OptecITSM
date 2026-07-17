@@ -7,6 +7,7 @@ session_start(['read_and_close' => true]);
 require_once '../../config.php';
 require_once '../../includes/functions.php';
 require_once '../../includes/tenancy.php';
+require_once '../../includes/ticket_filter.php';
 
 header('Content-Type: application/json');
 
@@ -82,6 +83,18 @@ try {
     if ($status !== null && $status !== '') {
         $sql .= " AND ts.name = ?";
         $params[] = $status;
+    }
+
+    // Phase 5: richer ad-hoc / queue filters via the shared engine. `filters` is
+    // a JSON object (see includes/ticket_filter.php). Combines (AND) with the
+    // folder params above, so an ad-hoc filter narrows within the current folder.
+    if (!empty($_GET['filters'])) {
+        $decoded = json_decode($_GET['filters'], true);
+        if (is_array($decoded)) {
+            list($fSql, $fParams) = ticket_filter_build($decoded);
+            $sql .= $fSql;
+            $params = array_merge($params, $fParams);
+        }
     }
 
     // Multi-tenancy: scope the list to the analyst's active company (no-op at N=1).

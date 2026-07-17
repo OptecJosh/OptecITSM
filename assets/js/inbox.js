@@ -127,6 +127,7 @@ let analysts = [];
 let currentEmail = null;
 let currentRecordings = [];
 let folderCounts = {};
+let adHocFilters = {};   // Phase 5: ad-hoc ticket filters (same shape as saved queues)
 // Messaging channels (WhatsApp etc.): set when a ticket's thread loads, so the
 // reading pane composes over the channel instead of email. 'email' = normal ticket.
 let currentTicketChannel = 'email';
@@ -1048,6 +1049,12 @@ async function loadEmails() {
             url += 'trashed=1';
         }
 
+        // Phase 5: append the ad-hoc filter set (narrows within the current folder).
+        if (adHocFilterActiveCount() > 0) {
+            const sep = url.endsWith('?') ? '' : '&';
+            url += sep + 'filters=' + encodeURIComponent(JSON.stringify(adHocFilters));
+        }
+
         const response = await fetch(url);
         const data = await response.json();
 
@@ -1064,6 +1071,135 @@ async function loadEmails() {
 }
 
 // Render email list
+// ===== Phase 5: ad-hoc ticket filters =====
+// A compact filter panel over the ticket list. Fields map 1:1 onto the shared
+// server-side engine (includes/ticket_filter.php); the same shape is reused by
+// saved queues (5b). SLA-state filtering is intentionally omitted for now
+// (SLA is compute-on-read — no column to filter on yet).
+
+function adHocFilterActiveCount() {
+    let n = 0;
+    for (const k in adHocFilters) {
+        const v = adHocFilters[k];
+        if (Array.isArray(v)) { if (v.length) n++; }
+        else if (typeof v === 'string') { if (v.trim() !== '') n++; }
+        else if (v != null) n++;
+    }
+    return n;
+}
+
+function updateFilterIndicator() {
+    const btn = document.getElementById('filterToggleBtn');
+    const badge = document.getElementById('filterBadge');
+    const n = adHocFilterActiveCount();
+    if (btn) btn.classList.toggle('filter-active', n > 0);
+    if (badge) {
+        badge.textContent = n;
+        badge.style.display = n > 0 ? '' : 'none';
+    }
+}
+
+function toggleFilterPanel() {
+    const panel = document.getElementById('ticketFilterPanel');
+    if (!panel) return;
+    if (panel.hidden) {
+        renderFilterPanel();
+        panel.hidden = false;
+    } else {
+        panel.hidden = true;
+    }
+}
+
+function renderFilterPanel() {
+    const panel = document.getElementById('ticketFilterPanel');
+    if (!panel) return;
+
+    // One checkbox group. `field` is the server filter key; status filters by
+    // name, everything else by numeric id (data-kind drives the read step).
+    const group = (label, field, options, valueKey, labelKey) => {
+        const selected = (adHocFilters[field] || []).map(String);
+        const items = (options || []).map(o => {
+            const val = String(o[valueKey]);
+            const checked = selected.includes(val) ? 'checked' : '';
+            const kind = field === 'status' ? 'str' : 'int';
+            return `<label class="tf-opt"><input type="checkbox" data-field="${field}" data-kind="${kind}" value="${escapeHtml(val)}" ${checked}> ${escapeHtml(String(o[labelKey]))}</label>`;
+        }).join('');
+        if (!items) return '';
+        return `<div class="tf-field"><div class="tf-field-label">${escapeHtml(label)}</div><div class="tf-options">${items}</div></div>`;
+    };
+
+    const kw = adHocFilters.keyword || '';
+    const cf = adHocFilters.created_from || '';
+    const ct = adHocFilters.created_to || '';
+    const customerGroup = (typeof isMultiCompany !== 'undefined' && isMultiCompany)
+        ? group('Customer', 'tenant_id', moveCompanies, 'id', 'name') : '';
+
+    panel.innerHTML = `
+        <div class="tf-top">
+            <div class="tf-field tf-keyword">
+                <div class="tf-field-label">Keyword</div>
+                <input type="text" id="tfKeyword" placeholder="Subject or ticket #" value="${escapeHtml(kw)}">
+            </div>
+            <div class="tf-field">
+                <div class="tf-field-label">Created from</div>
+                <input type="date" id="tfCreatedFrom" value="${escapeHtml(cf)}">
+            </div>
+            <div class="tf-field">
+                <div class="tf-field-label">Created to</div>
+                <input type="date" id="tfCreatedTo" value="${escapeHtml(ct)}">
+            </div>
+        </div>
+        <div class="tf-grid">
+            ${group('Status', 'status', ticketStatuses, 'name', 'name')}
+            ${group('Priority', 'priority_id', ticketPriorities, 'id', 'name')}
+            ${group('Type', 'ticket_type_id', ticketTypes, 'id', 'name')}
+            ${group('Category', 'category_id', ticketCategories, 'id', 'name')}
+            ${group('Origin', 'origin_id', ticketOrigins, 'id', 'name')}
+            ${group('Assignee', 'assignee_id', analysts, 'id', 'full_name')}
+            ${group('Department', 'department_id', departments, 'id', 'name')}
+            ${customerGroup}
+        </div>
+        <div class="tf-actions">
+            <button class="btn btn-secondary" onclick="clearAdHocFilters()">Clear</button>
+            <button class="btn btn-primary" onclick="applyAdHocFilters()">Apply filters</button>
+        </div>
+    `;
+}
+
+function readFilterPanel() {
+    const panel = document.getElementById('ticketFilterPanel');
+    const f = {};
+    if (!panel) return f;
+    panel.querySelectorAll('input[type=checkbox]:checked').forEach(cb => {
+        const field = cb.dataset.field;
+        const val = cb.dataset.kind === 'int' ? Number(cb.value) : cb.value;
+        (f[field] = f[field] || []).push(val);
+    });
+    const kwEl = panel.querySelector('#tfKeyword');
+    if (kwEl && kwEl.value.trim() !== '') f.keyword = kwEl.value.trim();
+    const cfEl = panel.querySelector('#tfCreatedFrom');
+    if (cfEl && cfEl.value) f.created_from = cfEl.value;
+    const ctEl = panel.querySelector('#tfCreatedTo');
+    if (ctEl && ctEl.value) f.created_to = ctEl.value;
+    return f;
+}
+
+function applyAdHocFilters() {
+    adHocFilters = readFilterPanel();
+    updateFilterIndicator();
+    const panel = document.getElementById('ticketFilterPanel');
+    if (panel) panel.hidden = true;
+    loadEmails();
+}
+
+function clearAdHocFilters() {
+    adHocFilters = {};
+    updateFilterIndicator();
+    const panel = document.getElementById('ticketFilterPanel');
+    if (panel) panel.hidden = true;
+    loadEmails();
+}
+
 function renderEmailList() {
     const emailListEl = document.getElementById('emailList');
 

@@ -843,6 +843,36 @@ body.ticket-popout .ticket-toolbar {
 .sla-chip.sla-warning  { background: var(--warning-bg, #fef3c7); color: var(--warning-text, #92400e); border-color: #f59e0b; }
 .sla-chip.sla-breached { background: var(--danger-bg, #fee2e2); color: var(--danger-text, #991b1b); border-color: #dc2626; }
 
+/* Phase 5: ad-hoc ticket filter panel + filter button indicator */
+#filterToggleBtn { position: relative; }
+.icon-btn.filter-active { color: #db2777; }
+.filter-badge {
+    position: absolute; top: -2px; right: -2px;
+    min-width: 15px; height: 15px; padding: 0 3px;
+    border-radius: 999px; background: #db2777; color: #fff;
+    font-size: 10px; line-height: 15px; text-align: center; font-weight: 700;
+}
+.ticket-filter-panel {
+    border-bottom: 1px solid var(--border, #e5e7eb);
+    background: var(--surface-2, #f9fafb);
+    padding: 12px 14px;
+    max-height: 55vh; overflow: auto;
+}
+.ticket-filter-panel .tf-top { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; align-items: flex-end; }
+.ticket-filter-panel .tf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.ticket-filter-panel .tf-field-label { font-size: 12px; font-weight: 600; margin-bottom: 5px; color: var(--text, #111827); }
+.ticket-filter-panel .tf-options {
+    max-height: 130px; overflow: auto;
+    border: 1px solid var(--border, #e5e7eb); border-radius: 6px;
+    padding: 6px 8px; background: var(--surface, #fff);
+    display: flex; flex-direction: column; gap: 3px;
+}
+.ticket-filter-panel .tf-opt { display: flex; align-items: center; gap: 6px; font-size: 12.5px; cursor: pointer; }
+.ticket-filter-panel .tf-keyword input,
+.ticket-filter-panel input[type="date"] { padding: 6px 8px; border: 1px solid var(--border, #e5e7eb); border-radius: 6px; font-size: 13px; }
+.ticket-filter-panel .tf-keyword input { min-width: 200px; }
+.ticket-filter-panel .tf-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+
 .ticket-properties-summary-item {
     display: flex;
     align-items: center;

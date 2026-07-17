@@ -29,7 +29,7 @@ $translationNamespaces = ['common', 'tickets'];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars(t('tickets.title')); ?> - <?php echo htmlspecialchars(t('tickets.nav.inbox')); ?></title>
     <link rel="stylesheet" href="../assets/css/theme.css?v=22">
-    <link rel="stylesheet" href="../assets/css/inbox.css?v=42">
+    <link rel="stylesheet" href="../assets/css/inbox.css?v=43">
     <link rel="stylesheet" href="../assets/css/mobile.css?v=29">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <?php echo Tz::scriptTag(); ?>
@@ -67,11 +67,16 @@ $translationNamespaces = ['common', 'tickets'];
                     <button class="icon-btn" onclick="openSearchModal()" title="<?php echo htmlspecialchars(t('tickets.list.search_btn')); ?>" aria-label="<?php echo htmlspecialchars(t('tickets.list.search_btn')); ?>">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     </button>
+                    <button class="icon-btn" id="filterToggleBtn" onclick="toggleFilterPanel()" title="Filter tickets" aria-label="Filter tickets">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                        <span class="filter-badge" id="filterBadge" style="display:none;"></span>
+                    </button>
                     <button class="icon-btn" onclick="refreshCurrentView()" title="<?php echo htmlspecialchars(t('tickets.list.refresh_btn')); ?>" aria-label="<?php echo htmlspecialchars(t('tickets.list.refresh_btn')); ?>">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
                     </button>
                 </div>
             </div>
+            <div class="ticket-filter-panel" id="ticketFilterPanel" hidden></div>
             <div class="email-list" id="emailList">
                 <div class="reading-pane-empty"><?php echo htmlspecialchars(t('tickets.list.select_folder')); ?></div>
             </div>
@@ -483,7 +488,7 @@ $translationNamespaces = ['common', 'tickets'];
         window.API_BASE = '../api/tickets/';
         window.CURRENT_ANALYST_ID = <?php echo (int)($_SESSION['analyst_id'] ?? 0); ?>;
     </script>
-    <script src="../assets/js/inbox.js?v=62"></script>
+    <script src="../assets/js/inbox.js?v=63"></script>
     <script src="../assets/js/mobile.js?v=12"></script>
     <script>
     // Auto-check mailboxes every 60 seconds

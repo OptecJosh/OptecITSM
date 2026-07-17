@@ -3291,6 +3291,27 @@ body.ticket-popout .ticket-toolbar {
 }
 .cmdb-link-x:hover { color: #b91c1c; }
 
+/* Primary CI (drives the ticket's SLA) + per-device SLA policy badge (Phase 3b) */
+.cmdb-link-card.is-primary { border-color: #f472b6; box-shadow: inset 3px 0 0 #db2777; }
+.cmdb-link-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.cmdb-primary-star { color: #db2777; margin-right: 2px; }
+.cmdb-primary-pill {
+    background: #db2777; color: #fff; padding: 1px 8px; border-radius: 999px;
+    font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; white-space: nowrap;
+}
+.cmdb-set-primary {
+    background: none; border: 1px solid #fbcfe8; color: #be185d; cursor: pointer;
+    font-size: 11px; padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+}
+.cmdb-set-primary:hover { background: #fce7f3; border-color: #f9a8d4; }
+.cmdb-sla-badge {
+    background: #ecfeff; color: #0e7490; border: 1px solid #a5f3fc;
+    padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 500;
+}
+/* SLA panel: which policy drove the target, and where it came from */
+.sla-policy-line { font-size: 12px; color: var(--text-dim, #6b7280); margin: 2px 0 8px; }
+.sla-policy-line strong { color: var(--text, #111827); }
+
 /* Inline picker — appears when "+ Link object" is clicked */
 .cmdb-picker {
     margin-top: 10px;

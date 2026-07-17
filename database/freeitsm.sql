@@ -564,6 +564,22 @@ CREATE TABLE IF NOT EXISTS `tenant_sla_policies` (
 INSERT IGNORE INTO `sla_policies` (`id`, `name`, `description`, `is_default`, `is_active`) VALUES
     (1, 'Default', 'The standard SLA applied to any company without its own policy', 1, 1);
 
+-- Which policy a CMDB configuration item (device) is on. One row per object;
+-- absence = the device carries no SLA of its own. A ticket whose primary
+-- affected CI has a row here adopts that policy, overriding the company's
+-- policy — the engine resolves device → company → default (see includes/sla.php).
+CREATE TABLE IF NOT EXISTS `cmdb_object_sla_policies` (
+    `id`                INT NOT NULL AUTO_INCREMENT,
+    `object_id`         INT NOT NULL,
+    `policy_id`         INT NOT NULL,
+    `created_datetime`  DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_cmdb_object_sla_policies_object` (`object_id`),
+    KEY `ix_cmdb_object_sla_policies_policy` (`policy_id`),
+    CONSTRAINT `fk_cmdb_object_sla_object` FOREIGN KEY (`object_id`) REFERENCES `cmdb_objects` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_cmdb_object_sla_policy` FOREIGN KEY (`policy_id`) REFERENCES `sla_policies` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `tickets` (
     `id`                    INT NOT NULL AUTO_INCREMENT,
     `tenant_id`             INT NULL,
@@ -3646,10 +3662,12 @@ CREATE TABLE IF NOT EXISTS `ticket_cmdb_objects` (
     `id`                  INT NOT NULL AUTO_INCREMENT,
     `ticket_id`           INT NOT NULL,
     `cmdb_object_id`      INT NOT NULL,
+    `is_primary`          TINYINT(1) NOT NULL DEFAULT 0,
     `created_datetime`    DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
     `created_by_analyst_id` INT NULL,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_ticket_cmdb_obj` (`ticket_id`, `cmdb_object_id`),
+    KEY `ix_tco_primary` (`ticket_id`, `is_primary`),
     KEY `ix_tco_cmdb_object_id` (`cmdb_object_id`),
     CONSTRAINT `fk_tco_ticket` FOREIGN KEY (`ticket_id`) REFERENCES `tickets` (`id`) ON DELETE CASCADE,
     CONSTRAINT `fk_tco_cmdb_object` FOREIGN KEY (`cmdb_object_id`) REFERENCES `cmdb_objects` (`id`) ON DELETE CASCADE,

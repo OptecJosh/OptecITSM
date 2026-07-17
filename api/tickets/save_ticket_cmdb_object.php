@@ -42,13 +42,27 @@ try {
     if (!$check->fetchColumn()) throw new Exception('CMDB object not found');
 
     try {
+        $conn->beginTransaction();
         $ins = $conn->prepare(
             "INSERT INTO ticket_cmdb_objects (ticket_id, cmdb_object_id, created_datetime, created_by_analyst_id)
              VALUES (?, ?, UTC_TIMESTAMP(), ?)"
         );
         $ins->execute([$ticketId, $objectId, (int)$_SESSION['analyst_id']]);
-        echo json_encode(['success' => true, 'id' => (int)$conn->lastInsertId(), 'already_linked' => false]);
+        $newId = (int)$conn->lastInsertId();
+
+        // The first CI linked to a ticket becomes its PRIMARY affected CI — the
+        // one whose SLA policy (if any) drives the ticket. Later links don't
+        // steal primacy; an analyst can reassign it via set_ticket_cmdb_primary.
+        $hasPrimary = $conn->prepare("SELECT COUNT(*) FROM ticket_cmdb_objects WHERE ticket_id = ? AND is_primary = 1 AND id <> ?");
+        $hasPrimary->execute([$ticketId, $newId]);
+        $becamePrimary = ((int)$hasPrimary->fetchColumn() === 0);
+        if ($becamePrimary) {
+            $conn->prepare("UPDATE ticket_cmdb_objects SET is_primary = 1 WHERE id = ?")->execute([$newId]);
+        }
+        $conn->commit();
+        echo json_encode(['success' => true, 'id' => $newId, 'already_linked' => false, 'is_primary' => $becamePrimary]);
     } catch (PDOException $pe) {
+        if ($conn->inTransaction()) $conn->rollBack();
         if ($pe->errorInfo[1] == 1062) {
             // Already linked — surface as success with a flag so the UI can be quiet
             echo json_encode(['success' => true, 'already_linked' => true]);

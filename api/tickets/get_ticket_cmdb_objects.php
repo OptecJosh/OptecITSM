@@ -27,18 +27,23 @@ try {
         throw new Exception('Ticket not found');
     }
 
+    // is_primary marks the CI that drives the ticket's SLA; sla_policy_* expose
+    // whether that CI carries its own policy (Phase 3b). Primary sorts first.
     $stmt = $conn->prepare(
-        "SELECT tco.id AS link_id,
+        "SELECT tco.id AS link_id, tco.is_primary,
                 o.id AS object_id, o.name, c.name AS class_name,
                 o.parent_id, p.name AS parent_name, pc.name AS parent_class_name,
-                tco.created_datetime
+                tco.created_datetime,
+                cosp.policy_id AS sla_policy_id, sp.name AS sla_policy_name
            FROM ticket_cmdb_objects tco
            JOIN cmdb_objects o ON o.id = tco.cmdb_object_id
            JOIN cmdb_classes c ON c.id = o.class_id
       LEFT JOIN cmdb_objects p ON p.id = o.parent_id
       LEFT JOIN cmdb_classes pc ON pc.id = p.class_id
+      LEFT JOIN cmdb_object_sla_policies cosp ON cosp.object_id = o.id
+      LEFT JOIN sla_policies sp ON sp.id = cosp.policy_id AND sp.is_active = 1
           WHERE tco.ticket_id = ?
-       ORDER BY c.name, o.name"
+       ORDER BY tco.is_primary DESC, c.name, o.name"
     );
     $stmt->execute([$ticketId]);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -46,6 +51,8 @@ try {
         $r['link_id'] = (int)$r['link_id'];
         $r['object_id'] = (int)$r['object_id'];
         $r['parent_id'] = $r['parent_id'] !== null ? (int)$r['parent_id'] : null;
+        $r['is_primary'] = (int)$r['is_primary'] === 1;
+        $r['sla_policy_id'] = $r['sla_policy_id'] !== null ? (int)$r['sla_policy_id'] : null;
     }
 
     echo json_encode(['success' => true, 'links' => $rows]);

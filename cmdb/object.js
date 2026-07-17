@@ -19,6 +19,11 @@ let allClasses = []; // cached for the property-edit target-class dropdown
 let acTimer = null;
 let acHighlightedIdx = -1;
 let summaryGenerating = false;
+let slaPolicy = null; // { assigned_policy_id, policies:[{id,name,is_default}], default_policy_name }
+
+// SLA policy assignment lives under the tickets API (the SLA engine's home),
+// not the CMDB API — this device→policy link is what the ticket SLA resolves.
+const TICKETS_API = '../api/tickets/';
 
 function escapeHtml(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
@@ -48,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('objPage').innerHTML = `<div style="padding:40px;text-align:center;color:#b91c1c;">${escapeHtml(window.t('cmdb.object.missing_id'))}</div>`;
         return;
     }
-    Promise.all([loadObject(), loadImpact(), loadActivity(), loadRelationshipTypes(), loadAllClasses()]).then(() => {
+    Promise.all([loadObject(), loadImpact(), loadActivity(), loadRelationshipTypes(), loadAllClasses(), loadSlaPolicy()]).then(() => {
         if (obj) render();
     });
     initPropDefModalDrag();
@@ -97,6 +102,56 @@ async function loadRelationshipTypes() {
     } catch (e) { /* ignore */ }
 }
 
+async function loadSlaPolicy() {
+    try {
+        const res = await fetch(TICKETS_API + 'get_cmdb_object_sla_policy.php?object_id=' + OBJECT_ID);
+        const data = await res.json();
+        if (data.success) slaPolicy = data;
+    } catch (e) { /* SLA card will just not render */ }
+}
+
+// Card: assign this device its own SLA policy. When the device is a ticket's
+// PRIMARY affected CI, that ticket adopts this policy over the customer's tier.
+function renderSlaPolicyCard() {
+    if (!slaPolicy) return '';
+    const assigned = slaPolicy.assigned_policy_id;
+    const defName = slaPolicy.default_policy_name;
+    const noneLabel = defName
+        ? `No device SLA — tickets inherit the customer / “${defName}” policy`
+        : 'No device SLA — tickets inherit the customer policy';
+    const opts = [`<option value=""${assigned == null ? ' selected' : ''}>${escapeHtml(noneLabel)}</option>`]
+        .concat((slaPolicy.policies || []).map(p =>
+            `<option value="${p.id}"${assigned === p.id ? ' selected' : ''}>${escapeHtml(p.name)}${p.is_default ? ' (default)' : ''}</option>`
+        )).join('');
+    return `
+        <div class="obj-section">
+            <h3>SLA policy</h3>
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <select id="slaPolicySelect" onchange="saveSlaPolicy(this.value)" style="min-width:300px; padding:6px 8px;">
+                    ${opts}
+                </select>
+            </div>
+            <p style="margin:8px 0 0; font-size:12px; color: var(--text-muted, #6b7280);">
+                When this device is the <strong>primary</strong> affected item on a ticket, that ticket adopts this SLA policy — overriding the customer's tier. Leave as “No device SLA” to let tickets follow the customer's policy.
+            </p>
+        </div>
+    `;
+}
+
+async function saveSlaPolicy(value) {
+    const policyId = value === '' ? null : parseInt(value, 10);
+    try {
+        const data = await postJson(TICKETS_API + 'save_cmdb_object_sla_policy.php', { object_id: OBJECT_ID, policy_id: policyId });
+        if (!data.success) throw new Error(data.error || 'Save failed');
+        if (slaPolicy) slaPolicy.assigned_policy_id = policyId;
+        showInlineToast(policyId == null ? 'Device SLA cleared — tickets follow the customer policy' : 'Device SLA policy saved');
+    } catch (err) {
+        showInlineToast('Error: ' + err.message, true);
+        const sel = document.getElementById('slaPolicySelect');
+        if (sel && slaPolicy) sel.value = slaPolicy.assigned_policy_id == null ? '' : String(slaPolicy.assigned_policy_id);
+    }
+}
+
 // ---------- Render ----------
 
 function render() {
@@ -140,6 +195,8 @@ function render() {
         ${renderImpactPanel()}
 
         ${renderActivityPanel()}
+
+        ${renderSlaPolicyCard()}
 
         <div class="obj-section">
             <h3>${escapeHtml(window.t('cmdb.object.map'))}</h3>

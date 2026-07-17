@@ -2938,16 +2938,23 @@ async function loadCmdbObjects(ticketId) {
 function renderCmdbObjects(ticketId) {
     const container = document.getElementById('cmdbObjectsContainer');
     if (!container) return;
+    const multiple = cmdbObjectsForTicket.length > 1;
     const cards = cmdbObjectsForTicket.map(link => `
-        <a class="cmdb-link-card" href="../cmdb/object.php?id=${link.object_id}" title="Open in CMDB">
+        <a class="cmdb-link-card${link.is_primary ? ' is-primary' : ''}" href="../cmdb/object.php?id=${link.object_id}" title="Open in CMDB">
             <div class="cmdb-link-card-body">
-                <div class="cmdb-link-card-name">${escapeHtml(link.name)}</div>
+                <div class="cmdb-link-card-name">${link.is_primary ? '<span class="cmdb-primary-star" title="Primary CI — drives this ticket\'s SLA">★</span>' : ''}${escapeHtml(link.name)}</div>
                 <div class="cmdb-link-card-meta">
                     <span class="cmdb-class-badge">${escapeHtml(link.class_name)}</span>
                     ${link.parent_name ? `<span class="cmdb-parent">in <strong>${escapeHtml(link.parent_name)}</strong> (${escapeHtml(link.parent_class_name || '')})</span>` : ''}
+                    ${link.sla_policy_name ? `<span class="cmdb-sla-badge" title="This device carries its own SLA policy">SLA: ${escapeHtml(link.sla_policy_name)}</span>` : ''}
                 </div>
             </div>
-            <button class="cmdb-link-x" title="${escapeHtml(t('tickets.cmdb.unlink_title'))}" onclick="removeCmdbObject(event, ${link.link_id}, ${ticketId})">×</button>
+            <div class="cmdb-link-actions">
+                ${link.is_primary
+                    ? '<span class="cmdb-primary-pill" title="Primary CI — its SLA policy drives this ticket">Primary</span>'
+                    : (multiple ? `<button class="cmdb-set-primary" title="Make this the primary CI (drives the ticket's SLA)" onclick="setPrimaryCmdbObject(event, ${link.link_id}, ${ticketId})">Make primary</button>` : '')}
+                <button class="cmdb-link-x" title="${escapeHtml(t('tickets.cmdb.unlink_title'))}" onclick="removeCmdbObject(event, ${link.link_id}, ${ticketId})">×</button>
+            </div>
         </a>
     `).join('');
 
@@ -3017,6 +3024,9 @@ function openLinkCmdbPicker(ticketId) {
             }
             picker.style.display = 'none';
             await loadCmdbObjects(ticketId);
+            // A newly linked CI may become primary and pull the ticket onto a
+            // device SLA — refresh the panel so the change is visible at once.
+            if (typeof loadSlaState === 'function') loadSlaState(ticketId);
         } catch (err) {
             showToast('Error: ' + err.message, 'error');
         }
@@ -3061,6 +3071,29 @@ async function removeCmdbObject(ev, linkId, ticketId) {
         if (!data.success) throw new Error(data.error || 'Unlink failed');
         showToast(t('tickets.cmdb.unlinked_toast'), 'success');
         await loadCmdbObjects(ticketId);
+        // Removing the primary CI may re-resolve the ticket's SLA — refresh it.
+        if (typeof loadSlaState === 'function') loadSlaState(ticketId);
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+}
+
+// Mark a linked CI as the ticket's primary — the CI whose SLA policy drives the
+// ticket. Refreshes both the CI list (primary badge) and the SLA panel.
+async function setPrimaryCmdbObject(ev, linkId, ticketId) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    try {
+        const res = await fetch('../api/tickets/set_ticket_cmdb_primary.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ link_id: linkId })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Failed to set primary');
+        showToast('Primary CI updated', 'success');
+        await loadCmdbObjects(ticketId);
+        if (typeof loadSlaState === 'function') loadSlaState(ticketId);
     } catch (err) {
         showToast('Error: ' + err.message, 'error');
     }
@@ -5224,9 +5257,27 @@ function renderSlaPanel(sla) {
         `;
     };
 
+    // Which policy produced these targets, and where it came from — so an
+    // analyst can see at a glance why a ticket is on a given tier (Phase 3b).
+    let policyLine = '';
+    if (sla.policy && sla.policy.name) {
+        const src = sla.policy_source;
+        let origin = '';
+        if (src === 'device') {
+            const dev = sla.policy_device && sla.policy_device.name ? sla.policy_device.name : 'primary device';
+            origin = ` &middot; from device <strong>${escapeHtml(dev)}</strong>`;
+        } else if (src === 'customer') {
+            origin = ' &middot; customer SLA';
+        } else if (src === 'default') {
+            origin = ' &middot; default SLA';
+        }
+        policyLine = `<div class="sla-policy-line">Policy: <strong>${escapeHtml(sla.policy.name)}</strong>${origin}</div>`;
+    }
+
     container.innerHTML = `
         <div class="sla-section">
             <div class="sla-section-header">SLA</div>
+            ${policyLine}
             ${renderRow('Response', sla.response)}
             ${renderRow('Resolution', sla.resolution)}
         </div>

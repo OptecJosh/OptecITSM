@@ -19,11 +19,13 @@
  * calendar's timezone for day-walking. The DB stores everything in UTC.
  *
  * SLA POLICIES — targets are no longer read from ticket_priorities. Each ticket
- * resolves an SLA policy from its company (sla_resolve_policy), and the
- * response/resolution/calendar targets come from that policy's
- * sla_policy_targets row for the ticket's priority. This keeps compute-on-read
- * intact: resolution happens per call, exactly like the calendar lookup, and no
- * counters are stored.
+ * resolves an SLA policy (sla_resolve_ticket_policy) most-specific-first: the
+ * primary affected CI's device policy, else the company's assignment, else the
+ * global default. The response/resolution/calendar targets then come from that
+ * policy's sla_policy_targets row for the ticket's priority. This keeps
+ * compute-on-read intact: resolution happens per call, exactly like the calendar
+ * lookup, and no counters are stored — so linking a device with a tighter policy
+ * re-resolves the target on the next read (as a priority change already does).
  */
 
 require_once __DIR__ . '/tenancy.php';
@@ -61,6 +63,77 @@ function sla_resolve_policy(PDO $conn, ?int $tenantId): ?array {
 }
 
 /**
+ * Resolve which SLA policy drives a ticket, most-specific first:
+ *   1. DEVICE — the ticket's primary affected CI (ticket_cmdb_objects.is_primary),
+ *      if that CI carries its own policy (cmdb_object_sla_policies). This is the
+ *      Phase 3b override: a critical box can pull a ticket onto a tighter tier.
+ *   2. CUSTOMER — the company's own assignment (tenant_sla_policies).
+ *   3. DEFAULT — the global default policy.
+ *
+ * Returns [ 'policy' => ?array, 'source' => 'device'|'customer'|'default'|null,
+ *           'device' => ?['object_id'=>int,'name'=>string] ]. Only the primary
+ *   CI is consulted — secondary "also affected" CIs never change the SLA, so the
+ *   tier a ticket is on is always explainable by one device (or the company).
+ *
+ * Defensive throughout: a part-migrated install missing cmdb_object_sla_policies
+ * simply falls through to the company/default resolution.
+ */
+function sla_resolve_ticket_policy(PDO $conn, array $ticket): array {
+    $result = ['policy' => null, 'source' => null, 'device' => null];
+
+    // --- 1. Device: primary affected CI with its own active policy ---
+    try {
+        $stmt = $conn->prepare(
+            "SELECT p.*, o.id AS _obj_id, o.name AS _obj_name
+               FROM ticket_cmdb_objects tco
+               JOIN cmdb_object_sla_policies cosp ON cosp.object_id = tco.cmdb_object_id
+               JOIN sla_policies p ON p.id = cosp.policy_id
+               JOIN cmdb_objects o ON o.id = tco.cmdb_object_id
+              WHERE tco.ticket_id = ? AND tco.is_primary = 1 AND p.is_active = 1
+              LIMIT 1"
+        );
+        $stmt->execute([(int)$ticket['id']]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            $result['device'] = ['object_id' => (int)$row['_obj_id'], 'name' => $row['_obj_name']];
+            unset($row['_obj_id'], $row['_obj_name']);
+            $result['policy'] = $row;
+            $result['source'] = 'device';
+            return $result;
+        }
+    } catch (Exception $e) {
+        // cmdb_object_sla_policies not present yet — fall through to company/default.
+    }
+
+    // --- 2/3. Company assignment, else global default ---
+    $tenantId = $ticket['tenant_id'] !== null ? (int)$ticket['tenant_id'] : getDefaultTenantId($conn);
+
+    // Distinguish "customer" (the company has its own active assignment) from
+    // "default" (falling back). Mirrors sla_resolve_policy's own condition.
+    $hasTenantAssignment = false;
+    if ($tenantId !== null) {
+        try {
+            $chk = $conn->prepare(
+                "SELECT 1 FROM tenant_sla_policies tsp
+                   JOIN sla_policies p ON p.id = tsp.policy_id
+                  WHERE tsp.tenant_id = ? AND p.is_active = 1
+                    AND (tsp.effective_from IS NULL OR tsp.effective_from <= UTC_DATE())
+                  LIMIT 1"
+            );
+            $chk->execute([$tenantId]);
+            $hasTenantAssignment = (bool)$chk->fetchColumn();
+        } catch (Exception $e) { /* table absent — treat as no assignment */ }
+    }
+
+    $policy = sla_resolve_policy($conn, $tenantId);
+    if ($policy) {
+        $result['policy'] = $policy;
+        $result['source'] = $hasTenantAssignment ? 'customer' : 'default';
+    }
+    return $result;
+}
+
+/**
  * Compute the SLA state of a single ticket. Returns:
  *   [
  *     'enabled'         => bool,
@@ -80,6 +153,8 @@ function sla_get_state(PDO $conn, int $ticket_id): array {
         'enabled'         => false,
         'reason_disabled' => null,
         'policy'          => null,
+        'policy_source'   => null,   // 'device' | 'customer' | 'default'
+        'policy_device'   => null,   // ?['object_id','name'] — the primary CI, when source = 'device'
         'priority'        => null,
         'calendar'        => null,
         'response'        => null,
@@ -112,16 +187,19 @@ function sla_get_state(PDO $conn, int $ticket_id): array {
         return $state;
     }
 
-    // --- 3. Resolve the SLA policy for this ticket's company ---
-    // The company owns the SLA tier: its own assignment, else the default policy.
-    // A ticket with no company (unrouted) follows the Default company.
-    $tenantId = $ticket['tenant_id'] !== null ? (int)$ticket['tenant_id'] : getDefaultTenantId($conn);
-    $policy = sla_resolve_policy($conn, $tenantId);
+    // --- 3. Resolve the SLA policy: device (primary CI) → company → default ---
+    // The ticket's primary affected CI can override the company's tier; otherwise
+    // the company owns it (its own assignment, else the default policy). A ticket
+    // with no company (unrouted) follows the Default company.
+    $resolved = sla_resolve_ticket_policy($conn, $ticket);
+    $policy = $resolved['policy'];
     if (!$policy) {
-        $state['reason_disabled'] = 'No SLA policy applies to this company and no default policy exists';
+        $state['reason_disabled'] = 'No SLA policy applies to this ticket and no default policy exists';
         return $state;
     }
-    $state['policy'] = $policy;
+    $state['policy']        = $policy;
+    $state['policy_source'] = $resolved['source'];
+    $state['policy_device'] = $resolved['device'];
 
     // --- 4. Load priority, and its targets under the resolved policy ---
     if (!$ticket['priority_id']) {

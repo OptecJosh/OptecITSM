@@ -401,6 +401,16 @@ $schema = [
         'created_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
     ],
 
+    // Per-device SLA: which policy a CMDB object (configuration item) is on.
+    // A ticket's primary affected CI, if it has a row here, overrides the
+    // company policy (device → company → default). See includes/sla.php.
+    'cmdb_object_sla_policies' => [
+        'id'                => 'INT NOT NULL AUTO_INCREMENT',
+        'object_id'         => 'INT NOT NULL',
+        'policy_id'         => 'INT NOT NULL',
+        'created_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
     'tickets' => [
         'id'                    => 'INT NOT NULL AUTO_INCREMENT',
         'tenant_id'             => 'INT NULL',
@@ -2530,6 +2540,7 @@ $schema = [
         'id'                    => 'INT NOT NULL AUTO_INCREMENT',
         'ticket_id'             => 'INT NOT NULL',
         'cmdb_object_id'        => 'INT NOT NULL',
+        'is_primary'            => 'TINYINT(1) NOT NULL DEFAULT 0',
         'created_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
         'created_by_analyst_id' => 'INT NULL',
     ],
@@ -3320,6 +3331,44 @@ try {
         if (!$fkExists('tenant_sla_policies', 'fk_tenant_sla_policies_policy')) {
             try { $conn->exec("ALTER TABLE tenant_sla_policies ADD CONSTRAINT fk_tenant_sla_policies_policy FOREIGN KEY (policy_id) REFERENCES sla_policies (id) ON DELETE CASCADE"); } catch (Exception $e) {}
         }
+    }
+    // Per-device SLA policy assignment (Phase 3b). Unique per object so a CI has
+    // at most one policy; FKs cascade so removing a CI or policy clears the row.
+    if ($tableExists('cmdb_object_sla_policies') && $tableExists('sla_policies') && $tableExists('cmdb_objects')) {
+        if (!$idxExists('cmdb_object_sla_policies', 'uq_cmdb_object_sla_policies_object')) {
+            try { $conn->exec("ALTER TABLE cmdb_object_sla_policies ADD UNIQUE KEY uq_cmdb_object_sla_policies_object (object_id)"); } catch (Exception $e) {}
+        }
+        if (!$idxExists('cmdb_object_sla_policies', 'ix_cmdb_object_sla_policies_policy')) {
+            try { $conn->exec("ALTER TABLE cmdb_object_sla_policies ADD INDEX ix_cmdb_object_sla_policies_policy (policy_id)"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('cmdb_object_sla_policies', 'fk_cmdb_object_sla_object')) {
+            try { $conn->exec("ALTER TABLE cmdb_object_sla_policies ADD CONSTRAINT fk_cmdb_object_sla_object FOREIGN KEY (object_id) REFERENCES cmdb_objects (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('cmdb_object_sla_policies', 'fk_cmdb_object_sla_policy')) {
+            try { $conn->exec("ALTER TABLE cmdb_object_sla_policies ADD CONSTRAINT fk_cmdb_object_sla_policy FOREIGN KEY (policy_id) REFERENCES sla_policies (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+    }
+    // is_primary index on the ticket↔CI join (Phase 3b) — speeds "which CI drives SLA".
+    if ($tableExists('ticket_cmdb_objects') && $colExists('ticket_cmdb_objects', 'is_primary')
+        && !$idxExists('ticket_cmdb_objects', 'ix_tco_primary')) {
+        try { $conn->exec("ALTER TABLE ticket_cmdb_objects ADD INDEX ix_tco_primary (ticket_id, is_primary)"); } catch (Exception $e) {}
+    }
+    // One-time backfill (Phase 3b): give every ticket that already has linked CIs
+    // exactly one primary — the earliest-linked one — so the "primary CI drives
+    // SLA" invariant holds for pre-existing links. Idempotent: HAVING SUM=0 skips
+    // any ticket that already has a primary. Safe on SLA: the device-policy table
+    // is empty at this point, so no ticket's resolved policy changes.
+    if ($tableExists('ticket_cmdb_objects') && $colExists('ticket_cmdb_objects', 'is_primary')) {
+        try {
+            $conn->exec(
+                "UPDATE ticket_cmdb_objects tco
+                   JOIN ( SELECT MIN(id) AS min_id
+                            FROM ticket_cmdb_objects
+                        GROUP BY ticket_id
+                          HAVING SUM(is_primary) = 0 ) x ON x.min_id = tco.id
+                    SET tco.is_primary = 1"
+            );
+        } catch (Exception $e) {}
     }
 
     // --- One-time SLA policy backfill ----------------------------------------

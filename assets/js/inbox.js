@@ -178,6 +178,9 @@ function getDisplayName(type, id) {
     } else if (type === 'category') {
         const c = ticketCategories.find(x => x.id == id);
         return c ? c.name : id;
+    } else if (type === 'priority') {
+        const p = ticketPriorities.find(x => x.id == id);
+        return p ? p.name : id;
     } else if (type === 'subcategory') {
         const s = ticketSubcategoriesById[id];
         return s ? s.name : id;
@@ -1341,9 +1344,14 @@ function displayEmail(email, recordings) {
     ).join('');
 
     // Build summary values for collapsed view
-    const summaryDept = getDisplayName('department', email.department_id) || t('tickets.reading_pane.summary_none');
     const summaryStatus = email.status || t('tickets.reading_pane.summary_open');
     const summaryOwner = getDisplayName('owner', email.owner_id) || t('tickets.reading_pane.summary_unassigned');
+    // Phase 4B: richer at-a-glance summary shown under the links bar.
+    const summaryNumber   = email.ticket_number || '—';
+    const summaryPriority = getDisplayName('priority', email.priority_id) || t('tickets.reading_pane.summary_none');
+    const summaryType     = getDisplayName('ticket_type', email.ticket_type_id) || t('tickets.reading_pane.summary_none');
+    const summaryCategory = getDisplayName('category', email.category_id) || t('tickets.reading_pane.summary_none');
+    const summaryCustomer = email.company_name || t('tickets.reading_pane.summary_none');
 
     // When the open ticket is in the trash, lead with a banner offering Restore /
     // Delete forever instead of the usual workflow actions.
@@ -1365,17 +1373,34 @@ function displayEmail(email, recordings) {
                 </div>
                 <div class="ticket-properties-summary">
                     <span class="ticket-properties-summary-item">
-                        <span class="ticket-properties-summary-label">${escapeHtml(t('tickets.reading_pane.summary_dept'))}</span>
-                        <span class="ticket-properties-summary-value" id="summaryDept">${escapeHtml(summaryDept)}</span>
+                        <span class="ticket-properties-summary-label">${escapeHtml(t('tickets.reading_pane.ticket_label'))}</span>
+                        <span class="ticket-properties-summary-value" id="summaryNumber">${escapeHtml(summaryNumber)}</span>
                     </span>
                     <span class="ticket-properties-summary-item">
                         <span class="ticket-properties-summary-label">${escapeHtml(t('tickets.reading_pane.summary_status'))}</span>
                         <span class="ticket-properties-summary-value" id="summaryStatus">${escapeHtml(summaryStatus)}</span>
                     </span>
                     <span class="ticket-properties-summary-item">
+                        <span class="ticket-properties-summary-label">${escapeHtml(t('tickets.reading_pane.field_priority'))}</span>
+                        <span class="ticket-properties-summary-value" id="summaryPriority">${escapeHtml(summaryPriority)}</span>
+                    </span>
+                    <span class="ticket-properties-summary-item">
+                        <span class="ticket-properties-summary-label">${escapeHtml(t('tickets.reading_pane.field_type'))}</span>
+                        <span class="ticket-properties-summary-value" id="summaryType">${escapeHtml(summaryType)}</span>
+                    </span>
+                    <span class="ticket-properties-summary-item">
+                        <span class="ticket-properties-summary-label">${escapeHtml(t('tickets.reading_pane.field_category'))}</span>
+                        <span class="ticket-properties-summary-value" id="summaryCategory">${escapeHtml(summaryCategory)}</span>
+                    </span>
+                    <span class="ticket-properties-summary-item">
+                        <span class="ticket-properties-summary-label">${escapeHtml(t('tickets.reading_pane.field_company'))}</span>
+                        <span class="ticket-properties-summary-value" id="summaryCustomer">${escapeHtml(summaryCustomer)}</span>
+                    </span>
+                    <span class="ticket-properties-summary-item">
                         <span class="ticket-properties-summary-label">${escapeHtml(t('tickets.reading_pane.summary_owner'))}</span>
                         <span class="ticket-properties-summary-value" id="summaryOwner">${escapeHtml(summaryOwner)}</span>
                     </span>
+                    <span class="sla-chip" id="summarySla" style="display:none;"></span>
                 </div>
             </div>
             <div class="ticket-properties-panel">
@@ -1530,6 +1555,13 @@ function displayEmail(email, recordings) {
 
     // Isolate the just-rendered email body in a shadow root (see emailBodyHost).
     hydrateEmailBodies(readingPane);
+
+    // Phase 4B: relocate the Properties/info panel to sit directly under the
+    // links bar (it's authored at the top of the template for variable scope,
+    // but reads better below the email header + links).
+    const propsPanelEl = readingPane.querySelector('#ticketPropertiesContainer');
+    const linksStripEl = readingPane.querySelector('.links-strip');
+    if (propsPanelEl && linksStripEl) linksStripEl.after(propsPanelEl);
 
     // Load full correspondence thread, notes, attachments and linked CMDB objects after rendering
     loadCorrespondenceThread(email.ticket_id);
@@ -2896,21 +2928,18 @@ document.addEventListener('click', function(event) {
     }
 });
 
-// Update summary values when properties change
+// Update summary values when properties change. Mirrors the collapsed-summary
+// fields (Phase 4B set: Status, Priority, Type, Category, Customer, Owner) so an
+// inline edit reflects immediately without reloading the ticket.
 function updatePropertiesSummary() {
-    const summaryDept = document.getElementById('summaryDept');
-    const summaryStatus = document.getElementById('summaryStatus');
-    const summaryOwner = document.getElementById('summaryOwner');
-
-    if (summaryDept && currentEmail) {
-        summaryDept.textContent = getDisplayName('department', currentEmail.department_id) || 'None';
-    }
-    if (summaryStatus && currentEmail) {
-        summaryStatus.textContent = currentEmail.status || 'Open';
-    }
-    if (summaryOwner && currentEmail) {
-        summaryOwner.textContent = getDisplayName('owner', currentEmail.owner_id) || 'Unassigned';
-    }
+    if (!currentEmail) return;
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    set('summaryStatus',   currentEmail.status || t('tickets.reading_pane.summary_open'));
+    set('summaryPriority', getDisplayName('priority', currentEmail.priority_id) || t('tickets.reading_pane.summary_none'));
+    set('summaryType',     getDisplayName('ticket_type', currentEmail.ticket_type_id) || t('tickets.reading_pane.summary_none'));
+    set('summaryCategory', getDisplayName('category', currentEmail.category_id) || t('tickets.reading_pane.summary_none'));
+    set('summaryCustomer', currentEmail.company_name || t('tickets.reading_pane.summary_none'));
+    set('summaryOwner',    getDisplayName('owner', currentEmail.owner_id) || t('tickets.reading_pane.summary_unassigned'));
 }
 
 // ===== Linked CMDB objects on a ticket =====
@@ -5282,4 +5311,44 @@ function renderSlaPanel(sla) {
             ${renderRow('Resolution', sla.resolution)}
         </div>
     `;
+
+    // Phase 4B: mirror a compact status into the summary chip near the top.
+    updateSlaSummaryChip(sla);
+}
+
+// Compact SLA status for the collapsed properties summary. Shows the most
+// urgent target: "Breached" if any target is over, else "Met" if all are
+// achieved, else the least remaining time. Hidden when there are no targets.
+function updateSlaSummaryChip(sla) {
+    const chip = document.getElementById('summarySla');
+    if (!chip) return;
+
+    const targets = [];
+    if (sla && sla.response) targets.push(sla.response);
+    if (sla && sla.resolution) targets.push(sla.resolution);
+    if (!targets.length) { chip.style.display = 'none'; return; }
+
+    const fmt = (mins) => {
+        if (mins === null || mins === undefined) return '—';
+        const n = Math.abs(mins), sign = mins < 0 ? '-' : '';
+        if (n < 60) return sign + n + 'm';
+        const h = Math.floor(n / 60), r = n % 60;
+        return sign + (r ? `${h}h ${r}m` : `${h}h`);
+    };
+
+    const active = targets.filter(x => x.achieved_at === null);
+    let cls, label;
+    if (targets.some(x => x.breached)) {
+        cls = 'sla-breached'; label = 'Breached';
+    } else if (active.length === 0) {
+        cls = 'sla-achieved'; label = 'Met';
+    } else {
+        let worst = active[0];
+        active.forEach(x => { if (x.remaining_minutes < worst.remaining_minutes) worst = x; });
+        cls = worst.percent >= 80 ? 'sla-warning' : 'sla-ok';
+        label = fmt(worst.remaining_minutes) + ' left';
+    }
+    chip.className = 'sla-chip ' + cls;
+    chip.textContent = 'SLA: ' + label;
+    chip.style.display = '';
 }

@@ -825,7 +825,23 @@ body.ticket-popout .ticket-toolbar {
     color: var(--text-dim, #888);
     display: flex;
     gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
 }
+
+/* Phase 4B: compact SLA status chip shown in the collapsed properties summary. */
+.sla-chip {
+    padding: 1px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+.sla-chip.sla-ok       { background: var(--success-bg, #dcfce7); color: var(--success-text, #166534); border-color: var(--success-accent, #16a34a); }
+.sla-chip.sla-achieved { background: var(--success-bg, #dcfce7); color: var(--success-text, #166534); border-color: var(--success-accent, #16a34a); }
+.sla-chip.sla-warning  { background: var(--warning-bg, #fef3c7); color: var(--warning-text, #92400e); border-color: #f59e0b; }
+.sla-chip.sla-breached { background: var(--danger-bg, #fee2e2); color: var(--danger-text, #991b1b); border-color: #dc2626; }
 
 .ticket-properties-summary-item {
     display: flex;

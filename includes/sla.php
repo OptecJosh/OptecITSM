@@ -17,13 +17,55 @@
  *
  * Both treat all DateTimes as UTC unless explicitly converted via the
  * calendar's timezone for day-walking. The DB stores everything in UTC.
+ *
+ * SLA POLICIES — targets are no longer read from ticket_priorities. Each ticket
+ * resolves an SLA policy from its company (sla_resolve_policy), and the
+ * response/resolution/calendar targets come from that policy's
+ * sla_policy_targets row for the ticket's priority. This keeps compute-on-read
+ * intact: resolution happens per call, exactly like the calendar lookup, and no
+ * counters are stored.
  */
+
+require_once __DIR__ . '/tenancy.php';
+
+/**
+ * Resolve which SLA policy applies to a company:
+ *   1. the company's own assignment (tenant_sla_policies), once effective_from
+ *      has passed (a future date means "not yet on this tier"), else
+ *   2. the global default policy (is_default = 1), else
+ *   3. null — no SLA applies.
+ *
+ * Defensive: returns null rather than throwing on a part-migrated install that
+ * has no policy tables yet, which surfaces as "SLA not configured".
+ */
+function sla_resolve_policy(PDO $conn, ?int $tenantId): ?array {
+    try {
+        if ($tenantId !== null) {
+            $stmt = $conn->prepare(
+                "SELECT p.* FROM tenant_sla_policies tsp
+                   JOIN sla_policies p ON p.id = tsp.policy_id
+                  WHERE tsp.tenant_id = ?
+                    AND p.is_active = 1
+                    AND (tsp.effective_from IS NULL OR tsp.effective_from <= UTC_DATE())
+                  LIMIT 1"
+            );
+            $stmt->execute([$tenantId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row) return $row;
+        }
+        $row = $conn->query("SELECT * FROM sla_policies WHERE is_default = 1 AND is_active = 1 LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
+    } catch (Exception $e) {
+        return null;   // policy tables not present yet
+    }
+}
 
 /**
  * Compute the SLA state of a single ticket. Returns:
  *   [
  *     'enabled'         => bool,
  *     'reason_disabled' => ?string,
+ *     'policy'          => ?array (the resolved SLA policy),
  *     'priority'        => ?array,
  *     'calendar'        => ?array,
  *     'response'        => ?array (target_minutes, elapsed_minutes, remaining_minutes,
@@ -37,6 +79,7 @@ function sla_get_state(PDO $conn, int $ticket_id): array {
     $state = [
         'enabled'         => false,
         'reason_disabled' => null,
+        'policy'          => null,
         'priority'        => null,
         'calendar'        => null,
         'response'        => null,
@@ -45,7 +88,7 @@ function sla_get_state(PDO $conn, int $ticket_id): array {
 
     // --- 1. Load ticket ---
     $stmt = $conn->prepare("SELECT t.id, t.ticket_number, t.created_datetime, t.priority_id, t.status_id,
-                                   t.closed_datetime, ts.name AS current_status_name
+                                   t.closed_datetime, t.tenant_id, ts.name AS current_status_name
                             FROM tickets t
                             LEFT JOIN ticket_statuses ts ON ts.id = t.status_id
                             WHERE t.id = ?");
@@ -69,27 +112,47 @@ function sla_get_state(PDO $conn, int $ticket_id): array {
         return $state;
     }
 
-    // --- 3. Load priority and check for targets ---
+    // --- 3. Resolve the SLA policy for this ticket's company ---
+    // The company owns the SLA tier: its own assignment, else the default policy.
+    // A ticket with no company (unrouted) follows the Default company.
+    $tenantId = $ticket['tenant_id'] !== null ? (int)$ticket['tenant_id'] : getDefaultTenantId($conn);
+    $policy = sla_resolve_policy($conn, $tenantId);
+    if (!$policy) {
+        $state['reason_disabled'] = 'No SLA policy applies to this company and no default policy exists';
+        return $state;
+    }
+    $state['policy'] = $policy;
+
+    // --- 4. Load priority, and its targets under the resolved policy ---
     if (!$ticket['priority_id']) {
         $state['reason_disabled'] = 'Ticket has no priority assigned';
         return $state;
     }
-    $stmt = $conn->prepare("SELECT id, name, colour, sla_response_minutes, sla_resolution_minutes, sla_calendar_id
-                            FROM ticket_priorities WHERE id = ?");
+    $stmt = $conn->prepare("SELECT id, name, colour FROM ticket_priorities WHERE id = ?");
     $stmt->execute([$ticket['priority_id']]);
     $priority = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$priority) {
         $state['reason_disabled'] = 'Ticket priority not found';
         return $state;
     }
+
+    // Targets come from the policy, not the priority row. Merging them onto
+    // $priority keeps its shape, so every downstream computation is unchanged.
+    $tStmt = $conn->prepare("SELECT sla_response_minutes, sla_resolution_minutes, sla_calendar_id
+                             FROM sla_policy_targets WHERE policy_id = ? AND priority_id = ?");
+    $tStmt->execute([(int)$policy['id'], (int)$ticket['priority_id']]);
+    $target = $tStmt->fetch(PDO::FETCH_ASSOC) ?: [
+        'sla_response_minutes' => null, 'sla_resolution_minutes' => null, 'sla_calendar_id' => null,
+    ];
+    $priority = array_merge($priority, $target);
     $state['priority'] = $priority;
 
     if (empty($priority['sla_response_minutes']) && empty($priority['sla_resolution_minutes'])) {
-        $state['reason_disabled'] = 'Priority has no SLA target configured';
+        $state['reason_disabled'] = "This priority has no SLA target in the '{$policy['name']}' policy";
         return $state;
     }
 
-    // --- 4. Load calendar (priority's calendar, or default if NULL) ---
+    // --- 5. Load calendar (the policy target's calendar, or default if NULL) ---
     $calId = $priority['sla_calendar_id'];
     if (!$calId) {
         $defStmt = $conn->query("SELECT id FROM sla_calendars WHERE is_default = 1 AND is_active = 1 LIMIT 1");
@@ -97,7 +160,7 @@ function sla_get_state(PDO $conn, int $ticket_id): array {
         if ($row) $calId = (int)$row['id'];
     }
     if (!$calId) {
-        $state['reason_disabled'] = 'No SLA calendar set on priority and no default calendar exists';
+        $state['reason_disabled'] = 'No SLA calendar set on this policy target and no default calendar exists';
         return $state;
     }
     $calendar = sla_load_calendar($conn, (int)$calId);
@@ -107,7 +170,7 @@ function sla_get_state(PDO $conn, int $ticket_id): array {
     }
     $state['calendar'] = $calendar;
 
-    // --- 5. Build status timeline from audit log ---
+    // --- 6. Build status timeline from audit log ---
     // Initial state: default status when ticket was created (audit only records changes,
     // not the initial state). If we can't find a default status, fall back to "not pausing".
     $defStatusStmt = $conn->query("SELECT name, pauses_sla FROM ticket_statuses WHERE is_default = 1 LIMIT 1");
@@ -136,12 +199,12 @@ function sla_get_state(PDO $conn, int $ticket_id): array {
         $timeline[] = ['start' => $changedAt, 'status' => $newStatus, 'pauses' => $flags['pauses_sla']];
     }
 
-    // --- 6. Response SLA ---
+    // --- 7. Response SLA ---
     if (!empty($priority['sla_response_minutes'])) {
         $state['response'] = sla_compute_response($conn, $ticket, $priority, $calendar, $timeline, $settings);
     }
 
-    // --- 7. Resolution SLA ---
+    // --- 8. Resolution SLA ---
     if (!empty($priority['sla_resolution_minutes'])) {
         $state['resolution'] = sla_compute_resolution($ticket, $priority, $calendar, $timeline);
     }

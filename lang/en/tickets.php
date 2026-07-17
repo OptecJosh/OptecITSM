@@ -150,6 +150,33 @@ return [
         'change_link'     => 'Link to change',
     ],
 
+    // SLA policies — the Policies + Company assignment sections on the SLA tab.
+    'sla' => [
+        'policies' => [
+            'heading'             => 'SLA policies',
+            'intro'               => 'An SLA policy is a named set of response and resolution targets — one per priority. Every company uses the default policy unless you put it on another one, so you can hold premium clients to tighter targets.',
+            'add'                 => 'Add SLA policy',
+            'edit'                => 'Edit SLA policy',
+            'col_name'            => 'Policy',
+            'col_description'     => 'Description',
+            'col_default'         => 'Default',
+            'col_companies'       => 'Companies',
+            'field_name'          => 'Name',
+            'field_description'   => 'Description',
+            'field_default'       => 'Default policy',
+            'default_hint'        => 'The fallback for any company without its own policy. Exactly one policy is the default.',
+            'is_default_badge'    => 'Default',
+            'none_yet'            => 'No SLA policies yet — use Add to create one.',
+            'showing_targets_for' => 'Targets for policy:',
+            'assign_heading'      => 'Company SLA assignment',
+            'assign_intro'        => 'Put a company on its own SLA policy. Leave it on the default unless the client is contracted to different targets. An effective-from date stages the change — until then the company stays on the default policy.',
+            'col_company'         => 'Company',
+            'col_policy'          => 'SLA policy',
+            'col_effective_from'  => 'Effective from',
+            'use_default'         => '— Use default policy —',
+        ],
+    ],
+
     // Custom fields settings tab + the dynamically-rendered ticket fields.
     'custom_fields' => [
         'heading'            => 'Custom fields',

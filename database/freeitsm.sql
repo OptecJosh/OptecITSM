@@ -500,6 +500,70 @@ CREATE TABLE IF NOT EXISTS `sla_cron_runs` (
     KEY `idx_sla_cron_ip_started` (`client_ip`, `started_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ----------------------------------------------------------
+-- SLA policies — multiple named SLA tiers ("Standard", "Premium"), each
+-- carrying its own per-priority targets. Replaces the single global
+-- SLA-per-priority model (the sla_* columns on ticket_priorities, which are
+-- retained for one release as a rollback net and are no longer read).
+--
+-- Which policy applies to a ticket is resolved at read time from the ticket's
+-- company: tenant_sla_policies override -> the is_default policy -> no SLA.
+-- Deliberately NOT hung off the `contracts` table: that models supplier /
+-- procurement contracts (contracts.supplier_id), a different concept from a
+-- client company's support tier.
+-- ----------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS `sla_policies` (
+    `id`                INT NOT NULL AUTO_INCREMENT,
+    `name`              VARCHAR(100) NOT NULL,
+    `description`       VARCHAR(255) NULL,
+    `is_default`        TINYINT(1) NOT NULL DEFAULT 0,   -- the fallback when a company has no assignment
+    `is_active`         TINYINT(1) NOT NULL DEFAULT 1,
+    `created_datetime`  DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_datetime`  DATETIME NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_sla_policies_name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Per-priority targets, scoped to a policy. A missing row = no target for that
+-- priority under that policy (SLA simply doesn't apply), matching the old
+-- all-NULL-columns behaviour.
+CREATE TABLE IF NOT EXISTS `sla_policy_targets` (
+    `id`                      INT NOT NULL AUTO_INCREMENT,
+    `policy_id`               INT NOT NULL,
+    `priority_id`             INT NOT NULL,
+    `sla_response_minutes`    INT NULL,
+    `sla_resolution_minutes`  INT NULL,
+    `sla_calendar_id`         INT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_sla_policy_targets` (`policy_id`, `priority_id`),
+    KEY `ix_sla_policy_targets_priority` (`priority_id`),
+    CONSTRAINT `fk_sla_policy_targets_policy` FOREIGN KEY (`policy_id`) REFERENCES `sla_policies` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_sla_policy_targets_priority` FOREIGN KEY (`priority_id`) REFERENCES `ticket_priorities` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_sla_policy_targets_calendar` FOREIGN KEY (`sla_calendar_id`) REFERENCES `sla_calendars` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Which policy a client company is on. One row per company; absence = the
+-- default policy. effective_from (optional) lets an admin stage a tier change:
+-- until that date the company falls back to the default policy.
+CREATE TABLE IF NOT EXISTS `tenant_sla_policies` (
+    `id`                INT NOT NULL AUTO_INCREMENT,
+    `tenant_id`         INT NOT NULL,
+    `policy_id`         INT NOT NULL,
+    `effective_from`    DATE NULL,
+    `created_datetime`  DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_tenant_sla_policies_tenant` (`tenant_id`),
+    KEY `ix_tenant_sla_policies_policy` (`policy_id`),
+    CONSTRAINT `fk_tenant_sla_policies_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_tenant_sla_policies_policy` FOREIGN KEY (`policy_id`) REFERENCES `sla_policies` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Seed the Default policy. db_verify.php copies any existing
+-- ticket_priorities.sla_* targets into it on upgrade.
+INSERT IGNORE INTO `sla_policies` (`id`, `name`, `description`, `is_default`, `is_active`) VALUES
+    (1, 'Default', 'The standard SLA applied to any company without its own policy', 1, 1);
+
 CREATE TABLE IF NOT EXISTS `tickets` (
     `id`                    INT NOT NULL AUTO_INCREMENT,
     `tenant_id`             INT NULL,

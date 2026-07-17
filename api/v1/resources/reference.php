@@ -54,9 +54,16 @@ function apiStatusesList(PDO $conn, array $apiKey, array $params, array $body): 
 }
 
 // GET /priorities
+// SLA targets are per-policy now; report the DEFAULT policy's targets, which is
+// what these numbers meant back when a single global SLA lived on the priority.
+// (A company on its own policy may resolve different targets — see sla_policies.)
 function apiPrioritiesList(PDO $conn, array $apiKey, array $params, array $body): void {
     $rows = $conn->query(
-        "SELECT id, name, sla_response_minutes, sla_resolution_minutes FROM ticket_priorities ORDER BY display_order, name"
+        "SELECT p.id, p.name, t.sla_response_minutes, t.sla_resolution_minutes
+           FROM ticket_priorities p
+      LEFT JOIN sla_policies pol ON pol.is_default = 1
+      LEFT JOIN sla_policy_targets t ON t.priority_id = p.id AND t.policy_id = pol.id
+       ORDER BY p.display_order, p.name"
     )->fetchAll(PDO::FETCH_ASSOC);
     apiRespond(array_map(function ($p) {
         return [

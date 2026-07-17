@@ -2,10 +2,16 @@
 /**
  * API: Get all data for the SLA settings tab in one round-trip.
  *
+ * Optional ?policy_id — which SLA policy's targets to return on the priorities
+ * (defaults to the default policy). Targets are per-policy now, so `priorities`
+ * keeps its historic shape but the sla_* values are that policy's targets, not
+ * columns on ticket_priorities.
+ *
  * Returns:
  *   settings:    { sla_enforce_from, sla_priority_change_behaviour, ... }
  *   priorities:  [{ id, name, sla_response_minutes, sla_resolution_minutes, sla_calendar_id }]
  *   calendars:   [{ id, name, timezone, is_default, hours: [...], holiday_count }]
+ *   policy_id:   the policy the returned targets belong to
  */
 session_start(['read_and_close' => true]);
 require_once '../../config.php';
@@ -39,9 +45,24 @@ try {
         $settings[$row['setting_key']] = $row['setting_value'];
     }
 
-    // Priorities with their SLA fields
-    $stmt = $conn->query("SELECT id, name, colour, display_order, sla_response_minutes, sla_resolution_minutes, sla_calendar_id
-                          FROM ticket_priorities WHERE is_active = 1 ORDER BY display_order, id");
+    // Which policy's targets to show. Explicit ?policy_id wins; otherwise the default.
+    $policyId = isset($_GET['policy_id']) && $_GET['policy_id'] !== '' ? (int)$_GET['policy_id'] : null;
+    if ($policyId === null) {
+        $policyId = $conn->query("SELECT id FROM sla_policies WHERE is_default = 1 ORDER BY id LIMIT 1")->fetchColumn();
+        $policyId = $policyId !== false ? (int)$policyId : null;
+    }
+
+    // Priorities, with the selected policy's targets merged on (LEFT JOIN so a
+    // priority with no target under this policy still shows, with empty values).
+    $stmt = $conn->prepare(
+        "SELECT p.id, p.name, p.colour, p.display_order,
+                t.sla_response_minutes, t.sla_resolution_minutes, t.sla_calendar_id
+           FROM ticket_priorities p
+      LEFT JOIN sla_policy_targets t ON t.priority_id = p.id AND t.policy_id = ?
+          WHERE p.is_active = 1
+       ORDER BY p.display_order, p.id"
+    );
+    $stmt->execute([$policyId]);
     $priorities = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Calendars with their hours + holiday count
@@ -78,6 +99,7 @@ try {
         'settings'   => $settings,
         'priorities' => $priorities,
         'calendars'  => $calendars,
+        'policy_id'  => $policyId,
     ]);
 
 } catch (Exception $e) {

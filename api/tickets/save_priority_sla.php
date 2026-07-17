@@ -1,13 +1,16 @@
 <?php
 /**
- * API: Save the SLA fields on a ticket_priorities row
- * (sla_response_minutes, sla_resolution_minutes, sla_calendar_id).
+ * API: Save a priority's SLA targets under the DEFAULT policy.
  *
  * POST JSON: { id, sla_response_minutes, sla_resolution_minutes, sla_calendar_id }
  *
- * Doesn't touch the other ticket_priorities columns (name, colour, etc.) — that's
- * a different endpoint. Pass nulls for minutes to clear targets; pass null
- * sla_calendar_id to detach the calendar.
+ * BACK-COMPAT SHIM. SLA targets are per-policy now (sla_policy_targets); this
+ * endpoint's original contract is preserved, and it writes the default policy's
+ * target — the same thing it effectively did when there was only one SLA. Use
+ * save_sla_policy_target.php to target a specific policy.
+ *
+ * Pass nulls for minutes to clear targets; pass null sla_calendar_id to detach
+ * the calendar.
  */
 session_start(['read_and_close' => true]);
 require_once '../../config.php';
@@ -40,10 +43,22 @@ try {
         if ((int)$check->fetchColumn() === 0) throw new Exception('Calendar not found');
     }
 
-    $stmt = $conn->prepare("UPDATE ticket_priorities
-                            SET sla_response_minutes = ?, sla_resolution_minutes = ?, sla_calendar_id = ?
-                            WHERE id = ?");
-    $stmt->execute([$response, $resolution, $calendarId, $id]);
+    // Targets live on the default policy now, not on the priority row.
+    $policyId = $conn->query("SELECT id FROM sla_policies WHERE is_default = 1 ORDER BY id LIMIT 1")->fetchColumn();
+    if ($policyId === false) throw new Exception('No default SLA policy exists');
+
+    if ($response === null && $resolution === null && $calendarId === null) {
+        $conn->prepare("DELETE FROM sla_policy_targets WHERE policy_id = ? AND priority_id = ?")
+             ->execute([(int)$policyId, $id]);
+    } else {
+        $conn->prepare(
+            "INSERT INTO sla_policy_targets (policy_id, priority_id, sla_response_minutes, sla_resolution_minutes, sla_calendar_id)
+             VALUES (?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE sla_response_minutes = VALUES(sla_response_minutes),
+                                     sla_resolution_minutes = VALUES(sla_resolution_minutes),
+                                     sla_calendar_id = VALUES(sla_calendar_id)"
+        )->execute([(int)$policyId, $id, $response, $resolution, $calendarId]);
+    }
 
     echo json_encode(['success' => true]);
 

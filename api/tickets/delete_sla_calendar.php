@@ -27,12 +27,14 @@ try {
 
     $conn = connectToDatabase();
 
-    // Block delete if any priority references this calendar
-    $check = $conn->prepare("SELECT COUNT(*) FROM ticket_priorities WHERE sla_calendar_id = ?");
+    // Block delete if any SLA policy target references this calendar. (Targets are
+    // per-policy now — the legacy ticket_priorities.sla_calendar_id column is no
+    // longer read, so checking it would let an in-use calendar be deleted.)
+    $check = $conn->prepare("SELECT COUNT(*) FROM sla_policy_targets WHERE sla_calendar_id = ?");
     $check->execute([$id]);
     $refCount = (int)$check->fetchColumn();
     if ($refCount > 0) {
-        throw new Exception("Calendar is in use by $refCount priority/priorities. Reassign them first.");
+        throw new Exception("Calendar is in use by $refCount SLA policy target(s). Reassign them first.");
     }
 
     // ON DELETE CASCADE on the FK handles hours + holidays

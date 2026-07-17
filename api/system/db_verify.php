@@ -371,6 +371,36 @@ $schema = [
         'notes'          => 'TEXT NULL',
     ],
 
+    // SLA policies — multiple named SLA tiers, each with its own per-priority
+    // targets, resolved per company. Supersedes the sla_* columns on
+    // ticket_priorities (kept, unread, as a one-release rollback net).
+    'sla_policies' => [
+        'id'                => 'INT NOT NULL AUTO_INCREMENT',
+        'name'              => 'VARCHAR(100) NOT NULL',
+        'description'       => 'VARCHAR(255) NULL',
+        'is_default'        => 'TINYINT(1) NOT NULL DEFAULT 0',
+        'is_active'         => 'TINYINT(1) NOT NULL DEFAULT 1',
+        'created_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+        'updated_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
+    'sla_policy_targets' => [
+        'id'                      => 'INT NOT NULL AUTO_INCREMENT',
+        'policy_id'               => 'INT NOT NULL',
+        'priority_id'             => 'INT NOT NULL',
+        'sla_response_minutes'    => 'INT NULL',
+        'sla_resolution_minutes'  => 'INT NULL',
+        'sla_calendar_id'         => 'INT NULL',
+    ],
+
+    'tenant_sla_policies' => [
+        'id'                => 'INT NOT NULL AUTO_INCREMENT',
+        'tenant_id'         => 'INT NOT NULL',
+        'policy_id'         => 'INT NOT NULL',
+        'effective_from'    => 'DATE NULL',
+        'created_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
     'tickets' => [
         'id'                    => 'INT NOT NULL AUTO_INCREMENT',
         'tenant_id'             => 'INT NULL',
@@ -3251,6 +3281,79 @@ try {
         } catch (Exception $e) {
             if ($conn->inTransaction()) $conn->rollBack();
             $results[] = ['table' => 'custom_field_definitions', 'status' => 'error', 'details' => ['CMDB migration failed: ' . $e->getMessage()]];
+        }
+    }
+
+    // --- SLA policies: unique keys, indexes, FKs ------------------------------
+    if ($tableExists('sla_policies')) {
+        if (!$idxExists('sla_policies', 'uq_sla_policies_name')) {
+            try { $conn->exec("ALTER TABLE sla_policies ADD UNIQUE KEY uq_sla_policies_name (name)"); } catch (Exception $e) {}
+        }
+    }
+    if ($tableExists('sla_policy_targets') && $tableExists('sla_policies') && $tableExists('ticket_priorities')) {
+        if (!$idxExists('sla_policy_targets', 'uq_sla_policy_targets')) {
+            try { $conn->exec("ALTER TABLE sla_policy_targets ADD UNIQUE KEY uq_sla_policy_targets (policy_id, priority_id)"); } catch (Exception $e) {}
+        }
+        if (!$idxExists('sla_policy_targets', 'ix_sla_policy_targets_priority')) {
+            try { $conn->exec("ALTER TABLE sla_policy_targets ADD INDEX ix_sla_policy_targets_priority (priority_id)"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('sla_policy_targets', 'fk_sla_policy_targets_policy')) {
+            try { $conn->exec("ALTER TABLE sla_policy_targets ADD CONSTRAINT fk_sla_policy_targets_policy FOREIGN KEY (policy_id) REFERENCES sla_policies (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('sla_policy_targets', 'fk_sla_policy_targets_priority')) {
+            try { $conn->exec("ALTER TABLE sla_policy_targets ADD CONSTRAINT fk_sla_policy_targets_priority FOREIGN KEY (priority_id) REFERENCES ticket_priorities (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if ($tableExists('sla_calendars') && !$fkExists('sla_policy_targets', 'fk_sla_policy_targets_calendar')) {
+            try { $conn->exec("ALTER TABLE sla_policy_targets ADD CONSTRAINT fk_sla_policy_targets_calendar FOREIGN KEY (sla_calendar_id) REFERENCES sla_calendars (id)"); } catch (Exception $e) {}
+        }
+    }
+    if ($tableExists('tenant_sla_policies') && $tableExists('sla_policies') && $tableExists('tenants')) {
+        if (!$idxExists('tenant_sla_policies', 'uq_tenant_sla_policies_tenant')) {
+            try { $conn->exec("ALTER TABLE tenant_sla_policies ADD UNIQUE KEY uq_tenant_sla_policies_tenant (tenant_id)"); } catch (Exception $e) {}
+        }
+        if (!$idxExists('tenant_sla_policies', 'ix_tenant_sla_policies_policy')) {
+            try { $conn->exec("ALTER TABLE tenant_sla_policies ADD INDEX ix_tenant_sla_policies_policy (policy_id)"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('tenant_sla_policies', 'fk_tenant_sla_policies_tenant')) {
+            try { $conn->exec("ALTER TABLE tenant_sla_policies ADD CONSTRAINT fk_tenant_sla_policies_tenant FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('tenant_sla_policies', 'fk_tenant_sla_policies_policy')) {
+            try { $conn->exec("ALTER TABLE tenant_sla_policies ADD CONSTRAINT fk_tenant_sla_policies_policy FOREIGN KEY (policy_id) REFERENCES sla_policies (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+    }
+
+    // --- One-time SLA policy backfill ----------------------------------------
+    // Seeds the Default policy and copies each priority's existing sla_* targets
+    // into it, so the engine (which now reads sla_policy_targets) computes exactly
+    // what it did before. Guarded: only when no targets exist yet. Read-only on
+    // ticket_priorities — its sla_* columns are kept as a rollback net.
+    if ($tableExists('sla_policies') && $tableExists('sla_policy_targets') && $tableExists('ticket_priorities')
+        && $colExists('ticket_priorities', 'sla_response_minutes')) {
+        try {
+            if ((int) $conn->query("SELECT COUNT(*) FROM sla_policies")->fetchColumn() === 0) {
+                $conn->exec("INSERT INTO sla_policies (id, name, description, is_default, is_active)
+                             VALUES (1, 'Default', 'The standard SLA applied to any company without its own policy', 1, 1)");
+                $results[] = ['table' => 'sla_policies', 'status' => 'seeded', 'details' => ['Created the Default SLA policy']];
+            }
+            $defaultPolicyId = $conn->query("SELECT id FROM sla_policies WHERE is_default = 1 ORDER BY id LIMIT 1")->fetchColumn();
+            if ($defaultPolicyId && (int) $conn->query("SELECT COUNT(*) FROM sla_policy_targets")->fetchColumn() === 0) {
+                $copy = $conn->prepare(
+                    "INSERT INTO sla_policy_targets (policy_id, priority_id, sla_response_minutes, sla_resolution_minutes, sla_calendar_id)
+                     SELECT ?, id, sla_response_minutes, sla_resolution_minutes, sla_calendar_id
+                       FROM ticket_priorities
+                      WHERE sla_response_minutes IS NOT NULL
+                         OR sla_resolution_minutes IS NOT NULL
+                         OR sla_calendar_id IS NOT NULL"
+                );
+                $copy->execute([(int)$defaultPolicyId]);
+                $copied = $copy->rowCount();
+                if ($copied > 0) {
+                    $results[] = ['table' => 'sla_policy_targets', 'status' => 'migrated',
+                        'details' => ["Copied {$copied} priority SLA target(s) into the Default policy (ticket_priorities.sla_* kept as a rollback net)"]];
+                }
+            }
+        } catch (Exception $e) {
+            $results[] = ['table' => 'sla_policy_targets', 'status' => 'error', 'details' => ['SLA policy backfill failed: ' . $e->getMessage()]];
         }
     }
 

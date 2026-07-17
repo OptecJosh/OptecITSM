@@ -551,10 +551,54 @@ $translationNamespaces = ['common', 'tickets'];
                 </form>
             </div>
 
-            <!-- ===== SLA Targets per priority ===== -->
+            <!-- ===== SLA Policies ===== -->
+            <div class="settings-group">
+                <div class="section-header">
+                    <h3><?php echo htmlspecialchars(t('tickets.sla.policies.heading')); ?></h3>
+                    <button class="add-btn" onclick="openAddSlaPolicy()"><?php echo htmlspecialchars(t('common.add')); ?></button>
+                </div>
+                <p style="color:var(--text-muted, #666);margin-bottom:14px;"><?php echo htmlspecialchars(t('tickets.sla.policies.intro')); ?></p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th><?php echo htmlspecialchars(t('tickets.sla.policies.col_name')); ?></th>
+                            <th><?php echo htmlspecialchars(t('tickets.sla.policies.col_description')); ?></th>
+                            <th><?php echo htmlspecialchars(t('tickets.sla.policies.col_default')); ?></th>
+                            <th><?php echo htmlspecialchars(t('tickets.sla.policies.col_companies')); ?></th>
+                            <th style="width:90px;"><?php echo htmlspecialchars(t('tickets.settings.columns.actions')); ?></th>
+                        </tr>
+                    </thead>
+                    <tbody id="slaPoliciesList">
+                        <tr><td colspan="5" style="text-align:center;"><?php echo htmlspecialchars(t('tickets.settings.loading')); ?></td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- ===== Company SLA assignment (multi-company only) ===== -->
+            <div class="settings-group" id="slaAssignmentsGroup" style="display:none;">
+                <h3><?php echo htmlspecialchars(t('tickets.sla.policies.assign_heading')); ?></h3>
+                <p style="color:var(--text-muted, #666);margin-bottom:14px;"><?php echo htmlspecialchars(t('tickets.sla.policies.assign_intro')); ?></p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th><?php echo htmlspecialchars(t('tickets.sla.policies.col_company')); ?></th>
+                            <th><?php echo htmlspecialchars(t('tickets.sla.policies.col_policy')); ?></th>
+                            <th><?php echo htmlspecialchars(t('tickets.sla.policies.col_effective_from')); ?></th>
+                            <th style="width:90px;"><?php echo htmlspecialchars(t('tickets.settings.sla.col_save')); ?></th>
+                        </tr>
+                    </thead>
+                    <tbody id="slaAssignmentsList"></tbody>
+                </table>
+            </div>
+
+            <!-- ===== SLA Targets per priority (scoped to the selected policy) ===== -->
             <div class="settings-group">
                 <h3><?php echo htmlspecialchars(t('tickets.settings.sla.targets_heading')); ?></h3>
                 <p style="color:var(--text-muted, #666);margin-bottom:14px;"><?php echo htmlspecialchars(t('tickets.settings.sla.targets_intro')); ?></p>
+                <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;">
+                    <label for="slaTargetPolicySelect" style="font-weight:600;font-size:13px;"><?php echo htmlspecialchars(t('tickets.sla.policies.showing_targets_for')); ?></label>
+                    <select id="slaTargetPolicySelect" onchange="onSlaTargetPolicyChange()" style="padding:6px 10px;min-width:200px;"></select>
+                </div>
                 <table>
                     <thead>
                         <tr>
@@ -1242,6 +1286,47 @@ $translationNamespaces = ['common', 'tickets'];
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeSubcategoriesModal()"><?php echo htmlspecialchars(t('common.close')); ?></button>
             </div>
+        </div>
+    </div>
+
+    <!-- SLA Policy Modal -->
+    <div class="modal" id="slaPolicyModal">
+        <div class="modal-content">
+            <div class="modal-header" id="slaPolicyModalTitle"><?php echo htmlspecialchars(t('tickets.sla.policies.add')); ?></div>
+            <form id="slaPolicyForm">
+                <input type="hidden" id="spId">
+                <div class="form-group">
+                    <label for="spName"><?php echo htmlspecialchars(t('tickets.sla.policies.field_name')); ?></label>
+                    <input type="text" id="spName" required>
+                </div>
+                <div class="form-group">
+                    <label for="spDescription"><?php echo htmlspecialchars(t('tickets.sla.policies.field_description')); ?></label>
+                    <input type="text" id="spDescription">
+                </div>
+                <div class="form-group">
+                    <label class="toggle-label">
+                        <span class="toggle-switch">
+                            <input type="checkbox" id="spDefault">
+                            <span class="toggle-slider"></span>
+                        </span>
+                        <?php echo htmlspecialchars(t('tickets.sla.policies.field_default')); ?>
+                    </label>
+                    <p style="color:var(--text-muted,#666);font-size:12px;margin-top:6px;"><?php echo htmlspecialchars(t('tickets.sla.policies.default_hint')); ?></p>
+                </div>
+                <div class="form-group">
+                    <label class="toggle-label">
+                        <span class="toggle-switch">
+                            <input type="checkbox" id="spActive" checked>
+                            <span class="toggle-slider"></span>
+                        </span>
+                        <?php echo htmlspecialchars(t('tickets.settings.modals.lookup.active_label')); ?>
+                    </label>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeSlaPolicyModal()"><?php echo htmlspecialchars(t('common.cancel')); ?></button>
+                    <button type="submit" class="btn btn-primary"><?php echo htmlspecialchars(t('common.save')); ?></button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -5321,13 +5406,22 @@ $translationNamespaces = ['common', 'tickets'];
             { num: 7, label: 'Sunday' },
         ];
 
+        // Which policy's targets the targets grid is showing. null = the default policy.
+        let slaPolicyData = { policies: [], assignments: [], companies: [], multi_tenant: false };
+        let slaSelectedPolicyId = null;
+
         async function loadSlaTab() {
             try {
-                const res = await fetch(API_BASE + 'get_sla_settings.php');
+                // Policies first — the targets grid is scoped to whichever is selected.
+                await loadSlaPolicies();
+                const qs = slaSelectedPolicyId ? ('?policy_id=' + encodeURIComponent(slaSelectedPolicyId)) : '';
+                const res = await fetch(API_BASE + 'get_sla_settings.php' + qs);
                 const data = await res.json();
                 if (!data.success) throw new Error(data.error || 'load failed');
                 slaData = { settings: data.settings || {}, priorities: data.priorities || [], calendars: data.calendars || [] };
+                if (!slaSelectedPolicyId && data.policy_id) slaSelectedPolicyId = data.policy_id;
                 renderSlaGlobalSettings();
+                renderSlaPolicySelect();
                 renderSlaTargets();
                 renderSlaCalendars();
                 loadSlaNotifRules();
@@ -5335,6 +5429,170 @@ $translationNamespaces = ['common', 'tickets'];
             } catch (e) {
                 console.error('SLA load failed:', e);
             }
+        }
+
+        // ---- SLA policies ----
+        async function loadSlaPolicies() {
+            try {
+                const res = await fetch(API_BASE + 'get_sla_policies.php');
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'load failed');
+                slaPolicyData = data;
+                if (!slaSelectedPolicyId) {
+                    const def = (data.policies || []).find(p => p.is_default);
+                    if (def) slaSelectedPolicyId = def.id;
+                }
+                renderSlaPolicies();
+                renderSlaAssignments();
+            } catch (e) {
+                console.error('SLA policies load failed:', e);
+            }
+        }
+
+        function renderSlaPolicies() {
+            const tbody = document.getElementById('slaPoliciesList');
+            if (!tbody) return;
+            const policies = slaPolicyData.policies || [];
+            if (!policies.length) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-faint,#999);">${escapeHtml(t('tickets.sla.policies.none_yet'))}</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = policies.map(p => `
+                <tr>
+                    <td><strong>${escapeHtml(p.name)}</strong>${p.is_active ? '' : ' <span style="color:var(--text-faint,#999);font-size:12px;">(inactive)</span>'}</td>
+                    <td style="color:var(--text-muted,#666);">${escapeHtml(p.description || '')}</td>
+                    <td>${p.is_default ? '<span class="status-badge status-active">' + escapeHtml(t('tickets.sla.policies.is_default_badge')) + '</span>' : ''}</td>
+                    <td>${slaPolicyData.multi_tenant ? p.tenant_count : '—'}</td>
+                    <td>
+                        <button class="action-btn" onclick="editSlaPolicy(${p.id})" title="${t('common.edit')}">${TT_EDIT_SVG}</button>
+                        ${p.is_default ? '' : `<button class="action-btn delete" onclick="deleteSlaPolicy(${p.id}, '${escapeHtml(p.name).replace(/'/g, "\\'")}')" title="${t('common.delete')}">${TT_DELETE_SVG}</button>`}
+                    </td>
+                </tr>`).join('');
+        }
+
+        function renderSlaPolicySelect() {
+            const sel = document.getElementById('slaTargetPolicySelect');
+            if (!sel) return;
+            sel.innerHTML = (slaPolicyData.policies || []).map(p =>
+                `<option value="${p.id}" ${p.id == slaSelectedPolicyId ? 'selected' : ''}>${escapeHtml(p.name)}${p.is_default ? ' (' + escapeHtml(t('tickets.sla.policies.is_default_badge')) + ')' : ''}</option>`
+            ).join('');
+        }
+
+        function onSlaTargetPolicyChange() {
+            slaSelectedPolicyId = parseInt(document.getElementById('slaTargetPolicySelect').value) || null;
+            loadSlaTab();
+        }
+
+        function openAddSlaPolicy() {
+            document.getElementById('slaPolicyModalTitle').textContent = t('tickets.sla.policies.add');
+            document.getElementById('spId').value = '';
+            document.getElementById('spName').value = '';
+            document.getElementById('spDescription').value = '';
+            document.getElementById('spDefault').checked = false;
+            document.getElementById('spActive').checked = true;
+            document.getElementById('slaPolicyModal').classList.add('active');
+        }
+
+        function editSlaPolicy(id) {
+            const p = (slaPolicyData.policies || []).find(x => x.id == id);
+            if (!p) return;
+            document.getElementById('slaPolicyModalTitle').textContent = t('tickets.sla.policies.edit');
+            document.getElementById('spId').value = p.id;
+            document.getElementById('spName').value = p.name;
+            document.getElementById('spDescription').value = p.description || '';
+            document.getElementById('spDefault').checked = !!p.is_default;
+            document.getElementById('spActive').checked = !!p.is_active;
+            document.getElementById('slaPolicyModal').classList.add('active');
+        }
+
+        function closeSlaPolicyModal() {
+            document.getElementById('slaPolicyModal').classList.remove('active');
+        }
+
+        async function deleteSlaPolicy(id, name) {
+            const ok = await showConfirm({ title: 'Delete', message: `Are you sure you want to delete the "${name}" SLA policy?`, okLabel: 'Delete', okClass: 'danger' });
+            if (!ok) return;
+            try {
+                const res = await fetch(API_BASE + 'delete_sla_policy.php', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: id })
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'delete failed');
+                showToast('Deleted', 'success');
+                if (slaSelectedPolicyId == id) slaSelectedPolicyId = null;
+                loadSlaTab();
+            } catch (e) { showToast('Failed to delete: ' + e.message, 'error'); }
+        }
+
+        document.getElementById('slaPolicyForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const payload = {
+                id: document.getElementById('spId').value || null,
+                name: document.getElementById('spName').value,
+                description: document.getElementById('spDescription').value,
+                is_default: document.getElementById('spDefault').checked ? 1 : 0,
+                is_active: document.getElementById('spActive').checked ? 1 : 0
+            };
+            try {
+                const res = await fetch(API_BASE + 'save_sla_policy.php', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'save failed');
+                showToast('Saved', 'success');
+                closeSlaPolicyModal();
+                loadSlaTab();
+            } catch (e) { showToast('Failed to save: ' + e.message, 'error'); }
+        });
+
+        // ---- Company -> policy assignment (multi-company only) ----
+        function renderSlaAssignments() {
+            const group = document.getElementById('slaAssignmentsGroup');
+            const tbody = document.getElementById('slaAssignmentsList');
+            if (!group || !tbody) return;
+            if (!slaPolicyData.multi_tenant) { group.style.display = 'none'; return; }
+            group.style.display = '';
+
+            const byTenant = {};
+            (slaPolicyData.assignments || []).forEach(a => { byTenant[a.tenant_id] = a; });
+            const policyOpts = (slaPolicyData.policies || []).filter(p => p.is_active);
+
+            tbody.innerHTML = (slaPolicyData.companies || []).map(c => {
+                const a = byTenant[c.id];
+                const opts = policyOpts.map(p =>
+                    `<option value="${p.id}" ${a && a.policy_id == p.id ? 'selected' : ''}>${escapeHtml(p.name)}</option>`
+                ).join('');
+                return `
+                <tr>
+                    <td><strong>${escapeHtml(c.name)}</strong></td>
+                    <td>
+                        <select data-tid="${c.id}" data-field="policy" style="padding:4px 8px;min-width:170px;">
+                            <option value="">${escapeHtml(t('tickets.sla.policies.use_default'))}</option>
+                            ${opts}
+                        </select>
+                    </td>
+                    <td><input type="date" data-tid="${c.id}" data-field="effective" value="${a && a.effective_from ? escapeHtml(a.effective_from) : ''}" style="padding:4px 8px;"></td>
+                    <td><button type="button" class="btn btn-secondary" style="padding:4px 12px;" onclick="saveTenantSlaPolicy(${c.id})">Save</button></td>
+                </tr>`;
+            }).join('');
+        }
+
+        async function saveTenantSlaPolicy(tenantId) {
+            const row = document.querySelector(`#slaAssignmentsList [data-tid="${tenantId}"]`).closest('tr');
+            const payload = {
+                tenant_id: tenantId,
+                policy_id: row.querySelector('select[data-field="policy"]').value || null,
+                effective_from: row.querySelector('input[data-field="effective"]').value || null
+            };
+            try {
+                const res = await fetch(API_BASE + 'save_tenant_sla_policy.php', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'save failed');
+                showToast('Company SLA saved', 'success');
+                loadSlaPolicies();
+            } catch (e) { showToast('Failed to save: ' + e.message, 'error'); }
         }
 
         function renderSlaGlobalSettings() {
@@ -5408,16 +5666,18 @@ $translationNamespaces = ['common', 'tickets'];
             `).join('');
         }
 
+        // Targets are per-policy: write to whichever policy the grid is showing.
         async function savePrioritySla(priorityId) {
             const row = document.querySelector(`#slaTargetsList tr [data-pid="${priorityId}"]`).closest('tr');
             const payload = {
-                id: priorityId,
+                policy_id:              slaSelectedPolicyId,
+                priority_id:            priorityId,
                 sla_response_minutes:   row.querySelector('input[data-field="response"]').value,
                 sla_resolution_minutes: row.querySelector('input[data-field="resolution"]').value,
                 sla_calendar_id:        row.querySelector('select[data-field="calendar"]').value,
             };
             try {
-                const res = await fetch(API_BASE + 'save_priority_sla.php', {
+                const res = await fetch(API_BASE + 'save_sla_policy_target.php', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });

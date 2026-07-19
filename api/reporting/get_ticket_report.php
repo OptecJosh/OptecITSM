@@ -1,0 +1,97 @@
+<?php
+/**
+ * API: Ad-hoc ticket report (Phase 4A).
+ *
+ * Aggregates ticket counts by one dimension, over the shared filter engine
+ * (includes/ticket_filter.php) — so a report is "the same filters as a queue,
+ * plus a GROUP BY".
+ *
+ * GET/POST:
+ *   group_by = status | priority | type | category | subcategory | assignee |
+ *              department | customer | origin | created_month
+ *   filters  = JSON object (see includes/ticket_filter.php); optional
+ *
+ * Returns { success, group_by, total, rows: [{ label, count }] } ordered by
+ * count desc. NULL dimension values collapse to a "None/Unassigned" label.
+ *
+ * SLA-outcome aggregation (met/breached) is intentionally out of scope: SLA is
+ * compute-on-read (no stored column), so it would need per-ticket computation
+ * (O(N)). It belongs with a cached SLA snapshot, a later addition.
+ */
+session_start(['read_and_close' => true]);
+require_once '../../config.php';
+require_once '../../includes/functions.php';
+require_once '../../includes/tenancy.php';
+require_once '../../includes/ticket_filter.php';
+header('Content-Type: application/json');
+
+if (!isset($_SESSION['analyst_id'])) {
+    echo json_encode(['success' => false, 'error' => 'Not authenticated']);
+    exit;
+}
+requireModuleAccessJson('reporting');
+
+try {
+    $conn = connectToDatabase();
+    $analystId = (int)$_SESSION['analyst_id'];
+
+    // Whitelisted grouping dimensions → [extra join, group expression, NULL label].
+    // ticket_statuses (ts) is ALWAYS base-joined below (the filter engine uses
+    // ts.name), so the 'status' dimension needs no extra join of its own.
+    $dims = [
+        'status'        => ['join' => '',                                                                 'expr' => 'ts.name',                             'null' => 'No status'],
+        'priority'      => ['join' => 'LEFT JOIN ticket_priorities tp ON tp.id = t.priority_id',          'expr' => 'tp.name',                             'null' => 'No priority'],
+        'type'          => ['join' => 'LEFT JOIN ticket_types tt ON tt.id = t.ticket_type_id',            'expr' => 'tt.name',                             'null' => 'No type'],
+        'category'      => ['join' => 'LEFT JOIN ticket_categories tc ON tc.id = t.category_id',          'expr' => 'tc.name',                             'null' => 'No category'],
+        'subcategory'   => ['join' => 'LEFT JOIN ticket_subcategories tsc ON tsc.id = t.subcategory_id',  'expr' => 'tsc.name',                            'null' => 'No subcategory'],
+        'assignee'      => ['join' => 'LEFT JOIN analysts a ON a.id = t.assigned_analyst_id',             'expr' => 'a.full_name',                         'null' => 'Unassigned'],
+        'department'    => ['join' => 'LEFT JOIN departments d ON d.id = t.department_id',                'expr' => 'd.name',                              'null' => 'No department'],
+        'customer'      => ['join' => 'LEFT JOIN tenants tn ON tn.id = t.tenant_id',                      'expr' => 'tn.name',                             'null' => 'No customer'],
+        'origin'        => ['join' => 'LEFT JOIN ticket_origins to2 ON to2.id = t.origin_id',            'expr' => 'to2.name',                            'null' => 'No origin'],
+        'created_month' => ['join' => '',                                                                 'expr' => "DATE_FORMAT(t.created_datetime, '%Y-%m')", 'null' => 'Unknown'],
+    ];
+
+    $groupBy = $_GET['group_by'] ?? $_POST['group_by'] ?? 'status';
+    if (!isset($dims[$groupBy])) throw new Exception('Invalid group_by');
+    $dim = $dims[$groupBy];
+
+    // Optional filters via the shared engine.
+    $filtersRaw = $_GET['filters'] ?? $_POST['filters'] ?? '';
+    $filters = [];
+    if ($filtersRaw !== '') {
+        $decoded = json_decode($filtersRaw, true);
+        if (is_array($decoded)) $filters = $decoded;
+    }
+    list($fSql, $fParams) = ticket_filter_build($filters);
+
+    // Tenant scope + hide trashed (same base predicate as the ticket list/counts).
+    list($ttSql, $ttParams) = ticketTenantFilter($conn, $analystId, 't');
+    $ttSql .= " AND t.deleted_datetime IS NULL";
+
+    $sql = "SELECT COALESCE(" . $dim['expr'] . ", ?) AS grp, COUNT(*) AS cnt
+              FROM tickets t
+              LEFT JOIN ticket_statuses ts ON ts.id = t.status_id
+              " . $dim['join'] . "
+             WHERE 1=1" . $ttSql . $fSql . "
+          GROUP BY grp
+          ORDER BY cnt DESC, grp ASC";
+
+    // Positional params bind in SQL order: the COALESCE null-label (SELECT) first,
+    // then tenant params, then filter params (both in WHERE).
+    $params = array_merge([$dim['null']], $ttParams, $fParams);
+    $stmt = $conn->prepare($sql);
+    $stmt->execute($params);
+
+    $rows = [];
+    $total = 0;
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $c = (int)$r['cnt'];
+        $total += $c;
+        $rows[] = ['label' => $r['grp'], 'count' => $c];
+    }
+
+    echo json_encode(['success' => true, 'group_by' => $groupBy, 'total' => $total, 'rows' => $rows]);
+
+} catch (Exception $e) {
+    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+}

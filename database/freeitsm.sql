@@ -580,6 +580,25 @@ CREATE TABLE IF NOT EXISTS `cmdb_object_sla_policies` (
     CONSTRAINT `fk_cmdb_object_sla_policy` FOREIGN KEY (`policy_id`) REFERENCES `sla_policies` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Saved ticket queues (Phase 5): a named filter over the ticket list.
+-- owner_analyst_id NULL = a SHARED queue (admin-managed, visible to everyone);
+-- set = a PERSONAL queue owned by that analyst. filters_json holds the filter
+-- definition consumed by includes/ticket_filter.php (same shape as the ad-hoc bar).
+CREATE TABLE IF NOT EXISTS `ticket_queues` (
+    `id`                    INT NOT NULL AUTO_INCREMENT,
+    `name`                  VARCHAR(150) NOT NULL,
+    `owner_analyst_id`      INT NULL,
+    `filters_json`          TEXT NULL,
+    `display_order`         INT NOT NULL DEFAULT 0,
+    `created_by_analyst_id` INT NULL,
+    `created_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `ix_ticket_queues_owner` (`owner_analyst_id`),
+    CONSTRAINT `fk_ticket_queues_owner` FOREIGN KEY (`owner_analyst_id`) REFERENCES `analysts` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_ticket_queues_creator` FOREIGN KEY (`created_by_analyst_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `tickets` (
     `id`                    INT NOT NULL AUTO_INCREMENT,
     `tenant_id`             INT NULL,

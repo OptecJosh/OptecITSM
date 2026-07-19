@@ -871,7 +871,31 @@ body.ticket-popout .ticket-toolbar {
 .ticket-filter-panel .tf-keyword input,
 .ticket-filter-panel input[type="date"] { padding: 6px 8px; border: 1px solid var(--border, #e5e7eb); border-radius: 6px; font-size: 13px; }
 .ticket-filter-panel .tf-keyword input { min-width: 200px; }
-.ticket-filter-panel .tf-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.ticket-filter-panel .tf-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.ticket-filter-panel .tf-save { display: flex; align-items: center; gap: 8px; }
+.ticket-filter-panel .tf-save input[type="text"] { padding: 6px 8px; border: 1px solid var(--border, #e5e7eb); border-radius: 6px; font-size: 13px; min-width: 160px; }
+.ticket-filter-panel .tf-shared { display: flex; align-items: center; gap: 5px; font-size: 12.5px; white-space: nowrap; }
+.ticket-filter-panel .tf-actions-right { display: flex; gap: 8px; }
+
+/* Phase 5b: sidebar Queues section */
+.queue-section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 14px 4px; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim, #6b7280);
+}
+.queue-add-btn {
+    border: none; background: none; cursor: pointer; font-size: 16px; line-height: 1;
+    color: var(--text-dim, #6b7280); padding: 0 4px; border-radius: 4px;
+}
+.queue-add-btn:hover { color: #db2777; background: var(--surface-2, #f3f4f6); }
+.queue-empty { padding: 4px 16px 8px; font-size: 12px; color: var(--text-faint, #9ca3af); font-style: italic; }
+.queue-item .queue-item-right { display: flex; align-items: center; gap: 6px; }
+.queue-item .queue-action {
+    visibility: hidden; cursor: pointer; font-size: 12px; color: var(--text-dim, #6b7280);
+    padding: 0 2px; border-radius: 4px;
+}
+.queue-item:hover .queue-action { visibility: visible; }
+.queue-item .queue-action:hover { color: #db2777; }
 
 .ticket-properties-summary-item {
     display: flex;

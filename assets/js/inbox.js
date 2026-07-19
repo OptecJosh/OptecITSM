@@ -128,6 +128,10 @@ let currentEmail = null;
 let currentRecordings = [];
 let folderCounts = {};
 let adHocFilters = {};   // Phase 5: ad-hoc ticket filters (same shape as saved queues)
+let ticketQueues = [];   // Phase 5: saved queues visible to this analyst (own + shared)
+let activeQueueId = null;    // currently-selected queue (sidebar highlight)
+let editingQueueId = null;   // queue being edited in the filter panel (null = new/none)
+let queueCanManageShared = false; // admin — may create/edit shared queues
 // Messaging channels (WhatsApp etc.): set when a ticket's thread loads, so the
 // reading pane composes over the channel instead of email. 'email' = normal ticket.
 let currentTicketChannel = 'email';
@@ -248,6 +252,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadAnalysts();
     loadMoveCompanies();
     loadFolderGroupingPreference().then(loadFolderCounts);
+    loadQueues();
     initTinyMCE();
     initAttachmentHandlers();
 
@@ -695,6 +700,36 @@ function renderFolders() {
         });
     }
 
+    // Queues (Phase 5): saved filters — personal (🔖) and shared (👥), each with
+    // a live count. Edit/delete affordances appear on hover for queues the
+    // analyst may manage (their own, or shared queues if they're an admin).
+    html += '<div class="folder-divider"></div>';
+    html += `<div class="queue-section-header">
+        <span>Queues</span>
+        <button class="queue-add-btn" title="New queue" onclick="openNewQueue()">+</button>
+    </div>`;
+    if (!ticketQueues.length) {
+        html += `<div class="queue-empty">No saved queues yet</div>`;
+    } else {
+        ticketQueues.forEach(q => {
+            const isActive = activeQueueId === q.id;
+            const canManage = q.is_own || (q.is_shared && queueCanManageShared);
+            const actions = canManage
+                ? `<span class="queue-action" title="Edit queue" onclick="event.stopPropagation();editQueue(${q.id})">✎</span>
+                   <span class="queue-action" title="Delete queue" onclick="event.stopPropagation();deleteQueue(${q.id})">🗑</span>`
+                : '';
+            html += `
+                <div class="folder-item queue-item ${isActive ? 'active' : ''}" data-queue-id="${q.id}" onclick="selectQueue(${q.id})">
+                    <div class="folder-name">
+                        <span class="folder-icon">${q.is_shared ? '👥' : '🔖'}</span>
+                        <span>${escapeHtml(q.name)}</span>
+                    </div>
+                    <span class="queue-item-right">${actions}<span class="folder-count">${q.count}</span></span>
+                </div>
+            `;
+        });
+    }
+
     // Trash folder — soft-deleted tickets, restorable. Pinned to the bottom.
     // It's a drop target (drag a ticket here to trash it) and has its own
     // right-click menu (Empty trash).
@@ -723,6 +758,12 @@ function updateActiveFolderClasses() {
     const list = document.getElementById('folderList');
     if (!list) return;
     list.querySelectorAll('.folder-item, .subfolder-item').forEach(el => el.classList.remove('active'));
+
+    // Phase 5: a selected queue highlights its own row; no built-in folder is active.
+    if (currentFilter.type === 'queue' && activeQueueId != null) {
+        list.querySelector(`.queue-item[data-queue-id="${activeQueueId}"]`)?.classList.add('active');
+        return;
+    }
 
     if (currentFilter.type === 'all') {
         list.querySelector('[data-folder-key="all"]')?.classList.add('active');
@@ -770,6 +811,7 @@ function toggleFolder(folderId, groupId, opts = {}) {
     }
 
     if (selectAfter) {
+        resetFilterContext();
         if (kind === 'analyst') {
             currentFilter = { type: 'analyst', id: groupId };
             const an = folderCounts.analysts?.find(a => a.id == groupId);
@@ -784,8 +826,19 @@ function toggleFolder(folderId, groupId, opts = {}) {
     }
 }
 
+// Navigating to a built-in folder is a fresh view: drop any queue selection and
+// ad-hoc filter so the folder shows its full contents. The funnel can then be
+// used to refine the current folder.
+function resetFilterContext() {
+    activeQueueId = null;
+    editingQueueId = null;
+    adHocFilters = {};
+    updateFilterIndicator();
+}
+
 // Select folder
 function selectFolder(type, id = null) {
+    resetFilterContext();
     if (type === 'all') {
         currentFilter = { type: 'all' };
         document.getElementById('emailListTitle').textContent = t('tickets.list.all_tickets');
@@ -807,6 +860,7 @@ function selectFolder(type, id = null) {
 
 // Select department + status
 function selectDeptStatus(deptId, status) {
+    resetFilterContext();
     currentFilter = { type: 'dept_status', dept_id: deptId, status: status };
     const dept = folderCounts.departments.find(d => d.id == deptId);
     document.getElementById('emailListTitle').textContent = `${dept ? dept.name : 'Department'} - ${status}`;
@@ -817,6 +871,7 @@ function selectDeptStatus(deptId, status) {
 
 // Select analyst + status
 function selectAnalystStatus(analystId, status) {
+    resetFilterContext();
     currentFilter = { type: 'analyst_status', analyst_id: analystId, status: status };
     const an = folderCounts.analysts?.find(a => a.id == analystId);
     document.getElementById('emailListTitle').textContent = `${an ? an.name : 'Analyst'} - ${status}`;
@@ -1134,6 +1189,14 @@ function renderFilterPanel() {
     const customerGroup = (typeof isMultiCompany !== 'undefined' && isMultiCompany)
         ? group('Customer', 'tenant_id', moveCompanies, 'id', 'name') : '';
 
+    // Save row: create a new queue, or update the one being edited.
+    const editing = editingQueueId ? ticketQueues.find(q => q.id === editingQueueId) : null;
+    const qName = editing ? editing.name : '';
+    const sharedChecked = editing && editing.is_shared ? 'checked' : '';
+    const sharedField = queueCanManageShared
+        ? `<label class="tf-shared"><input type="checkbox" id="tfQueueShared" ${sharedChecked}> Shared</label>` : '';
+    const saveLabel = editing ? 'Update queue' : 'Save as queue';
+
     panel.innerHTML = `
         <div class="tf-top">
             <div class="tf-field tf-keyword">
@@ -1160,8 +1223,15 @@ function renderFilterPanel() {
             ${customerGroup}
         </div>
         <div class="tf-actions">
-            <button class="btn btn-secondary" onclick="clearAdHocFilters()">Clear</button>
-            <button class="btn btn-primary" onclick="applyAdHocFilters()">Apply filters</button>
+            <div class="tf-save">
+                <input type="text" id="tfQueueName" placeholder="Queue name…" value="${escapeHtml(qName)}" maxlength="150">
+                ${sharedField}
+                <button class="btn btn-secondary" onclick="saveQueueFromPanel()">${escapeHtml(saveLabel)}</button>
+            </div>
+            <div class="tf-actions-right">
+                <button class="btn btn-secondary" onclick="clearAdHocFilters()">Clear</button>
+                <button class="btn btn-primary" onclick="applyAdHocFilters()">Apply filters</button>
+            </div>
         </div>
     `;
 }
@@ -1184,20 +1254,132 @@ function readFilterPanel() {
     return f;
 }
 
+// Tweaking filters directly detaches from any selected queue — it becomes a
+// one-off ad-hoc view (over all tickets) rather than "the queue".
+function detachFromQueue() {
+    if (currentFilter.type === 'queue') {
+        currentFilter = { type: 'all' };
+        const tEl = document.getElementById('emailListTitle');
+        if (tEl) tEl.textContent = t('tickets.list.all_tickets');
+    }
+    activeQueueId = null;
+    editingQueueId = null;
+}
+
 function applyAdHocFilters() {
     adHocFilters = readFilterPanel();
+    detachFromQueue();
     updateFilterIndicator();
     const panel = document.getElementById('ticketFilterPanel');
     if (panel) panel.hidden = true;
+    updateActiveFolderClasses();
     loadEmails();
 }
 
 function clearAdHocFilters() {
     adHocFilters = {};
+    detachFromQueue();
     updateFilterIndicator();
     const panel = document.getElementById('ticketFilterPanel');
     if (panel) panel.hidden = true;
+    updateActiveFolderClasses();
     loadEmails();
+}
+
+// ===== Phase 5b: saved queues =====
+
+async function loadQueues() {
+    try {
+        const res = await fetch(API_BASE + 'get_ticket_queues.php');
+        const data = await res.json();
+        if (!data.success) return;
+        ticketQueues = data.queues || [];
+        queueCanManageShared = !!data.can_manage_shared;
+        renderFolders();
+    } catch (e) { /* queues section just won't render */ }
+}
+
+function selectQueue(id) {
+    const q = ticketQueues.find(x => x.id === id);
+    if (!q) return;
+    activeQueueId = id;
+    editingQueueId = null;
+    adHocFilters = JSON.parse(JSON.stringify(q.filters || {}));
+    currentFilter = { type: 'queue', id };
+    const tEl = document.getElementById('emailListTitle');
+    if (tEl) tEl.textContent = q.name;
+    updateFilterIndicator();
+    updateActiveFolderClasses();
+    loadEmails();
+}
+
+// Open the filter panel blank, ready to build + save a new queue.
+function openNewQueue() {
+    editingQueueId = null;
+    adHocFilters = {};
+    renderFilterPanel();
+    const panel = document.getElementById('ticketFilterPanel');
+    if (panel) panel.hidden = false;
+    const nameEl = document.getElementById('tfQueueName');
+    if (nameEl) nameEl.focus();
+}
+
+// Open the filter panel pre-loaded with a queue's filters, in update mode.
+function editQueue(id) {
+    const q = ticketQueues.find(x => x.id === id);
+    if (!q) return;
+    editingQueueId = id;
+    adHocFilters = JSON.parse(JSON.stringify(q.filters || {}));
+    renderFilterPanel();
+    const panel = document.getElementById('ticketFilterPanel');
+    if (panel) panel.hidden = false;
+}
+
+async function saveQueueFromPanel() {
+    const nameEl = document.getElementById('tfQueueName');
+    const name = nameEl ? nameEl.value.trim() : '';
+    if (!name) { showToast('Enter a queue name', 'error'); return; }
+    const sharedEl = document.getElementById('tfQueueShared');
+    const body = { name, is_shared: sharedEl ? sharedEl.checked : false, filters: readFilterPanel() };
+    if (editingQueueId) body.id = editingQueueId;
+    try {
+        const res = await fetch(API_BASE + 'save_ticket_queue.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Save failed');
+        showToast(editingQueueId ? 'Queue updated' : 'Queue saved', 'success');
+        editingQueueId = null;
+        const panel = document.getElementById('ticketFilterPanel');
+        if (panel) panel.hidden = true;
+        await loadQueues();
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+}
+
+async function deleteQueue(id) {
+    const q = ticketQueues.find(x => x.id === id);
+    if (!q) return;
+    if (!(await showConfirm({ title: 'Delete queue', message: `Delete the queue "${q.name}"?`, okLabel: 'Delete', okClass: 'primary' }))) return;
+    try {
+        const res = await fetch(API_BASE + 'delete_ticket_queue.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Delete failed');
+        showToast('Queue deleted', 'success');
+        if (activeQueueId === id) {
+            activeQueueId = null; adHocFilters = {}; currentFilter = { type: 'all' };
+            const tEl = document.getElementById('emailListTitle');
+            if (tEl) tEl.textContent = t('tickets.list.all_tickets');
+            updateFilterIndicator();
+            loadEmails();
+        }
+        await loadQueues();
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
 }
 
 function renderEmailList() {

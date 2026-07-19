@@ -411,6 +411,19 @@ $schema = [
         'created_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
     ],
 
+    // Saved ticket queues (Phase 5). owner_analyst_id NULL = shared (admin),
+    // set = personal. filters_json = the ticket_filter definition.
+    'ticket_queues' => [
+        'id'                    => 'INT NOT NULL AUTO_INCREMENT',
+        'name'                  => 'VARCHAR(150) NOT NULL',
+        'owner_analyst_id'      => 'INT NULL',
+        'filters_json'          => 'TEXT NULL',
+        'display_order'         => 'INT NOT NULL DEFAULT 0',
+        'created_by_analyst_id' => 'INT NULL',
+        'created_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+        'updated_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
     'tickets' => [
         'id'                    => 'INT NOT NULL AUTO_INCREMENT',
         'tenant_id'             => 'INT NULL',
@@ -3346,6 +3359,19 @@ try {
         }
         if (!$fkExists('cmdb_object_sla_policies', 'fk_cmdb_object_sla_policy')) {
             try { $conn->exec("ALTER TABLE cmdb_object_sla_policies ADD CONSTRAINT fk_cmdb_object_sla_policy FOREIGN KEY (policy_id) REFERENCES sla_policies (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+    }
+    // Saved ticket queues (Phase 5): owner cascades (personal queues die with the
+    // analyst); creator is SET NULL so a deleted admin doesn't drop shared queues.
+    if ($tableExists('ticket_queues') && $tableExists('analysts')) {
+        if (!$idxExists('ticket_queues', 'ix_ticket_queues_owner')) {
+            try { $conn->exec("ALTER TABLE ticket_queues ADD INDEX ix_ticket_queues_owner (owner_analyst_id)"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('ticket_queues', 'fk_ticket_queues_owner')) {
+            try { $conn->exec("ALTER TABLE ticket_queues ADD CONSTRAINT fk_ticket_queues_owner FOREIGN KEY (owner_analyst_id) REFERENCES analysts (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('ticket_queues', 'fk_ticket_queues_creator')) {
+            try { $conn->exec("ALTER TABLE ticket_queues ADD CONSTRAINT fk_ticket_queues_creator FOREIGN KEY (created_by_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
         }
     }
     // is_primary index on the ticket↔CI join (Phase 3b) — speeds "which CI drives SLA".

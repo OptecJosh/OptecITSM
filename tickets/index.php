@@ -465,6 +465,23 @@ $translationNamespaces = ['common', 'tickets'];
         </div>
     </div>
 
+    <!-- Merge modal (Phase 6e): pick the target ticket to merge the current one into -->
+    <div class="modal" id="mergeModal">
+        <div class="modal-content" style="max-width: 620px;">
+            <div class="modal-header">Merge <span id="mergeSourceRef"></span> into another ticket</div>
+            <div class="modal-body">
+                <p style="font-size:12.5px;color:var(--text-dim,#6b7280);margin:0 0 10px;">The current ticket's conversation, notes, time, tags, watchers and CIs move to the ticket you pick; this ticket is then closed and marked as merged.</p>
+                <div class="form-group">
+                    <input type="text" class="form-input" id="mergeSearch" placeholder="Search tickets by number or subject…" autocomplete="off" oninput="mergeSearchDebounced()">
+                </div>
+                <div class="lp-list" id="mergeList"><div class="lp-empty">Loading…</div></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeMergeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Context menu — Record Time modal -->
     <div class="modal" id="ctxTimeModal">
         <div class="modal-content" style="max-width: 480px;">
@@ -495,7 +512,7 @@ $translationNamespaces = ['common', 'tickets'];
         window.API_BASE = '../api/tickets/';
         window.CURRENT_ANALYST_ID = <?php echo (int)($_SESSION['analyst_id'] ?? 0); ?>;
     </script>
-    <script src="../assets/js/inbox.js?v=68"></script>
+    <script src="../assets/js/inbox.js?v=69"></script>
     <script src="../assets/js/mobile.js?v=12"></script>
     <script>
     // Auto-check mailboxes every 60 seconds

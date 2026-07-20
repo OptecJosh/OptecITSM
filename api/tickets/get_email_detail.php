@@ -70,12 +70,15 @@ try {
                 u.email AS requester_email,
                 t.created_datetime as ticket_created,
                 t.updated_datetime as ticket_updated,
-                t.deleted_datetime
+                t.deleted_datetime,
+                t.merged_into_ticket_id,
+                mt.ticket_number AS merged_into_number
             FROM emails e
             INNER JOIN tickets t ON e.ticket_id = t.id
             LEFT JOIN ticket_statuses ts ON ts.id = t.status_id
             LEFT JOIN ticket_priorities tp ON tp.id = t.priority_id
             LEFT JOIN users u ON u.id = t.user_id
+            LEFT JOIN tickets mt ON mt.id = t.merged_into_ticket_id
             WHERE ";
 
     // Look up by email ID or by ticket ID (gets the initial email for the ticket)

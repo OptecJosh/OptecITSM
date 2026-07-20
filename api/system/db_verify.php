@@ -485,6 +485,7 @@ $schema = [
         // Messaging channels: when the customer last messaged in (drives the 24h
         // provider service window on the reply box). NULL for non-channel tickets.
         'last_inbound_at'       => 'DATETIME NULL',
+        'merged_into_ticket_id' => 'INT NULL',
     ],
 
     'ticket_audit' => [
@@ -3453,6 +3454,16 @@ try {
         }
         if (!$fkExists('ticket_watchers', 'fk_ticket_watcher_analyst')) {
             try { $conn->exec("ALTER TABLE ticket_watchers ADD CONSTRAINT fk_ticket_watcher_analyst FOREIGN KEY (analyst_id) REFERENCES analysts (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+    }
+    // Ticket merge (Phase 6e): self-referential pointer from a merged ticket to
+    // its survivor. SET NULL so hard-deleting the survivor doesn't orphan-block.
+    if ($tableExists('tickets') && $colExists('tickets', 'merged_into_ticket_id')) {
+        if (!$idxExists('tickets', 'ix_tickets_merged_into')) {
+            try { $conn->exec("ALTER TABLE tickets ADD INDEX ix_tickets_merged_into (merged_into_ticket_id)"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('tickets', 'fk_tickets_merged_into')) {
+            try { $conn->exec("ALTER TABLE tickets ADD CONSTRAINT fk_tickets_merged_into FOREIGN KEY (merged_into_ticket_id) REFERENCES tickets (id) ON DELETE SET NULL"); } catch (Exception $e) {}
         }
     }
     // is_primary index on the ticket↔CI join (Phase 3b) — speeds "which CI drives SLA".

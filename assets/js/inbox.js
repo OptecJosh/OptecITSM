@@ -1696,7 +1696,15 @@ function displayEmail(email, recordings) {
             <button onclick="permanentlyDeleteFromTrash(${email.ticket_id}, '${escapeHtml(email.ticket_number || '')}')" style="font-size:12.5px;padding:6px 14px;border:1px solid #e6c4c4;background:#fff;color:#b71c1c;border-radius:5px;cursor:pointer;font-weight:600;">✕ Delete forever</button>
         </div>` : '';
 
-    readingPane.innerHTML = trashBanner + (isTrashed ? '<div style="pointer-events:none;opacity:0.55;">' : '') + `
+    // Phase 6e: a merged ticket shows where its conversation went.
+    const mergedBanner = (email.merged_into_ticket_id && email.merged_into_number) ? `
+        <div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;padding:12px 16px;margin:0 0 14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+            <span style="font-size:18px;">🔀</span>
+            <span style="color:#3730a3;font-weight:600;flex:1;min-width:180px;">This ticket was merged into ${escapeHtml(email.merged_into_number)} — its conversation now lives there.</span>
+            <button onclick="loadTicketById(${email.merged_into_ticket_id})" style="font-size:12.5px;padding:6px 14px;border:1px solid #c7d2fe;background:#fff;color:#3730a3;border-radius:5px;cursor:pointer;font-weight:600;">Open ${escapeHtml(email.merged_into_number)}</button>
+        </div>` : '';
+
+    readingPane.innerHTML = trashBanner + mergedBanner + (isTrashed ? '<div style="pointer-events:none;opacity:0.55;">' : '') + `
         <div class="ticket-properties-container" id="ticketPropertiesContainer">
             <div class="ticket-properties-header" onclick="toggleTicketProperties(event)">
                 <div class="ticket-properties-title">
@@ -1865,6 +1873,10 @@ function displayEmail(email, recordings) {
             <button class="action-btn" onclick="showAuditHistory()">
                 <span class="action-btn-icon">📋</span>
                 <span>${escapeHtml(t('tickets.actions.audit'))}</span>
+            </button>
+            <button class="action-btn" onclick="openMergeModal()" title="Merge this ticket into another">
+                <span class="action-btn-icon">🔀</span>
+                <span>Merge</span>
             </button>
             <button class="action-btn" onclick="requestCsatSurvey()" title="Send a satisfaction survey to the requester">
                 <span class="action-btn-icon">⭐</span>
@@ -2220,6 +2232,55 @@ async function pickLinkTicket(targetId) {
             if (currentEmail && currentEmail.ticket_id == linkTicketSourceId) selectEmail(currentEmail.id);
         } else showToast(data.error || 'Could not link', 'error');
     } catch (e) { showToast('Failed to link tickets', 'error'); }
+}
+
+// ===== Phase 6e: ticket merge =====
+let mergeSourceId = null;
+let mergeSearchTimer = null;
+
+function openMergeModal() {
+    if (!currentEmail) return;
+    if (currentEmail.merged_into_ticket_id) { showToast('This ticket is already merged', 'error'); return; }
+    mergeSourceId = currentEmail.ticket_id;
+    document.getElementById('mergeSourceRef').textContent = currentEmail.ticket_number || ('#' + mergeSourceId);
+    const s = document.getElementById('mergeSearch'); if (s) s.value = '';
+    document.getElementById('mergeModal').classList.add('active');
+    loadMergeList();
+}
+function closeMergeModal() { document.getElementById('mergeModal').classList.remove('active'); }
+function mergeSearchDebounced() { clearTimeout(mergeSearchTimer); mergeSearchTimer = setTimeout(loadMergeList, 250); }
+
+async function loadMergeList() {
+    const list = document.getElementById('mergeList');
+    const q = (document.getElementById('mergeSearch') || {}).value || '';
+    list.innerHTML = '<div class="lp-empty">Loading…</div>';
+    try {
+        const data = await fetch('../api/tickets/list_linkable_tickets.php?source_ticket_id=' + encodeURIComponent(mergeSourceId) + '&q=' + encodeURIComponent(q.trim())).then(r => r.json());
+        if (!data.success) { list.innerHTML = '<div class="lp-empty">' + escapeHtml(data.error || 'Failed to load') + '</div>'; return; }
+        const rows = (data.tickets || []).map(tk => `<div class="lp-row" onclick="pickMergeTarget(${tk.id}, '${escapeHtml(tk.ticket_number || ('#' + tk.id))}')">
+            <span class="lp-num">${escapeHtml(tk.ticket_number || ('#' + tk.id))}</span>
+            <span class="lp-title">${escapeHtml(tk.subject || '')}</span>
+            <span class="lp-status">${escapeHtml(tk.status || '')}</span></div>`).join('');
+        list.innerHTML = rows || '<div class="lp-empty">' + (q.trim() ? 'No matching tickets.' : 'No other tickets found.') + '</div>';
+    } catch (e) { list.innerHTML = '<div class="lp-empty">Failed to load tickets</div>'; }
+}
+
+async function pickMergeTarget(targetId, targetRef) {
+    const srcRef = currentEmail ? (currentEmail.ticket_number || ('#' + mergeSourceId)) : ('#' + mergeSourceId);
+    if (!(await showConfirm({ title: 'Merge tickets', message: `Merge ${srcRef} into ${targetRef}? ${srcRef} will be closed and its content moved to ${targetRef}.`, okLabel: 'Merge', okClass: 'primary' }))) return;
+    try {
+        const res = await fetch('../api/tickets/merge_tickets.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source_ids: [mergeSourceId], target_id: targetId })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Merge failed');
+        showToast('Merged into ' + (data.target_number || targetRef), 'success');
+        closeMergeModal();
+        await loadEmails();
+        if (typeof loadFolderCounts === 'function') loadFolderCounts();
+        loadTicketById(targetId);
+    } catch (err) { showToast('Error: ' + err.message, 'error'); }
 }
 
 async function unlinkTicketLink(linkId) {

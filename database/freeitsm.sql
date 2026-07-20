@@ -681,6 +681,7 @@ CREATE TABLE IF NOT EXISTS `tickets` (
     -- Messaging channels (WhatsApp etc.): when the customer last messaged in. Drives
     -- the provider 24h service window — outside it, only template replies are allowed.
     `last_inbound_at`       DATETIME NULL,
+    `merged_into_ticket_id` INT NULL,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_tickets_number` (`ticket_number`),
     KEY `ix_tickets_status_id` (`status_id`),

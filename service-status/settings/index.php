@@ -117,6 +117,37 @@ $translationNamespaces = ['common', 'service-status'];
                 <span>Enable the public status page</span>
             </label>
             <p style="margin-top:12px;"><a href="../../status.php" target="_blank" rel="noopener" style="font-size:13px;">Open the public status page ↗</a></p>
+
+            <?php if (function_exists('sessionIsAdmin') && sessionIsAdmin()): ?>
+            <!-- Phase 7b: announcements / broadcast (admin only) -->
+            <div class="section-header" style="margin-top: 32px;">
+                <h2>Announcements</h2>
+            </div>
+            <p style="margin-bottom: 14px; color: var(--text-dim, #666);">Broadcast a notice to the self-service portal dashboard and/or the public status page.</p>
+            <table>
+                <thead><tr><th>Title</th><th>Shows on</th><th>Active</th><th>Actions</th></tr></thead>
+                <tbody id="announcements-list"><tr><td colspan="4" style="text-align:center;padding:16px;color:var(--text-dim,#999);">Loading…</td></tr></tbody>
+            </table>
+            <button class="add-btn" onclick="annOpen()" style="margin-top:10px;">Add announcement</button>
+            <div id="annEditor" style="display:none; margin-top:14px; border:1px solid var(--border,#e5e7eb); border-radius:8px; padding:14px;">
+                <input type="hidden" id="annId">
+                <div class="form-group"><label>Title</label><input type="text" id="annTitle"></div>
+                <div class="form-group"><label>Body</label><textarea id="annBody" rows="3"></textarea></div>
+                <div style="display:flex; gap:18px; flex-wrap:wrap; margin:10px 0;">
+                    <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="annPortal" checked> Portal dashboard</label>
+                    <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="annStatus"> Public status page</label>
+                    <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="annActive" checked> Active</label>
+                </div>
+                <div style="display:flex; gap:18px; flex-wrap:wrap;">
+                    <div class="form-group"><label>Starts (optional)</label><input type="datetime-local" id="annStarts"></div>
+                    <div class="form-group"><label>Ends (optional)</label><input type="datetime-local" id="annEnds"></div>
+                </div>
+                <div style="margin-top:10px; display:flex; gap:8px;">
+                    <button class="add-btn" onclick="annSave()">Save</button>
+                    <button class="add-btn" style="background:#6b7280;" onclick="annCancel()">Cancel</button>
+                </div>
+            </div>
+            <?php endif; ?>
         </div>
 
         <!-- Statuses Tab -->
@@ -566,6 +597,72 @@ $translationNamespaces = ['common', 'service-status'];
                 if (typeof showToast === 'function') showToast(enabled ? 'Public status page enabled' : 'Public status page disabled', 'success');
             } catch (e) { if (typeof showToast === 'function') showToast('Error: ' + e.message, 'error'); }
         };
+    })();
+    </script>
+    <script>
+    /* Phase 7b: announcements management (admin only; card rendered server-side). */
+    (function () {
+        const API = '../../api/system/';
+        let items = [];
+        function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); }
+        function toast(m, e) { if (typeof showToast === 'function') showToast(m, e ? 'error' : 'success'); }
+        function g(id) { return document.getElementById(id); }
+
+        async function load() {
+            const tb = g('announcements-list');
+            if (!tb) return;
+            try {
+                const d = await (await fetch(API + 'get_announcements.php')).json();
+                if (!d.success) { tb.innerHTML = '<tr><td colspan="4">Failed to load</td></tr>'; return; }
+                items = d.announcements || [];
+                tb.innerHTML = items.length ? items.map(function (a) {
+                    const on = [a.show_portal ? 'Portal' : '', a.show_status ? 'Status' : ''].filter(Boolean).join(', ') || '—';
+                    return '<tr><td>' + esc(a.title) + '</td><td>' + on + '</td><td>' + (a.is_active ? 'Yes' : 'No') + '</td>' +
+                        '<td><button class="add-btn" style="padding:2px 8px;" onclick="annEdit(' + a.id + ')">Edit</button> ' +
+                        '<button class="add-btn" style="padding:2px 8px;background:#b91c1c;" onclick="annDelete(' + a.id + ')">Delete</button></td></tr>';
+                }).join('') : '<tr><td colspan="4" style="text-align:center;color:#999;">No announcements</td></tr>';
+            } catch (e) { tb.innerHTML = '<tr><td colspan="4">Failed to load</td></tr>'; }
+        }
+        function fill(a) {
+            g('annId').value = a ? a.id : '';
+            g('annTitle').value = a ? a.title : '';
+            g('annBody').value = a ? (a.body || '') : '';
+            g('annPortal').checked = a ? !!a.show_portal : true;
+            g('annStatus').checked = a ? !!a.show_status : false;
+            g('annActive').checked = a ? !!a.is_active : true;
+            g('annStarts').value = a && a.starts_at ? a.starts_at.replace(' ', 'T').slice(0, 16) : '';
+            g('annEnds').value = a && a.ends_at ? a.ends_at.replace(' ', 'T').slice(0, 16) : '';
+        }
+        window.annOpen = function () { fill(null); g('annEditor').style.display = 'block'; };
+        window.annCancel = function () { g('annEditor').style.display = 'none'; };
+        window.annEdit = function (id) { const a = items.find(x => x.id === id); if (a) { fill(a); g('annEditor').style.display = 'block'; } };
+        window.annSave = async function () {
+            const body = {
+                id: g('annId').value || undefined,
+                title: g('annTitle').value.trim(),
+                body: g('annBody').value,
+                show_portal: g('annPortal').checked,
+                show_status: g('annStatus').checked,
+                is_active: g('annActive').checked,
+                starts_at: g('annStarts').value,
+                ends_at: g('annEnds').value
+            };
+            if (!body.title) { toast('Title is required', true); return; }
+            try {
+                const d = await (await fetch(API + 'save_announcement.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
+                if (!d.success) throw new Error(d.error || 'Save failed');
+                toast('Announcement saved'); g('annEditor').style.display = 'none'; load();
+            } catch (e) { toast('Error: ' + e.message, true); }
+        };
+        window.annDelete = async function (id) {
+            if (!confirm('Delete this announcement?')) return;
+            try {
+                const d = await (await fetch(API + 'delete_announcement.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })).json();
+                if (!d.success) throw new Error(d.error || 'Delete failed');
+                toast('Announcement deleted'); load();
+            } catch (e) { toast('Error: ' + e.message, true); }
+        };
+        document.addEventListener('DOMContentLoaded', load);
     })();
     </script>
 </body>

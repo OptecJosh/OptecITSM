@@ -477,6 +477,21 @@ $schema = [
         'updated_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
     ],
 
+    // Announcements / broadcast notices (Phase 7b).
+    'announcements' => [
+        'id'                    => 'INT NOT NULL AUTO_INCREMENT',
+        'title'                 => 'VARCHAR(255) NOT NULL',
+        'body'                  => 'TEXT NULL',
+        'is_active'             => 'TINYINT(1) NOT NULL DEFAULT 1',
+        'show_portal'           => 'TINYINT(1) NOT NULL DEFAULT 1',
+        'show_status'           => 'TINYINT(1) NOT NULL DEFAULT 0',
+        'starts_at'             => 'DATETIME NULL',
+        'ends_at'               => 'DATETIME NULL',
+        'created_by_analyst_id' => 'INT NULL',
+        'created_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+        'updated_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
     'tickets' => [
         'id'                    => 'INT NOT NULL AUTO_INCREMENT',
         'tenant_id'             => 'INT NULL',
@@ -3507,6 +3522,15 @@ try {
         }
         if (!$fkExists('knowledge_article_ratings', 'fk_kb_rating_user')) {
             try { $conn->exec("ALTER TABLE knowledge_article_ratings ADD CONSTRAINT fk_kb_rating_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+    }
+    // Announcements (Phase 7b): creator SET NULL so a deleted admin keeps the notice.
+    if ($tableExists('announcements') && $tableExists('analysts')) {
+        if (!$idxExists('announcements', 'ix_announcements_active')) {
+            try { $conn->exec("ALTER TABLE announcements ADD INDEX ix_announcements_active (is_active)"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('announcements', 'fk_announcements_creator')) {
+            try { $conn->exec("ALTER TABLE announcements ADD CONSTRAINT fk_announcements_creator FOREIGN KEY (created_by_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
         }
     }
     // is_primary index on the ticket↔CI join (Phase 3b) — speeds "which CI drives SLA".

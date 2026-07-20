@@ -2245,6 +2245,26 @@ CREATE TABLE IF NOT EXISTS `knowledge_article_ratings` (
     CONSTRAINT `fk_kb_rating_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Announcements / broadcast notices (Phase 7b). Shown on the self-service portal
+-- dashboard (show_portal) and/or the public status page (show_status), within
+-- an optional start/end window while is_active = 1.
+CREATE TABLE IF NOT EXISTS `announcements` (
+    `id`                    INT NOT NULL AUTO_INCREMENT,
+    `title`                 VARCHAR(255) NOT NULL,
+    `body`                  TEXT NULL,
+    `is_active`             TINYINT(1) NOT NULL DEFAULT 1,
+    `show_portal`           TINYINT(1) NOT NULL DEFAULT 1,
+    `show_status`           TINYINT(1) NOT NULL DEFAULT 0,
+    `starts_at`             DATETIME NULL,
+    `ends_at`               DATETIME NULL,
+    `created_by_analyst_id` INT NULL,
+    `created_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `ix_announcements_active` (`is_active`),
+    CONSTRAINT `fk_announcements_creator` FOREIGN KEY (`created_by_analyst_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `knowledge_article_versions` (
     `id`                INT NOT NULL AUTO_INCREMENT,
     `article_id`        INT NOT NULL,

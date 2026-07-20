@@ -315,6 +315,8 @@ $translationNamespaces = ['common', 'self-service'];
         </div>
 
         <!-- Summary Cards (rendered dynamically from active ticket_statuses) -->
+        <div id="announcementsContainer"></div>
+
         <div class="summary-cards" id="summaryCards"></div>
 
         <!-- Two column layout -->
@@ -365,6 +367,7 @@ $translationNamespaces = ['common', 'self-service'];
                 renderSummaryCards(data.ticket_summary);
                 renderRecentTickets(data.recent_tickets);
                 renderServiceStatus(data.services);
+                renderAnnouncements(data.announcements || []);
             } catch (err) {
                 console.error('Failed to load dashboard:', err);
             }
@@ -373,6 +376,18 @@ $translationNamespaces = ['common', 'self-service'];
         // Lookup map populated from the dashboard payload — used by recent-tickets
         // table to colour status badges without a hardcoded name → class mapping
         let statusColourMap = {};
+
+        function renderAnnouncements(list) {
+            const c = document.getElementById('announcementsContainer');
+            if (!c) return;
+            if (!list || !list.length) { c.innerHTML = ''; return; }
+            c.innerHTML = list.map(a =>
+                '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-left:4px solid #2563eb;border-radius:8px;padding:12px 16px;margin-bottom:12px;">' +
+                '<div style="font-weight:600;color:#1e3a8a;font-size:14px;' + (a.body ? 'margin-bottom:4px;' : '') + '">📢 ' + escapeHtml(a.title) + '</div>' +
+                (a.body ? '<div style="font-size:13px;color:#374151;line-height:1.5;">' + escapeHtml(a.body) + '</div>' : '') +
+                '</div>'
+            ).join('');
+        }
 
         function renderSummaryCards(summary) {
             const container = document.getElementById('summaryCards');

@@ -109,11 +109,24 @@ try {
     $svcStmt->execute();
     $services = $svcStmt->fetchAll(PDO::FETCH_ASSOC);
 
+    // Active announcements flagged for the portal (Phase 7b).
+    $announcements = [];
+    try {
+        $announcements = $conn->query(
+            "SELECT title, body FROM announcements
+              WHERE is_active = 1 AND show_portal = 1
+                AND (starts_at IS NULL OR starts_at <= UTC_TIMESTAMP())
+                AND (ends_at IS NULL OR ends_at >= UTC_TIMESTAMP())
+           ORDER BY id DESC"
+        )->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) { $announcements = []; }
+
     echo json_encode([
         'success' => true,
         'ticket_summary' => $ticketSummary,
         'recent_tickets' => $recentTickets,
-        'services' => $services
+        'services' => $services,
+        'announcements' => $announcements
     ]);
 
 } catch (Exception $e) {

@@ -79,7 +79,19 @@ try {
         ];
     }
 
-    echo json_encode(['success' => true, 'enabled' => true, 'services' => $services, 'incidents' => $incidents]);
+    // Active announcements flagged for the public status page (Phase 7b).
+    $announcements = [];
+    try {
+        $announcements = $conn->query(
+            "SELECT title, body FROM announcements
+              WHERE is_active = 1 AND show_status = 1
+                AND (starts_at IS NULL OR starts_at <= UTC_TIMESTAMP())
+                AND (ends_at IS NULL OR ends_at >= UTC_TIMESTAMP())
+           ORDER BY id DESC"
+        )->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) { $announcements = []; }
+
+    echo json_encode(['success' => true, 'enabled' => true, 'services' => $services, 'incidents' => $incidents, 'announcements' => $announcements]);
 
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);

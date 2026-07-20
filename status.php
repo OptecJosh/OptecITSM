@@ -36,6 +36,9 @@ require_once __DIR__ . '/config.php';
         .sp-incident .meta { font-size: 12px; color: #6b7280; margin-bottom: 8px; }
         .sp-incident .meta .pill { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; border-radius: 999px; padding: 1px 8px; font-weight: 600; }
         .sp-incident p { margin: 0; font-size: 13.5px; line-height: 1.55; color: #374151; }
+        .sp-announce { background: #eff6ff; border: 1px solid #bfdbfe; border-left: 4px solid #2563eb; border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; }
+        .sp-announce h3 { margin: 0 0 5px; font-size: 15px; color: #1e3a8a; }
+        .sp-announce p { margin: 0; font-size: 13.5px; line-height: 1.55; color: #374151; }
         .sp-note { text-align: center; color: #6b7280; padding: 48px 0; font-size: 15px; }
         .sp-foot { text-align: center; color: #9ca3af; font-size: 12px; margin-top: 30px; }
     </style>
@@ -69,6 +72,13 @@ require_once __DIR__ . '/config.php';
             let html = '';
             html += '<div class="sp-overall ' + (allOk ? 'ok' : 'issues') + '">' +
                 (allOk ? 'All systems operational' : 'Some systems are experiencing issues') + '</div>';
+
+            const announcements = data.announcements || [];
+            if (announcements.length) {
+                html += announcements.map(a =>
+                    '<div class="sp-announce"><h3>' + spEsc(a.title) + '</h3>' + (a.body ? '<p>' + spEsc(a.body) + '</p>' : '') + '</div>'
+                ).join('');
+            }
 
             if (incidents.length) {
                 html += '<div class="sp-section-title">Active incidents</div>';

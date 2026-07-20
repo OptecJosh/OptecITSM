@@ -91,6 +91,12 @@ try {
     if (!empty($_GET['filters'])) {
         $decoded = json_decode($_GET['filters'], true);
         if (is_array($decoded)) {
+            // Resolve the "watched by me" sentinel to the current analyst id.
+            if (!empty($decoded['watched_by']) && is_array($decoded['watched_by'])) {
+                $decoded['watched_by'] = array_map(function ($v) {
+                    return $v === 'me' ? (int)$_SESSION['analyst_id'] : (int)$v;
+                }, $decoded['watched_by']);
+            }
             list($fSql, $fParams) = ticket_filter_build($decoded);
             $sql .= $fSql;
             $params = array_merge($params, $fParams);

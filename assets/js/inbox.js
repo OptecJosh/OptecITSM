@@ -1188,6 +1188,7 @@ function renderFilterPanel() {
     const kw = adHocFilters.keyword || '';
     const cf = adHocFilters.created_from || '';
     const ct = adHocFilters.created_to || '';
+    const watchedMe = Array.isArray(adHocFilters.watched_by) && adHocFilters.watched_by.includes('me');
     const customerGroup = (typeof isMultiCompany !== 'undefined' && isMultiCompany)
         ? group('Customer', 'tenant_id', moveCompanies, 'id', 'name') : '';
 
@@ -1212,6 +1213,10 @@ function renderFilterPanel() {
             <div class="tf-field">
                 <div class="tf-field-label">Created to</div>
                 <input type="date" id="tfCreatedTo" value="${escapeHtml(ct)}">
+            </div>
+            <div class="tf-field">
+                <div class="tf-field-label">&nbsp;</div>
+                <label class="tf-watched"><input type="checkbox" id="tfWatchedByMe" ${watchedMe ? 'checked' : ''}> Watched by me</label>
             </div>
         </div>
         <div class="tf-grid">
@@ -1254,6 +1259,8 @@ function readFilterPanel() {
     if (cfEl && cfEl.value) f.created_from = cfEl.value;
     const ctEl = panel.querySelector('#tfCreatedTo');
     if (ctEl && ctEl.value) f.created_to = ctEl.value;
+    const wmEl = panel.querySelector('#tfWatchedByMe');
+    if (wmEl && wmEl.checked) f.watched_by = ['me'];
     return f;
 }
 
@@ -1832,6 +1839,7 @@ function displayEmail(email, recordings) {
         </div>
         ${buildLinksSection(email)}
         <div class="ticket-tags-bar" id="ticketTagsContainer"></div>
+        <div class="ticket-watchers-bar" id="ticketWatchersContainer"></div>
         ${buildRecordingsStrip(currentRecordings)}
         <div class="action-toolbar">
             <button class="action-btn" onclick="openNoteModal()">
@@ -1895,6 +1903,7 @@ function displayEmail(email, recordings) {
     loadTicketAttachments(email.ticket_id);
     loadCmdbObjects(email.ticket_id);
     loadTicketTags(email.ticket_id);
+    loadTicketWatchers(email.ticket_id);
     loadTimeEntries(email.ticket_id);
     loadSlaState(email.ticket_id);
     loadTicketCustomFieldsPane(email.ticket_id);
@@ -3755,6 +3764,98 @@ function closeEmailModal() {
     emailAttachments = [];
     renderAttachments();
     hideReplyCleanupUndoBar();
+}
+
+// ===== Phase 6d: watchers / followers =====
+let ticketWatchers = [];
+let youAreWatching = false;
+
+async function loadTicketWatchers(ticketId) {
+    const c = document.getElementById('ticketWatchersContainer');
+    if (!c) return;
+    try {
+        const res = await fetch(API_BASE + 'get_ticket_watchers.php?ticket_id=' + ticketId);
+        const data = await res.json();
+        if (!data.success) { c.innerHTML = ''; return; }
+        ticketWatchers = data.watchers || [];
+        youAreWatching = !!data.you_are_watching;
+        renderWatchersBar(ticketId);
+    } catch (e) { c.innerHTML = ''; }
+}
+
+function renderWatchersBar(ticketId) {
+    const c = document.getElementById('ticketWatchersContainer');
+    if (!c) return;
+    const chips = ticketWatchers.map(w =>
+        `<span class="watcher-chip" title="${escapeHtml(w.email || '')}">${escapeHtml(w.name || 'Unknown')}<span class="watcher-x" title="Remove" onclick="removeWatcher(${ticketId}, ${w.analyst_id})">×</span></span>`
+    ).join('');
+    c.innerHTML = `
+        <span class="tag-bar-label">Watchers</span>
+        <button class="watch-toggle ${youAreWatching ? 'on' : ''}" onclick="toggleWatchSelf(${ticketId})">${youAreWatching ? '★ Watching' : '☆ Watch'}</button>
+        <span class="watcher-chips">${chips || '<span class="tag-bar-empty">none</span>'}</span>
+        <span class="watcher-add-wrap">
+            <button class="tag-add-btn" onclick="openWatcherPicker(event, ${ticketId})">+ Add</button>
+            <div class="watcher-picker" id="watcherPicker" hidden></div>
+        </span>`;
+}
+
+async function toggleWatchSelf(ticketId) {
+    const url = API_BASE + (youAreWatching ? 'remove_ticket_watcher.php' : 'add_ticket_watcher.php');
+    try {
+        const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ticket_id: ticketId }) });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Failed');
+        await loadTicketWatchers(ticketId);
+    } catch (err) { showToast('Error: ' + err.message, 'error'); }
+}
+
+function openWatcherPicker(ev, ticketId) {
+    if (ev) ev.stopPropagation();
+    const picker = document.getElementById('watcherPicker');
+    if (!picker) return;
+    if (!picker.hidden) { picker.hidden = true; return; }
+    renderWatcherPicker(ticketId, '');
+    picker.hidden = false;
+    const s = document.getElementById('watcherSearch');
+    if (s) s.focus();
+    setTimeout(() => document.addEventListener('click', watcherPickerOutside), 0);
+}
+function watcherPickerOutside(e) {
+    const picker = document.getElementById('watcherPicker');
+    if (picker && !e.target.closest('.watcher-add-wrap')) { picker.hidden = true; document.removeEventListener('click', watcherPickerOutside); }
+}
+
+function renderWatcherPicker(ticketId, filter) {
+    const picker = document.getElementById('watcherPicker');
+    if (!picker) return;
+    const q = (filter || '').toLowerCase();
+    const watchingIds = ticketWatchers.map(w => w.analyst_id);
+    const list = (analysts || []).filter(a => !watchingIds.includes(a.id) && (!q || (a.full_name || '').toLowerCase().includes(q)));
+    const items = list.slice(0, 50).map(a =>
+        `<div class="watcher-opt" onclick="addWatcher(${ticketId}, ${a.id})">${escapeHtml(a.full_name)}</div>`
+    ).join('');
+    picker.innerHTML = `
+        <div class="tag-picker-head"><input type="text" id="watcherSearch" placeholder="Add analyst…" oninput="renderWatcherPicker(${ticketId}, this.value)" value="${escapeHtml(filter || '')}"></div>
+        <div class="tag-picker-list">${items || '<div class="tag-picker-empty">No matching analysts</div>'}</div>`;
+}
+
+async function addWatcher(ticketId, analystId) {
+    try {
+        const res = await fetch(API_BASE + 'add_ticket_watcher.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ticket_id: ticketId, analyst_id: analystId }) });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Failed');
+        await loadTicketWatchers(ticketId);
+        renderWatcherPicker(ticketId, '');
+    } catch (err) { showToast('Error: ' + err.message, 'error'); }
+}
+
+async function removeWatcher(ticketId, analystId) {
+    try {
+        const res = await fetch(API_BASE + 'remove_ticket_watcher.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ticket_id: ticketId, analyst_id: analystId }) });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Failed');
+        await loadTicketWatchers(ticketId);
+    } catch (err) { showToast('Error: ' + err.message, 'error'); }
 }
 
 // ===== Phase 6c: bulk list actions =====

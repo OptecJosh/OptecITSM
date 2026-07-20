@@ -82,6 +82,18 @@ function ticket_filter_build(array $f): array {
         }
     }
 
+    // Watchers (Phase 6d) — tickets watched by any of the given analyst ids.
+    // Callers resolve the literal 'me' to the session analyst id before this.
+    if (!empty($f['watched_by']) && is_array($f['watched_by'])) {
+        $wIds = [];
+        foreach ($f['watched_by'] as $v) { $n = (int)$v; if ($n > 0) $wIds[] = $n; }
+        if ($wIds) {
+            $ph = implode(',', array_fill(0, count($wIds), '?'));
+            $sql .= " AND EXISTS (SELECT 1 FROM ticket_watchers _w WHERE _w.ticket_id = t.id AND _w.analyst_id IN ($ph))";
+            foreach ($wIds as $id) $params[] = $id;
+        }
+    }
+
     // Assignee: a list of analyst ids, or the literal 'unassigned'.
     if (isset($f['assignee_id']) && $f['assignee_id'] === 'unassigned') {
         $sql .= " AND t.assigned_analyst_id IS NULL";
@@ -126,7 +138,7 @@ function ticket_filter_build(array $f): array {
  * "N filters active" badge and to decide whether a filter is worth saving.
  */
 function ticket_filter_active_count(array $f): int {
-    $keys = ['status','priority_id','ticket_type_id','category_id','subcategory_id','tag_id',
+    $keys = ['status','priority_id','ticket_type_id','category_id','subcategory_id','tag_id','watched_by',
              'tenant_id','origin_id','assignee_id','department_id','created_from',
              'created_to','keyword'];
     $n = 0;

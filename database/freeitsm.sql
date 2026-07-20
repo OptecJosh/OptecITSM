@@ -639,6 +639,22 @@ CREATE TABLE IF NOT EXISTS `ticket_tag_map` (
     CONSTRAINT `fk_ticket_tag_map_tag`    FOREIGN KEY (`tag_id`)    REFERENCES `ticket_tags` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Ticket watchers/followers (Phase 6d). analyst_id = an internal follower;
+-- email = an external follower (reserved for a later notification phase).
+CREATE TABLE IF NOT EXISTS `ticket_watchers` (
+    `id`                INT NOT NULL AUTO_INCREMENT,
+    `ticket_id`         INT NOT NULL,
+    `analyst_id`        INT NULL,
+    `email`             VARCHAR(255) NULL,
+    `created_datetime`  DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_ticket_watcher_analyst` (`ticket_id`, `analyst_id`),
+    UNIQUE KEY `uq_ticket_watcher_email` (`ticket_id`, `email`),
+    KEY `ix_ticket_watchers_analyst` (`analyst_id`),
+    CONSTRAINT `fk_ticket_watcher_ticket`  FOREIGN KEY (`ticket_id`)  REFERENCES `tickets` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_ticket_watcher_analyst` FOREIGN KEY (`analyst_id`) REFERENCES `analysts` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `tickets` (
     `id`                    INT NOT NULL AUTO_INCREMENT,
     `tenant_id`             INT NULL,

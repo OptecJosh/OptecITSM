@@ -450,6 +450,15 @@ $schema = [
         'tag_id'    => 'INT NOT NULL',
     ],
 
+    // Ticket watchers/followers (Phase 6d).
+    'ticket_watchers' => [
+        'id'                => 'INT NOT NULL AUTO_INCREMENT',
+        'ticket_id'         => 'INT NOT NULL',
+        'analyst_id'        => 'INT NULL',
+        'email'             => 'VARCHAR(255) NULL',
+        'created_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
     'tickets' => [
         'id'                    => 'INT NOT NULL AUTO_INCREMENT',
         'tenant_id'             => 'INT NULL',
@@ -3426,6 +3435,24 @@ try {
         }
         if (!$fkExists('ticket_tag_map', 'fk_ticket_tag_map_tag')) {
             try { $conn->exec("ALTER TABLE ticket_tag_map ADD CONSTRAINT fk_ticket_tag_map_tag FOREIGN KEY (tag_id) REFERENCES ticket_tags (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+    }
+    // Ticket watchers (Phase 6d): unique per (ticket, analyst) and (ticket, email); FKs cascade.
+    if ($tableExists('ticket_watchers') && $tableExists('tickets') && $tableExists('analysts')) {
+        if (!$idxExists('ticket_watchers', 'uq_ticket_watcher_analyst')) {
+            try { $conn->exec("ALTER TABLE ticket_watchers ADD UNIQUE KEY uq_ticket_watcher_analyst (ticket_id, analyst_id)"); } catch (Exception $e) {}
+        }
+        if (!$idxExists('ticket_watchers', 'uq_ticket_watcher_email')) {
+            try { $conn->exec("ALTER TABLE ticket_watchers ADD UNIQUE KEY uq_ticket_watcher_email (ticket_id, email)"); } catch (Exception $e) {}
+        }
+        if (!$idxExists('ticket_watchers', 'ix_ticket_watchers_analyst')) {
+            try { $conn->exec("ALTER TABLE ticket_watchers ADD INDEX ix_ticket_watchers_analyst (analyst_id)"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('ticket_watchers', 'fk_ticket_watcher_ticket')) {
+            try { $conn->exec("ALTER TABLE ticket_watchers ADD CONSTRAINT fk_ticket_watcher_ticket FOREIGN KEY (ticket_id) REFERENCES tickets (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('ticket_watchers', 'fk_ticket_watcher_analyst')) {
+            try { $conn->exec("ALTER TABLE ticket_watchers ADD CONSTRAINT fk_ticket_watcher_analyst FOREIGN KEY (analyst_id) REFERENCES analysts (id) ON DELETE CASCADE"); } catch (Exception $e) {}
         }
     }
     // is_primary index on the ticket↔CI join (Phase 3b) — speeds "which CI drives SLA".

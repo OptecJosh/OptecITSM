@@ -835,6 +835,7 @@ function resetFilterContext() {
     editingQueueId = null;
     adHocFilters = {};
     updateFilterIndicator();
+    if (typeof bulkSelected !== 'undefined') { bulkSelected.clear(); updateBulkBar(); }
 }
 
 // Select folder
@@ -1409,6 +1410,7 @@ function renderEmailList() {
                  draggable="true" data-email-id="${email.id}" data-ticket-id="${ticketId}" data-ticket-number="${escapeHtml(email.ticket_number || '')}"
                  onclick="selectEmail(${email.id})" ondblclick="selectEmailFullScreen(${email.id})"
                  oncontextmenu="openTicketContextMenu(event, ${ticketId}, '${escapeHtml(email.ticket_number || '')}')">
+                <input type="checkbox" class="bulk-cb" title="Select" onclick="event.stopPropagation(); toggleBulkSelect(${ticketId}, this.checked)" ${bulkSelected.has(ticketId) ? 'checked' : ''}>
                 <div class="email-from">${escapeHtml(email.ticket_number || '')} - ${escapeHtml(email.from_name || email.from_address)} ${countBadge}</div>
                 <div class="email-subject">${escapeHtml(email.subject)}</div>
                 <div class="email-preview">${escapeHtml(email.body_preview || '')}</div>
@@ -1425,6 +1427,9 @@ function renderEmailList() {
 
     // Fire-and-forget batch SLA fetch to colour the dots in
     loadInboxSlaIndicators();
+
+    // Phase 6c: reflect any active bulk selection into the toolbar.
+    updateBulkBar();
 }
 
 /**
@@ -3750,6 +3755,85 @@ function closeEmailModal() {
     emailAttachments = [];
     renderAttachments();
     hideReplyCleanupUndoBar();
+}
+
+// ===== Phase 6c: bulk list actions =====
+let bulkSelected = new Set();
+
+function toggleBulkSelect(ticketId, checked) {
+    if (checked) bulkSelected.add(ticketId); else bulkSelected.delete(ticketId);
+    updateBulkBar();
+}
+function bulkSelectAll(checked) {
+    bulkSelected.clear();
+    if (checked) emails.forEach(e => bulkSelected.add(e.ticket_id || e.id));
+    document.querySelectorAll('.bulk-cb').forEach(cb => { cb.checked = checked; });
+    updateBulkBar();
+}
+function clearBulkSelection() {
+    bulkSelected.clear();
+    document.querySelectorAll('.bulk-cb').forEach(cb => { cb.checked = false; });
+    updateBulkBar();
+}
+function updateBulkBar() {
+    const bar = document.getElementById('bulkBar');
+    if (!bar) return;
+    const n = bulkSelected.size;
+    if (n === 0) { bar.hidden = true; bar.innerHTML = ''; return; }
+    const allChecked = emails.length > 0 && emails.every(e => bulkSelected.has(e.ticket_id || e.id));
+    bar.hidden = false;
+    bar.innerHTML = `
+        <label class="bulk-all"><input type="checkbox" ${allChecked ? 'checked' : ''} onchange="bulkSelectAll(this.checked)"> All</label>
+        <span class="bulk-count">${n} selected</span>
+        <select id="bulkAction" onchange="onBulkActionChange()">
+            <option value="">Bulk action…</option>
+            <option value="status">Set status</option>
+            <option value="priority">Set priority</option>
+            <option value="assignee">Assign to</option>
+            <option value="add_tag">Add tag</option>
+            <option value="trash">Move to trash</option>
+        </select>
+        <span id="bulkValueWrap"></span>
+        <button class="btn btn-primary" onclick="applyBulk()">Apply</button>
+        <button class="btn btn-secondary" onclick="clearBulkSelection()">Clear</button>`;
+}
+function onBulkActionChange() {
+    const action = (document.getElementById('bulkAction') || {}).value;
+    const wrap = document.getElementById('bulkValueWrap');
+    if (!wrap) return;
+    const opts = (arr, vk, lk) => (arr || []).map(o => `<option value="${escapeHtml(String(o[vk]))}">${escapeHtml(String(o[lk]))}</option>`).join('');
+    if (action === 'status') wrap.innerHTML = `<select id="bulkValue">${opts(ticketStatuses, 'name', 'name')}</select>`;
+    else if (action === 'priority') wrap.innerHTML = `<select id="bulkValue">${opts(ticketPriorities, 'id', 'name')}</select>`;
+    else if (action === 'assignee') wrap.innerHTML = `<select id="bulkValue"><option value="">Unassigned</option>${opts(analysts, 'id', 'full_name')}</select>`;
+    else if (action === 'add_tag') wrap.innerHTML = `<select id="bulkValue">${opts(ticketTagsAll, 'id', 'name')}</select>`;
+    else wrap.innerHTML = '';
+}
+async function applyBulk() {
+    const action = (document.getElementById('bulkAction') || {}).value;
+    if (!action) { showToast('Choose a bulk action', 'error'); return; }
+    let value = null;
+    if (action !== 'trash') {
+        const vEl = document.getElementById('bulkValue');
+        if (!vEl) { showToast('Choose a value', 'error'); return; }
+        value = vEl.value;
+    }
+    const ids = Array.from(bulkSelected);
+    if (!ids.length) return;
+    if (action === 'trash') {
+        if (!(await showConfirm({ title: 'Move to trash', message: `Move ${ids.length} ticket(s) to trash?`, okLabel: 'Move', okClass: 'primary' }))) return;
+    }
+    try {
+        const res = await fetch(API_BASE + 'bulk_update_tickets.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticket_ids: ids, action, value })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Bulk update failed');
+        showToast(`Updated ${data.updated}${data.failed ? ` · ${data.failed} failed` : ''}`, data.failed ? 'error' : 'success');
+        clearBulkSelection();
+        await loadEmails();
+        if (typeof loadFolderCounts === 'function') loadFolderCounts();
+    } catch (err) { showToast('Error: ' + err.message, 'error'); }
 }
 
 // ===== Phase 6b: ticket tags =====

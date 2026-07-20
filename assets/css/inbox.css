@@ -944,6 +944,19 @@ body.ticket-popout .ticket-toolbar {
 .tag-picker-create { padding: 8px 10px; border-top: 1px solid var(--border, #eee); color: #0078d4; cursor: pointer; font-size: 12.5px; }
 .tag-picker-create:hover { background: var(--surface-2, #f3f4f6); }
 
+/* Phase 6c: bulk list actions */
+.email-item { position: relative; }
+.bulk-cb { position: absolute; top: 8px; right: 10px; margin: 0; cursor: pointer; z-index: 2; }
+.bulk-bar {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 8px 12px; background: var(--surface-2, #f3f4f6);
+    border-bottom: 1px solid var(--border, #e5e7eb); font-size: 13px;
+}
+.bulk-bar .bulk-all { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.bulk-bar .bulk-count { font-weight: 600; color: var(--text, #222); white-space: nowrap; }
+.bulk-bar select { padding: 5px 8px; border: 1px solid var(--border, #e5e7eb); border-radius: 6px; font-size: 13px; background: var(--surface, #fff); color: var(--text, #222); }
+.bulk-bar .btn { padding: 5px 12px; }
+
 .ticket-properties-summary-item {
     display: flex;
     align-items: center;

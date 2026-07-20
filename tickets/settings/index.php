@@ -306,6 +306,18 @@ $translationNamespaces = ['common', 'tickets'];
                     <tr><td colspan="6" style="text-align: center;"><?php echo htmlspecialchars(t('tickets.settings.loading')); ?></td></tr>
                 </tbody>
             </table>
+
+            <!-- Phase 6f: per-department auto-assignment strategy -->
+            <div class="section-header" style="margin-top: 30px;">
+                <h2>Auto-assignment</h2>
+            </div>
+            <p style="margin-bottom: 16px; color: var(--text-muted, #666);">Automatically assign a department's new unassigned tickets (or tickets routed into it) to its team members. <strong>Round-robin</strong> cycles through them; <strong>least-loaded</strong> picks whoever has the fewest open tickets.</p>
+            <table>
+                <thead><tr><th><?php echo htmlspecialchars(t('tickets.settings.columns.name')); ?></th><th>Auto-assign strategy</th></tr></thead>
+                <tbody id="autoassign-list">
+                    <tr><td colspan="2" style="text-align: center;"><?php echo htmlspecialchars(t('tickets.settings.loading')); ?></td></tr>
+                </tbody>
+            </table>
         </div>
 
         <!-- Ticket Types Tab -->
@@ -6149,6 +6161,40 @@ $translationNamespaces = ['common', 'tickets'];
             }).join('');
         }
 
+    </script>
+    <script>
+    /* Phase 6f: department auto-assignment settings (self-contained). */
+    (function () {
+        function aaEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
+        function aaToast(m, err) { if (typeof showToast === 'function') showToast(m, err ? 'error' : 'success'); }
+        window.saveAutoAssign = async function (deptId, strategy) {
+            try {
+                const res = await fetch('../../api/tickets/save_department_assignment.php', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ department_id: deptId, strategy: strategy })
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'Save failed');
+                aaToast('Auto-assign updated');
+            } catch (e) { aaToast('Error: ' + e.message, true); }
+        };
+        async function loadAutoAssign() {
+            const tb = document.getElementById('autoassign-list');
+            if (!tb) return;
+            try {
+                const res = await fetch('../../api/tickets/get_department_assignments.php');
+                const data = await res.json();
+                if (!data.success) { tb.innerHTML = '<tr><td colspan="2" style="text-align:center;">Failed to load</td></tr>'; return; }
+                const labels = { off: 'Off', round_robin: 'Round-robin', least_loaded: 'Least-loaded' };
+                const opts = function (cur) { return ['off', 'round_robin', 'least_loaded'].map(function (s) { return '<option value="' + s + '"' + (cur === s ? ' selected' : '') + '>' + labels[s] + '</option>'; }).join(''); };
+                const rows = (data.departments || []).map(function (d) {
+                    return '<tr><td>' + aaEsc(d.name) + '</td><td><select onchange="saveAutoAssign(' + d.id + ', this.value)">' + opts(d.strategy || 'off') + '</select></td></tr>';
+                }).join('');
+                tb.innerHTML = rows || '<tr><td colspan="2" style="text-align:center;">No departments</td></tr>';
+            } catch (e) { tb.innerHTML = '<tr><td colspan="2" style="text-align:center;">Failed to load</td></tr>'; }
+        }
+        document.addEventListener('DOMContentLoaded', loadAutoAssign);
+    })();
     </script>
 </body>
 </html>

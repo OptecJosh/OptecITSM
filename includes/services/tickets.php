@@ -190,6 +190,13 @@ class TicketsService
             error_log('Workflow dispatch error in TicketsService create: ' . $wfEx->getMessage());
         }
 
+        // Phase 6f: if the ticket landed unassigned in a department, apply that
+        // department's auto-assign strategy (round-robin / least-loaded). Best-effort.
+        if ($analystId === null && $departmentId !== null) {
+            require_once __DIR__ . '/../ticket_autoassign.php';
+            try { autoassign_run($conn, $ticketId, $ctx->actorId); } catch (\Throwable $e) { error_log('autoassign (create) failed: ' . $e->getMessage()); }
+        }
+
         return $ticketId;
     }
 
@@ -450,6 +457,14 @@ class TicketsService
             }
         } catch (Exception $wfEx) {
             error_log('Workflow dispatch error in TicketsService update: ' . $wfEx->getMessage());
+        }
+
+        // Phase 6f: routing a ticket into a department (while it's unassigned)
+        // triggers that department's auto-assign strategy. autoassign_run re-checks
+        // "unassigned + has a strategy", so it's a no-op otherwise. Best-effort.
+        if (array_key_exists('department_id', $in)) {
+            require_once __DIR__ . '/../ticket_autoassign.php';
+            try { autoassign_run($conn, $ticketId, $actorId); } catch (\Throwable $e) { error_log('autoassign (update) failed: ' . $e->getMessage()); }
         }
     }
 

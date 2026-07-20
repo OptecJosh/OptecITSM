@@ -459,6 +459,14 @@ $schema = [
         'created_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
     ],
 
+    // Per-department auto-assignment (Phase 6f). PK = department_id (see primaryKeys).
+    'department_assignment_config' => [
+        'department_id'            => 'INT NOT NULL',
+        'strategy'                 => "VARCHAR(20) NOT NULL DEFAULT 'off'",
+        'last_assigned_analyst_id' => 'INT NULL',
+        'updated_datetime'         => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
     'tickets' => [
         'id'                    => 'INT NOT NULL AUTO_INCREMENT',
         'tenant_id'             => 'INT NULL',
@@ -2650,6 +2658,7 @@ $primaryKeys = [
     'knowledge_article_tags'    => null, // composite PK: article_id, tag_id
     'task_tag_map'              => null, // composite PK: task_id, tag_id
     'ticket_tag_map'            => null, // composite PK: ticket_id, tag_id
+    'department_assignment_config' => 'department_id', // single non-id PK
 ];
 
 try {
@@ -3464,6 +3473,15 @@ try {
         }
         if (!$fkExists('tickets', 'fk_tickets_merged_into')) {
             try { $conn->exec("ALTER TABLE tickets ADD CONSTRAINT fk_tickets_merged_into FOREIGN KEY (merged_into_ticket_id) REFERENCES tickets (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+    }
+    // Per-department auto-assignment config (Phase 6f).
+    if ($tableExists('department_assignment_config') && $tableExists('departments')) {
+        if (!$fkExists('department_assignment_config', 'fk_dept_assign_dept')) {
+            try { $conn->exec("ALTER TABLE department_assignment_config ADD CONSTRAINT fk_dept_assign_dept FOREIGN KEY (department_id) REFERENCES departments (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if ($tableExists('analysts') && !$fkExists('department_assignment_config', 'fk_dept_assign_last')) {
+            try { $conn->exec("ALTER TABLE department_assignment_config ADD CONSTRAINT fk_dept_assign_last FOREIGN KEY (last_assigned_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
         }
     }
     // is_primary index on the ticket↔CI join (Phase 3b) — speeds "which CI drives SLA".

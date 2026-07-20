@@ -655,6 +655,19 @@ CREATE TABLE IF NOT EXISTS `ticket_watchers` (
     CONSTRAINT `fk_ticket_watcher_analyst` FOREIGN KEY (`analyst_id`) REFERENCES `analysts` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Per-department auto-assignment (Phase 6f). One row per department.
+-- strategy: off | round_robin | least_loaded. last_assigned_analyst_id is the
+-- round-robin cursor. Pool = active analysts on the department's teams.
+CREATE TABLE IF NOT EXISTS `department_assignment_config` (
+    `department_id`            INT NOT NULL,
+    `strategy`                 VARCHAR(20) NOT NULL DEFAULT 'off',
+    `last_assigned_analyst_id` INT NULL,
+    `updated_datetime`         DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`department_id`),
+    CONSTRAINT `fk_dept_assign_dept` FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_dept_assign_last` FOREIGN KEY (`last_assigned_analyst_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `tickets` (
     `id`                    INT NOT NULL AUTO_INCREMENT,
     `tenant_id`             INT NULL,

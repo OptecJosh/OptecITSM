@@ -106,6 +106,17 @@ $translationNamespaces = ['common', 'service-status'];
                     <tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--text-dim, #999);"><?php echo htmlspecialchars(t('service-status.settings.loading')); ?></td></tr>
                 </tbody>
             </table>
+
+            <!-- Phase 7b: public status page toggle -->
+            <div class="section-header" style="margin-top: 32px;">
+                <h2>Public status page</h2>
+            </div>
+            <p style="margin-bottom: 14px; color: var(--text-dim, #666);">When enabled, anyone can view current service status and open incidents at <code>/status.php</code> — no sign-in required. Only service names, statuses and incident updates are shown.</p>
+            <label style="display:flex; align-items:center; gap:10px; font-size:14px; cursor:pointer;">
+                <span class="toggle-switch"><input type="checkbox" id="publicStatusToggle" onchange="savePublicStatus(this.checked)"><span class="toggle-slider"></span></span>
+                <span>Enable the public status page</span>
+            </label>
+            <p style="margin-top:12px;"><a href="../../status.php" target="_blank" rel="noopener" style="font-size:13px;">Open the public status page ↗</a></p>
         </div>
 
         <!-- Statuses Tab -->
@@ -536,6 +547,26 @@ $translationNamespaces = ['common', 'service-status'];
         document.getElementById('lookupModal').addEventListener('click', function(e) {
             if (e.target === this) closeLookupModal();
         });
+    </script>
+    <script>
+    /* Phase 7b: public status page toggle (self-contained). */
+    (function () {
+        const cb = document.getElementById('publicStatusToggle');
+        if (!cb) return;
+        fetch('../../api/service-status/status_public_setting.php')
+            .then(r => r.json()).then(d => { if (d.success) cb.checked = !!d.enabled; }).catch(function () {});
+        window.savePublicStatus = async function (enabled) {
+            try {
+                const res = await fetch('../../api/service-status/status_public_setting.php', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled: enabled })
+                });
+                const d = await res.json();
+                if (!d.success) throw new Error(d.error || 'Failed');
+                if (typeof showToast === 'function') showToast(enabled ? 'Public status page enabled' : 'Public status page disabled', 'success');
+            } catch (e) { if (typeof showToast === 'function') showToast('Error: ' + e.message, 'error'); }
+        };
+    })();
     </script>
 </body>
 </html>

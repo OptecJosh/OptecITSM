@@ -253,6 +253,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadMoveCompanies();
     loadFolderGroupingPreference().then(loadFolderCounts);
     loadQueues();
+    loadAllTicketTags();
     initTinyMCE();
     initAttachmentHandlers();
 
@@ -1220,6 +1221,7 @@ function renderFilterPanel() {
             ${group('Origin', 'origin_id', ticketOrigins, 'id', 'name')}
             ${group('Assignee', 'assignee_id', analysts, 'id', 'full_name')}
             ${group('Department', 'department_id', departments, 'id', 'name')}
+            ${group('Tags', 'tag_id', ticketTagsAll, 'id', 'name')}
             ${customerGroup}
         </div>
         <div class="tf-actions">
@@ -1824,6 +1826,7 @@ function displayEmail(email, recordings) {
             <span>${escapeHtml(t('tickets.actions.loading_attachments'))}</span>
         </div>
         ${buildLinksSection(email)}
+        <div class="ticket-tags-bar" id="ticketTagsContainer"></div>
         ${buildRecordingsStrip(currentRecordings)}
         <div class="action-toolbar">
             <button class="action-btn" onclick="openNoteModal()">
@@ -1886,6 +1889,7 @@ function displayEmail(email, recordings) {
     loadNotes(email.ticket_id);
     loadTicketAttachments(email.ticket_id);
     loadCmdbObjects(email.ticket_id);
+    loadTicketTags(email.ticket_id);
     loadTimeEntries(email.ticket_id);
     loadSlaState(email.ticket_id);
     loadTicketCustomFieldsPane(email.ticket_id);
@@ -3746,6 +3750,128 @@ function closeEmailModal() {
     emailAttachments = [];
     renderAttachments();
     hideReplyCleanupUndoBar();
+}
+
+// ===== Phase 6b: ticket tags =====
+let ticketTagsAll = [];          // all tags (filter panel + picker), loaded at init
+let currentTicketTagIds = [];    // the open ticket's tag ids
+
+async function loadAllTicketTags() {
+    try {
+        const res = await fetch(API_BASE + 'get_ticket_tags.php');
+        const data = await res.json();
+        if (data.success) ticketTagsAll = data.tags || [];
+    } catch (e) { /* filter Tags group just stays empty */ }
+}
+
+async function loadTicketTags(ticketId) {
+    const c = document.getElementById('ticketTagsContainer');
+    if (!c) return;
+    try {
+        const res = await fetch(API_BASE + 'get_ticket_tags.php?ticket_id=' + ticketId);
+        const data = await res.json();
+        if (!data.success) { c.innerHTML = ''; return; }
+        ticketTagsAll = data.tags || [];
+        currentTicketTagIds = data.ticket_tag_ids || [];
+        renderTicketTagsBar(ticketId);
+    } catch (e) { c.innerHTML = ''; }
+}
+
+function renderTicketTagsBar(ticketId) {
+    const c = document.getElementById('ticketTagsContainer');
+    if (!c) return;
+    const byId = {};
+    ticketTagsAll.forEach(t => { byId[t.id] = t; });
+    const chips = currentTicketTagIds.map(id => {
+        const t = byId[id];
+        if (!t) return '';
+        return `<span class="tag-chip" style="--tag-col:${escapeHtml(t.colour || '#6b7280')}">${escapeHtml(t.name)}<span class="tag-chip-x" title="Remove" onclick="toggleTicketTag(${ticketId}, ${id})">×</span></span>`;
+    }).join('');
+    c.innerHTML = `
+        <span class="tag-bar-label">Tags</span>
+        <span class="tag-bar-chips">${chips || '<span class="tag-bar-empty">none</span>'}</span>
+        <span class="tag-add-wrap">
+            <button class="tag-add-btn" onclick="openTagPicker(event, ${ticketId})">+ Tag</button>
+            <div class="tag-picker" id="tagPicker" hidden></div>
+        </span>`;
+}
+
+function openTagPicker(ev, ticketId) {
+    if (ev) ev.stopPropagation();
+    const picker = document.getElementById('tagPicker');
+    if (!picker) return;
+    if (!picker.hidden) { picker.hidden = true; return; }
+    renderTagPicker(ticketId, '');
+    picker.hidden = false;
+    const s = document.getElementById('tagPickerSearch');
+    if (s) s.focus();
+    setTimeout(() => document.addEventListener('click', tagPickerOutside), 0);
+}
+function tagPickerOutside(e) {
+    const picker = document.getElementById('tagPicker');
+    if (picker && !e.target.closest('.tag-add-wrap')) {
+        picker.hidden = true;
+        document.removeEventListener('click', tagPickerOutside);
+    }
+}
+
+function renderTagPicker(ticketId, filter) {
+    const picker = document.getElementById('tagPicker');
+    if (!picker) return;
+    const q = (filter || '').toLowerCase();
+    const list = ticketTagsAll.filter(t => !q || t.name.toLowerCase().includes(q));
+    const items = list.map(t => {
+        const on = currentTicketTagIds.includes(t.id);
+        return `<label class="tag-opt"><input type="checkbox" ${on ? 'checked' : ''} onchange="toggleTicketTag(${ticketId}, ${t.id})"><span class="tag-dot" style="background:${escapeHtml(t.colour || '#6b7280')}"></span>${escapeHtml(t.name)}</label>`;
+    }).join('');
+    const exact = ticketTagsAll.some(t => t.name.toLowerCase() === q);
+    const create = (filter && filter.trim() && !exact)
+        ? `<div class="tag-picker-create" onclick="createAndAddTag(${ticketId})">+ Create &ldquo;${escapeHtml(filter.trim())}&rdquo;</div>` : '';
+    picker.innerHTML = `
+        <div class="tag-picker-head"><input type="text" id="tagPickerSearch" placeholder="Filter or create…" oninput="renderTagPicker(${ticketId}, this.value)" value="${escapeHtml(filter || '')}"></div>
+        <div class="tag-picker-list">${items || '<div class="tag-picker-empty">No matching tags</div>'}</div>
+        ${create}`;
+}
+
+async function toggleTicketTag(ticketId, tagId) {
+    const idx = currentTicketTagIds.indexOf(tagId);
+    if (idx >= 0) currentTicketTagIds.splice(idx, 1); else currentTicketTagIds.push(tagId);
+    await saveTicketTags(ticketId);
+}
+
+async function createAndAddTag(ticketId) {
+    const s = document.getElementById('tagPickerSearch');
+    const name = s ? s.value.trim() : '';
+    if (!name) return;
+    try {
+        const res = await fetch(API_BASE + 'save_ticket_tag.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Failed to create tag');
+        await loadAllTicketTags();
+        if (!currentTicketTagIds.includes(data.id)) currentTicketTagIds.push(data.id);
+        await saveTicketTags(ticketId);
+        renderTagPicker(ticketId, '');
+    } catch (err) { showToast('Error: ' + err.message, 'error'); }
+}
+
+async function saveTicketTags(ticketId) {
+    try {
+        const res = await fetch(API_BASE + 'set_ticket_tags.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticket_id: ticketId, tag_ids: currentTicketTagIds })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Failed to save tags');
+        currentTicketTagIds = (data.tags || []).map(t => t.id);
+        renderTicketTagsBar(ticketId);
+        const picker = document.getElementById('tagPicker');
+        if (picker && !picker.hidden) {
+            const s = document.getElementById('tagPickerSearch');
+            renderTagPicker(ticketId, s ? s.value : '');
+        }
+    } catch (err) { showToast('Error: ' + err.message, 'error'); }
 }
 
 // ===== Phase 6a: canned responses / reply macros =====

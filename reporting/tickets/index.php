@@ -81,6 +81,6 @@ $translationNamespaces = ['common', 'reporting'];
     </div>
 
     <script src="../../assets/js/chart.min.js?v=1"></script>
-    <script src="report.js?v=1"></script>
+    <script src="report.js?v=2"></script>
 </body>
 </html>

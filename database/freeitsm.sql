@@ -619,6 +619,26 @@ CREATE TABLE IF NOT EXISTS `ticket_canned_responses` (
     CONSTRAINT `fk_canned_creator` FOREIGN KEY (`created_by_analyst_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Ticket tags/labels (Phase 6b). Shared analyst taxonomy (twin of task_tags).
+-- Filterable via includes/ticket_filter.php (tag_id) and a report dimension.
+CREATE TABLE IF NOT EXISTS `ticket_tags` (
+    `id`                INT NOT NULL AUTO_INCREMENT,
+    `name`              VARCHAR(50) NOT NULL,
+    `colour`            VARCHAR(20) NULL,
+    `display_order`     INT NOT NULL DEFAULT 0,
+    `created_datetime`  DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_ticket_tags_name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `ticket_tag_map` (
+    `ticket_id` INT NOT NULL,
+    `tag_id`    INT NOT NULL,
+    PRIMARY KEY (`ticket_id`, `tag_id`),
+    CONSTRAINT `fk_ticket_tag_map_ticket` FOREIGN KEY (`ticket_id`) REFERENCES `tickets` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_ticket_tag_map_tag`    FOREIGN KEY (`tag_id`)    REFERENCES `ticket_tags` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `tickets` (
     `id`                    INT NOT NULL AUTO_INCREMENT,
     `tenant_id`             INT NULL,

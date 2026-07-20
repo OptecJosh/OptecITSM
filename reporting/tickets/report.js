@@ -17,6 +17,7 @@ const GROUP_DIMS = [
     { key: 'department',    label: 'Department' },
     { key: 'customer',      label: 'Customer' },
     { key: 'origin',        label: 'Origin' },
+    { key: 'tag',           label: 'Tag' },
     { key: 'created_month', label: 'Created month' },
 ];
 
@@ -36,7 +37,7 @@ async function rbInit() {
     const gb = document.getElementById('rbGroupBy');
     gb.innerHTML = GROUP_DIMS.map(d => `<option value="${d.key}">${rbEsc(d.label)}</option>`).join('');
 
-    const [st, pr, ty, ca, or2, dep, an, tn] = await Promise.all([
+    const [st, pr, ty, ca, or2, dep, an, tn, tg] = await Promise.all([
         rbGet(RB_API + 'tickets/get_ticket_statuses.php'),
         rbGet(RB_API + 'tickets/get_ticket_priorities.php'),
         rbGet(RB_API + 'tickets/get_ticket_types.php'),
@@ -45,6 +46,7 @@ async function rbInit() {
         rbGet(RB_API + 'tickets/get_my_departments.php'),
         rbGet(RB_API + 'tickets/get_analysts.php'),
         rbGet(RB_API + 'system/get_tenants.php?accessible=1'),
+        rbGet(RB_API + 'tickets/get_ticket_tags.php'),
     ]);
 
     const map = (arr, vk, lk) => (arr || []).map(x => ({ v: x[vk], l: x[lk] }));
@@ -57,6 +59,7 @@ async function rbInit() {
     rbLookups.assignee_id    = map(an.analysts, 'id', 'full_name');
     const tenants = tn.tenants || tn.companies || [];
     rbLookups.tenant_id      = tenants.map(x => ({ v: x.id, l: x.name }));
+    rbLookups.tag_id         = map(tg.tags, 'id', 'name');
     rbMultiTenant = tenants.length > 1;
 
     renderRbFilters();
@@ -81,6 +84,7 @@ function renderRbFilters() {
         rbGroup('Origin', 'origin_id') +
         rbGroup('Assignee', 'assignee_id') +
         rbGroup('Department', 'department_id') +
+        rbGroup('Tags', 'tag_id') +
         (rbMultiTenant ? rbGroup('Customer', 'tenant_id') : '');
 }
 

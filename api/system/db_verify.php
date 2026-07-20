@@ -437,6 +437,19 @@ $schema = [
         'updated_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
     ],
 
+    // Ticket tags/labels (Phase 6b) — twin of task_tags/task_tag_map.
+    'ticket_tags' => [
+        'id'                => 'INT NOT NULL AUTO_INCREMENT',
+        'name'              => 'VARCHAR(50) NOT NULL',
+        'colour'            => 'VARCHAR(20) NULL',
+        'display_order'     => 'INT NOT NULL DEFAULT 0',
+        'created_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+    'ticket_tag_map' => [
+        'ticket_id' => 'INT NOT NULL',
+        'tag_id'    => 'INT NOT NULL',
+    ],
+
     'tickets' => [
         'id'                    => 'INT NOT NULL AUTO_INCREMENT',
         'tenant_id'             => 'INT NULL',
@@ -2626,6 +2639,7 @@ $primaryKeys = [
     'morningChecks_Statuses'    => 'StatusID',
     'knowledge_article_tags'    => null, // composite PK: article_id, tag_id
     'task_tag_map'              => null, // composite PK: task_id, tag_id
+    'ticket_tag_map'            => null, // composite PK: ticket_id, tag_id
 ];
 
 try {
@@ -2700,6 +2714,8 @@ try {
                 $colDefs[] = "PRIMARY KEY (`article_id`, `tag_id`)";
             } elseif ($tableName === 'task_tag_map') {
                 $colDefs[] = "PRIMARY KEY (`task_id`, `tag_id`)";
+            } elseif ($tableName === 'ticket_tag_map') {
+                $colDefs[] = "PRIMARY KEY (`ticket_id`, `tag_id`)";
             } elseif (isset($primaryKeys[$tableName])) {
                 $pkCol = $primaryKeys[$tableName];
                 $colDefs[] = "PRIMARY KEY (`$pkCol`)";
@@ -3398,6 +3414,18 @@ try {
         }
         if (!$fkExists('ticket_canned_responses', 'fk_canned_creator')) {
             try { $conn->exec("ALTER TABLE ticket_canned_responses ADD CONSTRAINT fk_canned_creator FOREIGN KEY (created_by_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+    }
+    // Ticket tags (Phase 6b): unique tag name + M:N map FKs (both cascade).
+    if ($tableExists('ticket_tags') && !$idxExists('ticket_tags', 'uq_ticket_tags_name')) {
+        try { $conn->exec("ALTER TABLE ticket_tags ADD UNIQUE KEY uq_ticket_tags_name (name)"); } catch (Exception $e) {}
+    }
+    if ($tableExists('ticket_tag_map') && $tableExists('tickets') && $tableExists('ticket_tags')) {
+        if (!$fkExists('ticket_tag_map', 'fk_ticket_tag_map_ticket')) {
+            try { $conn->exec("ALTER TABLE ticket_tag_map ADD CONSTRAINT fk_ticket_tag_map_ticket FOREIGN KEY (ticket_id) REFERENCES tickets (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('ticket_tag_map', 'fk_ticket_tag_map_tag')) {
+            try { $conn->exec("ALTER TABLE ticket_tag_map ADD CONSTRAINT fk_ticket_tag_map_tag FOREIGN KEY (tag_id) REFERENCES ticket_tags (id) ON DELETE CASCADE"); } catch (Exception $e) {}
         }
     }
     // is_primary index on the ticket↔CI join (Phase 3b) — speeds "which CI drives SLA".

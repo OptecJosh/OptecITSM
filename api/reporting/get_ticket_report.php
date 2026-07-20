@@ -48,6 +48,10 @@ try {
         'department'    => ['join' => 'LEFT JOIN departments d ON d.id = t.department_id',                'expr' => 'd.name',                              'null' => 'No department'],
         'customer'      => ['join' => 'LEFT JOIN tenants tn ON tn.id = t.tenant_id',                      'expr' => 'tn.name',                             'null' => 'No customer'],
         'origin'        => ['join' => 'LEFT JOIN ticket_origins to2 ON to2.id = t.origin_id',            'expr' => 'to2.name',                            'null' => 'No origin'],
+        // Tags are M:N — a ticket contributes one row per tag (so a multi-tagged
+        // ticket is counted under each), and untagged tickets collapse to one
+        // "Untagged" row. The total therefore may exceed the ticket count.
+        'tag'           => ['join' => 'LEFT JOIN ticket_tag_map ttm ON ttm.ticket_id = t.id LEFT JOIN ticket_tags tg ON tg.id = ttm.tag_id', 'expr' => 'tg.name', 'null' => 'Untagged'],
         'created_month' => ['join' => '',                                                                 'expr' => "DATE_FORMAT(t.created_datetime, '%Y-%m')", 'null' => 'Unknown'],
     ];
 

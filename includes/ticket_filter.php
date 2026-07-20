@@ -70,6 +70,18 @@ function ticket_filter_build(array $f): array {
     $addIntIn('t.tenant_id',      isset($f['tenant_id'])      ? $f['tenant_id']      : null);
     $addIntIn('t.origin_id',      isset($f['origin_id'])      ? $f['origin_id']      : null);
 
+    // Tags (M:N via ticket_tag_map) — EXISTS avoids row multiplication. A ticket
+    // matches if it carries ANY of the selected tags.
+    if (!empty($f['tag_id']) && is_array($f['tag_id'])) {
+        $tagIds = [];
+        foreach ($f['tag_id'] as $v) { $n = (int)$v; if ($n > 0) $tagIds[] = $n; }
+        if ($tagIds) {
+            $ph = implode(',', array_fill(0, count($tagIds), '?'));
+            $sql .= " AND EXISTS (SELECT 1 FROM ticket_tag_map _tm WHERE _tm.ticket_id = t.id AND _tm.tag_id IN ($ph))";
+            foreach ($tagIds as $id) $params[] = $id;
+        }
+    }
+
     // Assignee: a list of analyst ids, or the literal 'unassigned'.
     if (isset($f['assignee_id']) && $f['assignee_id'] === 'unassigned') {
         $sql .= " AND t.assigned_analyst_id IS NULL";
@@ -114,7 +126,7 @@ function ticket_filter_build(array $f): array {
  * "N filters active" badge and to decide whether a filter is worth saving.
  */
 function ticket_filter_active_count(array $f): int {
-    $keys = ['status','priority_id','ticket_type_id','category_id','subcategory_id',
+    $keys = ['status','priority_id','ticket_type_id','category_id','subcategory_id','tag_id',
              'tenant_id','origin_id','assignee_id','department_id','created_from',
              'created_to','keyword'];
     $n = 0;

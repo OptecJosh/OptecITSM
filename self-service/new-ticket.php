@@ -331,6 +331,7 @@ $translationNamespaces = ['common', 'self-service'];
         <nav class="portal-nav">
             <a href="index.php"><?php echo htmlspecialchars(t('self-service.nav.dashboard')); ?></a>
             <a href="new-ticket.php" class="active"><?php echo htmlspecialchars(t('self-service.nav.new_ticket')); ?></a>
+            <a href="knowledge.php">Knowledge</a>
             <a href="help.php"><?php echo htmlspecialchars(t('self-service.nav.help')); ?></a>
         </nav>
         <?php include 'includes/user-menu.php'; ?>
@@ -353,6 +354,11 @@ $translationNamespaces = ['common', 'self-service'];
                 <div class="form-group">
                     <label for="subject"><?php echo htmlspecialchars(t('self-service.new_ticket.subject')); ?></label>
                     <input type="text" id="subject" required placeholder="<?php echo htmlspecialchars(t('self-service.new_ticket.subject_placeholder')); ?>">
+                    <!-- Phase 7a: KB deflection — suggested articles as the subject is typed -->
+                    <div class="kb-suggest" id="kbSuggest" style="display:none;">
+                        <div class="kb-suggest-head">💡 These articles might help — you may not need to raise a ticket:</div>
+                        <div id="kbSuggestList"></div>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="priority"><?php echo htmlspecialchars(t('self-service.new_ticket.priority')); ?></label>
@@ -814,6 +820,37 @@ $translationNamespaces = ['common', 'self-service'];
         div.textContent = text || '';
         return div.innerHTML;
     }
+    </script>
+    <style>
+        .kb-suggest { margin-top: 10px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px 12px; }
+        .kb-suggest-head { font-size: 12.5px; color: #1e3a8a; font-weight: 600; margin-bottom: 6px; }
+        .kb-suggest a { display: block; font-size: 13px; color: #0f4c81; text-decoration: none; padding: 3px 0; }
+        .kb-suggest a:hover { text-decoration: underline; }
+    </style>
+    <script>
+    /* Phase 7a: KB deflection — suggest published articles as the subject is typed. */
+    (function () {
+        const subj = document.getElementById('subject');
+        const box = document.getElementById('kbSuggest');
+        const list = document.getElementById('kbSuggestList');
+        if (!subj || !box || !list) return;
+        function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); }
+        let timer = null;
+        subj.addEventListener('input', function () {
+            clearTimeout(timer);
+            const q = this.value.trim();
+            if (q.length < 3) { box.style.display = 'none'; return; }
+            timer = setTimeout(async function () {
+                try {
+                    const res = await fetch('../api/self-service/kb_search.php?q=' + encodeURIComponent(q));
+                    const data = await res.json();
+                    if (!data.success || !data.articles.length) { box.style.display = 'none'; return; }
+                    list.innerHTML = data.articles.slice(0, 5).map(a => '<a href="knowledge.php?id=' + a.id + '" target="_blank" rel="noopener">' + esc(a.title) + '</a>').join('');
+                    box.style.display = 'block';
+                } catch (e) { box.style.display = 'none'; }
+            }, 300);
+        });
+    })();
     </script>
 </body>
 </html>

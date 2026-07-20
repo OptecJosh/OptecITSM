@@ -2229,6 +2229,22 @@ CREATE TABLE IF NOT EXISTS `knowledge_articles` (
     CONSTRAINT `fk_knowledge_articles_archived_by` FOREIGN KEY (`archived_by_id`) REFERENCES `analysts` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- KB "was this helpful?" ratings (Phase 7a). One row per portal user per article
+-- (upserted). helpful = 1 (yes) / 0 (no).
+CREATE TABLE IF NOT EXISTS `knowledge_article_ratings` (
+    `id`                INT NOT NULL AUTO_INCREMENT,
+    `article_id`        INT NOT NULL,
+    `user_id`           INT NOT NULL,
+    `helpful`           TINYINT(1) NOT NULL,
+    `created_datetime`  DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_datetime`  DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_kb_rating_user` (`article_id`, `user_id`),
+    KEY `ix_kb_rating_article` (`article_id`),
+    CONSTRAINT `fk_kb_rating_article` FOREIGN KEY (`article_id`) REFERENCES `knowledge_articles` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_kb_rating_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `knowledge_article_versions` (
     `id`                INT NOT NULL AUTO_INCREMENT,
     `article_id`        INT NOT NULL,

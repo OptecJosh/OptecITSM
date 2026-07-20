@@ -467,6 +467,16 @@ $schema = [
         'updated_datetime'         => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
     ],
 
+    // KB "was this helpful?" ratings (Phase 7a).
+    'knowledge_article_ratings' => [
+        'id'                => 'INT NOT NULL AUTO_INCREMENT',
+        'article_id'        => 'INT NOT NULL',
+        'user_id'           => 'INT NOT NULL',
+        'helpful'           => 'TINYINT(1) NOT NULL DEFAULT 0',
+        'created_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+        'updated_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
     'tickets' => [
         'id'                    => 'INT NOT NULL AUTO_INCREMENT',
         'tenant_id'             => 'INT NULL',
@@ -3482,6 +3492,21 @@ try {
         }
         if ($tableExists('analysts') && !$fkExists('department_assignment_config', 'fk_dept_assign_last')) {
             try { $conn->exec("ALTER TABLE department_assignment_config ADD CONSTRAINT fk_dept_assign_last FOREIGN KEY (last_assigned_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+    }
+    // KB article ratings (Phase 7a).
+    if ($tableExists('knowledge_article_ratings') && $tableExists('knowledge_articles') && $tableExists('users')) {
+        if (!$idxExists('knowledge_article_ratings', 'uq_kb_rating_user')) {
+            try { $conn->exec("ALTER TABLE knowledge_article_ratings ADD UNIQUE KEY uq_kb_rating_user (article_id, user_id)"); } catch (Exception $e) {}
+        }
+        if (!$idxExists('knowledge_article_ratings', 'ix_kb_rating_article')) {
+            try { $conn->exec("ALTER TABLE knowledge_article_ratings ADD INDEX ix_kb_rating_article (article_id)"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('knowledge_article_ratings', 'fk_kb_rating_article')) {
+            try { $conn->exec("ALTER TABLE knowledge_article_ratings ADD CONSTRAINT fk_kb_rating_article FOREIGN KEY (article_id) REFERENCES knowledge_articles (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('knowledge_article_ratings', 'fk_kb_rating_user')) {
+            try { $conn->exec("ALTER TABLE knowledge_article_ratings ADD CONSTRAINT fk_kb_rating_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE"); } catch (Exception $e) {}
         }
     }
     // is_primary index on the ticket↔CI join (Phase 3b) — speeds "which CI drives SLA".

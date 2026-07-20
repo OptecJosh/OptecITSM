@@ -897,6 +897,31 @@ body.ticket-popout .ticket-toolbar {
 .queue-item:hover .queue-action { visibility: visible; }
 .queue-item .queue-action:hover { color: #db2777; }
 
+/* Phase 6a: canned-response picker in the reply modal */
+.canned-label-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.canned-wrap { position: relative; }
+.canned-toggle { background: none; border: none; color: #0078d4; cursor: pointer; font-size: 12.5px; padding: 0; }
+.canned-toggle:hover { text-decoration: underline; }
+.canned-picker {
+    position: absolute; right: 0; top: 100%; z-index: 50; width: 320px; margin-top: 4px;
+    background: var(--surface, #fff); border: 1px solid var(--border, #e5e7eb);
+    border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.14); overflow: hidden;
+}
+.canned-head { padding: 8px; border-bottom: 1px solid var(--border, #eee); }
+.canned-head input { width: 100%; padding: 6px 8px; border: 1px solid var(--border, #e5e7eb); border-radius: 6px; font-size: 13px; box-sizing: border-box; }
+.canned-list { max-height: 240px; overflow: auto; }
+.canned-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 10px; cursor: pointer; font-size: 13px; }
+.canned-item:hover { background: var(--surface-2, #f3f4f6); }
+.canned-item-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text, #222); }
+.canned-folder { color: var(--text-dim, #9ca3af); font-size: 11px; }
+.canned-item-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.canned-del { visibility: hidden; cursor: pointer; }
+.canned-item:hover .canned-del { visibility: visible; }
+.canned-empty { padding: 14px 10px; color: var(--text-dim, #9ca3af); font-size: 12.5px; text-align: center; }
+.canned-save { display: flex; align-items: center; gap: 6px; padding: 8px; border-top: 1px solid var(--border, #eee); }
+.canned-save input[type="text"] { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid var(--border, #e5e7eb); border-radius: 6px; font-size: 12.5px; }
+.canned-shared { display: flex; align-items: center; gap: 4px; font-size: 12px; white-space: nowrap; }
+
 .ticket-properties-summary-item {
     display: flex;
     align-items: center;

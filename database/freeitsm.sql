@@ -599,6 +599,26 @@ CREATE TABLE IF NOT EXISTS `ticket_queues` (
     CONSTRAINT `fk_ticket_queues_creator` FOREIGN KEY (`created_by_analyst_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Canned responses / reply macros (Phase 6a): reusable reply snippets inserted
+-- in the reply modal. owner_analyst_id NULL = shared (admin-managed), set =
+-- personal. Placeholders in `body` (e.g. {{requester.name}}) are resolved
+-- server-side by api/tickets/render_canned_response.php.
+CREATE TABLE IF NOT EXISTS `ticket_canned_responses` (
+    `id`                    INT NOT NULL AUTO_INCREMENT,
+    `name`                  VARCHAR(150) NOT NULL,
+    `body`                  MEDIUMTEXT NOT NULL,
+    `owner_analyst_id`      INT NULL,
+    `folder`                VARCHAR(100) NULL,
+    `display_order`         INT NOT NULL DEFAULT 0,
+    `created_by_analyst_id` INT NULL,
+    `created_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `ix_canned_owner` (`owner_analyst_id`),
+    CONSTRAINT `fk_canned_owner` FOREIGN KEY (`owner_analyst_id`) REFERENCES `analysts` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_canned_creator` FOREIGN KEY (`created_by_analyst_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `tickets` (
     `id`                    INT NOT NULL AUTO_INCREMENT,
     `tenant_id`             INT NULL,

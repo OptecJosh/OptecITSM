@@ -424,6 +424,19 @@ $schema = [
         'updated_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
     ],
 
+    // Canned responses / reply macros (Phase 6a). owner_analyst_id NULL = shared.
+    'ticket_canned_responses' => [
+        'id'                    => 'INT NOT NULL AUTO_INCREMENT',
+        'name'                  => 'VARCHAR(150) NOT NULL',
+        'body'                  => 'MEDIUMTEXT NOT NULL',
+        'owner_analyst_id'      => 'INT NULL',
+        'folder'                => 'VARCHAR(100) NULL',
+        'display_order'         => 'INT NOT NULL DEFAULT 0',
+        'created_by_analyst_id' => 'INT NULL',
+        'created_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+        'updated_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
     'tickets' => [
         'id'                    => 'INT NOT NULL AUTO_INCREMENT',
         'tenant_id'             => 'INT NULL',
@@ -3372,6 +3385,19 @@ try {
         }
         if (!$fkExists('ticket_queues', 'fk_ticket_queues_creator')) {
             try { $conn->exec("ALTER TABLE ticket_queues ADD CONSTRAINT fk_ticket_queues_creator FOREIGN KEY (created_by_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+    }
+    // Canned responses (Phase 6a): owner cascades (personal die with the analyst),
+    // creator SET NULL so a deleted admin doesn't drop shared responses.
+    if ($tableExists('ticket_canned_responses') && $tableExists('analysts')) {
+        if (!$idxExists('ticket_canned_responses', 'ix_canned_owner')) {
+            try { $conn->exec("ALTER TABLE ticket_canned_responses ADD INDEX ix_canned_owner (owner_analyst_id)"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('ticket_canned_responses', 'fk_canned_owner')) {
+            try { $conn->exec("ALTER TABLE ticket_canned_responses ADD CONSTRAINT fk_canned_owner FOREIGN KEY (owner_analyst_id) REFERENCES analysts (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('ticket_canned_responses', 'fk_canned_creator')) {
+            try { $conn->exec("ALTER TABLE ticket_canned_responses ADD CONSTRAINT fk_canned_creator FOREIGN KEY (created_by_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
         }
     }
     // is_primary index on the ticket↔CI join (Phase 3b) — speeds "which CI drives SLA".

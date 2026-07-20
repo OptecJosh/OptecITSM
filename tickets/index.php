@@ -29,7 +29,7 @@ $translationNamespaces = ['common', 'tickets'];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars(t('tickets.title')); ?> - <?php echo htmlspecialchars(t('tickets.nav.inbox')); ?></title>
     <link rel="stylesheet" href="../assets/css/theme.css?v=22">
-    <link rel="stylesheet" href="../assets/css/inbox.css?v=44">
+    <link rel="stylesheet" href="../assets/css/inbox.css?v=45">
     <link rel="stylesheet" href="../assets/css/mobile.css?v=29">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <?php echo Tz::scriptTag(); ?>
@@ -123,7 +123,13 @@ $translationNamespaces = ['common', 'tickets'];
                 </div>
                 <input type="hidden" id="emailSubject">
                 <div class="form-group">
-                    <label class="form-label"><?php echo htmlspecialchars(t('tickets.reply_modal.message')); ?></label>
+                    <div class="canned-label-row">
+                        <label class="form-label"><?php echo htmlspecialchars(t('tickets.reply_modal.message')); ?></label>
+                        <div class="canned-wrap">
+                            <button type="button" class="btn-link canned-toggle" onclick="toggleCannedPicker(event)">+ Insert response</button>
+                            <div class="canned-picker" id="cannedPicker" hidden></div>
+                        </div>
+                    </div>
                     <textarea id="emailBody"></textarea>
                 </div>
                 <div class="form-group">
@@ -488,7 +494,7 @@ $translationNamespaces = ['common', 'tickets'];
         window.API_BASE = '../api/tickets/';
         window.CURRENT_ANALYST_ID = <?php echo (int)($_SESSION['analyst_id'] ?? 0); ?>;
     </script>
-    <script src="../assets/js/inbox.js?v=64"></script>
+    <script src="../assets/js/inbox.js?v=65"></script>
     <script src="../assets/js/mobile.js?v=12"></script>
     <script>
     // Auto-check mailboxes every 60 seconds

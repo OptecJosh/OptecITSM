@@ -3748,6 +3748,116 @@ function closeEmailModal() {
     hideReplyCleanupUndoBar();
 }
 
+// ===== Phase 6a: canned responses / reply macros =====
+let cannedResponses = [];
+let cannedCanManageShared = false;
+
+async function toggleCannedPicker(ev) {
+    if (ev) ev.stopPropagation();
+    const picker = document.getElementById('cannedPicker');
+    if (!picker) return;
+    if (!picker.hidden) { picker.hidden = true; return; }
+    await loadCannedResponses();
+    renderCannedPicker('');
+    picker.hidden = false;
+    const search = document.getElementById('cannedSearch');
+    if (search) search.focus();
+    setTimeout(() => document.addEventListener('click', cannedOutsideClose), 0);
+}
+function cannedOutsideClose(e) {
+    const picker = document.getElementById('cannedPicker');
+    if (picker && !e.target.closest('.canned-wrap')) {
+        picker.hidden = true;
+        document.removeEventListener('click', cannedOutsideClose);
+    }
+}
+
+async function loadCannedResponses() {
+    try {
+        const res = await fetch(API_BASE + 'get_canned_responses.php');
+        const data = await res.json();
+        if (data.success) {
+            cannedResponses = data.responses || [];
+            cannedCanManageShared = !!data.can_manage_shared;
+        }
+    } catch (e) { /* picker will show empty */ }
+}
+
+function renderCannedPicker(filter) {
+    const picker = document.getElementById('cannedPicker');
+    if (!picker) return;
+    const q = (filter || '').toLowerCase();
+    const list = cannedResponses.filter(r => !q || r.name.toLowerCase().includes(q) || (r.folder || '').toLowerCase().includes(q));
+    const items = list.map(r => `
+        <div class="canned-item" onclick="insertCanned(${r.id})">
+            <span class="canned-item-name">${escapeHtml(r.name)}${r.folder ? ` <span class="canned-folder">${escapeHtml(r.folder)}</span>` : ''}</span>
+            <span class="canned-item-right">
+                <span class="canned-icon" title="${r.is_shared ? 'Shared' : 'Personal'}">${r.is_shared ? '👥' : '🔖'}</span>
+                ${(r.is_own || (r.is_shared && cannedCanManageShared)) ? `<span class="canned-del" title="Delete" onclick="event.stopPropagation();deleteCanned(${r.id})">🗑</span>` : ''}
+            </span>
+        </div>`).join('');
+    picker.innerHTML = `
+        <div class="canned-head">
+            <input type="text" id="cannedSearch" placeholder="Search responses…" oninput="renderCannedPicker(this.value)" value="${escapeHtml(filter || '')}">
+        </div>
+        <div class="canned-list">${items || '<div class="canned-empty">No responses yet — save the current message below.</div>'}</div>
+        <div class="canned-save">
+            <input type="text" id="cannedNewName" placeholder="Save current message as…">
+            ${cannedCanManageShared ? '<label class="canned-shared"><input type="checkbox" id="cannedNewShared"> Shared</label>' : ''}
+            <button class="btn btn-secondary" onclick="saveCannedFromEditor()">Save</button>
+        </div>`;
+}
+
+// Insert the rendered body (placeholders resolved for the open ticket) at the cursor.
+async function insertCanned(id) {
+    try {
+        const tid = (currentEmail && currentEmail.ticket_id) ? currentEmail.ticket_id : 0;
+        const res = await fetch(API_BASE + 'render_canned_response.php?id=' + id + '&ticket_id=' + tid);
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Failed to load response');
+        if (emailEditor) emailEditor.insertContent(data.body || '');
+        const picker = document.getElementById('cannedPicker');
+        if (picker) picker.hidden = true;
+    } catch (err) { showToast('Error: ' + err.message, 'error'); }
+}
+
+// Save the current reply draft as a reusable canned response.
+async function saveCannedFromEditor() {
+    const nameEl = document.getElementById('cannedNewName');
+    const name = nameEl ? nameEl.value.trim() : '';
+    if (!name) { showToast('Enter a name for the response', 'error'); return; }
+    const body = emailEditor ? emailEditor.getContent() : '';
+    if (!body || !body.replace(/<[^>]*>/g, '').trim()) { showToast('The message is empty', 'error'); return; }
+    const sharedEl = document.getElementById('cannedNewShared');
+    try {
+        const res = await fetch(API_BASE + 'save_canned_response.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, body, is_shared: sharedEl ? sharedEl.checked : false })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Save failed');
+        showToast('Response saved', 'success');
+        await loadCannedResponses();
+        renderCannedPicker('');
+    } catch (err) { showToast('Error: ' + err.message, 'error'); }
+}
+
+async function deleteCanned(id) {
+    const r = cannedResponses.find(x => x.id === id);
+    if (!(await showConfirm({ title: 'Delete response', message: `Delete "${r ? r.name : 'this response'}"?`, okLabel: 'Delete', okClass: 'primary' }))) return;
+    try {
+        const res = await fetch(API_BASE + 'delete_canned_response.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Delete failed');
+        showToast('Response deleted', 'success');
+        await loadCannedResponses();
+        const s = document.getElementById('cannedSearch');
+        renderCannedPicker(s ? s.value : '');
+    } catch (err) { showToast('Error: ' + err.message, 'error'); }
+}
+
 // ===== Reply Cleanup AI =====
 
 let replyCleanupOriginalDraft = null;

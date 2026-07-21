@@ -775,6 +775,10 @@ CREATE TABLE IF NOT EXISTS `tenants` (
     `is_default`        TINYINT(1) NOT NULL DEFAULT 0,
     `is_active`         TINYINT(1) NOT NULL DEFAULT 1,
     `created_datetime`  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- Phase 7e: per-company self-service portal branding.
+    `brand_color`       VARCHAR(20) NULL,
+    `portal_name`       VARCHAR(150) NULL,
+    `portal_welcome`    VARCHAR(500) NULL,
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

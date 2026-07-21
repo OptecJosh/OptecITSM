@@ -437,6 +437,7 @@ $translationNamespaces = ['common', 'self-service'];
 
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <script src="../assets/js/i18n.js?v=2"></script>
+    <script src="../assets/js/portal-branding.js?v=1"></script>
     <script>
     let attachments = [];
     let recordings = []; // [{recording_id, name, size_bytes, duration_seconds}]

@@ -31,6 +31,17 @@ try {
         $domainsByTenant = [];
     }
 
+    // Portal branding per company (Phase 7e), one query. Degrades to empty if the
+    // columns aren't there yet (install pre-db_verify).
+    $brandingByTenant = [];
+    try {
+        foreach ($conn->query("SELECT id, brand_color, portal_name, portal_welcome FROM tenants") as $row) {
+            $brandingByTenant[(int)$row['id']] = $row;
+        }
+    } catch (Exception $e) {
+        $brandingByTenant = [];
+    }
+
     // ?accessible=1 → only the companies this analyst may access (for "move ticket to
     // company" pickers). Default returns every company (unchanged behaviour).
     $accessibleOnly = !empty($_GET['accessible']);
@@ -42,12 +53,16 @@ try {
         if ($allowed !== null && !in_array($id, $allowed, true)) {
             continue;
         }
+        $b = $brandingByTenant[$id] ?? [];
         $companies[] = [
-            'id'         => $id,
-            'name'       => $t['name'],
-            'is_default' => (bool)$t['is_default'],
-            'is_active'  => (bool)$t['is_active'],
-            'domains'    => $domainsByTenant[$id] ?? [],
+            'id'             => $id,
+            'name'           => $t['name'],
+            'is_default'     => (bool)$t['is_default'],
+            'is_active'      => (bool)$t['is_active'],
+            'domains'        => $domainsByTenant[$id] ?? [],
+            'brand_color'    => $b['brand_color']    ?? null,
+            'portal_name'    => $b['portal_name']    ?? null,
+            'portal_welcome' => $b['portal_welcome'] ?? null,
         ];
     }
 

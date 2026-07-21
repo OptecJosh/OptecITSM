@@ -313,6 +313,8 @@ $translationNamespaces = ['common', 'self-service'];
         <div class="welcome-section">
             <h1><?php echo htmlspecialchars(t('self-service.dashboard.welcome', ['name' => $ss_user_name])); ?></h1>
             <p><?php echo htmlspecialchars(t('self-service.dashboard.welcome_sub')); ?></p>
+            <!-- Phase 7e: company-specific welcome message (filled by portal-branding.js) -->
+            <p id="portalWelcome" style="display:none; margin-top:8px; padding:10px 14px; background:#eef6ff; border:1px solid #bfdbfe; border-radius:8px; color:#0f4c81;"></p>
         </div>
 
         <!-- Summary Cards (rendered dynamically from active ticket_statuses) -->
@@ -346,6 +348,7 @@ $translationNamespaces = ['common', 'self-service'];
 
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <script src="../assets/js/i18n.js?v=2"></script>
+    <script src="../assets/js/portal-branding.js?v=1"></script>
     <script>
         const API_BASE = '../api/self-service/';
 

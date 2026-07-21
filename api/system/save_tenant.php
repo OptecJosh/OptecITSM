@@ -36,6 +36,17 @@ if ($name === '') {
 $isActive = !empty($data['is_active']) ? 1 : 0;
 $id       = isset($data['id']) ? (int)$data['id'] : 0;
 
+// Phase 7e portal branding (all optional). A blank string clears the value.
+$brandColor    = trim((string)($data['brand_color'] ?? ''));
+$portalName    = trim((string)($data['portal_name'] ?? ''));
+$portalWelcome = trim((string)($data['portal_welcome'] ?? ''));
+// Accept only a #RGB / #RRGGBB hex colour; anything else is dropped (kept NULL).
+if ($brandColor !== '' && !preg_match('/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/', $brandColor)) {
+    $brandColor = '';
+}
+if (mb_strlen($portalName) > 150)     $portalName = mb_substr($portalName, 0, 150);
+if (mb_strlen($portalWelcome) > 500)  $portalWelcome = mb_substr($portalWelcome, 0, 500);
+
 try {
     $conn = connectToDatabase();
 
@@ -52,17 +63,17 @@ try {
             exit;
         }
 
-        $stmt = $conn->prepare("UPDATE tenants SET name = ?, is_active = ? WHERE id = ?");
-        $stmt->execute([$name, $isActive, $id]);
+        $stmt = $conn->prepare("UPDATE tenants SET name = ?, is_active = ?, brand_color = ?, portal_name = ?, portal_welcome = ? WHERE id = ?");
+        $stmt->execute([$name, $isActive, $brandColor !== '' ? $brandColor : null, $portalName !== '' ? $portalName : null, $portalWelcome !== '' ? $portalWelcome : null, $id]);
         echo json_encode(['success' => true, 'id' => $id]);
 
     } else {
         // --- Create new company (always non-default) ---
         $stmt = $conn->prepare(
-            "INSERT INTO tenants (name, is_default, is_active, created_datetime)
-             VALUES (?, 0, ?, UTC_TIMESTAMP())"
+            "INSERT INTO tenants (name, is_default, is_active, brand_color, portal_name, portal_welcome, created_datetime)
+             VALUES (?, 0, ?, ?, ?, ?, UTC_TIMESTAMP())"
         );
-        $stmt->execute([$name, $isActive]);
+        $stmt->execute([$name, $isActive, $brandColor !== '' ? $brandColor : null, $portalName !== '' ? $portalName : null, $portalWelcome !== '' ? $portalWelcome : null]);
         echo json_encode(['success' => true, 'id' => (int)$conn->lastInsertId()]);
     }
 

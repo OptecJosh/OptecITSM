@@ -216,6 +216,28 @@ $translationNamespaces = ['common', 'system'];
                     <div class="cb-label"><strong><?php echo htmlspecialchars(t('system.companies.cb_active')); ?></strong><span><?php echo htmlspecialchars(t('system.companies.cb_active_desc')); ?></span></div>
                 </div>
 
+                <!-- Phase 7e: self-service portal branding for this company. Applied
+                     to portal users whose email domain maps to it. -->
+                <div class="form-field" style="border-top:1px solid var(--border-soft,#eee); padding-top:16px; margin-top:4px;">
+                    <label>Portal branding</label>
+                    <div class="hint">How the self-service portal looks for this company's users (matched by their email domain).</div>
+                </div>
+                <div class="form-field">
+                    <label for="fPortalName">Portal name</label>
+                    <input type="text" id="fPortalName" maxlength="150" placeholder="e.g. Acme Support">
+                </div>
+                <div class="form-field">
+                    <label for="fBrandColor">Brand colour</label>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <input type="color" id="fBrandColorPicker" value="#0078d4" style="width:44px; height:34px; padding:2px; border:1px solid var(--border-soft,#ddd); border-radius:6px; cursor:pointer;">
+                        <input type="text" id="fBrandColor" maxlength="20" placeholder="#0078d4" style="flex:1;">
+                    </div>
+                </div>
+                <div class="form-field">
+                    <label for="fPortalWelcome">Welcome message</label>
+                    <input type="text" id="fPortalWelcome" maxlength="500" placeholder="Shown on the portal dashboard">
+                </div>
+
                 <!-- Email domains (shared-intake routing). Shown only when editing an
                      existing company on a multi-company install (populated by JS). -->
                 <div class="form-field" id="domainsSection" style="display: none;">
@@ -317,6 +339,13 @@ $translationNamespaces = ['common', 'system'];
         // The default company is always active and can't be deactivated.
         active.disabled = !!(c && c.is_default);
 
+        // Phase 7e portal branding.
+        document.getElementById('fPortalName').value = c && c.portal_name ? c.portal_name : '';
+        document.getElementById('fPortalWelcome').value = c && c.portal_welcome ? c.portal_welcome : '';
+        const bc = c && c.brand_color ? c.brand_color : '';
+        document.getElementById('fBrandColor').value = bc;
+        document.getElementById('fBrandColorPicker').value = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(bc) ? bc : '#0078d4';
+
         // Email domains: only when editing an existing company on a multi-company
         // install (shared-intake routing is meaningless with a single company).
         const domainsSection = document.getElementById('domainsSection');
@@ -344,6 +373,16 @@ $translationNamespaces = ['common', 'system'];
         document.getElementById('fName').focus();
     }
     function closeModal() { modal.classList.remove('open'); }
+
+    // Phase 7e: keep the colour picker and its hex text field in step.
+    document.getElementById('fBrandColorPicker').addEventListener('input', function () {
+        document.getElementById('fBrandColor').value = this.value;
+    });
+    document.getElementById('fBrandColor').addEventListener('input', function () {
+        if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(this.value.trim())) {
+            document.getElementById('fBrandColorPicker').value = this.value.trim();
+        }
+    });
 
     // ---------- Company email domains ----------
     let currentDomains = [];
@@ -579,7 +618,10 @@ $translationNamespaces = ['common', 'system'];
         const payload = {
             id: document.getElementById('companyId').value || 0,
             name: document.getElementById('fName').value.trim(),
-            is_active: document.getElementById('fActive').checked ? 1 : 0
+            is_active: document.getElementById('fActive').checked ? 1 : 0,
+            brand_color: document.getElementById('fBrandColor').value.trim(),
+            portal_name: document.getElementById('fPortalName').value.trim(),
+            portal_welcome: document.getElementById('fPortalWelcome').value.trim()
         };
         if (!payload.name) {
             showToast(window.t('system.companies.required_name'), 'error');

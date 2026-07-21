@@ -17,16 +17,21 @@ re-litigate them.
 | 4B | Ticket reading-pane info panel + SLA surfacing | ✅ Done |
 | 5 | Queues & filtering (5a engine + ad-hoc, 5b custom queues) | ✅ Done |
 | 4A | Ad-hoc report builder | ✅ Done |
-| 6 | Agent productivity (ticketing) | ▶ Next |
-| 7 | Request management & deflection | ⏳ Planned |
-| 8 | SLA snapshot, reporting & dashboards | ⏳ Planned |
+| 6 | Agent productivity (ticketing) | ✅ Done |
+| 7 | Request management & deflection (7a–7e) | ✅ Done |
+| 8 | SLA snapshot, reporting & dashboards | ▶ Next |
 | 9 | ITSM depth (assets / change / contracts) | ⏳ Planned |
 | 10 | Platform & admin | ⏳ Planned |
 | 11 | Agent overtime management (new module) | ⏳ Planned |
 
-**Build order so far:** 4B → 5 → 4A shipped. Next is **6 → 7 → 8 → 9 → 10 → 11**,
+**Build order so far:** 4B → 5 → 4A → 6 → 7 shipped. Next is **8 → 9 → 10 → 11**,
 the backlog from the whole-app review (below), highest daily value first. Each
 group has a design doc under `docs/design/phase-0N-*.md`.
+
+**Phase 7 sub-phases (all shipped):** 7a KB deflection & article ratings · 7b
+public status page + announcements · 7c-1 service catalog (items, portal request,
+admin) · 7c-2 catalog items with attached forms · 7d service-request approvals ·
+7e per-company portal branding.
 
 ---
 

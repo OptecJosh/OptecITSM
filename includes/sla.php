@@ -292,6 +292,77 @@ function sla_get_state(PDO $conn, int $ticket_id): array {
 }
 
 /**
+ * Map one SLA target sub-state (the 'response' or 'resolution' array from
+ * sla_get_state) to a snapshot state string + remaining minutes.
+ *
+ * Precedence — breach WINS over achievement: a ticket resolved *late* has both
+ * `achieved_at` set and `breached` true, and its authoritative outcome is
+ * 'breached', not 'met'. Order: breached → met (achieved within target) →
+ * approaching (past the warning threshold) → ok. A missing target → 'na'.
+ *
+ * @return array{0:string,1:?int}  [state, remaining_minutes]
+ */
+function sla_snapshot_state_for(?array $target, float $warnThreshold): array {
+    if (!$target) {
+        return ['na', null];
+    }
+    $remaining = isset($target['remaining_minutes']) ? (int)$target['remaining_minutes'] : null;
+    if (!empty($target['breached']))        return ['breached', $remaining];
+    if (($target['achieved_at'] ?? null) !== null) return ['met', $remaining];
+    if ((float)($target['percent'] ?? 0) >= $warnThreshold) return ['approaching', $remaining];
+    return ['ok', $remaining];
+}
+
+/**
+ * Upsert a ticket's SLA snapshot row (Phase 8a) from an already-computed
+ * sla_get_state() result. The whole point is that the caller is *already*
+ * holding the state, so stamping is near-free and drift-free by construction.
+ *
+ * A disabled/untracked ticket is still stamped ('na'/'na') so the cache has a
+ * row that says "no SLA here" rather than a silent gap. `computed_at` is set to
+ * UTC (the DB stores everything in UTC — the column DEFAULT is server-local, so
+ * we set it explicitly).
+ *
+ * $warnThreshold lets a bulk caller (the cron loop) pass the threshold it has
+ * already loaded; when omitted it's read from settings once.
+ *
+ * Best-effort by design — never throws. SLA reporting is a convenience layer;
+ * a snapshot write failing must not break the caller (a cron run or a ticket
+ * update). Returns true on success.
+ */
+function sla_write_snapshot(PDO $conn, int $ticketId, array $state, ?float $warnThreshold = null): bool {
+    try {
+        if ($warnThreshold === null) {
+            $settings = sla_load_settings($conn);
+            $warnThreshold = (float)($settings['sla_warning_threshold_percent'] ?? 80);
+        }
+
+        [$respState, $respRemain] = sla_snapshot_state_for($state['response'] ?? null, $warnThreshold);
+        [$resoState, $resoRemain] = sla_snapshot_state_for($state['resolution'] ?? null, $warnThreshold);
+        $policySource = $state['policy_source'] ?? null;
+
+        $stmt = $conn->prepare(
+            "INSERT INTO ticket_sla_snapshot
+                (ticket_id, response_state, response_remaining_mins,
+                 resolution_state, resolution_remaining_mins, policy_source, computed_at)
+             VALUES (?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())
+             ON DUPLICATE KEY UPDATE
+                response_state = VALUES(response_state),
+                response_remaining_mins = VALUES(response_remaining_mins),
+                resolution_state = VALUES(resolution_state),
+                resolution_remaining_mins = VALUES(resolution_remaining_mins),
+                policy_source = VALUES(policy_source),
+                computed_at = VALUES(computed_at)"
+        );
+        $stmt->execute([$ticketId, $respState, $respRemain, $resoState, $resoRemain, $policySource]);
+        return true;
+    } catch (Exception $e) {
+        error_log('[sla_write_snapshot] ticket ' . $ticketId . ': ' . $e->getMessage());
+        return false;
+    }
+}
+
+/**
  * Compute response-time SLA state. The clock stops at the first response,
  * where "first response" is defined per the sla_first_response_definition
  * setting. v1 supports 'status_change' (first audit row that moves status

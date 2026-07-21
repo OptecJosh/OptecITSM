@@ -50,6 +50,13 @@ function sla_run_breach_check(PDO $conn): array {
     foreach ($ticketIds as $ticketId) {
         try {
             $state = sla_get_state($conn, (int)$ticketId);
+
+            // Phase 8a: stamp the SLA snapshot from the state we've already
+            // computed — near-zero extra cost, drift-free. Done before the
+            // enabled-check so untracked tickets are recorded as 'na' too.
+            // sla_write_snapshot never throws; it's a cache, not the run.
+            sla_write_snapshot($conn, (int)$ticketId, $state, $warningThreshold);
+
             if (empty($state['enabled'])) continue;
 
             foreach (['response', 'resolution'] as $targetType) {
@@ -409,4 +416,41 @@ function sla_get_first_active_mailbox(PDO $conn): ?array {
     $mailbox = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$mailbox) return null;
     return decryptMailboxRow($mailbox);
+}
+
+/**
+ * Rebuild the SLA snapshot cache from scratch (Phase 8a) — the backfill/repair
+ * path for cron/sla_snapshot_rebuild.php.
+ *
+ * Unlike the breach cron (open tickets only), this walks EVERY non-deleted
+ * ticket, open and closed, so a closed ticket's final met/breached outcome is
+ * captured even if it closed while the snapshot machinery was absent. Upsert
+ * semantics mean it repairs rows in place; no TRUNCATE needed, and rows for
+ * hard-deleted tickets are already gone via the FK's ON DELETE CASCADE.
+ *
+ * Returns { processed, tracked, errors:[...] } for the cron wrapper to log.
+ */
+function sla_rebuild_snapshots(PDO $conn): array {
+    $summary = ['processed' => 0, 'tracked' => 0, 'errors' => []];
+
+    $settings = sla_load_settings($conn);
+    $warningThreshold = (float)($settings['sla_warning_threshold_percent'] ?? 80);
+
+    // Stream ids in ascending order; a helpdesk's ticket count is modest, but
+    // fetch just the id column to keep the working set small.
+    $ids = $conn->query("SELECT id FROM tickets WHERE deleted_datetime IS NULL ORDER BY id ASC")
+                ->fetchAll(PDO::FETCH_COLUMN);
+
+    foreach ($ids as $ticketId) {
+        try {
+            $state = sla_get_state($conn, (int)$ticketId);
+            sla_write_snapshot($conn, (int)$ticketId, $state, $warningThreshold);
+            $summary['processed']++;
+            if (!empty($state['enabled'])) $summary['tracked']++;
+        } catch (Exception $e) {
+            $summary['errors'][] = "ticket $ticketId: " . $e->getMessage();
+        }
+    }
+
+    return $summary;
 }

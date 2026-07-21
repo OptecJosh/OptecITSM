@@ -371,6 +371,19 @@ $schema = [
         'notes'          => 'TEXT NULL',
     ],
 
+    // SLA snapshot (Phase 8a) — per-ticket cache of compute-on-read SLA state.
+    // PK = ticket_id (see $primaryKeys). Cache only; reproducible from
+    // sla_get_state() via cron/sla_snapshot_rebuild.php.
+    'ticket_sla_snapshot' => [
+        'ticket_id'                 => 'INT NOT NULL',
+        'response_state'            => "ENUM('ok','approaching','breached','met','na') NOT NULL DEFAULT 'na'",
+        'response_remaining_mins'   => 'INT NULL',
+        'resolution_state'          => "ENUM('ok','approaching','breached','met','na') NOT NULL DEFAULT 'na'",
+        'resolution_remaining_mins' => 'INT NULL',
+        'policy_source'             => 'VARCHAR(20) NULL',
+        'computed_at'               => 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
     // SLA policies — multiple named SLA tiers, each with its own per-priority
     // targets, resolved per company. Supersedes the sla_* columns on
     // ticket_priorities (kept, unread, as a one-release rollback net).
@@ -2726,6 +2739,7 @@ $primaryKeys = [
     'task_tag_map'              => null, // composite PK: task_id, tag_id
     'ticket_tag_map'            => null, // composite PK: ticket_id, tag_id
     'department_assignment_config' => 'department_id', // single non-id PK
+    'ticket_sla_snapshot'          => 'ticket_id',      // single non-id PK (Phase 8a)
 ];
 
 try {
@@ -3629,6 +3643,19 @@ try {
             try { $conn->exec("ALTER TABLE tickets ADD CONSTRAINT fk_tickets_catalog_item FOREIGN KEY (catalog_item_id) REFERENCES service_catalog_items (id) ON DELETE SET NULL"); } catch (Exception $e) {}
         }
     }
+    // SLA snapshot (Phase 8a) — FK to tickets (CASCADE so deleting a ticket
+    // clears its cached row) + state indexes for the EXISTS filter / report join.
+    if ($tableExists('ticket_sla_snapshot')) {
+        foreach (['ix_sla_snapshot_response' => 'response_state', 'ix_sla_snapshot_resolution' => 'resolution_state'] as $idx => $col) {
+            if (!$idxExists('ticket_sla_snapshot', $idx)) {
+                try { $conn->exec("ALTER TABLE ticket_sla_snapshot ADD INDEX $idx ($col)"); } catch (Exception $e) {}
+            }
+        }
+        if ($tableExists('tickets') && !$fkExists('ticket_sla_snapshot', 'fk_sla_snapshot_ticket')) {
+            try { $conn->exec("ALTER TABLE ticket_sla_snapshot ADD CONSTRAINT fk_sla_snapshot_ticket FOREIGN KEY (ticket_id) REFERENCES tickets (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+    }
+
     // is_primary index on the ticket↔CI join (Phase 3b) — speeds "which CI drives SLA".
     if ($tableExists('ticket_cmdb_objects') && $colExists('ticket_cmdb_objects', 'is_primary')
         && !$idxExists('ticket_cmdb_objects', 'ix_tco_primary')) {

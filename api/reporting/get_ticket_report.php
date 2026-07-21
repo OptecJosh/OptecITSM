@@ -8,15 +8,18 @@
  *
  * GET/POST:
  *   group_by = status | priority | type | category | subcategory | assignee |
- *              department | customer | origin | created_month
+ *              department | customer | origin | tag | created_month |
+ *              sla_response_outcome | sla_resolution_outcome
  *   filters  = JSON object (see includes/ticket_filter.php); optional
  *
  * Returns { success, group_by, total, rows: [{ label, count }] } ordered by
  * count desc. NULL dimension values collapse to a "None/Unassigned" label.
  *
- * SLA-outcome aggregation (met/breached) is intentionally out of scope: SLA is
- * compute-on-read (no stored column), so it would need per-ticket computation
- * (O(N)). It belongs with a cached SLA snapshot, a later addition.
+ * SLA-outcome aggregation (Phase 8a): now supported, grouping on the cached
+ * ticket_sla_snapshot table (met/breached/approaching/ok, with untracked and
+ * unstamped tickets collapsing to "Not tracked"). This lifts the earlier
+ * deferral — SLA is still compute-on-read, but the snapshot makes its outcome
+ * cheaply group-able. The snapshot is a cache; single-ticket views read live.
  */
 session_start(['read_and_close' => true]);
 require_once '../../config.php';
@@ -53,6 +56,13 @@ try {
         // "Untagged" row. The total therefore may exceed the ticket count.
         'tag'           => ['join' => 'LEFT JOIN ticket_tag_map ttm ON ttm.ticket_id = t.id LEFT JOIN ticket_tags tg ON tg.id = ttm.tag_id', 'expr' => 'tg.name', 'null' => 'Untagged'],
         'created_month' => ['join' => '',                                                                 'expr' => "DATE_FORMAT(t.created_datetime, '%Y-%m')", 'null' => 'Unknown'],
+        // SLA outcome (Phase 8a) — group on the cached snapshot. A ticket with
+        // no snapshot row (untracked, or not yet stamped) LEFT-JOINs to NULL and,
+        // together with the 'na' state, collapses to "Not tracked" via the CASE +
+        // COALESCE null-label. Only one of these dims is ever active per request,
+        // so both safely reuse the `ss` alias.
+        'sla_response_outcome'   => ['join' => 'LEFT JOIN ticket_sla_snapshot ss ON ss.ticket_id = t.id', 'expr' => "CASE ss.response_state WHEN 'ok' THEN 'On track' WHEN 'approaching' THEN 'Approaching breach' WHEN 'breached' THEN 'Breached' WHEN 'met' THEN 'Met' ELSE 'Not tracked' END", 'null' => 'Not tracked'],
+        'sla_resolution_outcome' => ['join' => 'LEFT JOIN ticket_sla_snapshot ss ON ss.ticket_id = t.id', 'expr' => "CASE ss.resolution_state WHEN 'ok' THEN 'On track' WHEN 'approaching' THEN 'Approaching breach' WHEN 'breached' THEN 'Breached' WHEN 'met' THEN 'Met' ELSE 'Not tracked' END", 'null' => 'Not tracked'],
     ];
 
     $groupBy = $_GET['group_by'] ?? $_POST['group_by'] ?? 'status';

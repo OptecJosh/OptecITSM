@@ -21,11 +21,15 @@
  *   created_from    'YYYY-MM-DD'          t.created_datetime >= start of day
  *   created_to      'YYYY-MM-DD'          t.created_datetime <  day after (inclusive)
  *   keyword         string                t.subject / t.ticket_number contains
+ *   sla_response_state[]    string[]        ticket_sla_snapshot.response_state IN (...)
+ *   sla_resolution_state[]  string[]        ticket_sla_snapshot.resolution_state IN (...)
  *
- * NOT handled here: SLA state (breached/approaching/met). SLA is compute-on-read
- * (no stored column), so it can't be a SQL predicate without an O(N) per-row
- * computation. It'll be added once a cached SLA snapshot exists (e.g. stamped by
- * cron/sla_breach_check.php). Callers that need it must post-filter.
+ * SLA state (Phase 8a): now a real SQL predicate, backed by the cached
+ * ticket_sla_snapshot table (stamped by cron/sla_breach_check.php + the ticket
+ * status-change path, rebuildable via cron/sla_snapshot_rebuild.php). Valid
+ * values: ok | approaching | breached | met | na. An EXISTS subquery keeps it
+ * join-free, so it composes with every other clause. Freshness is the snapshot's
+ * (~5 min for open tickets); single-ticket views should still read live SLA.
  *
  * Returns [ string $sql, array $params ]. $sql is zero or more " AND (...)"
  * clauses (may be ''), safe to append after an existing WHERE. Params are
@@ -118,6 +122,24 @@ function ticket_filter_build(array $f): array {
         $params[] = $f['created_to'] . ' 00:00:00';
     }
 
+    // SLA state (Phase 8a) — response / resolution, each against the cached
+    // snapshot. EXISTS (not a JOIN) so a ticket with no snapshot row simply
+    // doesn't match, and no row multiplication. Only whitelisted state strings
+    // are bound.
+    $slaAllowed = ['ok', 'approaching', 'breached', 'met', 'na'];
+    foreach (['sla_response_state' => 'response_state', 'sla_resolution_state' => 'resolution_state'] as $key => $col) {
+        if (empty($f[$key]) || !is_array($f[$key])) continue;
+        $states = [];
+        foreach ($f[$key] as $s) {
+            $s = (string)$s;
+            if (in_array($s, $slaAllowed, true)) $states[] = $s;
+        }
+        if (!$states) continue;
+        $ph = implode(',', array_fill(0, count($states), '?'));
+        $sql .= " AND EXISTS (SELECT 1 FROM ticket_sla_snapshot _ss WHERE _ss.ticket_id = t.id AND _ss.$col IN ($ph))";
+        foreach ($states as $s) $params[] = $s;
+    }
+
     // Keyword: subject / ticket_number contains. (Requester-name match would
     // need a users join; kept to ticket columns for v1 to stay index-friendly.)
     if (!empty($f['keyword']) && is_string($f['keyword'])) {
@@ -140,7 +162,7 @@ function ticket_filter_build(array $f): array {
 function ticket_filter_active_count(array $f): int {
     $keys = ['status','priority_id','ticket_type_id','category_id','subcategory_id','tag_id','watched_by',
              'tenant_id','origin_id','assignee_id','department_id','created_from',
-             'created_to','keyword'];
+             'created_to','keyword','sla_response_state','sla_resolution_state'];
     $n = 0;
     foreach ($keys as $k) {
         if (!isset($f[$k])) continue;

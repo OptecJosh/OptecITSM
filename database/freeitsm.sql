@@ -501,6 +501,32 @@ CREATE TABLE IF NOT EXISTS `sla_cron_runs` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------
+-- SLA snapshot (Phase 8a) — a per-ticket CACHE of the compute-on-read SLA
+-- state, so SLA outcome can be filtered/grouped/reported without an O(N)
+-- per-row computation. It is NEVER a second source of truth: sla_get_state()
+-- in includes/sla.php stays authoritative and this table is reproducible from
+-- it (cron/sla_snapshot_rebuild.php). Kept as its own table (not columns on
+-- `tickets`) so the cache is visibly derived and a rebuild never touches ticket
+-- rows. Freshness: stamped every cron run (~5 min) for open tickets and at the
+-- moment a ticket's status changes (so met/breached at close is captured, since
+-- the breach cron skips closed tickets). Single-ticket views must keep calling
+-- live sla_get_state(); `computed_at` exposes staleness.
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `ticket_sla_snapshot` (
+    `ticket_id`                 INT NOT NULL,
+    `response_state`            ENUM('ok','approaching','breached','met','na') NOT NULL DEFAULT 'na',
+    `response_remaining_mins`   INT NULL,
+    `resolution_state`          ENUM('ok','approaching','breached','met','na') NOT NULL DEFAULT 'na',
+    `resolution_remaining_mins` INT NULL,
+    `policy_source`             VARCHAR(20) NULL,
+    `computed_at`               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`ticket_id`),
+    KEY `ix_sla_snapshot_response` (`response_state`),
+    KEY `ix_sla_snapshot_resolution` (`resolution_state`),
+    CONSTRAINT `fk_sla_snapshot_ticket` FOREIGN KEY (`ticket_id`) REFERENCES `tickets` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------
 -- SLA policies — multiple named SLA tiers ("Standard", "Premium"), each
 -- carrying its own per-priority targets. Replaces the single global
 -- SLA-per-priority model (the sla_* columns on ticket_priorities, which are

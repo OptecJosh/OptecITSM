@@ -466,6 +466,22 @@ class TicketsService
             require_once __DIR__ . '/../ticket_autoassign.php';
             try { autoassign_run($conn, $ticketId, $actorId); } catch (\Throwable $e) { error_log('autoassign (update) failed: ' . $e->getMessage()); }
         }
+
+        // Phase 8a: a status change stops/starts/pauses the SLA clock, so restamp
+        // the SLA snapshot now. This is the authoritative capture of the final
+        // met/breached outcome at close — the breach cron skips closed tickets and
+        // would otherwise never record it. Resolution outcome keys off the
+        // closed_datetime we just wrote, so it's correct here even on the UI path
+        // (which audits status client-side); pause/unpause segments that lag the
+        // server-side audit are reconciled by the next cron pass. Best-effort.
+        if ($newStatusId !== null) {
+            require_once __DIR__ . '/../sla.php';
+            try {
+                sla_write_snapshot($conn, $ticketId, sla_get_state($conn, $ticketId));
+            } catch (\Throwable $e) {
+                error_log('SLA snapshot stamp (update) failed for ticket ' . $ticketId . ': ' . $e->getMessage());
+            }
+        }
     }
 
     // ======================================================================

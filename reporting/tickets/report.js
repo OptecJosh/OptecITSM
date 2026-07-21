@@ -19,6 +19,18 @@ const GROUP_DIMS = [
     { key: 'origin',        label: 'Origin' },
     { key: 'tag',           label: 'Tag' },
     { key: 'created_month', label: 'Created month' },
+    { key: 'sla_response_outcome',   label: 'SLA response outcome' },
+    { key: 'sla_resolution_outcome', label: 'SLA resolution outcome' },
+];
+
+// SLA snapshot states (Phase 8a) — static options for the filter checkbox
+// groups; 'na' is deliberately omitted from the UI (filtering for "not tracked"
+// is niche). Values match ticket_sla_snapshot.<col> / the shared filter engine.
+const SLA_STATE_OPTS = [
+    { v: 'ok',          l: 'On track' },
+    { v: 'approaching', l: 'Approaching breach' },
+    { v: 'breached',    l: 'Breached' },
+    { v: 'met',         l: 'Met' },
 ];
 
 let rbLookups = {};        // field key -> [{ v, l }]
@@ -75,6 +87,16 @@ function rbGroup(label, field) {
     return `<div class="rb-field"><div class="rb-field-label">${rbEsc(label)}</div><div class="rb-options">${items}</div></div>`;
 }
 
+// Static checkbox group (fixed options, not a server lookup). Same markup as
+// rbGroup so rbReadFilters picks it up generically — data-field becomes the
+// filter key, kind 'str' keeps the value a string.
+function rbStaticGroup(label, field, opts) {
+    const items = opts.map(o =>
+        `<label class="rb-opt"><input type="checkbox" data-field="${field}" data-kind="str" value="${rbEsc(String(o.v))}"> ${rbEsc(o.l)}</label>`
+    ).join('');
+    return `<div class="rb-field"><div class="rb-field-label">${rbEsc(label)}</div><div class="rb-options">${items}</div></div>`;
+}
+
 function renderRbFilters() {
     document.getElementById('rbFilters').innerHTML =
         rbGroup('Status', 'status') +
@@ -85,7 +107,9 @@ function renderRbFilters() {
         rbGroup('Assignee', 'assignee_id') +
         rbGroup('Department', 'department_id') +
         rbGroup('Tags', 'tag_id') +
-        (rbMultiTenant ? rbGroup('Customer', 'tenant_id') : '');
+        (rbMultiTenant ? rbGroup('Customer', 'tenant_id') : '') +
+        rbStaticGroup('SLA response', 'sla_response_state', SLA_STATE_OPTS) +
+        rbStaticGroup('SLA resolution', 'sla_resolution_state', SLA_STATE_OPTS);
 }
 
 function rbReadFilters() {

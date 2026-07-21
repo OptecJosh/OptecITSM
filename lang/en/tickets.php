@@ -26,6 +26,7 @@ return [
         'calendar'  => 'Calendar',
         'rota'      => 'Rota',
         'csat'      => 'CSAT',
+        'approvals' => 'Approvals',
         'settings'  => 'Settings',
         'help'      => 'Help',
     ],

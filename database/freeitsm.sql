@@ -2280,6 +2280,9 @@ CREATE TABLE IF NOT EXISTS `service_catalog_items` (
     `icon`                  VARCHAR(40) NULL,
     `is_active`             TINYINT(1) NOT NULL DEFAULT 1,
     `display_order`         INT NOT NULL DEFAULT 0,
+    -- Phase 7d: requests for this item wait for an approver before being worked.
+    `requires_approval`     TINYINT(1) NOT NULL DEFAULT 0,
+    `approver_analyst_id`   INT NULL,
     `created_by_analyst_id` INT NULL,
     `created_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
@@ -2289,7 +2292,28 @@ CREATE TABLE IF NOT EXISTS `service_catalog_items` (
     CONSTRAINT `fk_catalog_department` FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`) ON DELETE SET NULL,
     CONSTRAINT `fk_catalog_priority`   FOREIGN KEY (`priority_id`)   REFERENCES `ticket_priorities` (`id`) ON DELETE SET NULL,
     CONSTRAINT `fk_catalog_form`       FOREIGN KEY (`form_id`)       REFERENCES `forms` (`id`) ON DELETE SET NULL,
+    CONSTRAINT `fk_catalog_approver`   FOREIGN KEY (`approver_analyst_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL,
     CONSTRAINT `fk_catalog_creator`    FOREIGN KEY (`created_by_analyst_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `ticket_approvals` (
+    `id`                    INT NOT NULL AUTO_INCREMENT,
+    `ticket_id`             INT NOT NULL,
+    `catalog_item_id`       INT NULL,
+    `approver_analyst_id`   INT NULL,
+    `status`                VARCHAR(20) NOT NULL DEFAULT 'pending',   -- pending | approved | rejected
+    `decision_note`         VARCHAR(1000) NULL,
+    `decided_by_analyst_id` INT NULL,
+    `requested_datetime`    DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    `decided_datetime`      DATETIME NULL,
+    PRIMARY KEY (`id`),
+    KEY `ix_ticket_approvals_ticket` (`ticket_id`),
+    KEY `ix_ticket_approvals_approver` (`approver_analyst_id`),
+    KEY `ix_ticket_approvals_status` (`status`),
+    CONSTRAINT `fk_ticket_approvals_ticket`   FOREIGN KEY (`ticket_id`)             REFERENCES `tickets` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_ticket_approvals_approver` FOREIGN KEY (`approver_analyst_id`)   REFERENCES `analysts` (`id`) ON DELETE SET NULL,
+    CONSTRAINT `fk_ticket_approvals_decider`  FOREIGN KEY (`decided_by_analyst_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL,
+    CONSTRAINT `fk_ticket_approvals_catalog`  FOREIGN KEY (`catalog_item_id`)       REFERENCES `service_catalog_items` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `knowledge_article_versions` (

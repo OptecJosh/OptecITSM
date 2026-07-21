@@ -504,9 +504,25 @@ $schema = [
         'icon'                  => 'VARCHAR(40) NULL',
         'is_active'             => 'TINYINT(1) NOT NULL DEFAULT 1',
         'display_order'         => 'INT NOT NULL DEFAULT 0',
+        // Phase 7d: approval gating.
+        'requires_approval'     => 'TINYINT(1) NOT NULL DEFAULT 0',
+        'approver_analyst_id'   => 'INT NULL',
         'created_by_analyst_id' => 'INT NULL',
         'created_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
         'updated_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
+    // Phase 7d: one approval decision per approval-gated catalog request.
+    'ticket_approvals' => [
+        'id'                    => 'INT NOT NULL AUTO_INCREMENT',
+        'ticket_id'             => 'INT NOT NULL',
+        'catalog_item_id'       => 'INT NULL',
+        'approver_analyst_id'   => 'INT NULL',
+        'status'                => "VARCHAR(20) NOT NULL DEFAULT 'pending'",
+        'decision_note'         => 'VARCHAR(1000) NULL',
+        'decided_by_analyst_id' => 'INT NULL',
+        'requested_datetime'    => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+        'decided_datetime'      => 'DATETIME NULL',
     ],
 
     'tickets' => [
@@ -3575,6 +3591,30 @@ try {
         }
         if ($tableExists('analysts') && !$fkExists('service_catalog_items', 'fk_catalog_creator')) {
             try { $conn->exec("ALTER TABLE service_catalog_items ADD CONSTRAINT fk_catalog_creator FOREIGN KEY (created_by_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+        // Phase 7d approver FK (column added by the $schema pass above).
+        if ($tableExists('analysts') && $colExists('service_catalog_items', 'approver_analyst_id') && !$fkExists('service_catalog_items', 'fk_catalog_approver')) {
+            try { $conn->exec("ALTER TABLE service_catalog_items ADD CONSTRAINT fk_catalog_approver FOREIGN KEY (approver_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+    }
+    // Ticket approvals (Phase 7d): decision rows for approval-gated requests.
+    if ($tableExists('ticket_approvals')) {
+        foreach (['ix_ticket_approvals_ticket' => 'ticket_id', 'ix_ticket_approvals_approver' => 'approver_analyst_id', 'ix_ticket_approvals_status' => 'status'] as $idx => $col) {
+            if (!$idxExists('ticket_approvals', $idx)) {
+                try { $conn->exec("ALTER TABLE ticket_approvals ADD INDEX $idx ($col)"); } catch (Exception $e) {}
+            }
+        }
+        if ($tableExists('tickets') && !$fkExists('ticket_approvals', 'fk_ticket_approvals_ticket')) {
+            try { $conn->exec("ALTER TABLE ticket_approvals ADD CONSTRAINT fk_ticket_approvals_ticket FOREIGN KEY (ticket_id) REFERENCES tickets (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if ($tableExists('analysts') && !$fkExists('ticket_approvals', 'fk_ticket_approvals_approver')) {
+            try { $conn->exec("ALTER TABLE ticket_approvals ADD CONSTRAINT fk_ticket_approvals_approver FOREIGN KEY (approver_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+        if ($tableExists('analysts') && !$fkExists('ticket_approvals', 'fk_ticket_approvals_decider')) {
+            try { $conn->exec("ALTER TABLE ticket_approvals ADD CONSTRAINT fk_ticket_approvals_decider FOREIGN KEY (decided_by_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+        if ($tableExists('service_catalog_items') && !$fkExists('ticket_approvals', 'fk_ticket_approvals_catalog')) {
+            try { $conn->exec("ALTER TABLE ticket_approvals ADD CONSTRAINT fk_ticket_approvals_catalog FOREIGN KEY (catalog_item_id) REFERENCES service_catalog_items (id) ON DELETE SET NULL"); } catch (Exception $e) {}
         }
     }
     if ($tableExists('tickets') && $colExists('tickets', 'catalog_item_id') && $tableExists('service_catalog_items')) {

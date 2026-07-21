@@ -42,8 +42,9 @@ try {
     // Catalog request (Phase 7c): apply the item's default routing. An invalid or
     // inactive item id is ignored (treated as a plain request).
     $catCategoryId = null; $catDepartmentId = null; $catFormId = null;
+    $catRequiresApproval = false; $catApproverId = null;
     if ($catalogItemId) {
-        $ci = $conn->prepare("SELECT category_id, department_id, priority_id, form_id FROM service_catalog_items WHERE id = ? AND is_active = 1");
+        $ci = $conn->prepare("SELECT category_id, department_id, priority_id, form_id, requires_approval, approver_analyst_id FROM service_catalog_items WHERE id = ? AND is_active = 1");
         $ci->execute([$catalogItemId]);
         $item = $ci->fetch(PDO::FETCH_ASSOC);
         if (!$item) {
@@ -52,6 +53,8 @@ try {
             $catCategoryId   = $item['category_id']   !== null ? (int)$item['category_id']   : null;
             $catDepartmentId = $item['department_id'] !== null ? (int)$item['department_id'] : null;
             $catFormId       = $item['form_id']       !== null ? (int)$item['form_id']       : null;
+            $catRequiresApproval = (int)($item['requires_approval'] ?? 0) === 1;
+            $catApproverId   = $item['approver_analyst_id'] !== null ? (int)$item['approver_analyst_id'] : null;
             if ($item['priority_id'] !== null) {
                 $pn = $conn->prepare("SELECT name FROM ticket_priorities WHERE id = ?");
                 $pn->execute([(int)$item['priority_id']]);
@@ -248,11 +251,24 @@ try {
         }
     }
 
+    // Approval gating (Phase 7d): a request for an approval-gated item is held —
+    // a pending approval row is created and auto-assign is deferred until the
+    // approver signs off (see api/tickets/decide_approval.php).
+    $holdForApproval = ($catalogItemId && $catRequiresApproval && $catApproverId);
+    if ($holdForApproval) {
+        $conn->prepare(
+            "INSERT INTO ticket_approvals (ticket_id, catalog_item_id, approver_analyst_id, status, requested_datetime)
+             VALUES (?, ?, ?, 'pending', UTC_TIMESTAMP())"
+        )->execute([$ticketId, $catalogItemId, $catApproverId]);
+    }
+
     $conn->commit();
 
     // Phase 7c × 6f: a catalog request routed to a department triggers that
     // department's auto-assign strategy. Best-effort, never blocks creation.
-    if ($catDepartmentId !== null) {
+    // Skipped while a request is held for approval (7d) — it auto-assigns on
+    // approval instead, so nobody picks it up before it's sanctioned.
+    if ($catDepartmentId !== null && !$holdForApproval) {
         require_once __DIR__ . '/../../includes/ticket_autoassign.php';
         try { autoassign_run($conn, (int)$ticketId); } catch (\Throwable $e) { error_log('autoassign (catalog) failed: ' . $e->getMessage()); }
     }

@@ -95,6 +95,21 @@ $translationNamespaces = ['common', 'self-service'];
             padding: 24px;
             margin-bottom: 20px;
         }
+        /* Phase 7d: approval status banner */
+        .approval-banner {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 13.5px;
+            border: 1px solid transparent;
+        }
+        .approval-banner .approval-icon { font-size: 18px; line-height: 1; }
+        .approval-pending  { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+        .approval-approved { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+        .approval-rejected { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
         .ticket-subject {
             font-size: 20px;
             font-weight: 600;
@@ -320,6 +335,15 @@ $translationNamespaces = ['common', 'self-service'];
                         <span class="ticket-meta-item">${escapeHtml(window.t('self-service.ticket.created', { date: created }))}</span>
                     </div>
                 </div>`;
+
+            // Phase 7d: approval status banner for approval-gated requests.
+            if (ticket.approval) {
+                const ap = ticket.approval;
+                let cls = 'approval-pending', icon = '⏳', text = 'This request is waiting for approval before our team picks it up.';
+                if (ap.status === 'approved') { cls = 'approval-approved'; icon = '✅'; text = 'This request was approved and is now with our team.'; }
+                else if (ap.status === 'rejected') { cls = 'approval-rejected'; icon = '⛔'; text = 'This request was not approved.' + (ap.note ? ' Reason: ' + ap.note : ''); }
+                html += '<div class="approval-banner ' + cls + '"><span class="approval-icon">' + icon + '</span><span>' + escapeHtml(text) + '</span></div>';
+            }
 
             if (recordings && recordings.length) {
                 html += '<div class="recordings-section"><h2>' + escapeHtml(window.t('self-service.ticket.screen_recordings')) + '</h2>';

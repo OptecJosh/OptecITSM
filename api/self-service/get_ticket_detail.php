@@ -80,6 +80,31 @@ try {
         // Table may not exist on installs that haven't run db_verify yet
     }
 
+    // Approval status (Phase 7d): if this was an approval-gated catalog request,
+    // surface where it stands so the requester isn't left wondering.
+    $ticket['approval'] = null;
+    try {
+        $apStmt = $conn->prepare(
+            "SELECT a.status, DATE_FORMAT(a.decided_datetime, '%Y-%m-%d %H:%i') AS decided, a.decision_note
+               FROM ticket_approvals a
+              WHERE a.ticket_id = ?
+           ORDER BY a.id DESC LIMIT 1"
+        );
+        $apStmt->execute([$ticketId]);
+        $ap = $apStmt->fetch(PDO::FETCH_ASSOC);
+        if ($ap) {
+            $ticket['approval'] = [
+                'status'  => $ap['status'],
+                'decided' => $ap['decided'],
+                // The internal note is only revealed to the requester on rejection
+                // (so they know why); approval notes stay internal.
+                'note'    => $ap['status'] === 'rejected' ? $ap['decision_note'] : null,
+            ];
+        }
+    } catch (Exception $e) {
+        // ticket_approvals may not exist yet on installs pre-db_verify
+    }
+
     echo json_encode([
         'success' => true,
         'ticket' => $ticket,

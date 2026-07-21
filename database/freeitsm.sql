@@ -695,6 +695,7 @@ CREATE TABLE IF NOT EXISTS `tickets` (
     -- the provider 24h service window — outside it, only template replies are allowed.
     `last_inbound_at`       DATETIME NULL,
     `merged_into_ticket_id` INT NULL,
+    `catalog_item_id`       INT NULL,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_tickets_number` (`ticket_number`),
     KEY `ix_tickets_status_id` (`status_id`),
@@ -2263,6 +2264,32 @@ CREATE TABLE IF NOT EXISTS `announcements` (
     PRIMARY KEY (`id`),
     KEY `ix_announcements_active` (`is_active`),
     CONSTRAINT `fk_announcements_creator` FOREIGN KEY (`created_by_analyst_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Service/request catalog (Phase 7c). Admins define request items with default
+-- routing; portal users pick one to raise a pre-configured ticket. form_id
+-- (Phase 7c-2) optionally attaches a structured form from the Forms module.
+CREATE TABLE IF NOT EXISTS `service_catalog_items` (
+    `id`                    INT NOT NULL AUTO_INCREMENT,
+    `name`                  VARCHAR(150) NOT NULL,
+    `description`           VARCHAR(1000) NULL,
+    `category_id`           INT NULL,
+    `department_id`         INT NULL,
+    `priority_id`           INT NULL,
+    `form_id`               INT NULL,
+    `icon`                  VARCHAR(40) NULL,
+    `is_active`             TINYINT(1) NOT NULL DEFAULT 1,
+    `display_order`         INT NOT NULL DEFAULT 0,
+    `created_by_analyst_id` INT NULL,
+    `created_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `ix_catalog_active` (`is_active`),
+    CONSTRAINT `fk_catalog_category`   FOREIGN KEY (`category_id`)   REFERENCES `ticket_categories` (`id`) ON DELETE SET NULL,
+    CONSTRAINT `fk_catalog_department` FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`) ON DELETE SET NULL,
+    CONSTRAINT `fk_catalog_priority`   FOREIGN KEY (`priority_id`)   REFERENCES `ticket_priorities` (`id`) ON DELETE SET NULL,
+    CONSTRAINT `fk_catalog_form`       FOREIGN KEY (`form_id`)       REFERENCES `forms` (`id`) ON DELETE SET NULL,
+    CONSTRAINT `fk_catalog_creator`    FOREIGN KEY (`created_by_analyst_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `knowledge_article_versions` (

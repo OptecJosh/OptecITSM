@@ -396,6 +396,12 @@ $translationNamespaces = ['common', 'tickets'];
                     <tr><td colspan="5" style="text-align: center;"><?php echo htmlspecialchars(t('tickets.settings.loading')); ?></td></tr>
                 </tbody>
             </table>
+            <!-- Phase 7c: the service catalog reuses this same capability -->
+            <div style="margin-top: 26px; padding: 14px 16px; background: var(--surface-alt, #f9fafb); border: 1px solid var(--border, #e5e7eb); border-radius: 8px;">
+                <strong style="color: var(--text, #222);">Service catalog</strong>
+                <p style="margin: 4px 0 10px; color: var(--text-muted, #666); font-size: 13px;">Define the request items shown on the self-service portal's &ldquo;Request something&rdquo; page, each with its own default routing.</p>
+                <a class="btn btn-secondary" href="<?php echo BASE_URL; ?>tickets/catalog.php">Manage service catalog →</a>
+            </div>
         </div>
 
         <!-- Custom Fields Tab -->

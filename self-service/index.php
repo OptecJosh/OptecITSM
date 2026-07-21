@@ -301,6 +301,7 @@ $translationNamespaces = ['common', 'self-service'];
         </div>
         <nav class="portal-nav">
             <a href="index.php" class="active"><?php echo htmlspecialchars(t('self-service.nav.dashboard')); ?></a>
+            <a href="catalog.php">Request</a>
             <a href="new-ticket.php"><?php echo htmlspecialchars(t('self-service.nav.new_ticket')); ?></a>
             <a href="knowledge.php">Knowledge</a>
             <a href="help.php"><?php echo htmlspecialchars(t('self-service.nav.help')); ?></a>

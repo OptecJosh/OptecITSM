@@ -492,6 +492,23 @@ $schema = [
         'updated_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
     ],
 
+    // Service/request catalog items (Phase 7c). form_id attaches a Form (7c-2).
+    'service_catalog_items' => [
+        'id'                    => 'INT NOT NULL AUTO_INCREMENT',
+        'name'                  => 'VARCHAR(150) NOT NULL',
+        'description'           => 'VARCHAR(1000) NULL',
+        'category_id'           => 'INT NULL',
+        'department_id'         => 'INT NULL',
+        'priority_id'           => 'INT NULL',
+        'form_id'               => 'INT NULL',
+        'icon'                  => 'VARCHAR(40) NULL',
+        'is_active'             => 'TINYINT(1) NOT NULL DEFAULT 1',
+        'display_order'         => 'INT NOT NULL DEFAULT 0',
+        'created_by_analyst_id' => 'INT NULL',
+        'created_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+        'updated_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
     'tickets' => [
         'id'                    => 'INT NOT NULL AUTO_INCREMENT',
         'tenant_id'             => 'INT NULL',
@@ -519,6 +536,7 @@ $schema = [
         // provider service window on the reply box). NULL for non-channel tickets.
         'last_inbound_at'       => 'DATETIME NULL',
         'merged_into_ticket_id' => 'INT NULL',
+        'catalog_item_id'       => 'INT NULL',
     ],
 
     'ticket_audit' => [
@@ -3531,6 +3549,36 @@ try {
         }
         if (!$fkExists('announcements', 'fk_announcements_creator')) {
             try { $conn->exec("ALTER TABLE announcements ADD CONSTRAINT fk_announcements_creator FOREIGN KEY (created_by_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+    }
+    // Service catalog items (Phase 7c): routing/link FKs all SET NULL so deleting
+    // a category/department/priority/form/analyst never blocks or drops an item.
+    if ($tableExists('service_catalog_items')) {
+        if (!$idxExists('service_catalog_items', 'ix_catalog_active')) {
+            try { $conn->exec("ALTER TABLE service_catalog_items ADD INDEX ix_catalog_active (is_active)"); } catch (Exception $e) {}
+        }
+        if ($tableExists('ticket_categories') && !$fkExists('service_catalog_items', 'fk_catalog_category')) {
+            try { $conn->exec("ALTER TABLE service_catalog_items ADD CONSTRAINT fk_catalog_category FOREIGN KEY (category_id) REFERENCES ticket_categories (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+        if ($tableExists('departments') && !$fkExists('service_catalog_items', 'fk_catalog_department')) {
+            try { $conn->exec("ALTER TABLE service_catalog_items ADD CONSTRAINT fk_catalog_department FOREIGN KEY (department_id) REFERENCES departments (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+        if ($tableExists('ticket_priorities') && !$fkExists('service_catalog_items', 'fk_catalog_priority')) {
+            try { $conn->exec("ALTER TABLE service_catalog_items ADD CONSTRAINT fk_catalog_priority FOREIGN KEY (priority_id) REFERENCES ticket_priorities (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+        if ($tableExists('forms') && !$fkExists('service_catalog_items', 'fk_catalog_form')) {
+            try { $conn->exec("ALTER TABLE service_catalog_items ADD CONSTRAINT fk_catalog_form FOREIGN KEY (form_id) REFERENCES forms (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+        if ($tableExists('analysts') && !$fkExists('service_catalog_items', 'fk_catalog_creator')) {
+            try { $conn->exec("ALTER TABLE service_catalog_items ADD CONSTRAINT fk_catalog_creator FOREIGN KEY (created_by_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+    }
+    if ($tableExists('tickets') && $colExists('tickets', 'catalog_item_id') && $tableExists('service_catalog_items')) {
+        if (!$idxExists('tickets', 'ix_tickets_catalog_item')) {
+            try { $conn->exec("ALTER TABLE tickets ADD INDEX ix_tickets_catalog_item (catalog_item_id)"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('tickets', 'fk_tickets_catalog_item')) {
+            try { $conn->exec("ALTER TABLE tickets ADD CONSTRAINT fk_tickets_catalog_item FOREIGN KEY (catalog_item_id) REFERENCES service_catalog_items (id) ON DELETE SET NULL"); } catch (Exception $e) {}
         }
     }
     // is_primary index on the ticket↔CI join (Phase 3b) — speeds "which CI drives SLA".

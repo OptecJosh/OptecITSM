@@ -26,6 +26,7 @@ $subject = trim($input['subject'] ?? '');
 $description = trim($input['description'] ?? '');
 $priority = $input['priority'] ?? 'Normal';
 $mailboxId = !empty($input['mailbox_id']) ? (int)$input['mailbox_id'] : null;
+$catalogItemId = !empty($input['catalog_item_id']) ? (int)$input['catalog_item_id'] : null;
 $inputAttachments = $input['attachments'] ?? [];
 $recordingIds = array_values(array_filter(array_map('intval', $input['recording_ids'] ?? [])));
 
@@ -36,6 +37,27 @@ if (empty($subject)) {
 
 try {
     $conn = connectToDatabase();
+
+    // Catalog request (Phase 7c): apply the item's default routing. An invalid or
+    // inactive item id is ignored (treated as a plain request).
+    $catCategoryId = null; $catDepartmentId = null;
+    if ($catalogItemId) {
+        $ci = $conn->prepare("SELECT category_id, department_id, priority_id FROM service_catalog_items WHERE id = ? AND is_active = 1");
+        $ci->execute([$catalogItemId]);
+        $item = $ci->fetch(PDO::FETCH_ASSOC);
+        if (!$item) {
+            $catalogItemId = null;
+        } else {
+            $catCategoryId   = $item['category_id']   !== null ? (int)$item['category_id']   : null;
+            $catDepartmentId = $item['department_id'] !== null ? (int)$item['department_id'] : null;
+            if ($item['priority_id'] !== null) {
+                $pn = $conn->prepare("SELECT name FROM ticket_priorities WHERE id = ?");
+                $pn->execute([(int)$item['priority_id']]);
+                $n = $pn->fetchColumn();
+                if ($n !== false) $priority = $n; // item's priority wins
+            }
+        }
+    }
 
     // Validate the submitted priority against the CONFIGURED active priorities
     // (not a hardcoded Low/Normal/High list) so custom priorities like
@@ -68,12 +90,13 @@ try {
 
     // Create ticket. Resolve status/priority names to ids via subselects.
     $ticketSql = "INSERT INTO tickets (
-        ticket_number, subject, status_id, priority_id,
+        ticket_number, subject, status_id, priority_id, department_id, category_id, catalog_item_id,
         user_id, created_datetime, updated_datetime
     ) VALUES (
         ?, ?,
         (SELECT id FROM ticket_statuses   WHERE name = 'Open' LIMIT 1),
         (SELECT id FROM ticket_priorities WHERE name = ? LIMIT 1),
+        ?, ?, ?,
         ?, UTC_TIMESTAMP(), UTC_TIMESTAMP()
     )";
 
@@ -82,6 +105,9 @@ try {
         $ticketNumber,
         $subject,
         $priority,
+        $catDepartmentId,
+        $catCategoryId,
+        $catalogItemId,
         $userId,
     ]);
 
@@ -153,6 +179,13 @@ try {
     }
 
     $conn->commit();
+
+    // Phase 7c × 6f: a catalog request routed to a department triggers that
+    // department's auto-assign strategy. Best-effort, never blocks creation.
+    if ($catDepartmentId !== null) {
+        require_once __DIR__ . '/../../includes/ticket_autoassign.php';
+        try { autoassign_run($conn, (int)$ticketId); } catch (\Throwable $e) { error_log('autoassign (catalog) failed: ' . $e->getMessage()); }
+    }
 
     // Claim any pending recordings this user uploaded for this ticket. File renames
     // happen outside the transaction (filesystem ops aren't transactional anyway).

@@ -330,6 +330,7 @@ $translationNamespaces = ['common', 'self-service'];
         </div>
         <nav class="portal-nav">
             <a href="index.php"><?php echo htmlspecialchars(t('self-service.nav.dashboard')); ?></a>
+            <a href="catalog.php">Request</a>
             <a href="new-ticket.php" class="active"><?php echo htmlspecialchars(t('self-service.nav.new_ticket')); ?></a>
             <a href="knowledge.php">Knowledge</a>
             <a href="help.php"><?php echo htmlspecialchars(t('self-service.nav.help')); ?></a>
@@ -342,6 +343,15 @@ $translationNamespaces = ['common', 'self-service'];
 
         <div class="error-message" id="errorMsg"></div>
         <div class="success-message" id="successMsg"></div>
+
+        <!-- Phase 7c: shows when arriving from the catalog (?catalog=ID) -->
+        <div class="catalog-banner" id="catalogBanner" style="display:none;">
+            <div class="catalog-banner-icon" id="catalogBannerIcon">🧾</div>
+            <div>
+                <div class="catalog-banner-title" id="catalogBannerTitle"></div>
+                <div class="catalog-banner-desc" id="catalogBannerDesc"></div>
+            </div>
+        </div>
 
         <div class="form-card" id="formCard">
             <form id="ticketForm" onsubmit="return handleSubmit(event)" autocomplete="off">
@@ -428,6 +438,7 @@ $translationNamespaces = ['common', 'self-service'];
     <script>
     let attachments = [];
     let recordings = []; // [{recording_id, name, size_bytes, duration_seconds}]
+    let catalogItemId = null; // Phase 7c: set when arriving via ?catalog=ID
 
     // Recording state
     let mediaRecorder = null;
@@ -443,12 +454,36 @@ $translationNamespaces = ['common', 'self-service'];
     document.addEventListener('DOMContentLoaded', function() {
         loadMailboxes();
         initDropzone();
+        loadCatalogItem();
 
         // Hide the record button entirely if the browser can't do screen capture
         if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
             document.getElementById('recordToggle').style.display = 'none';
         }
     });
+
+    // Phase 7c: if launched from the catalog (?catalog=ID), look the item up,
+    // show a banner, and prefill the subject. The item id rides along on submit
+    // so the server applies its routing/priority. Category/department/priority
+    // are configured server-side, so we don't need to reveal them here.
+    async function loadCatalogItem() {
+        const id = parseInt(new URLSearchParams(location.search).get('catalog'), 10);
+        if (!id) return;
+        try {
+            const resp = await fetch('../api/self-service/get_catalog.php');
+            const data = await resp.json();
+            if (!data.success) return;
+            const item = (data.items || []).find(i => i.id === id);
+            if (!item) return;
+            catalogItemId = id;
+            document.getElementById('catalogBannerTitle').textContent = item.name;
+            document.getElementById('catalogBannerDesc').textContent = item.description || '';
+            if (item.icon) document.getElementById('catalogBannerIcon').textContent = item.icon;
+            document.getElementById('catalogBanner').style.display = 'flex';
+            const subj = document.getElementById('subject');
+            if (subj && !subj.value) subj.value = item.name;
+        } catch (e) { /* fall back to a plain new-ticket form */ }
+    }
 
     function initDropzone() {
         const dropzone = document.getElementById('dropzone');
@@ -788,6 +823,7 @@ $translationNamespaces = ['common', 'self-service'];
                     subject: document.getElementById('subject').value.trim(),
                     priority: document.getElementById('priority').value,
                     description: document.getElementById('description').value.trim(),
+                    catalog_item_id: catalogItemId,
                     attachments: attachmentData,
                     recording_ids: recordings.map(r => r.recording_id)
                 })
@@ -822,6 +858,10 @@ $translationNamespaces = ['common', 'self-service'];
     }
     </script>
     <style>
+        .catalog-banner { display: flex; align-items: center; gap: 14px; background: #eef6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; }
+        .catalog-banner-icon { font-size: 26px; line-height: 1; }
+        .catalog-banner-title { font-size: 15px; font-weight: 600; color: #0f4c81; }
+        .catalog-banner-desc { font-size: 13px; color: #555; margin-top: 3px; }
         .kb-suggest { margin-top: 10px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px 12px; }
         .kb-suggest-head { font-size: 12.5px; color: #1e3a8a; font-weight: 600; margin-bottom: 6px; }
         .kb-suggest a { display: block; font-size: 13px; color: #0f4c81; text-decoration: none; padding: 3px 0; }

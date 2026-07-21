@@ -2098,6 +2098,10 @@ $schema = [
         'form_id'           => 'INT NOT NULL',
         'submitted_by'      => 'INT NULL',
         'submitted_date'    => 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP',
+        // Phase 7c-2: a portal catalog request that carries a form links its
+        // submission back to the raised ticket (SET NULL; submitted_by stays
+        // NULL for portal submitters — no analyst identity).
+        'ticket_id'         => 'INT NULL',
     ],
 
     'form_submission_data' => [
@@ -4635,6 +4639,10 @@ try {
         ['form_submission_data', 'fk_submission_data_submission', "ALTER TABLE form_submission_data ADD CONSTRAINT fk_submission_data_submission FOREIGN KEY (submission_id) REFERENCES form_submissions (id) ON DELETE CASCADE"],
         ['form_submission_data', 'fk_submission_data_field',     "ALTER TABLE form_submission_data ADD CONSTRAINT fk_submission_data_field FOREIGN KEY (field_id) REFERENCES form_fields (id)"],
     ];
+    // Phase 7c-2: submission → ticket link (only when both tables exist).
+    if ($tableExists('tickets') && $colExists('form_submissions', 'ticket_id')) {
+        $formsFks[] = ['form_submissions', 'fk_form_submissions_ticket', "ALTER TABLE form_submissions ADD CONSTRAINT fk_form_submissions_ticket FOREIGN KEY (ticket_id) REFERENCES tickets (id) ON DELETE SET NULL"];
+    }
     foreach ($formsFks as [$tbl, $name, $sql]) {
         if (!$tableExists($tbl) || $fkExists($tbl, $name)) continue;
         try { $conn->exec($sql); } catch (Exception $e) {}

@@ -45,6 +45,7 @@ $translationNamespaces = ['common', 'tickets'];
         .sc-item-name { font-weight: 600; }
         .sc-item-icon { margin-right: 7px; }
         .sc-item-desc { color: var(--text-dim, #6b7280); font-size: 12px; margin-top: 2px; }
+        .sc-item-form { color: #0f4c81; font-size: 11.5px; font-weight: 600; margin-top: 4px; }
         .sc-pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600; }
         .sc-pill.on  { background: #dcfce7; color: #166534; }
         .sc-pill.off { background: #f3f4f6; color: #6b7280; }
@@ -135,6 +136,10 @@ $translationNamespaces = ['common', 'tickets'];
                         <input type="text" id="scOrder" inputmode="numeric" placeholder="0">
                     </div>
                 </div>
+                <div class="sc-field">
+                    <label for="scForm">Attach a form <span class="sc-muted" style="font-weight:400;">— the requester fills it in when raising this request</span></label>
+                    <select id="scForm"><option value="">— No form —</option></select>
+                </div>
                 <div class="sc-row2">
                     <div class="sc-field">
                         <label for="scIcon">Icon (emoji)</label>
@@ -157,7 +162,7 @@ $translationNamespaces = ['common', 'tickets'];
 
     <script>
         const SC_API = '../api/tickets/';
-        let scLookups = { categories: [], departments: [], priorities: [] };
+        let scLookups = { categories: [], departments: [], priorities: [], forms: [] };
         let scItems = [];
 
         function scEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); }
@@ -171,9 +176,12 @@ $translationNamespaces = ['common', 'tickets'];
             scLookups.categories = data.categories || [];
             scLookups.departments = data.departments || [];
             scLookups.priorities = data.priorities || [];
+            // Forms expose `title`; normalise to {id,name} so scFillSelect works.
+            scLookups.forms = (data.forms || []).map(f => ({ id: f.id, name: f.title }));
             scFillSelect('scCategory', scLookups.categories, '— None —');
             scFillSelect('scDepartment', scLookups.departments, '— None —');
             scFillSelect('scPriority', scLookups.priorities, '— Requester chooses —');
+            scFillSelect('scForm', scLookups.forms, '— No form —');
             scRender();
         }
 
@@ -191,7 +199,8 @@ $translationNamespaces = ['common', 'tickets'];
             }
             tb.innerHTML = scItems.map(it => {
                 const icon = it.icon ? '<span class="sc-item-icon">' + scEsc(it.icon) + '</span>' : '';
-                const desc = it.description ? '<div class="sc-item-desc">' + scEsc(it.description) + '</div>' : '';
+                const form = it.form_title ? '<div class="sc-item-form">📋 ' + scEsc(it.form_title) + '</div>' : '';
+                const desc = (it.description ? '<div class="sc-item-desc">' + scEsc(it.description) + '</div>' : '') + form;
                 const cat = it.category_name ? scEsc(it.category_name) : '<span class="sc-muted">—</span>';
                 const dep = it.department_name ? scEsc(it.department_name) : '<span class="sc-muted">Unrouted</span>';
                 const pri = it.priority_name ? scEsc(it.priority_name) : '<span class="sc-muted">Requester picks</span>';
@@ -219,6 +228,7 @@ $translationNamespaces = ['common', 'tickets'];
             document.getElementById('scCategory').value = it && it.category_id ? it.category_id : '';
             document.getElementById('scDepartment').value = it && it.department_id ? it.department_id : '';
             document.getElementById('scPriority').value = it && it.priority_id ? it.priority_id : '';
+            document.getElementById('scForm').value = it && it.form_id ? it.form_id : '';
             document.getElementById('scOrder').value = it ? (it.display_order || 0) : 0;
             document.getElementById('scIcon').value = it && it.icon ? it.icon : '';
             document.getElementById('scActive').checked = it ? !!it.is_active : true;
@@ -242,6 +252,7 @@ $translationNamespaces = ['common', 'tickets'];
                 category_id: document.getElementById('scCategory').value || null,
                 department_id: document.getElementById('scDepartment').value || null,
                 priority_id: document.getElementById('scPriority').value || null,
+                form_id: document.getElementById('scForm').value || null,
                 display_order: parseInt(document.getElementById('scOrder').value, 10) || 0,
                 icon: document.getElementById('scIcon').value.trim(),
                 is_active: document.getElementById('scActive').checked ? 1 : 0

@@ -399,6 +399,8 @@ $translationNamespaces = ['common', 'self-service'];
                     <label for="description"><?php echo htmlspecialchars(t('self-service.new_ticket.description')); ?></label>
                     <textarea id="description" placeholder="<?php echo htmlspecialchars(t('self-service.new_ticket.description_placeholder')); ?>"></textarea>
                 </div>
+                <!-- Phase 7c-2: fields of the form attached to the chosen catalog item -->
+                <div id="catalogFormWrap" style="display:none;"></div>
                 <div class="form-group">
                     <label><?php echo htmlspecialchars(t('self-service.new_ticket.attachments')); ?></label>
                     <div class="dropzone" id="dropzone">
@@ -439,6 +441,7 @@ $translationNamespaces = ['common', 'self-service'];
     let attachments = [];
     let recordings = []; // [{recording_id, name, size_bytes, duration_seconds}]
     let catalogItemId = null; // Phase 7c: set when arriving via ?catalog=ID
+    let catalogForm = null;   // Phase 7c-2: the form attached to that item, if any
 
     // Recording state
     let mediaRecorder = null;
@@ -482,7 +485,91 @@ $translationNamespaces = ['common', 'self-service'];
             document.getElementById('catalogBanner').style.display = 'flex';
             const subj = document.getElementById('subject');
             if (subj && !subj.value) subj.value = item.name;
+            if (item.has_form) loadCatalogForm(id);
         } catch (e) { /* fall back to a plain new-ticket form */ }
+    }
+
+    // Phase 7c-2: render the attached form's fields inline.
+    async function loadCatalogForm(catalogItemId) {
+        try {
+            const resp = await fetch('../api/self-service/get_catalog_form.php?catalog_item_id=' + catalogItemId);
+            const data = await resp.json();
+            if (!data.success || !data.form || !data.form.fields.length) return;
+            catalogForm = data.form;
+            renderCatalogForm(catalogForm);
+        } catch (e) { /* no form → plain request */ }
+    }
+
+    function renderCatalogForm(form) {
+        const wrap = document.getElementById('catalogFormWrap');
+        let html = '<div class="cf-section-title">' + escapeHtml(form.title || 'Request details') + '</div>';
+        form.fields.forEach(f => {
+            const req = f.is_required ? '<span class="req">*</span>' : '';
+            const name = 'cf_' + f.id;
+            let opts = [];
+            if (f.options) { try { const p = JSON.parse(f.options); if (Array.isArray(p)) opts = p; } catch (e) {} }
+            html += '<div class="cf-field" data-field-id="' + f.id + '" data-type="' + escapeHtml(f.field_type) + '">';
+            if (f.field_type === 'checkbox') {
+                html += '<label class="cf-choice"><input type="checkbox" id="' + name + '"> ' + escapeHtml(f.label) + req + '</label>';
+            } else {
+                html += '<label for="' + name + '">' + escapeHtml(f.label) + req + '</label>';
+                switch (f.field_type) {
+                    case 'textarea':
+                        html += '<textarea id="' + name + '"></textarea>';
+                        break;
+                    case 'email':
+                        html += '<input type="email" id="' + name + '">';
+                        break;
+                    case 'number':
+                        html += '<input type="number" id="' + name + '">';
+                        break;
+                    case 'dropdown':
+                        html += '<select id="' + name + '"><option value="">— Select —</option>' +
+                            opts.map(o => '<option value="' + escapeHtml(o) + '">' + escapeHtml(o) + '</option>').join('') + '</select>';
+                        break;
+                    case 'radio':
+                        html += opts.map((o, i) => '<label class="cf-choice"><input type="radio" name="' + name + '" value="' + escapeHtml(o) + '"> ' + escapeHtml(o) + '</label>').join('');
+                        break;
+                    case 'checkboxes':
+                        html += opts.map(o => '<label class="cf-choice"><input type="checkbox" name="' + name + '" value="' + escapeHtml(o) + '"> ' + escapeHtml(o) + '</label>').join('');
+                        break;
+                    default: // text
+                        html += '<input type="text" id="' + name + '">';
+                }
+            }
+            html += '</div>';
+        });
+        wrap.innerHTML = html;
+        wrap.style.display = 'block';
+    }
+
+    // Returns { answers: {field_id: value}, error: string|null } — validates required.
+    function collectCatalogForm() {
+        if (!catalogForm) return { answers: null, error: null };
+        const answers = {};
+        for (const f of catalogForm.fields) {
+            const name = 'cf_' + f.id;
+            let val;
+            if (f.field_type === 'checkbox') {
+                val = document.getElementById(name).checked ? '1' : '0';
+            } else if (f.field_type === 'radio') {
+                const sel = document.querySelector('input[name="' + name + '"]:checked');
+                val = sel ? sel.value : '';
+            } else if (f.field_type === 'checkboxes') {
+                val = Array.from(document.querySelectorAll('input[name="' + name + '"]:checked')).map(c => c.value);
+            } else {
+                const el = document.getElementById(name);
+                val = el ? el.value.trim() : '';
+            }
+            if (f.is_required) {
+                const empty = (f.field_type === 'checkbox') ? val !== '1'
+                    : (f.field_type === 'checkboxes') ? val.length === 0
+                    : val === '';
+                if (empty) return { answers: null, error: '"' + f.label + '" is required.' };
+            }
+            answers[f.id] = val;
+        }
+        return { answers, error: null };
     }
 
     function initDropzone() {
@@ -804,6 +891,16 @@ $translationNamespaces = ['common', 'self-service'];
         const successEl = document.getElementById('successMsg');
         errEl.style.display = 'none';
         successEl.style.display = 'none';
+
+        // Phase 7c-2: validate + collect any attached-form answers before posting.
+        const cf = collectCatalogForm();
+        if (cf.error) {
+            errEl.textContent = cf.error;
+            errEl.style.display = 'block';
+            document.getElementById('catalogFormWrap').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+        }
+
         btn.disabled = true;
         btn.textContent = window.t('self-service.new_ticket.submitting');
 
@@ -824,6 +921,7 @@ $translationNamespaces = ['common', 'self-service'];
                     priority: document.getElementById('priority').value,
                     description: document.getElementById('description').value.trim(),
                     catalog_item_id: catalogItemId,
+                    form_answers: cf.answers,
                     attachments: attachmentData,
                     recording_ids: recordings.map(r => r.recording_id)
                 })
@@ -862,6 +960,16 @@ $translationNamespaces = ['common', 'self-service'];
         .catalog-banner-icon { font-size: 26px; line-height: 1; }
         .catalog-banner-title { font-size: 15px; font-weight: 600; color: #0f4c81; }
         .catalog-banner-desc { font-size: 13px; color: #555; margin-top: 3px; }
+        .cf-section-title { font-size: 13px; font-weight: 700; color: #333; text-transform: uppercase; letter-spacing: .03em; margin: 4px 0 14px; }
+        .cf-field { margin-bottom: 18px; }
+        .cf-field > label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: #333; }
+        .cf-field .req { color: #dc2626; margin-left: 2px; }
+        .cf-field input[type=text], .cf-field input[type=email], .cf-field input[type=number], .cf-field textarea, .cf-field select {
+            width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; font-family: inherit; box-sizing: border-box;
+        }
+        .cf-field textarea { min-height: 90px; resize: vertical; }
+        .cf-choice { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 400; color: #333; margin-bottom: 6px; }
+        .cf-choice input { width: auto; }
         .kb-suggest { margin-top: 10px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px 12px; }
         .kb-suggest-head { font-size: 12.5px; color: #1e3a8a; font-weight: 600; margin-bottom: 6px; }
         .kb-suggest a { display: block; font-size: 13px; color: #0f4c81; text-decoration: none; padding: 3px 0; }

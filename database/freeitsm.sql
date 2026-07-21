@@ -2606,8 +2606,12 @@ CREATE TABLE IF NOT EXISTS `form_submissions` (
     `form_id`           INT NOT NULL,
     `submitted_by`      INT NULL,
     `submitted_date`    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- Phase 7c-2: set when the submission came from a portal catalog request,
+    -- linking it to the ticket that was raised (SET NULL if the ticket is gone).
+    `ticket_id`         INT NULL,
     PRIMARY KEY (`id`),
-    CONSTRAINT `fk_form_submissions_form` FOREIGN KEY (`form_id`) REFERENCES `forms` (`id`)
+    CONSTRAINT `fk_form_submissions_form` FOREIGN KEY (`form_id`) REFERENCES `forms` (`id`),
+    CONSTRAINT `fk_form_submissions_ticket` FOREIGN KEY (`ticket_id`) REFERENCES `tickets` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `form_submission_data` (

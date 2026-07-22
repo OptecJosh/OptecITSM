@@ -66,6 +66,11 @@ function renderTiles(tiles) {
             <div class="tile-label">SLA breach rate</div>
             <div class="tile-value">${exEsc(slaValue)}</div>
             <div class="tile-sub">${exEsc(slaSub)} · resolution</div>
+        </div>
+        <div class="exec-tile">
+            <div class="tile-label">Licences over-deployed</div>
+            <div class="tile-value">${Number(tiles.licence_over_deployed || 0).toLocaleString()}</div>
+            <div class="tile-sub">Apps installed beyond entitlement · all software</div>
         </div>`;
 }
 

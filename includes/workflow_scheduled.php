@@ -204,6 +204,62 @@ function workflowEmitWarrantyExpiries(PDO $conn): int
 }
 
 /**
+ * Software licences approaching their renewal date → `licence.expiring`.
+ *
+ * The same treatment contracts already get (renewal_date was stored but nothing
+ * ever fired). renewal_date is the fingerprint, so renewing a licence re-arms
+ * every window for the new date.
+ */
+function workflowEmitLicenceExpiries(PDO $conn): int
+{
+    $fired = 0;
+    $windows = workflowExpiryWindows();
+    $maxWindow = max($windows);
+
+    $rows = $conn->prepare(
+        "SELECT l.id, l.app_id, l.licence_type, l.renewal_date, l.cost, l.currency, l.quantity,
+                a.display_name AS app_name,
+                DATEDIFF(l.renewal_date, CURDATE()) AS days_remaining
+           FROM software_licences l
+      LEFT JOIN software_inventory_apps a ON a.id = l.app_id
+          WHERE l.status = 'Active'
+            AND l.renewal_date IS NOT NULL
+            AND l.renewal_date >= CURDATE()
+            AND l.renewal_date <= DATE_ADD(CURDATE(), INTERVAL ? DAY)"
+    );
+    $rows->execute([$maxWindow]);
+
+    foreach ($rows->fetchAll(PDO::FETCH_ASSOC) as $l) {
+        $days = (int)$l['days_remaining'];
+        foreach ($windows as $w) {
+            if ($days > $w) continue;
+
+            $fired += workflowEmitOnce(
+                $conn,
+                'licence.expiring',
+                'licence:' . (int)$l['id'] . ':' . $w,
+                (string)$l['renewal_date'],
+                [
+                    'licence' => [
+                        'id'             => (int)$l['id'],
+                        'app_id'         => (int)$l['app_id'],
+                        'app_name'       => $l['app_name'],
+                        'licence_type'   => $l['licence_type'],
+                        'renewal_date'   => $l['renewal_date'],
+                        'days_remaining' => $days,
+                        'quantity'       => $l['quantity'] !== null ? (int)$l['quantity'] : null,
+                        'cost'           => $l['cost'] !== null ? (float)$l['cost'] : null,
+                        'currency'       => $l['currency'],
+                    ],
+                    'window_days' => $w,
+                ]
+            ) ? 1 : 0;
+        }
+    }
+    return $fired;
+}
+
+/**
  * Everything the scheduled-trigger cron runs. SLA events are NOT here — they're
  * emitted from sla_run_breach_check(), which already walks every open ticket and
  * computes its SLA state, so emitting from there costs nothing and cannot drift
@@ -214,6 +270,7 @@ function workflowScheduledRun(PDO $conn): array
     return [
         'contract_expiring'        => workflowEmitContractExpiries($conn),
         'asset_warranty_expiring'  => workflowEmitWarrantyExpiries($conn),
+        'licence_expiring'         => workflowEmitLicenceExpiries($conn),
     ];
 }
 

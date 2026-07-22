@@ -115,6 +115,25 @@ try {
         $aParams
     );
 
+    // --- Licence over-deployment (Phase 9a; global — software has no tenant) -
+    // Count apps where installed hosts exceed entitled seats. try/caught so a
+    // system without software inventory just reports 0.
+    $overDeployed = 0;
+    try {
+        $stmt = $conn->query(
+            "SELECT COUNT(*) FROM (
+                SELECT a.id,
+                       COALESCE((SELECT SUM(l.quantity) FROM software_licences l
+                                  WHERE l.app_id = a.id AND l.status = 'Active' AND l.quantity IS NOT NULL), 0) AS entitled,
+                       (SELECT COUNT(DISTINCT d.host_id) FROM software_inventory_detail d
+                         WHERE d.app_id = a.id) AS installed
+                  FROM software_inventory_apps a
+                 WHERE EXISTS (SELECT 1 FROM software_licences l WHERE l.app_id = a.id AND l.status = 'Active')
+            ) x WHERE x.installed > x.entitled"
+        );
+        $overDeployed = (int)$stmt->fetchColumn();
+    } catch (Exception $e) { /* leave 0 */ }
+
     // --- Changes by state (cross-module; generic tenant scope) -------------
     list($cSql, $cParams) = activeTenantFilter($conn, $analystId, 'c', 'tenant_id');
     $changesByState = exec_group_query(
@@ -134,6 +153,7 @@ try {
         'tiles' => [
             'open_tickets' => $openTickets,
             'sla' => ['pct' => $slaPct, 'breached' => $slaBreached, 'tracked' => $slaTracked],
+            'licence_over_deployed' => $overDeployed,
         ],
         'charts' => [
             'open_by_priority' => $openByPriority,

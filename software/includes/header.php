@@ -56,6 +56,13 @@ require_once $path_prefix . 'includes/waffle-menu.php';
             </svg>
             <span><?php echo htmlspecialchars(function_exists('t') ? t('software.nav.licences') : 'Licences'); ?></span>
         </a>
+        <a href="<?php echo BASE_URL; ?>software/compliance/" class="nav-btn <?php echo $current_page === 'compliance' ? 'active' : ''; ?>" title="Licence compliance">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 11l3 3L22 4"></path>
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+            </svg>
+            <span>Compliance</span>
+        </a>
         <a href="<?php echo BASE_URL; ?>software/settings/" class="nav-btn <?php echo $current_page === 'settings' ? 'active' : ''; ?>" title="<?php echo htmlspecialchars(function_exists('t') ? t('software.nav.settings_title') : 'Software Settings'); ?>">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="3"></circle>

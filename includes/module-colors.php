@@ -32,6 +32,7 @@ $defaultModuleColors = [
     // staying in the same "automation" colour family (matches the amber
     // accents inside the workflow module's own CSS).
     'workflow'       => ['#ea580c', '#c2410c'],
+    'overtime'       => ['#c026d3', '#a21caf'],
     'system'        => ['#546e7a', '#37474f'],
 ];
 

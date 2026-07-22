@@ -147,6 +147,11 @@ $modules = [
         'path' => 'workflow/',
         'icon' => '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline><circle cx="6" cy="12" r="2"></circle><circle cx="18" cy="12" r="2"></circle>'
     ],
+    'overtime' => [
+        'name' => t('common.modules.overtime.name'),
+        'path' => 'overtime/',
+        'icon' => '<circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>'
+    ],
     'system' => [
         'name' => t('common.modules.system.name'),
         'path' => 'system/',

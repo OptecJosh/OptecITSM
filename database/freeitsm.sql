@@ -39,8 +39,11 @@ CREATE TABLE IF NOT EXISTS `analysts` (
     -- Module access (issue #30). 1 = all modules; 0 = restricted to analyst_modules
     -- (+ team grants). New analysts default unrestricted.
     `can_access_all_modules`    TINYINT(1) NOT NULL DEFAULT 1,
+    -- Line manager (Phase 11 overtime approval routing). Self-referential.
+    `manager_id`                INT NULL,
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uq_analysts_username` (`username`)
+    UNIQUE KEY `uq_analysts_username` (`username`),
+    CONSTRAINT `fk_analysts_manager` FOREIGN KEY (`manager_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------
@@ -4134,6 +4137,65 @@ WHERE NOT EXISTS (SELECT 1 FROM `cmdb_relationship_types` WHERE verb = 'connects
 INSERT INTO `cmdb_relationship_types` (`verb`, `inverse_verb`, `description`, `display_order`)
 SELECT * FROM (SELECT 'managed by'  AS verb, 'manages'           AS inverse_verb, 'A is administered by B'           AS description, 30 AS display_order) AS t
 WHERE NOT EXISTS (SELECT 1 FROM `cmdb_relationship_types` WHERE verb = 'managed by');
+
+-- ----------------------------------------------------------
+-- Agent overtime (Phase 11): agents log overtime, their line manager approves,
+-- managers report/export for payroll. rate_multiplier is snapshotted from
+-- overtime_settings at submit time so later multiplier changes don't rewrite
+-- history. tenant_id scopes an entry to its company.
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `overtime_requests` (
+    `id`                 INT NOT NULL AUTO_INCREMENT,
+    `analyst_id`         INT NOT NULL,
+    `tenant_id`          INT NULL,
+    `work_date`          DATE NOT NULL,
+    `start_time`         TIME NOT NULL,
+    `end_time`           TIME NOT NULL,
+    `hours`              DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+    `overtime_type`      VARCHAR(20) NOT NULL DEFAULT 'standard',
+    `rate_multiplier`    DECIMAL(4,2) NOT NULL DEFAULT 1.00,
+    `reason`             VARCHAR(500) NULL,
+    `status`             ENUM('pending','approved','rejected','cancelled') NOT NULL DEFAULT 'pending',
+    `submitted_datetime` DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    `decided_by_id`      INT NULL,
+    `decided_datetime`   DATETIME NULL,
+    `decision_note`      VARCHAR(500) NULL,
+    `created_datetime`   DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_datetime`   DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `ix_overtime_analyst_date` (`analyst_id`, `work_date`),
+    KEY `ix_overtime_status` (`status`),
+    CONSTRAINT `fk_overtime_analyst` FOREIGN KEY (`analyst_id`)   REFERENCES `analysts` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_overtime_decider` FOREIGN KEY (`decided_by_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL,
+    CONSTRAINT `fk_overtime_tenant`  FOREIGN KEY (`tenant_id`)    REFERENCES `tenants` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `overtime_audit` (
+    `id`               INT NOT NULL AUTO_INCREMENT,
+    `request_id`       INT NOT NULL,
+    `analyst_id`       INT NULL,
+    `action_type`      VARCHAR(50) NOT NULL,
+    `old_value`        VARCHAR(500) NULL,
+    `new_value`        VARCHAR(500) NULL,
+    `note`             VARCHAR(500) NULL,
+    `created_datetime` DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `ix_overtime_audit_request` (`request_id`),
+    CONSTRAINT `fk_overtime_audit_request` FOREIGN KEY (`request_id`) REFERENCES `overtime_requests` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `overtime_settings` (
+    `setting_key`      VARCHAR(100) NOT NULL,
+    `setting_value`    VARCHAR(255) NULL,
+    `updated_datetime` DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`setting_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `overtime_settings` (`setting_key`, `setting_value`) SELECT * FROM (SELECT 'ot_multiplier_standard' AS k, '1.00' AS v) t WHERE NOT EXISTS (SELECT 1 FROM `overtime_settings` WHERE setting_key = 'ot_multiplier_standard');
+INSERT INTO `overtime_settings` (`setting_key`, `setting_value`) SELECT * FROM (SELECT 'ot_multiplier_time_and_half' AS k, '1.50' AS v) t WHERE NOT EXISTS (SELECT 1 FROM `overtime_settings` WHERE setting_key = 'ot_multiplier_time_and_half');
+INSERT INTO `overtime_settings` (`setting_key`, `setting_value`) SELECT * FROM (SELECT 'ot_multiplier_double' AS k, '2.00' AS v) t WHERE NOT EXISTS (SELECT 1 FROM `overtime_settings` WHERE setting_key = 'ot_multiplier_double');
+INSERT INTO `overtime_settings` (`setting_key`, `setting_value`) SELECT * FROM (SELECT 'ot_max_daily_hours' AS k, '16' AS v) t WHERE NOT EXISTS (SELECT 1 FROM `overtime_settings` WHERE setting_key = 'ot_max_daily_hours');
+INSERT INTO `overtime_settings` (`setting_key`, `setting_value`) SELECT * FROM (SELECT 'ot_approval_required' AS k, '1' AS v) t WHERE NOT EXISTS (SELECT 1 FROM `overtime_settings` WHERE setting_key = 'ot_approval_required');
 
 SET FOREIGN_KEY_CHECKS = 1;
 

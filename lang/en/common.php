@@ -124,6 +124,7 @@ return [
         'cmdb'           => ['name' => 'CMDB',        'description' => 'Configuration Management Database'],
         'network-mapper' => ['name' => 'Network',     'description' => 'Design and document network diagrams'],
         'workflow'       => ['name' => 'Workflows',   'description' => 'Cross-module automation — triggers, conditions, actions'],
+        'overtime'       => ['name' => 'Overtime',    'description' => 'Submit, approve and report on staff overtime'],
         'system'         => ['name' => 'System',      'description' => 'System administration and configuration'],
     ],
 

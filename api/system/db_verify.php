@@ -56,6 +56,7 @@ $schema = [
         // non-admin; existing analysts are grandfathered to admin on first upgrade
         // (see the one-time backfill below) so nobody is locked out.
         'is_admin'               => 'TINYINT(1) NOT NULL DEFAULT 0',
+        'manager_id'             => 'INT NULL',   // line manager (Phase 11 overtime approval routing)
         // Module access (issue #30) — mirrors can_access_all_tenants. 1 = every
         // module; 0 = restricted to analyst_modules (+ any team grants). Defaults to
         // 1 so a new analyst is unrestricted; the upgrade back-fill sets it to 0 for
@@ -1347,6 +1348,44 @@ $schema = [
         'created_by_id'                 => 'INT NULL',
         'created_datetime'              => 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP',
         'modified_datetime'             => 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
+    // Agent overtime (Phase 11). overtime_requests holds each logged entry;
+    // rate_multiplier is snapshotted from overtime_settings at submit time.
+    'overtime_requests' => [
+        'id'                 => 'INT NOT NULL AUTO_INCREMENT',
+        'analyst_id'         => 'INT NOT NULL',
+        'tenant_id'          => 'INT NULL',
+        'work_date'          => 'DATE NOT NULL',
+        'start_time'         => 'TIME NOT NULL',
+        'end_time'           => 'TIME NOT NULL',
+        'hours'              => 'DECIMAL(5,2) NOT NULL DEFAULT 0.00',
+        'overtime_type'      => "VARCHAR(20) NOT NULL DEFAULT 'standard'",
+        'rate_multiplier'    => 'DECIMAL(4,2) NOT NULL DEFAULT 1.00',
+        'reason'             => 'VARCHAR(500) NULL',
+        'status'             => "ENUM('pending','approved','rejected','cancelled') NOT NULL DEFAULT 'pending'",
+        'submitted_datetime' => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+        'decided_by_id'      => 'INT NULL',
+        'decided_datetime'   => 'DATETIME NULL',
+        'decision_note'      => 'VARCHAR(500) NULL',
+        'created_datetime'   => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+        'updated_datetime'   => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+    'overtime_audit' => [
+        'id'               => 'INT NOT NULL AUTO_INCREMENT',
+        'request_id'       => 'INT NOT NULL',
+        'analyst_id'       => 'INT NULL',   // actor; NULL = system
+        'action_type'      => 'VARCHAR(50) NOT NULL',
+        'old_value'        => 'VARCHAR(500) NULL',
+        'new_value'        => 'VARCHAR(500) NULL',
+        'note'             => 'VARCHAR(500) NULL',
+        'created_datetime' => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+    // Global key/value (per-tenant settings deferred). PK = setting_key.
+    'overtime_settings' => [
+        'setting_key'      => 'VARCHAR(100) NOT NULL',
+        'setting_value'    => 'VARCHAR(255) NULL',
+        'updated_datetime' => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
     ],
 
     // Change freeze / blackout windows (Phase 9b). Global-scope v1; soft warning.
@@ -2797,6 +2836,7 @@ $primaryKeys = [
     'ticket_tag_map'            => null, // composite PK: ticket_id, tag_id
     'department_assignment_config' => 'department_id', // single non-id PK
     'ticket_sla_snapshot'          => 'ticket_id',      // single non-id PK (Phase 8a)
+    'overtime_settings'            => 'setting_key',     // single non-id PK (Phase 11)
 ];
 
 try {
@@ -3742,6 +3782,47 @@ try {
         }
         if ($tableExists('analysts') && !$fkExists('change_cmdb_objects', 'fk_change_cmdb_creator')) {
             try { $conn->exec("ALTER TABLE change_cmdb_objects ADD CONSTRAINT fk_change_cmdb_creator FOREIGN KEY (created_by_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+    }
+
+    // Overtime (Phase 11) — indexes, FKs, and default settings seed.
+    if ($tableExists('analysts') && $colExists('analysts', 'manager_id') && !$fkExists('analysts', 'fk_analysts_manager')) {
+        try { $conn->exec("ALTER TABLE analysts ADD CONSTRAINT fk_analysts_manager FOREIGN KEY (manager_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+    }
+    if ($tableExists('overtime_requests')) {
+        foreach (['ix_overtime_analyst_date' => '(analyst_id, work_date)', 'ix_overtime_status' => '(status)'] as $idx => $cols) {
+            if (!$idxExists('overtime_requests', $idx)) {
+                try { $conn->exec("ALTER TABLE overtime_requests ADD INDEX $idx $cols"); } catch (Exception $e) {}
+            }
+        }
+        if ($tableExists('analysts') && !$fkExists('overtime_requests', 'fk_overtime_analyst')) {
+            try { $conn->exec("ALTER TABLE overtime_requests ADD CONSTRAINT fk_overtime_analyst FOREIGN KEY (analyst_id) REFERENCES analysts (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if ($tableExists('analysts') && !$fkExists('overtime_requests', 'fk_overtime_decider')) {
+            try { $conn->exec("ALTER TABLE overtime_requests ADD CONSTRAINT fk_overtime_decider FOREIGN KEY (decided_by_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+        if ($tableExists('tenants') && !$fkExists('overtime_requests', 'fk_overtime_tenant')) {
+            try { $conn->exec("ALTER TABLE overtime_requests ADD CONSTRAINT fk_overtime_tenant FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+    }
+    if ($tableExists('overtime_audit') && $tableExists('overtime_requests')) {
+        if (!$idxExists('overtime_audit', 'ix_overtime_audit_request')) {
+            try { $conn->exec("ALTER TABLE overtime_audit ADD INDEX ix_overtime_audit_request (request_id)"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('overtime_audit', 'fk_overtime_audit_request')) {
+            try { $conn->exec("ALTER TABLE overtime_audit ADD CONSTRAINT fk_overtime_audit_request FOREIGN KEY (request_id) REFERENCES overtime_requests (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+    }
+    if ($tableExists('overtime_settings')) {
+        $otDefaults = [
+            'ot_multiplier_standard'       => '1.00',
+            'ot_multiplier_time_and_half'  => '1.50',
+            'ot_multiplier_double'         => '2.00',
+            'ot_max_daily_hours'           => '16',
+            'ot_approval_required'         => '1',
+        ];
+        foreach ($otDefaults as $k => $v) {
+            try { $conn->prepare("INSERT IGNORE INTO overtime_settings (setting_key, setting_value, updated_datetime) VALUES (?, ?, UTC_TIMESTAMP())")->execute([$k, $v]); } catch (Exception $e) {}
         }
     }
 

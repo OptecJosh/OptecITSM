@@ -11,6 +11,7 @@ require_once '../../config.php';
 require_once '../../includes/functions.php';
 require_once '../../includes/tenancy.php';
 require_once '../../includes/services/changes.php';
+require_once '../../includes/change_freeze.php';
 
 header('Content-Type: application/json');
 
@@ -56,7 +57,16 @@ try {
         $tenantId = getActiveTenantId($conn, $ctx->actorId);
         $changeId = ChangesService::createChange($conn, $ctx, $tenantId, $in);
     }
-    echo json_encode(['success' => true, 'change_id' => $changeId, 'message' => 'Change saved successfully']);
+    // Phase 9b: soft freeze-window warning (non-blocking). Null when the change
+    // is unscheduled, emergency, or its planned window hits no active freeze.
+    $freezeWarning = change_freeze_warning_for_change($conn, (int)$changeId);
+
+    echo json_encode([
+        'success'        => true,
+        'change_id'      => $changeId,
+        'message'        => 'Change saved successfully',
+        'freeze_warning' => $freezeWarning,
+    ]);
 } catch (ServiceError $e) {
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
 } catch (Exception $e) {

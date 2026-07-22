@@ -1901,6 +1901,29 @@ CREATE TABLE IF NOT EXISTS `changes` (
     CONSTRAINT `fk_changes_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ----------------------------------------------------------
+-- Change freeze / blackout windows (Phase 9b): periods during which changes
+-- should not be scheduled/implemented (e.g. a year-end freeze). v1 is
+-- global-scope (applies to all changes); Emergency-type changes are exempt.
+-- The guardrail is a SOFT WARNING — scheduling/approving a change inside a
+-- freeze surfaces a warning, it does not hard-block. Category/department
+-- scoping is deferred until there's a clean change-category model.
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `change_freeze_windows` (
+    `id`                    INT NOT NULL AUTO_INCREMENT,
+    `name`                  VARCHAR(150) NOT NULL,
+    `starts_at`             DATETIME NOT NULL,
+    `ends_at`               DATETIME NOT NULL,
+    `reason`                VARCHAR(500) NULL,
+    `is_active`             TINYINT(1) NOT NULL DEFAULT 1,
+    `created_by_analyst_id` INT NULL,
+    `created_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `ix_change_freeze_active` (`is_active`, `starts_at`, `ends_at`),
+    CONSTRAINT `fk_change_freeze_creator` FOREIGN KEY (`created_by_analyst_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `change_attachments` (
     `id`                INT NOT NULL AUTO_INCREMENT,
     `change_id`         INT NOT NULL,

@@ -154,6 +154,11 @@ $translationNamespaces = ['common', 'change-management'];
                     <div class="loading"><div class="spinner"></div></div>
                 </div>
             </div>
+            <!-- Phase 9b: change freeze windows (read-only listing; manage under Freeze). -->
+            <div class="sidebar-section" id="freezeSection" style="display:none;">
+                <h3>Freeze windows</h3>
+                <div id="freezeList" style="display:flex;flex-direction:column;gap:8px;"></div>
+            </div>
         </div>
 
         <!-- Main calendar area -->
@@ -188,5 +193,31 @@ $translationNamespaces = ['common', 'change-management'];
 
     <script>window.API_BASE = '../api/change-management/';</script>
     <script src="../assets/js/change-calendar.js?v=3"></script>
+    <script>
+    // Phase 9b: list current/upcoming freeze windows in the sidebar (additive;
+    // does not touch the calendar grid renderer). Full grid band overlay is a
+    // later enhancement.
+    (function () {
+        function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+        function fmt(dt){ if(!dt) return ''; var d=new Date(dt.replace(' ','T')+'Z'); return isNaN(d)?esc(dt):d.toLocaleDateString([], {month:'short',day:'numeric'}); }
+        fetch('../api/change-management/get_freeze_windows.php')
+            .then(function(r){return r.json();})
+            .then(function(data){
+                if(!data.success || !data.windows || !data.windows.length) return;
+                var active = data.windows.filter(function(w){return w.is_active;});
+                if(!active.length) return;
+                var html = active.map(function(w){
+                    var band = w.in_effect ? '#dc2626' : '#f59e0b';
+                    return '<div style="border-left:3px solid '+band+';padding:4px 8px;font-size:12px;color:var(--text,#333);">'
+                        + '<div style="font-weight:600;">'+esc(w.name)+'</div>'
+                        + '<div style="color:var(--text-dim,#6b7280);">'+fmt(w.starts_at)+' – '+fmt(w.ends_at)+(w.in_effect?' · in effect':'')+'</div>'
+                        + '</div>';
+                }).join('');
+                document.getElementById('freezeList').innerHTML = html;
+                document.getElementById('freezeSection').style.display = '';
+            })
+            .catch(function(){});
+    })();
+    </script>
 </body>
 </html>

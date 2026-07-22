@@ -1425,6 +1425,10 @@ async function saveChange() {
             }
 
             showToast(window.t('change-management.toast.change_saved'), 'success');
+            // Phase 9b: surface any change-freeze soft warning (non-blocking).
+            if (data.freeze_warning) {
+                showToast(data.freeze_warning, 'error');
+            }
             destroyEditors();
             // If we came in via /change-management/new/, drop the create-route
             // path now the change is saved — viewChange() will show the detail

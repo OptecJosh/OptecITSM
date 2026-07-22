@@ -1344,6 +1344,19 @@ $schema = [
         'modified_datetime'             => 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP',
     ],
 
+    // Change freeze / blackout windows (Phase 9b). Global-scope v1; soft warning.
+    'change_freeze_windows' => [
+        'id'                    => 'INT NOT NULL AUTO_INCREMENT',
+        'name'                  => 'VARCHAR(150) NOT NULL',
+        'starts_at'             => 'DATETIME NOT NULL',
+        'ends_at'               => 'DATETIME NOT NULL',
+        'reason'                => 'VARCHAR(500) NULL',
+        'is_active'             => 'TINYINT(1) NOT NULL DEFAULT 1',
+        'created_by_analyst_id' => 'INT NULL',
+        'created_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+        'updated_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
     'change_attachments' => [
         'id'                    => 'INT NOT NULL AUTO_INCREMENT',
         'change_id'             => 'INT NOT NULL',
@@ -3673,6 +3686,16 @@ try {
         }
         if ($tableExists('tickets') && !$fkExists('ticket_sla_snapshot', 'fk_sla_snapshot_ticket')) {
             try { $conn->exec("ALTER TABLE ticket_sla_snapshot ADD CONSTRAINT fk_sla_snapshot_ticket FOREIGN KEY (ticket_id) REFERENCES tickets (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+    }
+
+    // Change freeze windows (Phase 9b) — active-scan index + creator FK.
+    if ($tableExists('change_freeze_windows')) {
+        if (!$idxExists('change_freeze_windows', 'ix_change_freeze_active')) {
+            try { $conn->exec("ALTER TABLE change_freeze_windows ADD INDEX ix_change_freeze_active (is_active, starts_at, ends_at)"); } catch (Exception $e) {}
+        }
+        if ($tableExists('analysts') && !$fkExists('change_freeze_windows', 'fk_change_freeze_creator')) {
+            try { $conn->exec("ALTER TABLE change_freeze_windows ADD CONSTRAINT fk_change_freeze_creator FOREIGN KEY (created_by_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
         }
     }
 

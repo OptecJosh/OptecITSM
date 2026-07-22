@@ -46,6 +46,10 @@ return [
         'audit_desc'     => 'One searchable, exportable stream of every recorded change across tickets, changes, problems, assets and system events.',
         'audit_keywords' => 'audit log history trail activity who did what changes events export csv compliance security accountability',
 
+        'backup_title'    => 'Backup & data',
+        'backup_desc'     => 'Download a full database backup, and export or import assets and portal users as CSV.',
+        'backup_keywords' => 'backup restore dump mysqldump export import csv data migration assets users bulk load spreadsheet',
+
         'topology_title'    => 'Topology',
         'topology_desc'     => 'See how companies, mailboxes, domains, sign-in and analysts fit together',
         'topology_keywords' => 'topology map overview tree relationships companies mailboxes domains analysts structure diagram graph',

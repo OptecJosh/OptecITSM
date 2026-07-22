@@ -19,6 +19,13 @@
 function getSystemAreas() {
     return [
         [
+            'icon'     => 'audit',
+            'url'      => 'audit/',
+            'title'    => 'system.landing.audit_title',
+            'desc'     => 'system.landing.audit_desc',
+            'keywords' => 'system.landing.audit_keywords',
+        ],
+        [
             'icon'     => 'encryption',
             'url'      => 'encryption/',
             'title'    => 'system.landing.encryption_title',
@@ -162,6 +169,7 @@ function getSystemAreas() {
  */
 function systemAreaIcon($key) {
     $icons = [
+        'audit'       => '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline>',
         'encryption'  => '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>',
         'modules'     => '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',
         'analysts'    => '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><polyline points="15 11 17 13 21 9"></polyline>',

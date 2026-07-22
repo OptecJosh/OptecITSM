@@ -42,6 +42,10 @@ return [
         'help_title' => 'Help & guides',
         'help_desc'  => 'Step-by-step guides for every system area, including single sign-on setup.',
 
+        'audit_title'    => 'Audit log',
+        'audit_desc'     => 'One searchable, exportable stream of every recorded change across tickets, changes, problems, assets and system events.',
+        'audit_keywords' => 'audit log history trail activity who did what changes events export csv compliance security accountability',
+
         'topology_title'    => 'Topology',
         'topology_desc'     => 'See how companies, mailboxes, domains, sign-in and analysts fit together',
         'topology_keywords' => 'topology map overview tree relationships companies mailboxes domains analysts structure diagram graph',

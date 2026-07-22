@@ -6,6 +6,7 @@
 session_start(['read_and_close' => true]);
 require_once '../../config.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/tenancy.php';
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['analyst_id'])) {
@@ -18,6 +19,11 @@ try {
     $conn = connectToDatabase();
     $changeId = isset($_GET['change_id']) ? (int)$_GET['change_id'] : 0;
     if ($changeId <= 0) throw new Exception('change_id is required');
+    // Multi-tenancy: only reveal a change's CIs to someone who can see the
+    // change (a guessable id must not expose another company's data). Phase 10e.
+    if (!analystCanAccessChange($conn, (int)$_SESSION['analyst_id'], $changeId)) {
+        throw new Exception('Change not found');
+    }
 
     $stmt = $conn->prepare(
         "SELECT co.id AS link_id, o.id AS object_id, o.name, c.name AS class_name

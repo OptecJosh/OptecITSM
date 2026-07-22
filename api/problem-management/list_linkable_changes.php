@@ -2,7 +2,8 @@
 /**
  * API: list changes that can be linked to a problem (the fix), excluding any already
  * linked. Optional ?q search on title/id. Used by the "Link change" picker.
- * Changes aren't tenant-scoped, so no company filter here (mirrors change list.php).
+ * Scoped to the analyst's active company (changes ARE tenant-scoped; mirrors
+ * change list.php's activeTenantFilter). Phase 10e fix.
  */
 session_start(['read_and_close' => true]);
 require_once '../../config.php';
@@ -27,6 +28,11 @@ try {
         $where .= " AND (c.title LIKE ? OR CAST(c.id AS CHAR) LIKE ?)";
         $q = '%' . trim($_GET['q']) . '%'; $params[] = $q; $params[] = $q;
     }
+
+    // Only surface changes in the analyst's active company (no-op at N=1).
+    [$tenantSql, $tenantParams] = activeTenantFilter($conn, $analystId, 'c');
+    $where .= $tenantSql;
+    foreach ($tenantParams as $tp) $params[] = $tp;
 
     $sql = "SELECT c.id, c.title, c.created_datetime,
                    cs.name AS status, cp.name AS priority

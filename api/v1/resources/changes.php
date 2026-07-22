@@ -297,14 +297,18 @@ function apiChangesGet(PDO $conn, array $apiKey, array $params, array $body): vo
     // Problems this change fixes (linked from the problem side; read both ways).
     $change['linked_problems'] = [];
     try {
+        // Scope linked problems to the key's company: a cross-company
+        // change_relations row must not leak another company's problem (Phase
+        // 10e — linkChange doesn't enforce same-company the way linkTicket does).
+        [$pScopeSql, $pScopeArgs] = apiKeyTenantFilter($conn, $apiKey, 'p');
         $pr = $conn->prepare(
             "SELECT p.id, p.problem_number, p.title, cr.relation_type
              FROM change_relations cr
              JOIN problems p ON p.id = cr.related_id
-             WHERE cr.change_id = ? AND cr.related_type = 'problem'
+             WHERE cr.change_id = ? AND cr.related_type = 'problem'" . $pScopeSql . "
              ORDER BY p.created_datetime DESC"
         );
-        $pr->execute([$params[0]]);
+        $pr->execute(array_merge([$params[0]], $pScopeArgs));
         $change['linked_problems'] = array_map(function ($p) {
             return [
                 'id'             => (int)$p['id'],

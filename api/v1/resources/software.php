@@ -176,13 +176,16 @@ function apiSoftwareAppsGet(PDO $conn, array $apiKey, array $params, array $body
 // GET /software/apps/{id}/machines — mirrors get_app_machines.php (+ asset_id)
 function apiSoftwareAppMachinesList(PDO $conn, array $apiKey, array $params, array $body): void {
     apiSoftwareLoadApp($conn, $params[0]);
+    // Software inventory is global, but the joined machines (assets) are
+    // company-owned — scope to the key's company (Phase 10e).
+    [$scopeSql, $scopeArgs] = apiKeyTenantFilter($conn, $apiKey, 'h');
     $stmt = $conn->prepare(
         "SELECT h.id AS asset_id, h.hostname, d.display_version, d.install_date, d.system_component, d.last_seen
          FROM software_inventory_detail d
          INNER JOIN assets h ON h.id = d.host_id
-         WHERE d.app_id = ? ORDER BY h.hostname"
+         WHERE d.app_id = ?" . $scopeSql . " ORDER BY h.hostname"
     );
-    $stmt->execute([$params[0]]);
+    $stmt->execute(array_merge([$params[0]], $scopeArgs));
     apiRespond(array_map(function ($m) {
         return [
             'asset_id'         => (int)$m['asset_id'],

@@ -6,6 +6,7 @@
 session_start(['read_and_close' => true]);
 require_once '../../config.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/tenancy.php';
 
 header('Content-Type: application/json');
 
@@ -26,24 +27,29 @@ try {
     $conn = connectToDatabase();
     $searchTerm = '%' . $q . '%';
 
+    $analystId = (int)$_SESSION['analyst_id'];
     if ($type === 'ticket') {
+        // Scope to the analyst's accessible companies (Phase 10e).
+        [$tenantSql, $tenantParams] = ticketTenantFilter($conn, $analystId, 't');
         $stmt = $conn->prepare(
-            "SELECT id, ticket_number, subject
-             FROM tickets
-             WHERE (ticket_number LIKE ? OR subject LIKE ?)
-             ORDER BY created_datetime DESC
+            "SELECT t.id, t.ticket_number, t.subject
+             FROM tickets t
+             WHERE (t.ticket_number LIKE ? OR t.subject LIKE ?)" . $tenantSql . "
+             ORDER BY t.created_datetime DESC
              LIMIT 10"
         );
-        $stmt->execute([$searchTerm, $searchTerm]);
+        $stmt->execute(array_merge([$searchTerm, $searchTerm], $tenantParams));
     } elseif ($type === 'change') {
+        // Scope to the analyst's active company (Phase 10e).
+        [$tenantSql, $tenantParams] = activeTenantFilter($conn, $analystId, 'c');
         $stmt = $conn->prepare(
-            "SELECT id, title
-             FROM changes
-             WHERE title LIKE ?
-             ORDER BY created_datetime DESC
+            "SELECT c.id, c.title
+             FROM changes c
+             WHERE c.title LIKE ?" . $tenantSql . "
+             ORDER BY c.created_datetime DESC
              LIMIT 10"
         );
-        $stmt->execute([$searchTerm]);
+        $stmt->execute(array_merge([$searchTerm], $tenantParams));
     } else {
         echo json_encode(['success' => true, 'results' => []]);
         exit;

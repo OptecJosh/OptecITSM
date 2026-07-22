@@ -6,6 +6,7 @@
 session_start(['read_and_close' => true]);
 require_once '../../config.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/tenancy.php';
 
 header('Content-Type: application/json');
 
@@ -41,27 +42,30 @@ try {
         echo json_encode(['success' => true, 'type' => 'publisher', 'rows' => $rows]);
 
     } elseif (!empty($app_id) && !empty($version)) {
-        // Version drill-down: machines with this specific version
+        // Version drill-down: machines with this specific version. Assets are
+        // company-owned — scope to the analyst's active company (Phase 10e).
+        [$tenantSql, $tenantParams] = activeTenantFilter($conn, (int)$_SESSION['analyst_id'], 'h');
         $stmt = $conn->prepare("SELECT h.hostname, d.display_version, d.install_date,
                                        DATE_FORMAT(d.last_seen, '%Y-%m-%d') AS last_seen
                                 FROM software_inventory_detail d
                                 INNER JOIN assets h ON h.id = d.host_id
-                                WHERE d.app_id = ? AND COALESCE(d.display_version, 'Unknown') = ?
+                                WHERE d.app_id = ? AND COALESCE(d.display_version, 'Unknown') = ?" . $tenantSql . "
                                 ORDER BY h.hostname ASC");
-        $stmt->execute([$app_id, $version]);
+        $stmt->execute(array_merge([$app_id, $version], $tenantParams));
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         echo json_encode(['success' => true, 'type' => 'machines', 'rows' => $rows]);
 
     } elseif (!empty($app_id)) {
-        // App drill-down: all machines with this app
+        // App drill-down: all machines with this app (scoped, Phase 10e).
+        [$tenantSql, $tenantParams] = activeTenantFilter($conn, (int)$_SESSION['analyst_id'], 'h');
         $stmt = $conn->prepare("SELECT h.hostname, d.display_version, d.install_date,
                                        DATE_FORMAT(d.last_seen, '%Y-%m-%d') AS last_seen
                                 FROM software_inventory_detail d
                                 INNER JOIN assets h ON h.id = d.host_id
-                                WHERE d.app_id = ?
+                                WHERE d.app_id = ?" . $tenantSql . "
                                 ORDER BY h.hostname ASC");
-        $stmt->execute([$app_id]);
+        $stmt->execute(array_merge([$app_id], $tenantParams));
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         echo json_encode(['success' => true, 'type' => 'machines', 'rows' => $rows]);

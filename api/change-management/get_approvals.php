@@ -6,6 +6,7 @@
 session_start(['read_and_close' => true]);
 require_once '../../config.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/tenancy.php';
 
 header('Content-Type: application/json');
 
@@ -19,6 +20,11 @@ $filter = $_GET['filter'] ?? 'all';
 
 try {
     $conn = connectToDatabase();
+
+    // Multi-tenancy: scope every "changes c" query to the analyst's active
+    // company (Default also owns NULL-tenant changes). No-op at N=1. Without this
+    // the approvals list + counts spanned every company (Phase 10e fix).
+    [$tenantSql, $tenantParams] = activeTenantFilter($conn, (int)$analystId, 'c');
 
     // Base query for Pending Approval changes
     $changeJoins = "LEFT JOIN change_types      ct ON ct.id = c.change_type_id
@@ -47,9 +53,9 @@ try {
                 LEFT JOIN analysts assigned ON c.assigned_to_id = assigned.id
                 LEFT JOIN analysts requester ON c.requester_id = requester.id
                 LEFT JOIN analysts approver ON c.approver_id = approver.id
-                WHERE cs.name = 'Pending Approval'
+                WHERE cs.name = 'Pending Approval'" . $tenantSql . "
                 ORDER BY c.created_datetime DESC";
-        $params = [$analystId];
+        $params = array_merge([$analystId], $tenantParams);
     } else {
         $sql = "SELECT
                     c.id,
@@ -69,9 +75,9 @@ try {
                 LEFT JOIN analysts assigned ON c.assigned_to_id = assigned.id
                 LEFT JOIN analysts requester ON c.requester_id = requester.id
                 LEFT JOIN analysts approver ON c.approver_id = approver.id
-                WHERE cs.name = 'Pending Approval'";
+                WHERE cs.name = 'Pending Approval'" . $tenantSql;
 
-        $params = [];
+        $params = $tenantParams;
 
         if ($filter === 'requested') {
             $sql .= " AND c.requester_id = ?";
@@ -109,18 +115,18 @@ try {
                     SUM(CASE WHEN c.approver_id = ? THEN 1 ELSE 0 END) as cnt_assigned
                  FROM changes c
                  LEFT JOIN change_statuses cs ON cs.id = c.status_id
-                 WHERE cs.name = 'Pending Approval'";
+                 WHERE cs.name = 'Pending Approval'" . $tenantSql;
     $countStmt = $conn->prepare($countSql);
-    $countStmt->execute([$analystId, $analystId]);
+    $countStmt->execute(array_merge([$analystId, $analystId], $tenantParams));
     $countRow = $countStmt->fetch(PDO::FETCH_ASSOC);
 
     // CAB count: changes where current user is a CAB member with pending vote
     $cabCountSql = "SELECT COUNT(*) FROM change_cab_members m
                     INNER JOIN changes c ON c.id = m.change_id
                     LEFT JOIN change_statuses cs ON cs.id = c.status_id
-                    WHERE m.analyst_id = ? AND m.vote IS NULL AND cs.name = 'Pending Approval'";
+                    WHERE m.analyst_id = ? AND m.vote IS NULL AND cs.name = 'Pending Approval'" . $tenantSql;
     $cabCountStmt = $conn->prepare($cabCountSql);
-    $cabCountStmt->execute([$analystId]);
+    $cabCountStmt->execute(array_merge([$analystId], $tenantParams));
     $cabCount = (int)$cabCountStmt->fetchColumn();
 
     echo json_encode([

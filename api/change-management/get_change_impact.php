@@ -18,6 +18,7 @@
 session_start(['read_and_close' => true]);
 require_once '../../config.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/tenancy.php';
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['analyst_id'])) {
@@ -39,6 +40,10 @@ try {
     $conn = connectToDatabase();
     $changeId = isset($_GET['change_id']) ? (int)$_GET['change_id'] : 0;
     if ($changeId <= 0) throw new Exception('change_id is required');
+    // Gate cross-company access: impact reveals linked-CI names (Phase 10e).
+    if (!analystCanAccessChange($conn, (int)$_SESSION['analyst_id'], $changeId)) {
+        throw new Exception('Change not found');
+    }
 
     // The change's linked CIs (the roots we compute impact from).
     $rootStmt = $conn->prepare("SELECT cmdb_object_id FROM change_cmdb_objects WHERE change_id = ?");

@@ -7,6 +7,7 @@
 session_start(['read_and_close' => true]);
 require_once '../../config.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/tenancy.php';
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['analyst_id'])) {
@@ -20,16 +21,19 @@ try {
     $contractId = isset($_GET['contract_id']) ? (int)$_GET['contract_id'] : 0;
     if ($contractId <= 0) throw new Exception('contract_id is required');
 
+    // Only surface covered assets in the analyst's active company — a guessed
+    // contract_id must not expose another company's asset detail (Phase 10e).
+    [$tenantSql, $tenantParams] = activeTenantFilter($conn, (int)$_SESSION['analyst_id'], 'a');
     $stmt = $conn->prepare(
         "SELECT ca.id AS link_id, a.id AS asset_id, a.hostname, a.manufacturer, a.model,
                 ast.name AS status
            FROM contract_assets ca
            JOIN assets a ON a.id = ca.asset_id
       LEFT JOIN asset_status_types ast ON ast.id = a.asset_status_id
-          WHERE ca.contract_id = ?
+          WHERE ca.contract_id = ?" . $tenantSql . "
        ORDER BY a.hostname ASC"
     );
-    $stmt->execute([$contractId]);
+    $stmt->execute(array_merge([$contractId], $tenantParams));
 
     $assets = [];
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {

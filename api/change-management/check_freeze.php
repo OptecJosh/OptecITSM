@@ -13,6 +13,7 @@ session_start(['read_and_close' => true]);
 require_once '../../config.php';
 require_once '../../includes/functions.php';
 require_once '../../includes/change_freeze.php';
+require_once '../../includes/tenancy.php';
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['analyst_id'])) {
@@ -27,6 +28,10 @@ try {
     $start = null; $end = null; $typeId = null;
 
     if (!empty($_GET['change_id'])) {
+        // Don't leak another company's change schedule via a guessed id (Phase 10e).
+        if (!analystCanAccessChange($conn, (int)$_SESSION['analyst_id'], (int)$_GET['change_id'])) {
+            throw new Exception('Change not found');
+        }
         $stmt = $conn->prepare("SELECT work_start_datetime, work_end_datetime, change_type_id FROM changes WHERE id = ?");
         $stmt->execute([(int)$_GET['change_id']]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);

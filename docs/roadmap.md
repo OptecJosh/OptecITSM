@@ -22,10 +22,16 @@ re-litigate them.
 | 8 | SLA snapshot, reporting & dashboards (8a–8c) | ✅ Done |
 | 9 | ITSM depth (assets / change / contracts) (9a–9e) | ✅ Done |
 | 10 | Platform & admin (10a/10b/10e done; 10c/10d deferred) | ◐ Partial |
-| 11 | Agent overtime management (new module) | ▶ Next |
+| 11 | Agent overtime management (register+11a/11b/11d done; 11c/11e deferred) | ◐ Partial |
 
-**Build order so far:** 4B → 5 → 4A → 6 → 7 → 8 → 9 → 10(a/b/e) shipped. Next is
-**11**. Each group has a design doc under `docs/design/phase-0N-*.md`.
+**Build order so far:** 4B → 5 → 4A → 6 → 7 → 8 → 9 → 10(a/b/e) → 11(a/b/d)
+shipped. Each group has a design doc under `docs/design/phase-0N-*.md`.
+
+**Phase 11 sub-phases:** new module registered (nav/colour/i18n) + `analysts.manager_id`
+· 11a submit & self-view ✅ · 11b line-manager approval workflow (settable manager
+field on System→Analysts) ✅ · 11d reporting + payroll CSV ✅ · 11c rota cross-check
+⏸ deferred · 11e TOIL ⏸ deferred. Gating: module access + line-manager/admin (no
+bespoke RBAC caps — the catalog is settings-manifest-derived).
 
 **Phase 10 sub-phases:** 10a unified cross-module audit log + CSV export (read-only
 aggregator) ✅ · 10b in-app DB backup (streaming mysqldump) + CSV import/export for

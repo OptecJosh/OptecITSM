@@ -482,6 +482,25 @@ class TicketsService
                 error_log('SLA snapshot stamp (update) failed for ticket ' . $ticketId . ': ' . $e->getMessage());
             }
         }
+
+        // KPI instrumentation (K1) — capture events the scorecards need at the
+        // moment they happen. All best-effort; never breaks the update.
+        try {
+            require_once __DIR__ . '/../kpi_instrument.php';
+            $ownerChanged = $analystSent && $newAnalystId !== null && $newAnalystId !== $oldAnalystId;
+            if ($newStatusId !== null || $ownerChanged) {
+                kpi_ticket_ack($conn, $ticketId);
+            }
+            if ($ownerChanged) {
+                kpi_ticket_escalation($conn, $ticketId, $oldAnalystId, $newAnalystId);
+            }
+            if ($newStatusId !== null) {
+                $holdReason = isset($in['hold_reason']) ? (string)$in['hold_reason'] : null;
+                kpi_ticket_hold($conn, $ticketId, $current['status_name'] ?? null, $newStatusName, $holdReason);
+            }
+        } catch (\Throwable $e) {
+            error_log('KPI instrumentation (update) failed for ticket ' . $ticketId . ': ' . $e->getMessage());
+        }
     }
 
     // ======================================================================

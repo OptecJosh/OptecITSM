@@ -625,6 +625,35 @@ CREATE TABLE IF NOT EXISTS `ticket_queues` (
     CONSTRAINT `fk_ticket_queues_creator` FOREIGN KEY (`created_by_analyst_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ----------------------------------------------------------
+-- Scheduled & emailed reports (Phase 8b): a saved report (group_by +
+-- filters_json, the same shape a queue stores) that the cron
+-- (cron/scheduled_reports.php) runs on a cadence and emails as CSV and/or an
+-- HTML summary. owner_analyst_id NULL = shared (admin-managed), mirroring
+-- ticket_queues; created_by_analyst_id is the analyst whose company scope the
+-- cron runs the report under. next_run_at is the next due time (UTC).
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `scheduled_report` (
+    `id`                    INT NOT NULL AUTO_INCREMENT,
+    `name`                  VARCHAR(150) NOT NULL,
+    `group_by`              VARCHAR(40) NOT NULL DEFAULT 'status',
+    `filters_json`          TEXT NULL,
+    `cadence`               ENUM('daily','weekly','monthly') NOT NULL DEFAULT 'weekly',
+    `next_run_at`           DATETIME NOT NULL,
+    `recipients`            TEXT NULL,
+    `format`                ENUM('csv','summary','both') NOT NULL DEFAULT 'both',
+    `owner_analyst_id`      INT NULL,
+    `is_active`             TINYINT(1) NOT NULL DEFAULT 1,
+    `last_run_at`           DATETIME NULL,
+    `created_by_analyst_id` INT NULL,
+    `created_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `ix_scheduled_report_due` (`is_active`, `next_run_at`),
+    CONSTRAINT `fk_scheduled_report_owner` FOREIGN KEY (`owner_analyst_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL,
+    CONSTRAINT `fk_scheduled_report_creator` FOREIGN KEY (`created_by_analyst_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Canned responses / reply macros (Phase 6a): reusable reply snippets inserted
 -- in the reply modal. owner_analyst_id NULL = shared (admin-managed), set =
 -- personal. Placeholders in `body` (e.g. {{requester.name}}) are resolved

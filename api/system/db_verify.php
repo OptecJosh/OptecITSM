@@ -437,6 +437,26 @@ $schema = [
         'updated_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
     ],
 
+    // Scheduled & emailed reports (Phase 8b). owner_analyst_id NULL = shared
+    // (admin-managed), mirroring ticket_queues. group_by + filters_json feed the
+    // shared ticket_report_run(); the cron scopes each run to created_by_analyst_id.
+    'scheduled_report' => [
+        'id'                    => 'INT NOT NULL AUTO_INCREMENT',
+        'name'                  => 'VARCHAR(150) NOT NULL',
+        'group_by'              => "VARCHAR(40) NOT NULL DEFAULT 'status'",
+        'filters_json'          => 'TEXT NULL',
+        'cadence'               => "ENUM('daily','weekly','monthly') NOT NULL DEFAULT 'weekly'",
+        'next_run_at'           => 'DATETIME NOT NULL',
+        'recipients'            => 'TEXT NULL',
+        'format'                => "ENUM('csv','summary','both') NOT NULL DEFAULT 'both'",
+        'owner_analyst_id'      => 'INT NULL',
+        'is_active'             => 'TINYINT(1) NOT NULL DEFAULT 1',
+        'last_run_at'           => 'DATETIME NULL',
+        'created_by_analyst_id' => 'INT NULL',
+        'created_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+        'updated_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
     // Canned responses / reply macros (Phase 6a). owner_analyst_id NULL = shared.
     'ticket_canned_responses' => [
         'id'                    => 'INT NOT NULL AUTO_INCREMENT',
@@ -3653,6 +3673,19 @@ try {
         }
         if ($tableExists('tickets') && !$fkExists('ticket_sla_snapshot', 'fk_sla_snapshot_ticket')) {
             try { $conn->exec("ALTER TABLE ticket_sla_snapshot ADD CONSTRAINT fk_sla_snapshot_ticket FOREIGN KEY (ticket_id) REFERENCES tickets (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+    }
+
+    // Scheduled reports (Phase 8b) — due-row scan index + owner/creator FKs.
+    if ($tableExists('scheduled_report')) {
+        if (!$idxExists('scheduled_report', 'ix_scheduled_report_due')) {
+            try { $conn->exec("ALTER TABLE scheduled_report ADD INDEX ix_scheduled_report_due (is_active, next_run_at)"); } catch (Exception $e) {}
+        }
+        if ($tableExists('analysts') && !$fkExists('scheduled_report', 'fk_scheduled_report_owner')) {
+            try { $conn->exec("ALTER TABLE scheduled_report ADD CONSTRAINT fk_scheduled_report_owner FOREIGN KEY (owner_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+        if ($tableExists('analysts') && !$fkExists('scheduled_report', 'fk_scheduled_report_creator')) {
+            try { $conn->exec("ALTER TABLE scheduled_report ADD CONSTRAINT fk_scheduled_report_creator FOREIGN KEY (created_by_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
         }
     }
 

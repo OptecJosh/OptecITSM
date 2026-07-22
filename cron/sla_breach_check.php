@@ -130,15 +130,17 @@ try {
     // ---- LAYER 3: Min interval between successful runs ----
     // Both CLI + HTTP — protects against double-scheduling regardless of source.
     if ($minInterval > 0) {
-        // Exclude snapshot-rebuild runs (they share this table but are a separate
-        // job — see cron/sla_snapshot_rebuild.php) so a rebuild never rate-limits
-        // the breach check.
+        // Exclude sibling jobs that share this table but are separate crons
+        // (their notes are prefixed with a "[job-name]" marker — e.g.
+        // cron/sla_snapshot_rebuild.php, cron/scheduled_reports.php). The breach
+        // check itself never writes a bracket-prefixed note, so this only ever
+        // matches its own runs.
         $lastStmt = $conn->prepare("
             SELECT TIMESTAMPDIFF(SECOND, started_at, UTC_TIMESTAMP()) AS age
               FROM sla_cron_runs
              WHERE outcome = 'ok'
                AND id <> ?
-               AND (notes IS NULL OR notes NOT LIKE '[snapshot-rebuild]%')
+               AND (notes IS NULL OR notes NOT LIKE '[%')
           ORDER BY started_at DESC
              LIMIT 1
         ");

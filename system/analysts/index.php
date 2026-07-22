@@ -197,6 +197,13 @@ $translationNamespaces = ['common', 'tickets'];
                     <small style="color: var(--text-muted, #666);"><?php echo htmlspecialchars(t('tickets.settings.analyst_extra.signin_help')); ?></small>
                 </div>
 
+                <!-- Line manager (Phase 11): who approves this analyst's overtime. -->
+                <div class="form-group">
+                    <label for="analystManager">Line manager</label>
+                    <select id="analystManager"><option value="">&mdash; None &mdash;</option></select>
+                    <small style="color: var(--text-muted, #666);">Approves this analyst's overtime requests.</small>
+                </div>
+
                 <!-- Multi-tenancy: company access. Hidden on a single-company install
                      (shown by JS only when more than one company exists). -->
                 <div class="form-group" id="analystAccessGroup" style="display: none;">
@@ -475,6 +482,14 @@ $translationNamespaces = ['common', 'tickets'];
             document.getElementById('analystAllModules').checked = analyst ? (analyst.can_access_all_modules === undefined ? true : !!Number(analyst.can_access_all_modules)) : true;
             document.getElementById('analystAuthProvider').value = (analyst && analyst.auth_provider_id) ? String(analyst.auth_provider_id) : '';
 
+            // Line manager options (exclude self) — Phase 11 overtime routing.
+            const mgrSel = document.getElementById('analystManager');
+            const selfId = analyst ? String(analyst.id) : '';
+            mgrSel.innerHTML = '<option value="">&mdash; None &mdash;</option>' +
+                analysts.filter(x => String(x.id) !== selfId)
+                        .map(x => `<option value="${x.id}">${escapeHtml(x.full_name)}</option>`).join('');
+            mgrSel.value = (analyst && analyst.manager_id) ? String(analyst.manager_id) : '';
+
             // Password is required only for new analysts
             const passwordInput = document.getElementById('analystPassword');
             const passwordGroup = document.getElementById('analystPasswordGroup');
@@ -655,7 +670,8 @@ $translationNamespaces = ['common', 'tickets'];
                 is_active: document.getElementById('analystActive').checked,
                 is_admin: document.getElementById('analystIsAdmin').checked,
                 can_access_all_modules: document.getElementById('analystAllModules').checked,
-                auth_provider_id: document.getElementById('analystAuthProvider').value || null
+                auth_provider_id: document.getElementById('analystAuthProvider').value || null,
+                manager_id: document.getElementById('analystManager').value || null
             };
 
             // Multi-tenancy: send company access only when the control is shown.

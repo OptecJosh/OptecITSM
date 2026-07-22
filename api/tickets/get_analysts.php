@@ -17,7 +17,7 @@ if (!isset($_SESSION['analyst_id'])) {
 try {
     $conn = connectToDatabase();
 
-    $sql = "SELECT id, username, full_name, email, is_active, auth_provider_id, can_access_all_tenants, is_admin, can_access_all_modules, created_datetime, last_login_datetime, last_modified_datetime
+    $sql = "SELECT id, username, full_name, email, is_active, auth_provider_id, can_access_all_tenants, is_admin, can_access_all_modules, manager_id, created_datetime, last_login_datetime, last_modified_datetime
             FROM analysts
             ORDER BY full_name";
 

@@ -131,6 +131,14 @@ try {
         try { $conn->prepare("UPDATE analysts SET can_access_all_modules = ? WHERE id = ?")->execute([$allMods, $analystId]); } catch (Exception $e) {}
     }
 
+    // Line manager (Phase 11 overtime approval routing). Only touched when the
+    // form sends it; a self-reference is rejected (can't be your own manager).
+    if (array_key_exists('manager_id', $data) && $analystId > 0) {
+        $mgr = !empty($data['manager_id']) ? (int)$data['manager_id'] : null;
+        if ($mgr === $analystId) $mgr = null;
+        try { $conn->prepare("UPDATE analysts SET manager_id = ? WHERE id = ?")->execute([$mgr, $analystId]); } catch (Exception $e) {}
+    }
+
     // Multi-tenancy: company access. Only touched when the form actually sends it
     // (it's hidden on a single-company install), so we never clobber the all-access
     // default on installs that don't show the control.

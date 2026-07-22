@@ -125,6 +125,7 @@ return [
         'network-mapper' => ['name' => 'Network',     'description' => 'Design and document network diagrams'],
         'workflow'       => ['name' => 'Workflows',   'description' => 'Cross-module automation — triggers, conditions, actions'],
         'overtime'       => ['name' => 'Overtime',    'description' => 'Submit, approve and report on staff overtime'],
+        'kpi'            => ['name' => 'KPIs',         'description' => 'Team KPI scorecards, targets and monthly measurements'],
         'system'         => ['name' => 'System',      'description' => 'System administration and configuration'],
     ],
 

@@ -152,6 +152,11 @@ $modules = [
         'path' => 'overtime/',
         'icon' => '<circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>'
     ],
+    'kpi' => [
+        'name' => t('common.modules.kpi.name'),
+        'path' => 'kpi/',
+        'icon' => '<line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line><line x1="3" y1="20" x2="21" y2="20"></line>'
+    ],
     'system' => [
         'name' => t('common.modules.system.name'),
         'path' => 'system/',

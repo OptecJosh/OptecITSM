@@ -4197,6 +4197,51 @@ INSERT INTO `overtime_settings` (`setting_key`, `setting_value`) SELECT * FROM (
 INSERT INTO `overtime_settings` (`setting_key`, `setting_value`) SELECT * FROM (SELECT 'ot_max_daily_hours' AS k, '16' AS v) t WHERE NOT EXISTS (SELECT 1 FROM `overtime_settings` WHERE setting_key = 'ot_max_daily_hours');
 INSERT INTO `overtime_settings` (`setting_key`, `setting_value`) SELECT * FROM (SELECT 'ot_approval_required' AS k, '1' AS v) t WHERE NOT EXISTS (SELECT 1 FROM `overtime_settings` WHERE setting_key = 'ot_approval_required');
 
+-- ----------------------------------------------------------
+-- KPI module (management scorecards). kpi_definitions is the catalog (seeded by
+-- db_verify from the NOC KPI framework); kpi_measurements holds one value per
+-- KPI per month. direction + green/amber thresholds drive automatic RAG where
+-- the target is quantitative; otherwise the status is entered by hand.
+-- Internal team KPIs (not company-scoped).
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `kpi_definitions` (
+    `id`               INT NOT NULL AUTO_INCREMENT,
+    `scorecard`        VARCHAR(20) NOT NULL,        -- L1 | L2 | L3 | L3_BAU | COMBINED
+    `section`          VARCHAR(80) NULL,            -- e.g. 'Service delivery' (Combined)
+    `name`             VARCHAR(120) NOT NULL,
+    `description`      VARCHAR(600) NULL,
+    `target_text`      VARCHAR(400) NULL,
+    `source_status`    VARCHAR(60) NULL,            -- Ready | Partial | Manual | Feed | ...
+    `cadence`          VARCHAR(20) NOT NULL DEFAULT 'Monthly',
+    `unit`             VARCHAR(20) NULL,            -- % | min | hrs | count | ratio | days
+    `direction`        ENUM('higher','lower','band','info') NOT NULL DEFAULT 'info',
+    `green_threshold`  DECIMAL(14,2) NULL,
+    `amber_threshold`  DECIMAL(14,2) NULL,
+    `display_order`    INT NOT NULL DEFAULT 0,
+    `is_active`        TINYINT(1) NOT NULL DEFAULT 1,
+    `created_datetime` DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_datetime` DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `ix_kpi_def_scorecard` (`scorecard`, `display_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `kpi_measurements` (
+    `id`                 INT NOT NULL AUTO_INCREMENT,
+    `kpi_id`             INT NOT NULL,
+    `period_month`       CHAR(7) NOT NULL,          -- 'YYYY-MM'
+    `value`              DECIMAL(14,2) NULL,
+    `status`             ENUM('green','amber','red','na','info') NOT NULL DEFAULT 'info',
+    `note`               VARCHAR(500) NULL,
+    `entered_by_analyst_id` INT NULL,
+    `entered_at`         DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`         DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_kpi_period` (`kpi_id`, `period_month`),
+    KEY `ix_kpi_meas_period` (`period_month`),
+    CONSTRAINT `fk_kpi_meas_kpi` FOREIGN KEY (`kpi_id`) REFERENCES `kpi_definitions` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_kpi_meas_analyst` FOREIGN KEY (`entered_by_analyst_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ----------------------------------------------------------

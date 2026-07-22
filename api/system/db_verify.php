@@ -1388,6 +1388,38 @@ $schema = [
         'updated_datetime' => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
     ],
 
+    // KPI module (management scorecards). Catalog seeded below from the NOC KPI
+    // framework; measurements hold one value per KPI per month.
+    'kpi_definitions' => [
+        'id'               => 'INT NOT NULL AUTO_INCREMENT',
+        'scorecard'        => 'VARCHAR(20) NOT NULL',
+        'section'          => 'VARCHAR(80) NULL',
+        'name'             => 'VARCHAR(120) NOT NULL',
+        'description'      => 'VARCHAR(600) NULL',
+        'target_text'      => 'VARCHAR(400) NULL',
+        'source_status'    => 'VARCHAR(60) NULL',
+        'cadence'          => "VARCHAR(20) NOT NULL DEFAULT 'Monthly'",
+        'unit'             => 'VARCHAR(20) NULL',
+        'direction'        => "ENUM('higher','lower','band','info') NOT NULL DEFAULT 'info'",
+        'green_threshold'  => 'DECIMAL(14,2) NULL',
+        'amber_threshold'  => 'DECIMAL(14,2) NULL',
+        'display_order'    => 'INT NOT NULL DEFAULT 0',
+        'is_active'        => 'TINYINT(1) NOT NULL DEFAULT 1',
+        'created_datetime' => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+        'updated_datetime' => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+    'kpi_measurements' => [
+        'id'                    => 'INT NOT NULL AUTO_INCREMENT',
+        'kpi_id'                => 'INT NOT NULL',
+        'period_month'          => 'CHAR(7) NOT NULL',
+        'value'                 => 'DECIMAL(14,2) NULL',
+        'status'                => "ENUM('green','amber','red','na','info') NOT NULL DEFAULT 'info'",
+        'note'                  => 'VARCHAR(500) NULL',
+        'entered_by_analyst_id' => 'INT NULL',
+        'entered_at'            => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+        'updated_at'            => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
     // Change freeze / blackout windows (Phase 9b). Global-scope v1; soft warning.
     'change_freeze_windows' => [
         'id'                    => 'INT NOT NULL AUTO_INCREMENT',
@@ -3823,6 +3855,126 @@ try {
         ];
         foreach ($otDefaults as $k => $v) {
             try { $conn->prepare("INSERT IGNORE INTO overtime_settings (setting_key, setting_value, updated_datetime) VALUES (?, ?, UTC_TIMESTAMP())")->execute([$k, $v]); } catch (Exception $e) {}
+        }
+    }
+
+    // KPI module — indexes, FKs, and one-time catalog seed.
+    if ($tableExists('kpi_definitions')) {
+        if (!$idxExists('kpi_definitions', 'ix_kpi_def_scorecard')) {
+            try { $conn->exec("ALTER TABLE kpi_definitions ADD INDEX ix_kpi_def_scorecard (scorecard, display_order)"); } catch (Exception $e) {}
+        }
+    }
+    if ($tableExists('kpi_measurements')) {
+        if (!$idxExists('kpi_measurements', 'uq_kpi_period')) {
+            try { $conn->exec("ALTER TABLE kpi_measurements ADD UNIQUE KEY uq_kpi_period (kpi_id, period_month)"); } catch (Exception $e) {}
+        }
+        if (!$idxExists('kpi_measurements', 'ix_kpi_meas_period')) {
+            try { $conn->exec("ALTER TABLE kpi_measurements ADD INDEX ix_kpi_meas_period (period_month)"); } catch (Exception $e) {}
+        }
+        if ($tableExists('kpi_definitions') && !$fkExists('kpi_measurements', 'fk_kpi_meas_kpi')) {
+            try { $conn->exec("ALTER TABLE kpi_measurements ADD CONSTRAINT fk_kpi_meas_kpi FOREIGN KEY (kpi_id) REFERENCES kpi_definitions (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if ($tableExists('analysts') && !$fkExists('kpi_measurements', 'fk_kpi_meas_analyst')) {
+            try { $conn->exec("ALTER TABLE kpi_measurements ADD CONSTRAINT fk_kpi_meas_analyst FOREIGN KEY (entered_by_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+    }
+    // Seed the KPI catalog once (idempotent by scorecard+name). Sourced from the
+    // NOC Team KPIs framework. Qualitative targets keep direction 'info' (manual
+    // RAG); quantitative ones carry green/amber thresholds for auto RAG.
+    if ($tableExists('kpi_definitions')) {
+        $kpiCount = (int)$conn->query("SELECT COUNT(*) FROM kpi_definitions")->fetchColumn();
+        if ($kpiCount === 0) {
+            // [scorecard, section, name, description, target_text, source, unit, direction, green, amber]
+            $kpis = [
+              // ---- L1 ----
+              ['L1','','MTTA','Queue ownership: alert/ticket raised to a human acknowledging it.','P1 <= 15 min, P2 <= 30 min, P3/4 within SLA; monthly trend flat or falling.','Ready','min','lower',15,30],
+              ['L1','','SLA response attainment','Percentage of tickets with no response violation.','>= 95%, rising toward 98%.','Ready','%','higher',95,90],
+              ['L1','','First-time-fix rate (playbook scope)','Playbook-eligible tickets resolved at L1 without escalation or reopen.','>= 70%, rising as the playbook library grows.','Ready','%','higher',70,60],
+              ['L1','','Reopen rate (L1-closed)','Quality check on L1 closures.','<= 5%.','Ready','%','lower',5,8],
+              ['L1','','Triage accuracy','Tickets not re-categorised/re-prioritised after L1 classification.','>= 95% unchanged after triage.','Ready','%','higher',95,90],
+              ['L1','','Ticket hygiene','Percentage of tickets with all mandatory taxonomy fields complete.','>= 98%; unassigned-owner and blank-account backlog trending to zero.','Ready','%','higher',98,95],
+              ['L1','','Escalation rate','Percentage of L1 tickets handed to L2/L3. A band, not a score.','Healthy band 15-30%; investigate movement outside it either way.','Ready','%','band',null,null],
+              ['L1','','Avg tickets closed / analyst / day','Throughput on the L1 queue. A workload signal, not a league table.','Baseline in Q1, then hold a team-level band.','Ready','count','info',null,null],
+              ['L1','','Avg time to escalate','Acknowledgement to handover to L2/L3 for escalated tickets.','P1 <= 15 min, P2 <= 30 min, P3/4 <= 120 min; trend falling.','Partial','min','lower',null,null],
+              ['L1','','Avg first response time','Plain-language companion to MTTA, per priority for client-facing use.','Within response SLA per priority; trend flat or falling.','Ready','min','lower',null,null],
+              ['L1','','QA pass rate','Sampled L1 tickets scored against the triage/documentation standard.','>= 90% on a monthly sample of 5-10 tickets per analyst.','Manual','%','higher',90,80],
+              ['L1','','MTTR (resolve)','Acknowledgement to full resolution.','Baseline in Q1, then reduce ~10% per quarter.','Ready','hrs','lower',null,null],
+              ['L1','','Knowledge base articles','New/updated KB articles captured from L1 work.','4 per month across L1; peer-reviewed, no stubs.','Manual','count','higher',4,2],
+              // ---- L2 ----
+              ['L2','','MTTR (respond)','Acknowledgement to containment or first effective action.','P1 <= 1 hr, P2 <= 4 hrs (Standard tier); trend falling.','Ready','hrs','lower',null,null],
+              ['L2','','MTTR (resolve)','Acknowledgement to full resolution.','Baseline in Q1, then reduce ~10% per quarter.','Ready','hrs','lower',null,null],
+              ['L2','','SLA resolution attainment','Percentage of tickets with no resolution violation.','>= 95%.','Ready','%','higher',95,90],
+              ['L2','','Change success rate','Standard changes implemented without failure or rollback.','>= 98%; rollback rate <= 2%.','Ready','%','higher',98,95],
+              ['L2','','Reopen rate (L2-closed)','Quality check on L2 resolutions.','<= 3%.','Ready','%','lower',3,5],
+              ['L2','','Alert-to-incident ratio','Raw alerts per confirmed incident (weekly tuning output).','Falling quarter on quarter at stable detection scope.','Ready','ratio','lower',null,null],
+              ['L2','','Avg tickets closed / analyst / day','Throughput on L2-owned work (heavier than L1 by design).','Baseline in Q1 as its own band; read with ticket mix.','Ready','count','info',null,null],
+              ['L2','','Avg time to escalate to L3','L2 acknowledgement to handover to L3.','P1 <= 30 min, P2 <= 2 hrs; trend falling.','Partial','min','lower',null,null],
+              ['L2','','Avg on-hold time','Time tickets sit on hold (client/vendor waits) per ticket.','Baseline in Q1; falling, with hold reasons captured.','Ready','hrs','lower',null,null],
+              ['L2','','Escalation handover quality','Escalations to L3 meeting the written handover standard.','>= 95% of escalations; scored in the monthly QA sample.','Manual','%','higher',95,90],
+              ['L2','','Ramp adherence','Daily closed-ticket reviews held for analysts in a 90-day ramp.','>= 90% of scheduled sessions; skips are reportable.','Manual','%','higher',90,80],
+              ['L2','','Knowledge base articles','New/updated KB articles from L2 work.','6 per month across L2; peer-reviewed, no stubs.','Manual','count','higher',6,3],
+              // ---- L3 detection ----
+              ['L3','','Dwell time','Attacker presence before detection (headline security outcome).','Below the published industry median and falling.','Feed','days','lower',null,null],
+              ['L3','','MTTD','Event occurring to the operation noticing.','Baseline once SIEM first-seen lands, then reduce ~10%/qtr.','Feed','hrs','lower',null,null],
+              ['L3','','ATT&CK coverage %','In-scope techniques with a mapped, tested detection.','Scoped map by Q3; >= 60% of in-scope by Q4, growing.','Manual','%','higher',60,40],
+              ['L3','','Detection rule base health','Sigma rules in version control, tested, FP-reviewed.','100% version-controlled; every new rule tested pre-prod.','Manual','%','higher',100,90],
+              ['L3','','Automation rate','Alerts resolved/enriched without human touch (FortiSOAR).','>= 20% of alert volume by Q4, rising.','Feed','%','higher',20,10],
+              ['L3','','Playbook coverage & currency','Playbooks written, tabletopped, revised.','3 tabletopped in first 90 days; >= 1/qtr after.','Manual','count','higher',null,null],
+              ['L3','','Post-incident review discipline','P1/P2 incidents reviewed and actions tracked to closure.','100% reviewed within 5 working days; >= 90% actions closed next qtr.','Manual','%','higher',100,90],
+              ['L3','','Escalation pickup time','How long an escalated ticket waits before L3 acknowledges.','P1/P2 <= 30 min in covered hours; nothing unowned past shift end.','Partial','min','lower',30,60],
+              ['L3','','Avg age of open L3 tickets','WIP health on complex, long-running tickets.','No ticket > 30 days without a logged update and next action.','Ready','days','lower',30,45],
+              ['L3','','Escalation terminus rate','Incidents resolved at L3 without management escalation.','Reported and trended; no hard target.','Ready','%','info',null,null],
+              // ---- L3 BAU ----
+              ['L3_BAU','','MTTR (resolve), L3-owned','Acknowledgement to full resolution on L3-owned tickets.','Baseline in Q1 as its own band; trend falling.','Ready','hrs','lower',null,null],
+              ['L3_BAU','','SLA resolution attainment (L3-owned)','Percentage of L3-owned tickets with no resolution violation.','>= 95%.','Ready','%','higher',95,90],
+              ['L3_BAU','','Avg tickets closed / analyst / day','Throughput on L3-owned work (heaviest by design).','Baseline in Q1 as its own band; read with ticket mix.','Ready','count','info',null,null],
+              ['L3_BAU','','Reopen rate (L3-closed)','Quality check on L3 resolutions.','<= 2%.','Ready','%','lower',2,4],
+              ['L3_BAU','','Complex & emergency change success','Emergency/non-standard changes L3 approves and executes.','>= 98% success; every failed/rolled-back change reviewed.','Ready','%','higher',98,95],
+              ['L3_BAU','','Vendor / TAC escalation management','Third-party escalations owned by L3 (open count, age, chase).','Every open case chased/updated weekly; none idle > 14 days.','Ready','count','lower',null,null],
+              ['L3_BAU','','Knowledge base articles','New/updated KB and runbook content from L3 work.','8 per month across L3; peer-reviewed, no stubs.','Manual','count','higher',8,4],
+              ['L3_BAU','','Mentoring & review delivery','L3 time in the improvement loop (reviews, tabletops, ramp).','100% of scheduled sessions; >= 1 review/tabletop per engineer/month.','Manual','%','higher',100,90],
+              // ---- Combined 4.1 Service delivery ----
+              ['COMBINED','Service delivery','SLA attainment %','Overall, reported with the NOC vs SOC split.','>= 95%, rising toward 98%.','Ready','%','higher',95,90],
+              ['COMBINED','Service delivery','MTTD / MTTA / MTTR family','The full time chain, trended monthly.','All trend lines flat or falling; 3 consecutive months by Q3 gate.','Ready','hrs','lower',null,null],
+              ['COMBINED','Service delivery','First-time-fix rate','Whole-team closure quality.','>= 75%.','Ready','%','higher',75,65],
+              ['COMBINED','Service delivery','Backlog health','Opened vs closed, and aged open tickets.','Closed >= opened on a trailing month; > 30-day tickets down.','Ready','count','info',null,null],
+              ['COMBINED','Service delivery','Ticket mix (NOC vs SOC)','Share of work by stream.','Reported, no target: informational for capacity/pricing.','Ready','%','info',null,null],
+              ['COMBINED','Service delivery','Alert-to-incident ratio & automation rate','Noise and machine-absorbed load, team-wide.','Ratio falling; automation >= 20% of alert volume by Q4.','Ready','ratio','info',null,null],
+              // ---- Combined 4.2 Estate health ----
+              ['COMBINED','Estate health','Uptime / availability %','Per client, against contracted coverage tier.','>= 99.9% for 24/7-tier estates; per-contract elsewhere.','Feed','%','higher',99.9,99],
+              ['COMBINED','Estate health','Patch / firmware compliance %','Managed devices on approved versions.','>= 95%, with a named plan for every exception.','Feed','%','higher',95,90],
+              ['COMBINED','Estate health','Backup success rate','Completed backups across the managed estate.','>= 98%, failures re-run/explained within 24 hrs.','Feed','%','higher',98,95],
+              ['COMBINED','Estate health','Network performance','Latency, throughput, line quality against baseline.','Baseline per estate; alert on deviation.','Feed','','info',null,null],
+              ['COMBINED','Estate health','Device health / EOL-EOS','Lifecycle position of the managed estate.','Zero EOL devices without a documented replacement plan.','Feed','count','lower',0,1],
+              // ---- Combined 4.3 Capacity & people ----
+              ['COMBINED','Capacity & people','Tickets per FTE','Load against headcount, vs the capacity reference line.','Within the agreed band; sustained breach triggers hiring.','Ready','count','band',null,null],
+              ['COMBINED','Capacity & people','Utilisation %','Logged hours against available hours.','70-85% band: below = gaps/spare, above = burnout signal.','Ready','%','band',null,null],
+              ['COMBINED','Capacity & people','Out-of-hours work rate','Share of work touched outside standard hours.','Falling as automation absorbs overnight load.','Ready','%','lower',null,null],
+              ['COMBINED','Capacity & people','Certification attainment','Progress against each analyst tier target.','100% with an assigned target; >= 1 milestone per analyst per year.','Manual','%','higher',100,80],
+              ['COMBINED','Capacity & people','QA pass rate (team)','Rolled-up monthly sample across tiers.','>= 90%.','Manual','%','higher',90,80],
+              // ---- Combined 4.4 Ticket flow & effort ----
+              ['COMBINED','Ticket flow & effort','Avg tickets closed / day (team)','Whole-team throughput, vs opened-per-day.','Closed >= opened on a trailing month; baseline in Q1.','Ready','count','info',null,null],
+              ['COMBINED','Ticket flow & effort','Avg tickets closed / shift','Throughput by shift pattern (fair-load view).','Baseline once the rota is mapped; watch imbalance.','Manual','count','info',null,null],
+              ['COMBINED','Ticket flow & effort','Avg escalation time (all tiers)','Mean acknowledgement to escalation, rolled up.','Trend falling; per-tier targets as set.','Partial','min','lower',null,null],
+              ['COMBINED','Ticket flow & effort','Avg time spent per ticket','Logged effort per ticket, by stream/category.','Baseline by category in Q1; stable/falling at stable QA.','Ready','hrs','lower',null,null],
+              ['COMBINED','Ticket flow & effort','Avg ticket age at closure','End-to-end elapsed life of a ticket.','Baseline in Q1; falling trend, aged outliers reviewed.','Ready','days','lower',null,null],
+              ['COMBINED','Ticket flow & effort','Avg on-hold time (team)','Waiting time across the operation, with reasons.','Falling; client-wait vs Optec-wait split reported.','Ready','hrs','lower',null,null],
+              ['COMBINED','Ticket flow & effort','Ticket bounce (avg reassignments)','How many times a ticket changes hands before resolution.','<= 1 reassignment on average; repeat bouncers reviewed.','Ready','count','lower',1,2],
+              ['COMBINED','Ticket flow & effort','Responses per ticket','Back-and-forth volume per ticket.','Reported and trended; no hard target.','Ready','count','info',null,null],
+              ['COMBINED','Ticket flow & effort','CSAT / customer happiness','Client-rated satisfaction on closed tickets.','>= 90% positive on rated tickets.','Manual','%','higher',90,80],
+              ['COMBINED','Ticket flow & effort','Cost per ticket','Time spent x loaded rate, by ticket type.','Baseline once the rate table exists; falling at stable quality.','Manual','','lower',null,null],
+            ];
+            $ins = $conn->prepare(
+                "INSERT INTO kpi_definitions
+                    (scorecard, section, name, description, target_text, source_status, unit, direction, green_threshold, amber_threshold, display_order, is_active, created_datetime, updated_datetime)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,1,UTC_TIMESTAMP(),UTC_TIMESTAMP())"
+            );
+            $ord = 0;
+            foreach ($kpis as $k) {
+                $ord += 10;
+                try { $ins->execute([$k[0],$k[1] ?: null,$k[2],$k[3],$k[4],$k[5],$k[6] ?: null,$k[7],$k[8],$k[9],$ord]); } catch (Exception $e) {}
+            }
+            $results[] = ['table' => 'kpi_definitions', 'status' => 'seeded', 'details' => ['Seeded ' . count($kpis) . ' KPI definitions']];
         }
     }
 

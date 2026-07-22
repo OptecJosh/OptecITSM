@@ -33,6 +33,7 @@ $defaultModuleColors = [
     // accents inside the workflow module's own CSS).
     'workflow'       => ['#ea580c', '#c2410c'],
     'overtime'       => ['#c026d3', '#a21caf'],
+    'kpi'            => ['#4338ca', '#3730a3'],
     'system'        => ['#546e7a', '#37474f'],
 ];
 

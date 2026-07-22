@@ -56,7 +56,10 @@ try {
                     a.purchase_cost,
                     a.supplier_id,
                     a.order_number,
-                    a.warranty_expiry,";
+                    a.warranty_expiry,
+                    a.end_of_life_date,
+                    a.disposal_date,
+                    a.disposal_method,";
 
         if ($typeTableExists) {
             $sql .= "
@@ -110,6 +113,9 @@ try {
                     a.supplier_id,
                     a.order_number,
                     a.warranty_expiry,
+                    a.end_of_life_date,
+                    a.disposal_date,
+                    a.disposal_method,
                     NULL AS asset_type_id,
                     NULL AS asset_type_name,
                     NULL AS asset_status_id,
@@ -134,7 +140,7 @@ try {
     $params = array_merge($params, $tenantParams);
 
     if ($tableExists) {
-        $groupBy = " GROUP BY a.id, a.hostname, a.manufacturer, a.model, a.memory, a.service_tag, a.operating_system, a.feature_release, a.build_number, a.cpu_name, a.speed, a.bios_version, a.location_id, a.purchase_date, a.purchase_cost, a.supplier_id, a.order_number, a.warranty_expiry";
+        $groupBy = " GROUP BY a.id, a.hostname, a.manufacturer, a.model, a.memory, a.service_tag, a.operating_system, a.feature_release, a.build_number, a.cpu_name, a.speed, a.bios_version, a.location_id, a.purchase_date, a.purchase_cost, a.supplier_id, a.order_number, a.warranty_expiry, a.end_of_life_date, a.disposal_date, a.disposal_method";
         if ($typeTableExists) {
             $groupBy .= ", a.asset_type_id, aty.name";
         }

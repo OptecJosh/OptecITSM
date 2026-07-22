@@ -1276,6 +1276,18 @@ $translationNamespaces = ['common', 'asset-management'];
                             <span class="info-label">${window.t('asset-management.field.warranty_expiry')}</span>
                             <input type="date" class="info-value-input" value="${selectedAsset.warranty_expiry || ''}" onchange="updateAssetField('warranty_expiry', this.value)">
                         </div>
+                        <div class="info-item">
+                            <span class="info-label">End of life</span>
+                            <input type="date" class="info-value-input" value="${selectedAsset.end_of_life_date || ''}" onchange="updateAssetField('end_of_life_date', this.value)">
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Disposal date</span>
+                            <input type="date" class="info-value-input" value="${selectedAsset.disposal_date || ''}" onchange="updateAssetField('disposal_date', this.value)">
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Disposal method</span>
+                            <input type="text" class="info-value-input" maxlength="100" value="${escapeHtml(selectedAsset.disposal_method || '')}" placeholder="-" onchange="updateAssetField('disposal_method', this.value)">
+                        </div>
                     </div>
                     <div class="disks-section">
                         <div class="section-header">

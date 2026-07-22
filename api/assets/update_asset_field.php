@@ -36,7 +36,8 @@ try {
     // narrower classification/lifecycle surface, so an unexpected field is still
     // rejected here rather than silently widened.
     $allowedFields = ['asset_type_id', 'asset_status_id', 'location_id',
-                      'purchase_date', 'purchase_cost', 'supplier_id', 'order_number', 'warranty_expiry'];
+                      'purchase_date', 'purchase_cost', 'supplier_id', 'order_number', 'warranty_expiry',
+                      'end_of_life_date', 'disposal_date', 'disposal_method'];
     if (!in_array($field, $allowedFields, true)) {
         throw new Exception('Invalid field');
     }

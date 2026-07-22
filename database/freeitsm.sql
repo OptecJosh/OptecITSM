@@ -1387,6 +1387,11 @@ CREATE TABLE IF NOT EXISTS `assets` (
     `supplier_id`       INT NULL,
     `order_number`      VARCHAR(100) NULL,
     `warranty_expiry`   DATE NULL,
+    -- Lifecycle EOL / disposal (Phase 9e). Kept alongside the free-form
+    -- asset_status_types; feeds the asset.eol_approaching reminder.
+    `end_of_life_date`  DATE NULL,
+    `disposal_date`     DATE NULL,
+    `disposal_method`   VARCHAR(100) NULL,
     -- Multi-tenancy (SCOPED DATA, not config): the company this asset belongs to.
     -- NULL = the Default company (existing installs stay NULL, so a single-company
     -- install is unaffected). Agent ingest derives it from the API key's tenant_id;

@@ -986,6 +986,11 @@ $schema = [
         'supplier_id'       => 'INT NULL',
         'order_number'      => 'VARCHAR(100) NULL',
         'warranty_expiry'   => 'DATE NULL',
+        // Lifecycle EOL / disposal (Phase 9e). Free-form asset_status_types is kept;
+        // these just add end-of-life + disposal tracking (feeds asset.eol_approaching).
+        'end_of_life_date'  => 'DATE NULL',
+        'disposal_date'     => 'DATE NULL',
+        'disposal_method'   => 'VARCHAR(100) NULL',
         // Multi-tenancy: the company this asset belongs to (NULL = Default).
         'tenant_id'         => 'INT NULL',
     ],

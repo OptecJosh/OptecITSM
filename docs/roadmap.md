@@ -20,13 +20,22 @@ re-litigate them.
 | 6 | Agent productivity (ticketing) | ✅ Done |
 | 7 | Request management & deflection (7a–7e) | ✅ Done |
 | 8 | SLA snapshot, reporting & dashboards (8a–8c) | ✅ Done |
-| 9 | ITSM depth (assets / change / contracts) | ▶ Next |
-| 10 | Platform & admin | ⏳ Planned |
+| 9 | ITSM depth (assets / change / contracts) (9a–9e) | ✅ Done |
+| 10 | Platform & admin | ▶ Next |
 | 11 | Agent overtime management (new module) | ⏳ Planned |
 
-**Build order so far:** 4B → 5 → 4A → 6 → 7 → 8 shipped. Next is **9 → 10 → 11**,
+**Build order so far:** 4B → 5 → 4A → 6 → 7 → 8 → 9 shipped. Next is **10 → 11**,
 the backlog from the whole-app review (below), highest daily value first. Each
 group has a design doc under `docs/design/phase-0N-*.md`.
+
+**Phase 9 sub-phases (all shipped):** 9a software licence compliance/true-up +
+`licence.expiring` reminders · 9b change freeze windows (global-scope, soft
+warning, emergency-exempt) · 9c CMDB-driven change risk (`change_cmdb_objects`,
+impact → *suggested* risk impact) · 9d contract→asset coverage (assets-first) ·
+9e asset lifecycle EOL/disposal fields + `asset.eol_approaching` reminder.
+Deferred: freeze category/department scoping + calendar band overlay;
+contract service/SLA coverage + asset-detail reverse coverage view; canonical
+asset lifecycle enum.
 
 **Phase 8 sub-phases (all shipped):** 8a cached SLA-state snapshot
 (`ticket_sla_snapshot`, stamped by the breach cron + at ticket close, rebuild

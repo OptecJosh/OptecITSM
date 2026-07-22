@@ -204,6 +204,55 @@ function workflowEmitWarrantyExpiries(PDO $conn): int
 }
 
 /**
+ * Assets approaching end-of-life → `asset.eol_approaching` (Phase 9e).
+ * Same windows/shape as warranty expiry; end_of_life_date is the fingerprint.
+ */
+function workflowEmitAssetEolExpiries(PDO $conn): int
+{
+    $fired = 0;
+    $windows = workflowExpiryWindows();
+    $maxWindow = max($windows);
+
+    try {
+        $rows = $conn->prepare(
+            "SELECT a.id, a.hostname, a.end_of_life_date,
+                    DATEDIFF(a.end_of_life_date, CURDATE()) AS days_remaining
+               FROM assets a
+              WHERE a.end_of_life_date IS NOT NULL
+                AND a.end_of_life_date >= CURDATE()
+                AND a.end_of_life_date <= DATE_ADD(CURDATE(), INTERVAL ? DAY)"
+        );
+        $rows->execute([$maxWindow]);
+    } catch (Exception $e) {
+        return 0;   // column absent (pre-Database-Verify)
+    }
+
+    foreach ($rows->fetchAll(PDO::FETCH_ASSOC) as $a) {
+        $days = (int)$a['days_remaining'];
+        foreach ($windows as $w) {
+            if ($days > $w) continue;
+
+            $fired += workflowEmitOnce(
+                $conn,
+                'asset.eol_approaching',
+                'asset-eol:' . (int)$a['id'] . ':' . $w,
+                (string)$a['end_of_life_date'],
+                [
+                    'asset' => [
+                        'id'             => (int)$a['id'],
+                        'hostname'       => $a['hostname'],
+                        'eol_date'       => $a['end_of_life_date'],
+                        'days_remaining' => $days,
+                    ],
+                    'window_days' => $w,
+                ]
+            ) ? 1 : 0;
+        }
+    }
+    return $fired;
+}
+
+/**
  * Software licences approaching their renewal date → `licence.expiring`.
  *
  * The same treatment contracts already get (renewal_date was stored but nothing
@@ -271,6 +320,7 @@ function workflowScheduledRun(PDO $conn): array
         'contract_expiring'        => workflowEmitContractExpiries($conn),
         'asset_warranty_expiring'  => workflowEmitWarrantyExpiries($conn),
         'licence_expiring'         => workflowEmitLicenceExpiries($conn),
+        'asset_eol_approaching'    => workflowEmitAssetEolExpiries($conn),
     ];
 }
 

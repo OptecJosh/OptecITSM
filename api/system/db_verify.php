@@ -2385,6 +2385,15 @@ $schema = [
         'created_datetime'          => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
     ],
 
+    // Contract → asset coverage (Phase 9d). Assets-first; service/SLA deferred.
+    'contract_assets' => [
+        'id'                    => 'INT NOT NULL AUTO_INCREMENT',
+        'contract_id'           => 'INT NOT NULL',
+        'asset_id'              => 'INT NOT NULL',
+        'created_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+        'created_by_analyst_id' => 'INT NULL',
+    ],
+
     // RFP Builder (feature of the Contracts module)
     'rfps' => [
         'id'                       => 'INT NOT NULL AUTO_INCREMENT',
@@ -3696,6 +3705,22 @@ try {
         }
         if ($tableExists('tickets') && !$fkExists('ticket_sla_snapshot', 'fk_sla_snapshot_ticket')) {
             try { $conn->exec("ALTER TABLE ticket_sla_snapshot ADD CONSTRAINT fk_sla_snapshot_ticket FOREIGN KEY (ticket_id) REFERENCES tickets (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+    }
+
+    // Contract → asset coverage (Phase 9d) — unique link + FKs.
+    if ($tableExists('contract_assets')) {
+        if (!$idxExists('contract_assets', 'uq_contract_asset')) {
+            try { $conn->exec("ALTER TABLE contract_assets ADD UNIQUE KEY uq_contract_asset (contract_id, asset_id)"); } catch (Exception $e) {}
+        }
+        if ($tableExists('contracts') && !$fkExists('contract_assets', 'fk_contract_assets_contract')) {
+            try { $conn->exec("ALTER TABLE contract_assets ADD CONSTRAINT fk_contract_assets_contract FOREIGN KEY (contract_id) REFERENCES contracts (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if ($tableExists('assets') && !$fkExists('contract_assets', 'fk_contract_assets_asset')) {
+            try { $conn->exec("ALTER TABLE contract_assets ADD CONSTRAINT fk_contract_assets_asset FOREIGN KEY (asset_id) REFERENCES assets (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if ($tableExists('analysts') && !$fkExists('contract_assets', 'fk_contract_assets_creator')) {
+            try { $conn->exec("ALTER TABLE contract_assets ADD CONSTRAINT fk_contract_assets_creator FOREIGN KEY (created_by_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
         }
     }
 

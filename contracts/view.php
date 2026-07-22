@@ -274,6 +274,24 @@ if (!$contract_id) {
         .checkbox-row { display: flex; align-items: center; gap: 8px; }
         .checkbox-row input { width: auto; }
         .checkbox-row label { margin: 0; }
+        /* Covered-assets search dropdown (Phase 9d) */
+        .ci-search-results {
+            display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 50;
+            background: var(--surface, #fff); border: 1px solid var(--border, #e0e0e0);
+            border-radius: 6px; margin-top: 2px; max-height: 240px; overflow: auto;
+            box-shadow: 0 4px 14px var(--shadow, rgba(0,0,0,0.12));
+        }
+        .ci-search-results.active { display: block; }
+        .ci-search-row {
+            display: flex; justify-content: space-between; gap: 12px; align-items: center;
+            width: 100%; text-align: left; padding: 8px 10px; border: none; background: none;
+            cursor: pointer; font-size: 13px; color: var(--text, #333);
+            border-bottom: 1px solid var(--border-soft, #f0f0f0);
+        }
+        .ci-search-row:last-child { border-bottom: none; }
+        .ci-search-row:hover { background: var(--surface-hover, #f5f5f5); }
+        .ci-search-class { font-size: 12px; color: var(--text-muted, #6b7280); }
+        .ci-search-empty { padding: 10px; font-size: 13px; color: var(--text-muted, #6b7280); }
     </style>
 </head>
 <body>
@@ -502,6 +520,15 @@ if (!$contract_id) {
                     </div>
                 </div>
                 <div class="related-list">
+                    <div class="related-section" id="coveredAssetsSection">
+                        <h3>Covered assets</h3>
+                        <div style="position:relative;max-width:420px;margin-bottom:8px;">
+                            <input type="text" id="assetLinkSearch" class="form-input" autocomplete="off"
+                                   placeholder="Search assets to add coverage&hellip;" oninput="assetSearchDebounced()">
+                            <div id="assetSearchResults" class="ci-search-results"></div>
+                        </div>
+                        <div id="coveredAssetsList" class="related-empty">${escapeHtml(window.t('common.loading'))}</div>
+                    </div>
                     <div class="related-section" id="relatedTasksSection">
                         <h3>${escapeHtml(window.t('contracts.detail.related_tasks'))}</h3>
                         <div id="relatedTasksList" class="related-empty">${escapeHtml(window.t('common.loading'))}</div>
@@ -615,8 +642,98 @@ if (!$contract_id) {
 
         // Related items
         async function loadRelatedItems() {
+            loadCoveredAssets();
             loadRelatedTasks();
             loadRelatedEvents();
+        }
+
+        // ---- Covered assets (Phase 9d) ----
+        let assetSearchTimer = null;
+
+        async function loadCoveredAssets() {
+            const list = document.getElementById('coveredAssetsList');
+            if (!list) return;
+            try {
+                const resp = await fetch(API_BASE + 'get_contract_assets.php?contract_id=' + contractId);
+                const data = await resp.json();
+                if (!data.success) { list.className = 'related-empty'; list.innerHTML = escapeHtml(data.error || 'Failed to load'); return; }
+                const assets = data.assets || [];
+                if (!assets.length) {
+                    list.className = 'related-empty';
+                    list.innerHTML = 'No assets covered by this contract yet.';
+                    return;
+                }
+                list.className = '';
+                list.innerHTML = assets.map(a => {
+                    const name = a.hostname || ('#' + a.asset_id);
+                    const meta = [a.manufacturer, a.model].filter(Boolean).join(' ');
+                    return `<div class="related-item">
+                        <a href="../asset-management/index.php?asset=${a.asset_id}">${escapeHtml(name)}</a>
+                        ${a.status ? `<span class="related-pill">${escapeHtml(a.status)}</span>` : ''}
+                        <span class="meta">${escapeHtml(meta)}</span>
+                        <button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="unlinkContractAsset(${a.asset_id})">Remove</button>
+                    </div>`;
+                }).join('');
+            } catch (e) {
+                list.className = 'related-empty';
+                list.innerHTML = 'Failed to load covered assets.';
+            }
+        }
+
+        function assetSearchDebounced() {
+            clearTimeout(assetSearchTimer);
+            assetSearchTimer = setTimeout(runAssetSearch, 250);
+        }
+        async function runAssetSearch() {
+            const input = document.getElementById('assetLinkSearch');
+            const box = document.getElementById('assetSearchResults');
+            if (!input || !box) return;
+            const q = input.value.trim();
+            if (q === '') { box.innerHTML = ''; box.classList.remove('active'); return; }
+            try {
+                const resp = await fetch('../api/assets/get_assets.php?search=' + encodeURIComponent(q));
+                const data = await resp.json();
+                const results = (data.assets || []).slice(0, 10);
+                if (!results.length) { box.innerHTML = '<div class="ci-search-empty">No matches</div>'; box.classList.add('active'); return; }
+                box.innerHTML = results.map(a => {
+                    const name = a.hostname || ('#' + a.id);
+                    const meta = [a.manufacturer, a.model].filter(Boolean).join(' ');
+                    return `<button type="button" class="ci-search-row" onclick="linkContractAsset(${a.id})">
+                        <span>${escapeHtml(name)}</span>
+                        <span class="ci-search-class">${escapeHtml(meta)}</span>
+                    </button>`;
+                }).join('');
+                box.classList.add('active');
+            } catch (e) {
+                box.innerHTML = '<div class="ci-search-empty">Search failed</div>';
+                box.classList.add('active');
+            }
+        }
+        async function linkContractAsset(assetId) {
+            try {
+                const resp = await fetch(API_BASE + 'save_contract_asset.php', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contract_id: contractId, asset_id: assetId }),
+                });
+                const data = await resp.json();
+                if (!data.success) { alert(data.error || 'Link failed'); return; }
+                const input = document.getElementById('assetLinkSearch');
+                const box = document.getElementById('assetSearchResults');
+                if (input) input.value = '';
+                if (box) { box.innerHTML = ''; box.classList.remove('active'); }
+                loadCoveredAssets();
+            } catch (e) { alert('Link failed'); }
+        }
+        async function unlinkContractAsset(assetId) {
+            try {
+                const resp = await fetch(API_BASE + 'delete_contract_asset.php', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contract_id: contractId, asset_id: assetId }),
+                });
+                const data = await resp.json();
+                if (!data.success) { alert(data.error || 'Remove failed'); return; }
+                loadCoveredAssets();
+            } catch (e) { alert('Remove failed'); }
         }
 
         async function loadRelatedTasks() {

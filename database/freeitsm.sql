@@ -2990,6 +2990,24 @@ CREATE TABLE IF NOT EXISTS `contract_term_values` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------
+-- Contract → asset coverage (Phase 9d): which assets a contract covers
+-- (warranty/support/lease). Assets-first; service/SLA coverage deferred. The
+-- reverse view ("this asset is covered by contract X") reads the same rows.
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `contract_assets` (
+    `id`                    INT NOT NULL AUTO_INCREMENT,
+    `contract_id`           INT NOT NULL,
+    `asset_id`              INT NOT NULL,
+    `created_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    `created_by_analyst_id` INT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_contract_asset` (`contract_id`, `asset_id`),
+    CONSTRAINT `fk_contract_assets_contract` FOREIGN KEY (`contract_id`)         REFERENCES `contracts` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_contract_assets_asset`    FOREIGN KEY (`asset_id`)            REFERENCES `assets` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_contract_assets_creator`  FOREIGN KEY (`created_by_analyst_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------
 -- RFP Builder (feature of the Contracts module)
 -- ----------------------------------------------------------
 

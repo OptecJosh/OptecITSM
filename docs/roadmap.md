@@ -19,14 +19,21 @@ re-litigate them.
 | 4A | Ad-hoc report builder | ✅ Done |
 | 6 | Agent productivity (ticketing) | ✅ Done |
 | 7 | Request management & deflection (7a–7e) | ✅ Done |
-| 8 | SLA snapshot, reporting & dashboards | ▶ Next |
-| 9 | ITSM depth (assets / change / contracts) | ⏳ Planned |
+| 8 | SLA snapshot, reporting & dashboards (8a–8c) | ✅ Done |
+| 9 | ITSM depth (assets / change / contracts) | ▶ Next |
 | 10 | Platform & admin | ⏳ Planned |
 | 11 | Agent overtime management (new module) | ⏳ Planned |
 
-**Build order so far:** 4B → 5 → 4A → 6 → 7 shipped. Next is **8 → 9 → 10 → 11**,
+**Build order so far:** 4B → 5 → 4A → 6 → 7 → 8 shipped. Next is **9 → 10 → 11**,
 the backlog from the whole-app review (below), highest daily value first. Each
 group has a design doc under `docs/design/phase-0N-*.md`.
+
+**Phase 8 sub-phases (all shipped):** 8a cached SLA-state snapshot
+(`ticket_sla_snapshot`, stamped by the breach cron + at ticket close, rebuild
+cron) → SLA-state filter + SLA-outcome report dimensions · 8b scheduled & emailed
+reports (`scheduled_report`, extracted `includes/ticket_report.php`, cron) · 8c
+curated executive cross-module dashboard. Deferred: SLA history/trending, report
+CSV/PDF file attachments, exec-dashboard per-analyst customization.
 
 **Phase 7 sub-phases (all shipped):** 7a KB deflection & article ratings · 7b
 public status page + announcements · 7c-1 service catalog (items, portal request,

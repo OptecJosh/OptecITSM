@@ -21,12 +21,17 @@ re-litigate them.
 | 7 | Request management & deflection (7a–7e) | ✅ Done |
 | 8 | SLA snapshot, reporting & dashboards (8a–8c) | ✅ Done |
 | 9 | ITSM depth (assets / change / contracts) (9a–9e) | ✅ Done |
-| 10 | Platform & admin | ▶ Next |
-| 11 | Agent overtime management (new module) | ⏳ Planned |
+| 10 | Platform & admin (10a/10b/10e done; 10c/10d deferred) | ◐ Partial |
+| 11 | Agent overtime management (new module) | ▶ Next |
 
-**Build order so far:** 4B → 5 → 4A → 6 → 7 → 8 → 9 shipped. Next is **10 → 11**,
-the backlog from the whole-app review (below), highest daily value first. Each
-group has a design doc under `docs/design/phase-0N-*.md`.
+**Build order so far:** 4B → 5 → 4A → 6 → 7 → 8 → 9 → 10(a/b/e) shipped. Next is
+**11**. Each group has a design doc under `docs/design/phase-0N-*.md`.
+
+**Phase 10 sub-phases:** 10a unified cross-module audit log + CSV export (read-only
+aggregator) ✅ · 10b in-app DB backup (streaming mysqldump) + CSV import/export for
+assets & portal users ✅ · 10e multi-tenancy coverage audit + fixes (11 endpoints;
+see docs/design/phase-10e-tenancy-audit.md) ✅ · 10d native notification channels
+(slack/teams/sms) ⏸ deferred · 10c SAML SSO ⏸ deferred.
 
 **Phase 9 sub-phases (all shipped):** 9a software licence compliance/true-up +
 `licence.expiring` reminders · 9b change freeze windows (global-scope, soft

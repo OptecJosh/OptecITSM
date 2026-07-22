@@ -1924,6 +1924,24 @@ CREATE TABLE IF NOT EXISTS `change_freeze_windows` (
     CONSTRAINT `fk_change_freeze_creator` FOREIGN KEY (`created_by_analyst_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ----------------------------------------------------------
+-- Affected CIs on a change (Phase 9c): which CMDB objects a change touches.
+-- Mirrors ticket_cmdb_objects but has no is_primary (a change has no
+-- SLA-driving CI). Drives CMDB impact analysis → a suggested risk impact score.
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `change_cmdb_objects` (
+    `id`                    INT NOT NULL AUTO_INCREMENT,
+    `change_id`             INT NOT NULL,
+    `cmdb_object_id`        INT NOT NULL,
+    `created_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    `created_by_analyst_id` INT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_change_cmdb_object` (`change_id`, `cmdb_object_id`),
+    CONSTRAINT `fk_change_cmdb_change`  FOREIGN KEY (`change_id`)             REFERENCES `changes` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_change_cmdb_object`  FOREIGN KEY (`cmdb_object_id`)        REFERENCES `cmdb_objects` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_change_cmdb_creator` FOREIGN KEY (`created_by_analyst_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `change_attachments` (
     `id`                INT NOT NULL AUTO_INCREMENT,
     `change_id`         INT NOT NULL,

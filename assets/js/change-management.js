@@ -700,6 +700,9 @@ function renderChangeDetail() {
         `;
     }
 
+    // Affected CIs + CMDB impact (Phase 9c)
+    html += renderAffectedCIs(c);
+
     // Linked incidents section
     html += renderLinkedIncidents(c);
 
@@ -721,6 +724,149 @@ function renderChangeDetail() {
 
     // Load activity timeline asynchronously
     loadActivityTimeline(c.id);
+    // Load affected CIs + impact (Phase 9c)
+    loadAffectedCIs(c.id);
+}
+
+// ============ Affected CIs + CMDB impact (Phase 9c) ============
+
+let cmCiSearchTimer = null;
+
+// Static shell; the body + impact are filled by loadAffectedCIs().
+function renderAffectedCIs(c) {
+    return `
+        <div class="affected-cis-section" style="margin-top:20px;">
+            <h3>${window.t('change-management.detail.affected_cis') || 'Affected CIs &amp; impact'}</h3>
+            <div style="position:relative;margin-bottom:10px;max-width:420px;">
+                <input type="text" id="ciLinkSearch" class="form-input" autocomplete="off"
+                       placeholder="Search CMDB to link a CI&hellip;" oninput="ciSearchDebounced()">
+                <div id="ciSearchResults" class="ci-search-results"></div>
+            </div>
+            <div id="affectedCiBody"><div class="loading"><div class="spinner"></div></div></div>
+            <div id="ciImpactSummary" style="margin-top:10px;"></div>
+        </div>`;
+}
+
+async function loadAffectedCIs(changeId) {
+    const body = document.getElementById('affectedCiBody');
+    if (!body) return;
+    try {
+        const res = await fetch(API_BASE + 'get_change_cmdb_objects.php?change_id=' + changeId);
+        const data = await res.json();
+        if (!data.success) { body.innerHTML = `<div class="detail-section-empty">${escapeHtml(data.error || '')}</div>`; return; }
+        const objs = data.objects || [];
+        if (!objs.length) {
+            body.innerHTML = `<div class="detail-section-empty">No CIs linked. Link the configuration items this change affects to see downstream impact.</div>`;
+        } else {
+            body.innerHTML = `<table class="linked-incidents-table"><tbody>` + objs.map(o => `
+                <tr>
+                    <td><strong>${escapeHtml(o.name || ('#' + o.object_id))}</strong></td>
+                    <td>${escapeHtml(o.class_name || '')}</td>
+                    <td class="linked-incidents-actions">
+                        <button class="linked-incident-btn danger" onclick="unlinkChangeCi(${o.object_id})" title="Unlink">${CM_UNLINK_SVG}</button>
+                    </td>
+                </tr>`).join('') + `</tbody></table>`;
+        }
+        loadChangeImpact(changeId);
+    } catch (e) {
+        body.innerHTML = `<div class="detail-section-empty">Failed to load affected CIs.</div>`;
+    }
+}
+
+async function loadChangeImpact(changeId) {
+    const el = document.getElementById('ciImpactSummary');
+    if (!el) return;
+    try {
+        const res = await fetch(API_BASE + 'get_change_impact.php?change_id=' + changeId);
+        const data = await res.json();
+        if (!data.success || !data.linked_count) { el.innerHTML = ''; return; }
+
+        const curImpact = currentChange && currentChange.risk_impact_score ? parseInt(currentChange.risk_impact_score) : null;
+        let applyBtn = '';
+        if (data.suggested_impact && data.suggested_impact !== curImpact) {
+            applyBtn = ` <button class="btn btn-secondary btn-sm" onclick="applySuggestedImpact(${data.suggested_impact})">Apply to risk impact</button>`;
+        } else if (data.suggested_impact && data.suggested_impact === curImpact) {
+            applyBtn = ` <span style="color:#16a34a;font-size:12px;">✓ matches current impact</span>`;
+        }
+
+        el.innerHTML = `
+            <div style="background:var(--surface-alt,#f9fafb);border:1px solid var(--border,#e5e7eb);border-radius:8px;padding:12px 14px;font-size:13px;">
+                <strong>${data.impacted_count}</strong> downstream CI${data.impacted_count === 1 ? '' : 's'} could be affected across
+                ${data.linked_count} linked CI${data.linked_count === 1 ? '' : 's'}.
+                ${data.suggested_impact ? `Suggested risk impact: <strong>${data.suggested_impact}/5</strong> (${escapeHtml(data.suggested_impact_label || '')}).${applyBtn}` : ''}
+                <div style="color:var(--text-dim,#6b7280);font-size:11px;margin-top:6px;">A suggestion only — you set the final likelihood × impact.</div>
+            </div>`;
+    } catch (e) {
+        el.innerHTML = '';
+    }
+}
+
+function ciSearchDebounced() {
+    clearTimeout(cmCiSearchTimer);
+    cmCiSearchTimer = setTimeout(runCiSearch, 250);
+}
+async function runCiSearch() {
+    const input = document.getElementById('ciLinkSearch');
+    const box = document.getElementById('ciSearchResults');
+    if (!input || !box) return;
+    const q = input.value.trim();
+    if (q === '') { box.innerHTML = ''; box.classList.remove('active'); return; }
+    try {
+        const res = await fetch('../api/cmdb/search_objects.php?q=' + encodeURIComponent(q) + '&limit=10');
+        const data = await res.json();
+        const results = data.results || [];
+        if (!results.length) { box.innerHTML = `<div class="ci-search-empty">No matches</div>`; box.classList.add('active'); return; }
+        box.innerHTML = results.map(r => `
+            <button type="button" class="ci-search-row" onclick="linkChangeCi(${r.id})">
+                <span>${escapeHtml(r.name || ('#' + r.id))}</span>
+                <span class="ci-search-class">${escapeHtml(r.class_name || '')}</span>
+            </button>`).join('');
+        box.classList.add('active');
+    } catch (e) {
+        box.innerHTML = `<div class="ci-search-empty">Search failed</div>`;
+        box.classList.add('active');
+    }
+}
+async function linkChangeCi(objectId) {
+    if (!currentChange) return;
+    try {
+        const res = await fetch(API_BASE + 'save_change_cmdb_object.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ change_id: currentChange.id, cmdb_object_id: objectId }),
+        });
+        const data = await res.json();
+        if (!data.success) { showToast(data.error || 'Link failed', 'error'); return; }
+        const input = document.getElementById('ciLinkSearch');
+        const box = document.getElementById('ciSearchResults');
+        if (input) input.value = '';
+        if (box) { box.innerHTML = ''; box.classList.remove('active'); }
+        loadAffectedCIs(currentChange.id);
+    } catch (e) { showToast('Link failed', 'error'); }
+}
+async function unlinkChangeCi(objectId) {
+    if (!currentChange) return;
+    try {
+        const res = await fetch(API_BASE + 'delete_change_cmdb_object.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ change_id: currentChange.id, cmdb_object_id: objectId }),
+        });
+        const data = await res.json();
+        if (!data.success) { showToast(data.error || 'Unlink failed', 'error'); return; }
+        loadAffectedCIs(currentChange.id);
+    } catch (e) { showToast('Unlink failed', 'error'); }
+}
+async function applySuggestedImpact(score) {
+    if (!currentChange) return;
+    try {
+        const res = await fetch(API_BASE + 'save.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: currentChange.id, risk_impact_score: score }),
+        });
+        const data = await res.json();
+        if (!data.success) { showToast(data.error || 'Update failed', 'error'); return; }
+        showToast('Risk impact set to ' + score + '/5', 'success');
+        viewChange(currentChange.id);
+    } catch (e) { showToast('Update failed', 'error'); }
 }
 
 // ============ Linked incidents ============

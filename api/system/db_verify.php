@@ -1357,6 +1357,16 @@ $schema = [
         'updated_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
     ],
 
+    // Affected CIs on a change (Phase 9c) — mirror ticket_cmdb_objects (no
+    // is_primary; a change has no SLA-driving CI). Feeds CMDB impact → suggested risk.
+    'change_cmdb_objects' => [
+        'id'                    => 'INT NOT NULL AUTO_INCREMENT',
+        'change_id'             => 'INT NOT NULL',
+        'cmdb_object_id'        => 'INT NOT NULL',
+        'created_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+        'created_by_analyst_id' => 'INT NULL',
+    ],
+
     'change_attachments' => [
         'id'                    => 'INT NOT NULL AUTO_INCREMENT',
         'change_id'             => 'INT NOT NULL',
@@ -3686,6 +3696,22 @@ try {
         }
         if ($tableExists('tickets') && !$fkExists('ticket_sla_snapshot', 'fk_sla_snapshot_ticket')) {
             try { $conn->exec("ALTER TABLE ticket_sla_snapshot ADD CONSTRAINT fk_sla_snapshot_ticket FOREIGN KEY (ticket_id) REFERENCES tickets (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+    }
+
+    // Affected CIs on a change (Phase 9c) — unique link + FKs.
+    if ($tableExists('change_cmdb_objects')) {
+        if (!$idxExists('change_cmdb_objects', 'uq_change_cmdb_object')) {
+            try { $conn->exec("ALTER TABLE change_cmdb_objects ADD UNIQUE KEY uq_change_cmdb_object (change_id, cmdb_object_id)"); } catch (Exception $e) {}
+        }
+        if ($tableExists('changes') && !$fkExists('change_cmdb_objects', 'fk_change_cmdb_change')) {
+            try { $conn->exec("ALTER TABLE change_cmdb_objects ADD CONSTRAINT fk_change_cmdb_change FOREIGN KEY (change_id) REFERENCES changes (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if ($tableExists('cmdb_objects') && !$fkExists('change_cmdb_objects', 'fk_change_cmdb_object')) {
+            try { $conn->exec("ALTER TABLE change_cmdb_objects ADD CONSTRAINT fk_change_cmdb_object FOREIGN KEY (cmdb_object_id) REFERENCES cmdb_objects (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if ($tableExists('analysts') && !$fkExists('change_cmdb_objects', 'fk_change_cmdb_creator')) {
+            try { $conn->exec("ALTER TABLE change_cmdb_objects ADD CONSTRAINT fk_change_cmdb_creator FOREIGN KEY (created_by_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
         }
     }
 

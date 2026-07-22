@@ -2260,3 +2260,23 @@ body.cm-editor-open .editor-form {
 
 .link-incident-title { font-weight: 600; color: var(--text, #1a1a1a); font-size: 14px; }
 .link-incident-meta { font-size: 12px; color: var(--text-muted, #6b7280); }
+
+/* Affected CIs + CMDB impact (Phase 9c) */
+.affected-cis-section h3 { margin: 0 0 10px; font-size: 15px; color: var(--text, #1a1a1a); }
+.ci-search-results {
+    display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 50;
+    background: var(--surface, #fff); border: 1px solid var(--border, #e5e7eb);
+    border-radius: 6px; margin-top: 2px; max-height: 240px; overflow: auto;
+    box-shadow: 0 4px 14px var(--shadow, rgba(0,0,0,0.12));
+}
+.ci-search-results.active { display: block; }
+.ci-search-row {
+    display: flex; justify-content: space-between; gap: 12px; align-items: center;
+    width: 100%; text-align: left; padding: 8px 10px; border: none; background: none;
+    cursor: pointer; font-size: 13px; color: var(--text, #1a1a1a);
+    border-bottom: 1px solid var(--border-soft, #f0f0f0);
+}
+.ci-search-row:last-child { border-bottom: none; }
+.ci-search-row:hover { background: var(--surface-3, #f3f4f6); }
+.ci-search-class { font-size: 12px; color: var(--text-muted, #6b7280); }
+.ci-search-empty { padding: 10px; font-size: 13px; color: var(--text-muted, #6b7280); }

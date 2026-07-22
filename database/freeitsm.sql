@@ -43,6 +43,9 @@ CREATE TABLE IF NOT EXISTS `analysts` (
     `manager_id`                INT NULL,
     -- KPI: analyst tier; a ticket's tier = its owner's tier.
     `tier`                      ENUM('L1','L2','L3') NULL,
+    -- KPI K3 (cost/capacity): loaded hourly cost + contracted weekly hours.
+    `loaded_rate`               DECIMAL(10,2) NULL,
+    `contracted_weekly_hours`   DECIMAL(5,2) NULL,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_analysts_username` (`username`),
     CONSTRAINT `fk_analysts_manager` FOREIGN KEY (`manager_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL

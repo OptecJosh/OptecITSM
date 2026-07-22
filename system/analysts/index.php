@@ -216,6 +216,18 @@ $translationNamespaces = ['common', 'tickets'];
                     <small style="color: var(--text-muted, #666);">Drives the tiered KPI scorecards; a ticket is attributed to its owner's tier.</small>
                 </div>
 
+                <!-- KPI K3: cost/capacity inputs (utilisation, cost per ticket). -->
+                <div class="form-group" style="display:flex;gap:12px;">
+                    <div style="flex:1;">
+                        <label for="analystRate">Loaded rate (/hr)</label>
+                        <input type="number" step="0.01" min="0" id="analystRate" placeholder="0.00">
+                    </div>
+                    <div style="flex:1;">
+                        <label for="analystHours">Contracted hrs/week</label>
+                        <input type="number" step="0.5" min="0" id="analystHours" placeholder="37.5">
+                    </div>
+                </div>
+
                 <!-- Multi-tenancy: company access. Hidden on a single-company install
                      (shown by JS only when more than one company exists). -->
                 <div class="form-group" id="analystAccessGroup" style="display: none;">
@@ -502,6 +514,8 @@ $translationNamespaces = ['common', 'tickets'];
                         .map(x => `<option value="${x.id}">${escapeHtml(x.full_name)}</option>`).join('');
             mgrSel.value = (analyst && analyst.manager_id) ? String(analyst.manager_id) : '';
             document.getElementById('analystTier').value = (analyst && analyst.tier) ? analyst.tier : '';
+            document.getElementById('analystRate').value = (analyst && analyst.loaded_rate != null) ? analyst.loaded_rate : '';
+            document.getElementById('analystHours').value = (analyst && analyst.contracted_weekly_hours != null) ? analyst.contracted_weekly_hours : '';
 
             // Password is required only for new analysts
             const passwordInput = document.getElementById('analystPassword');
@@ -685,7 +699,9 @@ $translationNamespaces = ['common', 'tickets'];
                 can_access_all_modules: document.getElementById('analystAllModules').checked,
                 auth_provider_id: document.getElementById('analystAuthProvider').value || null,
                 manager_id: document.getElementById('analystManager').value || null,
-                tier: document.getElementById('analystTier').value || null
+                tier: document.getElementById('analystTier').value || null,
+                loaded_rate: document.getElementById('analystRate').value || null,
+                contracted_weekly_hours: document.getElementById('analystHours').value || null
             };
 
             // Multi-tenancy: send company access only when the control is shown.

@@ -188,6 +188,48 @@ function kpi_engine_compute(PDO $conn, string $scorecard, string $name, string $
             return $v === null ? null : round($v, 1);
         }
 
+        // --- Avg time spent per ticket (hours), from time entries in month ---
+        if ($name === 'Avg time spent per ticket') {
+            return kpi_scalar($conn,
+                "SELECT SUM(te.time_spent_minutes)/60 / NULLIF(COUNT(DISTINCT te.ticket_id),0)
+                   FROM ticket_time_entries te JOIN tickets t ON t.id = te.ticket_id$oj
+                  WHERE te.is_active = 1 AND te.entry_datetime >= ? AND te.entry_datetime < ?$ow",
+                array_merge([$start, $end], $op));
+        }
+
+        // --- K3 cost/capacity (team-wide) ---
+        if ($name === 'Cost per ticket') {
+            return kpi_scalar($conn,
+                "SELECT SUM(te.time_spent_minutes/60 * COALESCE(a2.loaded_rate,0)) / NULLIF(COUNT(DISTINCT te.ticket_id),0)
+                   FROM ticket_time_entries te JOIN analysts a2 ON a2.id = te.analyst_id
+                  WHERE te.is_active = 1 AND te.entry_datetime >= ? AND te.entry_datetime < ?",
+                [$start, $end]);
+        }
+        if ($name === 'Utilisation %') {
+            $logged = kpi_scalar($conn, "SELECT SUM(time_spent_minutes)/60 FROM ticket_time_entries WHERE is_active = 1 AND entry_datetime >= ? AND entry_datetime < ?", [$start, $end]);
+            $avail = kpi_scalar($conn, "SELECT SUM(COALESCE(contracted_weekly_hours,0)) FROM analysts WHERE is_active = 1");
+            $weeks = kpi_days_in_month($period) / 7;
+            return ($avail && $avail > 0) ? round(($logged ?? 0) / ($avail * $weeks) * 100, 1) : null;
+        }
+        if ($name === 'Tickets per FTE') {
+            $closed = kpi_scalar($conn, "SELECT COUNT(*) FROM tickets WHERE deleted_datetime IS NULL AND closed_datetime >= ? AND closed_datetime < ?", [$start, $end]);
+            $fte = kpi_scalar($conn, "SELECT COUNT(*) FROM analysts WHERE is_active = 1");
+            return ($fte && $fte > 0) ? round(($closed ?? 0) / $fte, 1) : null;
+        }
+        if ($name === 'Out-of-hours work rate') {
+            return kpi_scalar($conn,
+                "SELECT SUM(CASE WHEN HOUR(entry_datetime) < 8 OR HOUR(entry_datetime) >= 18 OR DAYOFWEEK(entry_datetime) IN (1,7) THEN time_spent_minutes ELSE 0 END)
+                        / NULLIF(SUM(time_spent_minutes),0) * 100
+                   FROM ticket_time_entries WHERE is_active = 1 AND entry_datetime >= ? AND entry_datetime < ?",
+                [$start, $end]);
+        }
+        if ($name === 'CSAT / customer happiness') {
+            return kpi_scalar($conn,
+                "SELECT AVG(rating >= 4) * 100 FROM ticket_csat_responses
+                  WHERE responded_datetime >= ? AND responded_datetime < ? AND rating IS NOT NULL",
+                [$start, $end]);
+        }
+
     } catch (Exception $e) {
         error_log('[kpi_engine] ' . $scorecard . '/' . $name . ': ' . $e->getMessage());
         return null;

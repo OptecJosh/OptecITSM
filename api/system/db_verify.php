@@ -58,6 +58,8 @@ $schema = [
         'is_admin'               => 'TINYINT(1) NOT NULL DEFAULT 0',
         'manager_id'             => 'INT NULL',   // line manager (Phase 11 overtime approval routing)
         'tier'                   => "ENUM('L1','L2','L3') NULL",   // KPI: a ticket's tier = its owner's tier
+        'loaded_rate'            => 'DECIMAL(10,2) NULL',          // KPI K3: loaded hourly cost
+        'contracted_weekly_hours'=> 'DECIMAL(5,2) NULL',          // KPI K3: available hours for utilisation
         // Module access (issue #30) — mirrors can_access_all_tenants. 1 = every
         // module; 0 = restricted to analyst_modules (+ any team grants). Defaults to
         // 1 so a new analyst is unrestricted; the upgrade back-fill sets it to 0 for

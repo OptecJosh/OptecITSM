@@ -145,6 +145,14 @@ try {
         try { $conn->prepare("UPDATE analysts SET tier = ? WHERE id = ?")->execute([$tier, $analystId]); } catch (Exception $e) {}
     }
 
+    // KPI K3 cost/capacity fields. Only touched when sent; '' clears.
+    foreach (['loaded_rate' => 'loaded_rate', 'contracted_weekly_hours' => 'contracted_weekly_hours'] as $k => $col) {
+        if (array_key_exists($k, $data) && $analystId > 0) {
+            $v = ($data[$k] === '' || $data[$k] === null) ? null : (float)$data[$k];
+            try { $conn->prepare("UPDATE analysts SET $col = ? WHERE id = ?")->execute([$v, $analystId]); } catch (Exception $e) {}
+        }
+    }
+
     // Multi-tenancy: company access. Only touched when the form actually sends it
     // (it's hidden on a single-company install), so we never clobber the all-access
     // default on installs that don't show the control.

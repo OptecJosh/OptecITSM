@@ -41,6 +41,8 @@ CREATE TABLE IF NOT EXISTS `analysts` (
     `can_access_all_modules`    TINYINT(1) NOT NULL DEFAULT 1,
     -- Line manager (Phase 11 overtime approval routing). Self-referential.
     `manager_id`                INT NULL,
+    -- KPI: analyst tier; a ticket's tier = its owner's tier.
+    `tier`                      ENUM('L1','L2','L3') NULL,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_analysts_username` (`username`),
     CONSTRAINT `fk_analysts_manager` FOREIGN KEY (`manager_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL
@@ -754,6 +756,10 @@ CREATE TABLE IF NOT EXISTS `tickets` (
     `last_inbound_at`       DATETIME NULL,
     `merged_into_ticket_id` INT NULL,
     `catalog_item_id`       INT NULL,
+    -- KPI instrumentation (K1): work stream, playbook eligibility, first-ack anchor.
+    `stream_id`             INT NULL,
+    `playbook_eligible`     TINYINT(1) NOT NULL DEFAULT 0,
+    `acknowledged_datetime` DATETIME NULL,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_tickets_number` (`ticket_number`),
     KEY `ix_tickets_status_id` (`status_id`),
@@ -4223,6 +4229,65 @@ CREATE TABLE IF NOT EXISTS `kpi_definitions` (
     `updated_datetime` DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     KEY `ix_kpi_def_scorecard` (`scorecard`, `display_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------
+-- KPI instrumentation (K1): the data points the KPI compute engine needs that
+-- freeitsm didn't previously capture. A ticket's tier = its owner's tier
+-- (analysts.tier), so escalation = an owner change to a higher tier.
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `ticket_streams` (
+    `id`            INT NOT NULL AUTO_INCREMENT,
+    `name`          VARCHAR(50) NOT NULL,
+    `is_active`     TINYINT(1) NOT NULL DEFAULT 1,
+    `display_order` INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT INTO `ticket_streams` (`name`, `display_order`) SELECT * FROM (SELECT 'NOC' AS n, 10 AS o) t WHERE NOT EXISTS (SELECT 1 FROM `ticket_streams` WHERE name='NOC');
+INSERT INTO `ticket_streams` (`name`, `display_order`) SELECT * FROM (SELECT 'SOC' AS n, 20 AS o) t WHERE NOT EXISTS (SELECT 1 FROM `ticket_streams` WHERE name='SOC');
+
+CREATE TABLE IF NOT EXISTS `ticket_escalations` (
+    `id`              INT NOT NULL AUTO_INCREMENT,
+    `ticket_id`       INT NOT NULL,
+    `from_analyst_id` INT NULL,
+    `to_analyst_id`   INT NULL,
+    `from_tier`       ENUM('L1','L2','L3') NULL,
+    `to_tier`         ENUM('L1','L2','L3') NULL,
+    `escalated_at`    DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    `picked_up_at`    DATETIME NULL,
+    `note`            VARCHAR(500) NULL,
+    PRIMARY KEY (`id`),
+    KEY `ix_ticket_esc_ticket` (`ticket_id`),
+    CONSTRAINT `fk_ticket_esc_ticket` FOREIGN KEY (`ticket_id`) REFERENCES `tickets` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_ticket_esc_from`   FOREIGN KEY (`from_analyst_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL,
+    CONSTRAINT `fk_ticket_esc_to`     FOREIGN KEY (`to_analyst_id`)   REFERENCES `analysts` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `ticket_hold_events` (
+    `id`          INT NOT NULL AUTO_INCREMENT,
+    `ticket_id`   INT NOT NULL,
+    `reason`      VARCHAR(40) NULL,
+    `entered_at`  DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    `exited_at`   DATETIME NULL,
+    `status_name` VARCHAR(100) NULL,
+    PRIMARY KEY (`id`),
+    KEY `ix_ticket_hold_ticket` (`ticket_id`),
+    CONSTRAINT `fk_ticket_hold_ticket` FOREIGN KEY (`ticket_id`) REFERENCES `tickets` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `ticket_qa_reviews` (
+    `id`                  INT NOT NULL AUTO_INCREMENT,
+    `ticket_id`           INT NOT NULL,
+    `reviewer_analyst_id` INT NULL,
+    `review_type`         VARCHAR(30) NOT NULL DEFAULT 'triage',
+    `passed`              TINYINT(1) NOT NULL DEFAULT 0,
+    `score`               DECIMAL(5,2) NULL,
+    `note`                VARCHAR(1000) NULL,
+    `created_datetime`    DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `ix_ticket_qa_ticket` (`ticket_id`),
+    CONSTRAINT `fk_ticket_qa_ticket`    FOREIGN KEY (`ticket_id`)           REFERENCES `tickets` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_ticket_qa_reviewer`  FOREIGN KEY (`reviewer_analyst_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `kpi_measurements` (

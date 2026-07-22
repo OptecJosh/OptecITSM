@@ -139,6 +139,12 @@ try {
         try { $conn->prepare("UPDATE analysts SET manager_id = ? WHERE id = ?")->execute([$mgr, $analystId]); } catch (Exception $e) {}
     }
 
+    // KPI tier (L1/L2/L3). Only touched when the form sends it; '' clears it.
+    if (array_key_exists('tier', $data) && $analystId > 0) {
+        $tier = in_array($data['tier'] ?? '', ['L1','L2','L3'], true) ? $data['tier'] : null;
+        try { $conn->prepare("UPDATE analysts SET tier = ? WHERE id = ?")->execute([$tier, $analystId]); } catch (Exception $e) {}
+    }
+
     // Multi-tenancy: company access. Only touched when the form actually sends it
     // (it's hidden on a single-company install), so we never clobber the all-access
     // default on installs that don't show the control.

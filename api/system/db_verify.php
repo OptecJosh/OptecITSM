@@ -57,6 +57,7 @@ $schema = [
         // (see the one-time backfill below) so nobody is locked out.
         'is_admin'               => 'TINYINT(1) NOT NULL DEFAULT 0',
         'manager_id'             => 'INT NULL',   // line manager (Phase 11 overtime approval routing)
+        'tier'                   => "ENUM('L1','L2','L3') NULL",   // KPI: a ticket's tier = its owner's tier
         // Module access (issue #30) — mirrors can_access_all_tenants. 1 = every
         // module; 0 = restricted to analyst_modules (+ any team grants). Defaults to
         // 1 so a new analyst is unrestricted; the upgrade back-fill sets it to 0 for
@@ -587,6 +588,54 @@ $schema = [
         'last_inbound_at'       => 'DATETIME NULL',
         'merged_into_ticket_id' => 'INT NULL',
         'catalog_item_id'       => 'INT NULL',
+        // KPI instrumentation (K1).
+        'stream_id'             => 'INT NULL',            // NOC / SOC
+        'playbook_eligible'     => 'TINYINT(1) NOT NULL DEFAULT 0',
+        'acknowledged_datetime' => 'DATETIME NULL',       // first human ack (MTTA anchor)
+    ],
+
+    // KPI: work streams (NOC / SOC). Seeded below.
+    'ticket_streams' => [
+        'id'            => 'INT NOT NULL AUTO_INCREMENT',
+        'name'          => 'VARCHAR(50) NOT NULL',
+        'is_active'     => 'TINYINT(1) NOT NULL DEFAULT 1',
+        'display_order' => 'INT NOT NULL DEFAULT 0',
+    ],
+
+    // KPI: escalation events (tier = owner's tier). One row per owner-tier
+    // increase; escalation rate / time-to-escalate / pickup come from these.
+    'ticket_escalations' => [
+        'id'               => 'INT NOT NULL AUTO_INCREMENT',
+        'ticket_id'        => 'INT NOT NULL',
+        'from_analyst_id'  => 'INT NULL',
+        'to_analyst_id'    => 'INT NULL',
+        'from_tier'        => "ENUM('L1','L2','L3') NULL",
+        'to_tier'          => "ENUM('L1','L2','L3') NULL",
+        'escalated_at'     => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+        'picked_up_at'     => 'DATETIME NULL',
+        'note'             => 'VARCHAR(500) NULL',
+    ],
+
+    // KPI: on-hold intervals with reason (client-wait vs vendor-wait vs internal).
+    'ticket_hold_events' => [
+        'id'           => 'INT NOT NULL AUTO_INCREMENT',
+        'ticket_id'    => 'INT NOT NULL',
+        'reason'       => 'VARCHAR(40) NULL',   // client | vendor | internal | (free)
+        'entered_at'   => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+        'exited_at'    => 'DATETIME NULL',
+        'status_name'  => 'VARCHAR(100) NULL',
+    ],
+
+    // KPI: QA reviews of sampled tickets (pass rate, triage accuracy, handover).
+    'ticket_qa_reviews' => [
+        'id'                  => 'INT NOT NULL AUTO_INCREMENT',
+        'ticket_id'           => 'INT NOT NULL',
+        'reviewer_analyst_id' => 'INT NULL',
+        'review_type'         => "VARCHAR(30) NOT NULL DEFAULT 'triage'", // triage | resolution | handover
+        'passed'              => 'TINYINT(1) NOT NULL DEFAULT 0',
+        'score'               => 'DECIMAL(5,2) NULL',
+        'note'                => 'VARCHAR(1000) NULL',
+        'created_datetime'    => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
     ],
 
     'ticket_audit' => [
@@ -3856,6 +3905,41 @@ try {
         foreach ($otDefaults as $k => $v) {
             try { $conn->prepare("INSERT IGNORE INTO overtime_settings (setting_key, setting_value, updated_datetime) VALUES (?, ?, UTC_TIMESTAMP())")->execute([$k, $v]); } catch (Exception $e) {}
         }
+    }
+
+    // KPI instrumentation (K1) — FKs, indexes, stream seed.
+    if ($tableExists('ticket_streams')) {
+        $cnt = (int)$conn->query("SELECT COUNT(*) FROM ticket_streams")->fetchColumn();
+        if ($cnt === 0) {
+            try { $conn->exec("INSERT INTO ticket_streams (name, is_active, display_order) VALUES ('NOC',1,10),('SOC',1,20)"); } catch (Exception $e) {}
+        }
+    }
+    if ($tableExists('tickets') && $colExists('tickets', 'stream_id') && $tableExists('ticket_streams')) {
+        if (!$idxExists('tickets', 'ix_tickets_stream')) {
+            try { $conn->exec("ALTER TABLE tickets ADD INDEX ix_tickets_stream (stream_id)"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('tickets', 'fk_tickets_stream')) {
+            try { $conn->exec("ALTER TABLE tickets ADD CONSTRAINT fk_tickets_stream FOREIGN KEY (stream_id) REFERENCES ticket_streams (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+    }
+    foreach ([
+        ['ticket_escalations','fk_ticket_esc_ticket','ticket_id','tickets','CASCADE','ix_ticket_esc_ticket'],
+        ['ticket_hold_events','fk_ticket_hold_ticket','ticket_id','tickets','CASCADE','ix_ticket_hold_ticket'],
+        ['ticket_qa_reviews','fk_ticket_qa_ticket','ticket_id','tickets','CASCADE','ix_ticket_qa_ticket'],
+    ] as $t) {
+        if ($tableExists($t[0]) && $tableExists($t[3])) {
+            if (!$idxExists($t[0], $t[5])) { try { $conn->exec("ALTER TABLE {$t[0]} ADD INDEX {$t[5]} ({$t[2]})"); } catch (Exception $e) {} }
+            if (!$fkExists($t[0], $t[1])) { try { $conn->exec("ALTER TABLE {$t[0]} ADD CONSTRAINT {$t[1]} FOREIGN KEY ({$t[2]}) REFERENCES {$t[3]} (id) ON DELETE {$t[4]}"); } catch (Exception $e) {} }
+        }
+    }
+    // Analyst FKs for the KPI instrumentation tables.
+    if ($tableExists('ticket_escalations') && $tableExists('analysts')) {
+        foreach (['fk_ticket_esc_from'=>'from_analyst_id','fk_ticket_esc_to'=>'to_analyst_id'] as $fk=>$col) {
+            if (!$fkExists('ticket_escalations',$fk)) { try { $conn->exec("ALTER TABLE ticket_escalations ADD CONSTRAINT $fk FOREIGN KEY ($col) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {} }
+        }
+    }
+    if ($tableExists('ticket_qa_reviews') && $tableExists('analysts') && !$fkExists('ticket_qa_reviews','fk_ticket_qa_reviewer')) {
+        try { $conn->exec("ALTER TABLE ticket_qa_reviews ADD CONSTRAINT fk_ticket_qa_reviewer FOREIGN KEY (reviewer_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
     }
 
     // KPI module — indexes, FKs, and one-time catalog seed.

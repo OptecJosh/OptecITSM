@@ -204,6 +204,18 @@ $translationNamespaces = ['common', 'tickets'];
                     <small style="color: var(--text-muted, #666);">Approves this analyst's overtime requests.</small>
                 </div>
 
+                <!-- KPI tier: a ticket's tier = its owner's tier. -->
+                <div class="form-group">
+                    <label for="analystTier">KPI tier</label>
+                    <select id="analystTier">
+                        <option value="">&mdash; None &mdash;</option>
+                        <option value="L1">L1</option>
+                        <option value="L2">L2</option>
+                        <option value="L3">L3</option>
+                    </select>
+                    <small style="color: var(--text-muted, #666);">Drives the tiered KPI scorecards; a ticket is attributed to its owner's tier.</small>
+                </div>
+
                 <!-- Multi-tenancy: company access. Hidden on a single-company install
                      (shown by JS only when more than one company exists). -->
                 <div class="form-group" id="analystAccessGroup" style="display: none;">
@@ -489,6 +501,7 @@ $translationNamespaces = ['common', 'tickets'];
                 analysts.filter(x => String(x.id) !== selfId)
                         .map(x => `<option value="${x.id}">${escapeHtml(x.full_name)}</option>`).join('');
             mgrSel.value = (analyst && analyst.manager_id) ? String(analyst.manager_id) : '';
+            document.getElementById('analystTier').value = (analyst && analyst.tier) ? analyst.tier : '';
 
             // Password is required only for new analysts
             const passwordInput = document.getElementById('analystPassword');
@@ -671,7 +684,8 @@ $translationNamespaces = ['common', 'tickets'];
                 is_admin: document.getElementById('analystIsAdmin').checked,
                 can_access_all_modules: document.getElementById('analystAllModules').checked,
                 auth_provider_id: document.getElementById('analystAuthProvider').value || null,
-                manager_id: document.getElementById('analystManager').value || null
+                manager_id: document.getElementById('analystManager').value || null,
+                tier: document.getElementById('analystTier').value || null
             };
 
             // Multi-tenancy: send company access only when the control is shown.

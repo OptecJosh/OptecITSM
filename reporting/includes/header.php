@@ -27,6 +27,15 @@ require_once $path_prefix . 'includes/waffle-menu.php';
         <span class="module-title"><?php echo $module_title; ?></span>
     </div>
     <nav class="header-nav">
+        <a href="<?php echo BASE_URL; ?>reporting/executive/" class="nav-btn <?php echo $current_page === 'executive' ? 'active' : ''; ?>" title="Executive dashboard">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="9"></rect>
+                <rect x="14" y="3" width="7" height="5"></rect>
+                <rect x="14" y="12" width="7" height="9"></rect>
+                <rect x="3" y="16" width="7" height="5"></rect>
+            </svg>
+            <span>Executive</span>
+        </a>
         <a href="<?php echo BASE_URL; ?>reporting/logs/" class="nav-btn <?php echo $current_page === 'logs' ? 'active' : ''; ?>" title="<?php echo htmlspecialchars(function_exists('t') ? t('reporting.nav.logs_title') : 'System Logs'); ?>">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>

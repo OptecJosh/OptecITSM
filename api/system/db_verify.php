@@ -594,6 +594,32 @@ $schema = [
         'stream_id'             => 'INT NULL',            // NOC / SOC
         'playbook_eligible'     => 'TINYINT(1) NULL',     // NULL=unknown, 1=yes, 0=no
         'acknowledged_datetime' => 'DATETIME NULL',       // first human ack (MTTA anchor)
+        'customer_id'           => 'INT NULL',            // Customers module link
+    ],
+
+    // Customers module: a client account with a primary contact, optionally
+    // tied to a company (tenant) and to CMDB configuration items.
+    'customers' => [
+        'id'                    => 'INT NOT NULL AUTO_INCREMENT',
+        'name'                  => 'VARCHAR(150) NOT NULL',
+        'account_ref'           => 'VARCHAR(100) NULL',
+        'contact_name'          => 'VARCHAR(150) NULL',
+        'contact_email'         => 'VARCHAR(255) NULL',
+        'contact_phone'         => 'VARCHAR(50) NULL',
+        'tenant_id'             => 'INT NULL',
+        'notes'                 => 'TEXT NULL',
+        'is_active'             => 'TINYINT(1) NOT NULL DEFAULT 1',
+        'created_by_analyst_id' => 'INT NULL',
+        'created_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+        'updated_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+    // Which CMDB objects (CIs) belong to / are used by a customer.
+    'customer_cmdb_objects' => [
+        'id'                    => 'INT NOT NULL AUTO_INCREMENT',
+        'customer_id'           => 'INT NOT NULL',
+        'cmdb_object_id'        => 'INT NOT NULL',
+        'created_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+        'created_by_analyst_id' => 'INT NULL',
     ],
 
     // KPI: work streams (NOC / SOC). Seeded below.
@@ -3906,6 +3932,38 @@ try {
         ];
         foreach ($otDefaults as $k => $v) {
             try { $conn->prepare("INSERT IGNORE INTO overtime_settings (setting_key, setting_value, updated_datetime) VALUES (?, ?, UTC_TIMESTAMP())")->execute([$k, $v]); } catch (Exception $e) {}
+        }
+    }
+
+    // Customers module — FKs + indexes.
+    if ($tableExists('customers')) {
+        if (!$idxExists('customers', 'ix_customers_name')) {
+            try { $conn->exec("ALTER TABLE customers ADD INDEX ix_customers_name (name)"); } catch (Exception $e) {}
+        }
+        if ($tableExists('tenants') && !$fkExists('customers', 'fk_customers_tenant')) {
+            try { $conn->exec("ALTER TABLE customers ADD CONSTRAINT fk_customers_tenant FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+        if ($tableExists('analysts') && !$fkExists('customers', 'fk_customers_creator')) {
+            try { $conn->exec("ALTER TABLE customers ADD CONSTRAINT fk_customers_creator FOREIGN KEY (created_by_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+    }
+    if ($tableExists('customer_cmdb_objects')) {
+        if (!$idxExists('customer_cmdb_objects', 'uq_customer_cmdb')) {
+            try { $conn->exec("ALTER TABLE customer_cmdb_objects ADD UNIQUE KEY uq_customer_cmdb (customer_id, cmdb_object_id)"); } catch (Exception $e) {}
+        }
+        if ($tableExists('customers') && !$fkExists('customer_cmdb_objects', 'fk_cust_cmdb_customer')) {
+            try { $conn->exec("ALTER TABLE customer_cmdb_objects ADD CONSTRAINT fk_cust_cmdb_customer FOREIGN KEY (customer_id) REFERENCES customers (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if ($tableExists('cmdb_objects') && !$fkExists('customer_cmdb_objects', 'fk_cust_cmdb_object')) {
+            try { $conn->exec("ALTER TABLE customer_cmdb_objects ADD CONSTRAINT fk_cust_cmdb_object FOREIGN KEY (cmdb_object_id) REFERENCES cmdb_objects (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+    }
+    if ($tableExists('tickets') && $colExists('tickets', 'customer_id') && $tableExists('customers')) {
+        if (!$idxExists('tickets', 'ix_tickets_customer')) {
+            try { $conn->exec("ALTER TABLE tickets ADD INDEX ix_tickets_customer (customer_id)"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('tickets', 'fk_tickets_customer')) {
+            try { $conn->exec("ALTER TABLE tickets ADD CONSTRAINT fk_tickets_customer FOREIGN KEY (customer_id) REFERENCES customers (id) ON DELETE SET NULL"); } catch (Exception $e) {}
         }
     }
 

@@ -126,6 +126,7 @@ return [
         'workflow'       => ['name' => 'Workflows',   'description' => 'Cross-module automation — triggers, conditions, actions'],
         'overtime'       => ['name' => 'Overtime',    'description' => 'Submit, approve and report on staff overtime'],
         'kpi'            => ['name' => 'KPIs',         'description' => 'Team KPI scorecards, targets and monthly measurements'],
+        'customers'      => ['name' => 'Customers',    'description' => 'Customer accounts, contacts and their configuration items'],
         'system'         => ['name' => 'System',      'description' => 'System administration and configuration'],
     ],
 

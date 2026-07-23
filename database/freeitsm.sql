@@ -763,6 +763,7 @@ CREATE TABLE IF NOT EXISTS `tickets` (
     `stream_id`             INT NULL,
     `playbook_eligible`     TINYINT(1) NULL,
     `acknowledged_datetime` DATETIME NULL,
+    `customer_id`           INT NULL,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_tickets_number` (`ticket_number`),
     KEY `ix_tickets_status_id` (`status_id`),
@@ -4232,6 +4233,42 @@ CREATE TABLE IF NOT EXISTS `kpi_definitions` (
     `updated_datetime` DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     KEY `ix_kpi_def_scorecard` (`scorecard`, `display_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------
+-- Customers module: a client account with a primary contact, optionally linked
+-- to a company (tenant) and to CMDB configuration items, and selectable on a
+-- ticket (tickets.customer_id).
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `customers` (
+    `id`                    INT NOT NULL AUTO_INCREMENT,
+    `name`                  VARCHAR(150) NOT NULL,
+    `account_ref`           VARCHAR(100) NULL,
+    `contact_name`          VARCHAR(150) NULL,
+    `contact_email`         VARCHAR(255) NULL,
+    `contact_phone`         VARCHAR(50) NULL,
+    `tenant_id`             INT NULL,
+    `notes`                 TEXT NULL,
+    `is_active`             TINYINT(1) NOT NULL DEFAULT 1,
+    `created_by_analyst_id` INT NULL,
+    `created_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `ix_customers_name` (`name`),
+    CONSTRAINT `fk_customers_tenant`  FOREIGN KEY (`tenant_id`)             REFERENCES `tenants` (`id`) ON DELETE SET NULL,
+    CONSTRAINT `fk_customers_creator` FOREIGN KEY (`created_by_analyst_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `customer_cmdb_objects` (
+    `id`                    INT NOT NULL AUTO_INCREMENT,
+    `customer_id`           INT NOT NULL,
+    `cmdb_object_id`        INT NOT NULL,
+    `created_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    `created_by_analyst_id` INT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_customer_cmdb` (`customer_id`, `cmdb_object_id`),
+    CONSTRAINT `fk_cust_cmdb_customer` FOREIGN KEY (`customer_id`)    REFERENCES `customers` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_cust_cmdb_object`   FOREIGN KEY (`cmdb_object_id`) REFERENCES `cmdb_objects` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------

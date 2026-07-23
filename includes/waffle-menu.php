@@ -157,6 +157,11 @@ $modules = [
         'path' => 'kpi/',
         'icon' => '<line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line><line x1="3" y1="20" x2="21" y2="20"></line>'
     ],
+    'customers' => [
+        'name' => t('common.modules.customers.name'),
+        'path' => 'customers/',
+        'icon' => '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>'
+    ],
     'system' => [
         'name' => t('common.modules.system.name'),
         'path' => 'system/',

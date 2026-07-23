@@ -114,6 +114,7 @@ function hydrateEmailBodies(root) {
 let departments = [];
 let ticketTypes = [];
 let ticketOrigins = [];
+let ticketStreams = [];   // KPI: NOC / SOC
 let ticketCategories = [];
 let ticketSubcategoriesByCategory = {};   // category_id -> active subcategories (fetched lazily, cached)
 let ticketSubcategoriesById = {};         // flat id -> subcategory, populated as categories are fetched
@@ -246,6 +247,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadDepartments();
     loadTicketTypes();
     loadTicketOrigins();
+    loadTicketStreams();
     loadTicketCategories();
     loadTicketStatuses();
     loadTicketPriorities();
@@ -458,6 +460,19 @@ async function loadTicketOrigins() {
         }
     } catch (error) {
         console.error('Error loading ticket origins:', error);
+    }
+}
+
+// Load ticket work streams (KPI: NOC/SOC)
+async function loadTicketStreams() {
+    try {
+        const response = await fetch(API_BASE + 'get_ticket_streams.php');
+        const data = await response.json();
+        if (data.success) {
+            ticketStreams = (data.streams || []).filter(s => s.is_active == 1);
+        }
+    } catch (error) {
+        console.error('Error loading ticket streams:', error);
     }
 }
 
@@ -1656,6 +1671,29 @@ function displayEmail(email, recordings) {
         `<option value="${origin.id}" ${email.origin_id == origin.id ? 'selected' : ''}>${escapeHtml(origin.name)}</option>`
     ).join('');
 
+    // Build stream dropdown (KPI: NOC/SOC)
+    const streamOptions = ticketStreams.map(s =>
+        `<option value="${s.id}" ${email.stream_id == s.id ? 'selected' : ''}>${escapeHtml(s.name)}</option>`
+    ).join('');
+
+    // Build playbook-eligible dropdown (KPI)
+    const playbookOptions = `
+        <option value="" ${email.playbook_eligible === null || email.playbook_eligible === undefined ? 'selected' : ''}>--</option>
+        <option value="1" ${email.playbook_eligible === true || email.playbook_eligible === 1 ? 'selected' : ''}>${escapeHtml(t('tickets.reading_pane.opt_yes'))}</option>
+        <option value="0" ${email.playbook_eligible === false || email.playbook_eligible === 0 ? 'selected' : ''}>${escapeHtml(t('tickets.reading_pane.opt_no'))}</option>
+    `;
+
+    // QA review quick-capture (KPI): one control covering type + result.
+    const qaOptions = `
+        <option value="">--</option>
+        <option value="triage:1">Triage: Pass</option>
+        <option value="triage:0">Triage: Fail</option>
+        <option value="resolution:1">Resolution: Pass</option>
+        <option value="resolution:0">Resolution: Fail</option>
+        <option value="handover:1">Handover: Pass</option>
+        <option value="handover:0">Handover: Fail</option>
+    `;
+
     // Build first time fix dropdown
     const firstTimeFixOptions = `
         <option value="" ${email.first_time_fix === null ? 'selected' : ''}>--</option>
@@ -1790,6 +1828,25 @@ function displayEmail(email, recordings) {
                         <select class="toolbar-select" id="originSelect" onchange="assignOrigin()">
                             <option value=""></option>
                             ${originOptions}
+                        </select>
+                    </div>
+                    <div class="toolbar-field">
+                        <label class="toolbar-label">Stream</label>
+                        <select class="toolbar-select" id="streamSelect" onchange="assignStream()">
+                            <option value=""></option>
+                            ${streamOptions}
+                        </select>
+                    </div>
+                    <div class="toolbar-field">
+                        <label class="toolbar-label">Playbook eligible</label>
+                        <select class="toolbar-select" id="playbookSelect" onchange="assignPlaybook()">
+                            ${playbookOptions}
+                        </select>
+                    </div>
+                    <div class="toolbar-field">
+                        <label class="toolbar-label">QA review</label>
+                        <select class="toolbar-select" id="qaReviewSelect" onchange="addQaReview()">
+                            ${qaOptions}
                         </select>
                     </div>
                     <div class="toolbar-field">
@@ -3002,6 +3059,67 @@ async function assignItTraining() {
         console.error('Error:', error);
         showToast('Failed to assign IT training', 'error');
     }
+}
+
+// Assign work stream (KPI: NOC/SOC)
+async function assignStream() {
+    const value = document.getElementById('streamSelect').value;
+    const oldStream = ticketStreams.find(s => s.id == currentEmail.stream_id);
+    const newStream = ticketStreams.find(s => s.id == value);
+    try {
+        const response = await fetch(API_BASE + 'assign_ticket.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticket_id: currentEmail.ticket_id, stream_id: value === '' ? null : parseInt(value, 10) })
+        });
+        const data = await response.json();
+        if (data.success) {
+            await logAudit(currentEmail.ticket_id, 'Stream', oldStream ? oldStream.name : null, newStream ? newStream.name : null);
+            currentEmail.stream_id = value === '' ? null : parseInt(value, 10);
+        } else {
+            showToast('Error assigning stream: ' + data.error, 'error');
+        }
+    } catch (error) { console.error('Error:', error); showToast('Failed to assign stream', 'error'); }
+}
+
+// Assign playbook-eligible (KPI)
+async function assignPlaybook() {
+    const value = document.getElementById('playbookSelect').value;
+    const oldValue = currentEmail.playbook_eligible === null || currentEmail.playbook_eligible === undefined ? null : (currentEmail.playbook_eligible ? 'Yes' : 'No');
+    const newValue = value === '' ? null : (value === '1' ? 'Yes' : 'No');
+    try {
+        const response = await fetch(API_BASE + 'assign_ticket.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticket_id: currentEmail.ticket_id, playbook_eligible: value === '' ? null : (value === '1' ? 1 : 0) })
+        });
+        const data = await response.json();
+        if (data.success) {
+            await logAudit(currentEmail.ticket_id, 'Playbook Eligible', oldValue, newValue);
+            currentEmail.playbook_eligible = value === '' ? null : (value === '1');
+        } else {
+            showToast('Error assigning playbook eligibility: ' + data.error, 'error');
+        }
+    } catch (error) { console.error('Error:', error); showToast('Failed to assign playbook eligibility', 'error'); }
+}
+
+// Record a QA review (KPI). One control encodes type:passed; resets after save.
+async function addQaReview() {
+    const sel = document.getElementById('qaReviewSelect');
+    const value = sel.value;
+    if (!value) return;
+    const [type, passed] = value.split(':');
+    try {
+        const response = await fetch(API_BASE + 'save_qa_review.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticket_id: currentEmail.ticket_id, review_type: type, passed: passed === '1' ? 1 : 0 })
+        });
+        const data = await response.json();
+        if (data.success) {
+            showToast('QA review recorded (' + type + ': ' + (passed === '1' ? 'Pass' : 'Fail') + ')', 'success');
+        } else {
+            showToast('Error recording QA review: ' + data.error, 'error');
+        }
+    } catch (error) { console.error('Error:', error); showToast('Failed to record QA review', 'error'); }
+    sel.value = '';
 }
 
 // Assign owner (analyst)

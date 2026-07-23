@@ -592,7 +592,7 @@ $schema = [
         'catalog_item_id'       => 'INT NULL',
         // KPI instrumentation (K1).
         'stream_id'             => 'INT NULL',            // NOC / SOC
-        'playbook_eligible'     => 'TINYINT(1) NOT NULL DEFAULT 0',
+        'playbook_eligible'     => 'TINYINT(1) NULL',     // NULL=unknown, 1=yes, 0=no
         'acknowledged_datetime' => 'DATETIME NULL',       // first human ack (MTTA anchor)
     ],
 

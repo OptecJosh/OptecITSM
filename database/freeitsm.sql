@@ -761,7 +761,7 @@ CREATE TABLE IF NOT EXISTS `tickets` (
     `catalog_item_id`       INT NULL,
     -- KPI instrumentation (K1): work stream, playbook eligibility, first-ack anchor.
     `stream_id`             INT NULL,
-    `playbook_eligible`     TINYINT(1) NOT NULL DEFAULT 0,
+    `playbook_eligible`     TINYINT(1) NULL,
     `acknowledged_datetime` DATETIME NULL,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_tickets_number` (`ticket_number`),

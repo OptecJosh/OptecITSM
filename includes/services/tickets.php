@@ -270,6 +270,7 @@ class TicketsService
             'ticket_type_id' => ['ticket_types',   'ticket type', 'Ticket Type', 'type_name'],
             'origin_id'      => ['ticket_origins', 'origin',      'Origin',      'origin_name'],
             'category_id'    => ['ticket_categories', 'category', 'Category',    'category_name'],
+            'stream_id'      => ['ticket_streams',  'stream',    'Stream',      'stream_name'],
         ] as $field => [$table, $label, $auditField, $currentNameKey]) {
             if (!array_key_exists($field, $in)) {
                 continue;
@@ -339,7 +340,7 @@ class TicketsService
             }
         }
 
-        foreach (['first_time_fix' => 'First Time Fix', 'it_training_provided' => 'IT Training Provided'] as $field => $auditField) {
+        foreach (['first_time_fix' => 'First Time Fix', 'it_training_provided' => 'IT Training Provided', 'playbook_eligible' => 'Playbook Eligible'] as $field => $auditField) {
             if (!array_key_exists($field, $in)) {
                 continue;
             }
@@ -731,7 +732,8 @@ class TicketsService
                     a.full_name AS analyst_name,
                     tn.name AS company_name,
                     tc.name AS category_name,
-                    tsc.name AS subcategory_name
+                    tsc.name AS subcategory_name,
+                    strm.name AS stream_name
              FROM tickets t
              LEFT JOIN ticket_statuses   ts  ON ts.id  = t.status_id
              LEFT JOIN ticket_priorities tp  ON tp.id  = t.priority_id
@@ -742,6 +744,7 @@ class TicketsService
              LEFT JOIN tenants           tn  ON tn.id  = t.tenant_id
              LEFT JOIN ticket_categories tc  ON tc.id  = t.category_id
              LEFT JOIN ticket_subcategories tsc ON tsc.id = t.subcategory_id
+             LEFT JOIN ticket_streams    strm ON strm.id = t.stream_id
              WHERE t.id = ?"
         );
         $stmt->execute([$ticketId]);

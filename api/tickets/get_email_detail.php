@@ -63,6 +63,8 @@ try {
                 t.origin_id,
                 t.first_time_fix,
                 t.it_training_provided,
+                t.stream_id,
+                t.playbook_eligible,
                 t.owner_id,
                 t.work_start_datetime,
                 t.tenant_id,
@@ -122,6 +124,8 @@ try {
     $email['is_read'] = (bool)$email['is_read'];
     $email['has_attachments'] = (bool)$email['has_attachments'];
     $email['first_time_fix'] = $email['first_time_fix'] === null ? null : (bool)$email['first_time_fix'];
+    $email['playbook_eligible'] = $email['playbook_eligible'] === null ? null : (bool)$email['playbook_eligible'];
+    $email['stream_id'] = $email['stream_id'] !== null ? (int)$email['stream_id'] : null;
     $email['it_training_provided'] = $email['it_training_provided'] === null ? null : (bool)$email['it_training_provided'];
 
     // Multi-tenancy: the ticket's company, and a soft wrong-company suggestion. All of

@@ -1830,6 +1830,12 @@ function displayEmail(email, recordings) {
                             ${originOptions}
                         </select>
                     </div>
+                    <div class="toolbar-field" style="position:relative;">
+                        <label class="toolbar-label">Customer</label>
+                        <input type="text" class="toolbar-select" id="customerSearch" autocomplete="off" placeholder="Search customer…" value="${escapeHtml(email.customer_name || '')}" oninput="customerSearchDebounced()">
+                        <div id="customerResults" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:60;background:var(--surface,#fff);border:1px solid var(--border,#e5e7eb);border-radius:6px;margin-top:2px;max-height:220px;overflow:auto;box-shadow:0 4px 14px rgba(0,0,0,.18);"></div>
+                        <div id="customerContact" style="font-size:11px;color:var(--text-dim,#6b7280);margin-top:3px;">${escapeHtml([email.customer_contact_name, email.customer_contact_email, email.customer_contact_phone].filter(Boolean).join(' · '))}</div>
+                    </div>
                     <div class="toolbar-field">
                         <label class="toolbar-label">Stream</label>
                         <select class="toolbar-select" id="streamSelect" onchange="assignStream()">
@@ -3059,6 +3065,56 @@ async function assignItTraining() {
         console.error('Error:', error);
         showToast('Failed to assign IT training', 'error');
     }
+}
+
+// Customer picker (search + set on ticket)
+const CUSTOMERS_API = API_BASE.replace('tickets/', 'customers/');
+let customerSearchTimer = null;
+let _custResults = [];
+function customerSearchDebounced() { clearTimeout(customerSearchTimer); customerSearchTimer = setTimeout(runCustomerSearch, 250); }
+async function runCustomerSearch() {
+    const input = document.getElementById('customerSearch');
+    const box = document.getElementById('customerResults');
+    if (!input || !box) return;
+    const q = input.value.trim();
+    if (q === '') { box.innerHTML = ''; box.style.display = 'none'; return; }
+    try {
+        const d = await (await fetch(CUSTOMERS_API + 'get_customers.php?active=1&q=' + encodeURIComponent(q))).json();
+        _custResults = (d.customers || []).slice(0, 10);
+        const rowStyle = 'display:block;width:100%;text-align:left;padding:8px 10px;border:none;background:none;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border-soft,#f0f0f0);color:var(--text,#222);';
+        let html = _custResults.map(c =>
+            `<button type="button" style="${rowStyle}" onclick="assignCustomer(${c.id})">${escapeHtml(c.name)}${c.contact_name ? ' <span style="color:var(--text-dim,#6b7280);">· ' + escapeHtml(c.contact_name) + '</span>' : ''}</button>`
+        ).join('');
+        html += `<button type="button" style="${rowStyle}color:var(--text-dim,#6b7280);" onclick="assignCustomer(0)">— Clear customer —</button>`;
+        box.innerHTML = html;
+        box.style.display = 'block';
+    } catch (e) { box.style.display = 'none'; }
+}
+async function assignCustomer(id) {
+    const box = document.getElementById('customerResults');
+    const oldValue = currentEmail.customer_name || null;
+    const chosen = id ? _custResults.find(c => c.id === id) : null;
+    try {
+        const response = await fetch(API_BASE + 'assign_ticket.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticket_id: currentEmail.ticket_id, customer_id: id ? id : null })
+        });
+        const data = await response.json();
+        if (data.success) {
+            await logAudit(currentEmail.ticket_id, 'Customer', oldValue, chosen ? chosen.name : null);
+            currentEmail.customer_id = id ? id : null;
+            currentEmail.customer_name = chosen ? chosen.name : null;
+            currentEmail.customer_contact_name = chosen ? chosen.contact_name : null;
+            currentEmail.customer_contact_email = chosen ? chosen.contact_email : null;
+            currentEmail.customer_contact_phone = chosen ? chosen.contact_phone : null;
+            document.getElementById('customerSearch').value = chosen ? chosen.name : '';
+            const cc = document.getElementById('customerContact');
+            if (cc) cc.textContent = chosen ? [chosen.contact_name, chosen.contact_email, chosen.contact_phone].filter(Boolean).join(' · ') : '';
+        } else {
+            showToast('Error assigning customer: ' + data.error, 'error');
+        }
+    } catch (error) { console.error('Error:', error); showToast('Failed to assign customer', 'error'); }
+    if (box) box.style.display = 'none';
 }
 
 // Assign work stream (KPI: NOC/SOC)

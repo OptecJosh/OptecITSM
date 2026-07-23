@@ -27,7 +27,7 @@ try {
 
     // Only the ticket-field keys the detail panel edits (the service ignores the rest).
     $in = [];
-    foreach (['department_id', 'ticket_type_id', 'category_id', 'subcategory_id', 'status', 'origin_id', 'first_time_fix', 'it_training_provided', 'priority_id', 'assigned_analyst_id'] as $k) {
+    foreach (['department_id', 'ticket_type_id', 'category_id', 'subcategory_id', 'status', 'origin_id', 'first_time_fix', 'it_training_provided', 'priority_id', 'assigned_analyst_id', 'stream_id', 'playbook_eligible', 'customer_id', 'hold_reason'] as $k) {
         if (array_key_exists($k, $data)) $in[$k] = $data[$k];
     }
 

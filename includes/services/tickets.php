@@ -271,6 +271,7 @@ class TicketsService
             'origin_id'      => ['ticket_origins', 'origin',      'Origin',      'origin_name'],
             'category_id'    => ['ticket_categories', 'category', 'Category',    'category_name'],
             'stream_id'      => ['ticket_streams',  'stream',    'Stream',      'stream_name'],
+            'customer_id'    => ['customers',       'customer',  'Customer',    'customer_name'],
         ] as $field => [$table, $label, $auditField, $currentNameKey]) {
             if (!array_key_exists($field, $in)) {
                 continue;
@@ -733,7 +734,8 @@ class TicketsService
                     tn.name AS company_name,
                     tc.name AS category_name,
                     tsc.name AS subcategory_name,
-                    strm.name AS stream_name
+                    strm.name AS stream_name,
+                    cust.name AS customer_name
              FROM tickets t
              LEFT JOIN ticket_statuses   ts  ON ts.id  = t.status_id
              LEFT JOIN ticket_priorities tp  ON tp.id  = t.priority_id
@@ -745,6 +747,7 @@ class TicketsService
              LEFT JOIN ticket_categories tc  ON tc.id  = t.category_id
              LEFT JOIN ticket_subcategories tsc ON tsc.id = t.subcategory_id
              LEFT JOIN ticket_streams    strm ON strm.id = t.stream_id
+             LEFT JOIN customers         cust ON cust.id = t.customer_id
              WHERE t.id = ?"
         );
         $stmt->execute([$ticketId]);

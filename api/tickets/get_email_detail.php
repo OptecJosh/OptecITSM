@@ -74,13 +74,19 @@ try {
                 t.updated_datetime as ticket_updated,
                 t.deleted_datetime,
                 t.merged_into_ticket_id,
-                mt.ticket_number AS merged_into_number
+                mt.ticket_number AS merged_into_number,
+                t.customer_id,
+                cust.name AS customer_name,
+                cust.contact_name AS customer_contact_name,
+                cust.contact_email AS customer_contact_email,
+                cust.contact_phone AS customer_contact_phone
             FROM emails e
             INNER JOIN tickets t ON e.ticket_id = t.id
             LEFT JOIN ticket_statuses ts ON ts.id = t.status_id
             LEFT JOIN ticket_priorities tp ON tp.id = t.priority_id
             LEFT JOIN users u ON u.id = t.user_id
             LEFT JOIN tickets mt ON mt.id = t.merged_into_ticket_id
+            LEFT JOIN customers cust ON cust.id = t.customer_id
             WHERE ";
 
     // Look up by email ID or by ticket ID (gets the initial email for the ticket)
@@ -126,6 +132,7 @@ try {
     $email['first_time_fix'] = $email['first_time_fix'] === null ? null : (bool)$email['first_time_fix'];
     $email['playbook_eligible'] = $email['playbook_eligible'] === null ? null : (bool)$email['playbook_eligible'];
     $email['stream_id'] = $email['stream_id'] !== null ? (int)$email['stream_id'] : null;
+    $email['customer_id'] = $email['customer_id'] !== null ? (int)$email['customer_id'] : null;
     $email['it_training_provided'] = $email['it_training_provided'] === null ? null : (bool)$email['it_training_provided'];
 
     // Multi-tenancy: the ticket's company, and a soft wrong-company suggestion. All of

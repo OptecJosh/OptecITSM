@@ -1,7 +1,14 @@
 FROM php:8.4-apache
 
-# Enable required PHP extensions
-RUN docker-php-ext-install pdo pdo_mysql
+# Enable required PHP extensions.
+# zip is NOT bundled with php:8.4-apache and needs libzip-dev to build. Without it
+# ZipArchive is missing, which silently disables LMS package upload
+# (includes/lms_package.php), RFP .docx parsing (includes/rfp_docx_parser.php) and
+# the analytics bundle export (api/export/export_bundle.php).
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends libzip-dev \
+ && rm -rf /var/lib/apt/lists/* \
+ && docker-php-ext-install pdo pdo_mysql zip
 
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite

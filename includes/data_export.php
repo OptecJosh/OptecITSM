@@ -242,6 +242,21 @@ function data_export_datasets(): array {
                 'course_id'  => ['table' => 'lms_courses', 'column' => 'title',     'as' => 'course'],
             ],
         ],
+        // The development JOURNAL is deliberately not exportable: it is visible
+        // only to an analyst and their line manager, and an export would hand it
+        // to anyone with the Reporting module.
+        'analyst_certifications' => [
+            'module' => 'lms', 'label' => 'Certifications held', 'table' => 'analyst_certifications',
+            'description' => 'Certifications per analyst with award and expiry dates — the compliance record.',
+            'tenant' => false, 'date' => 'expires_date', 'order' => 'id',
+            'resolve' => ['analyst_id' => ['table' => 'analysts', 'column' => 'full_name', 'as' => 'analyst']],
+        ],
+        'analyst_training_records' => [
+            'module' => 'lms', 'label' => 'Training completed', 'table' => 'analyst_training_records',
+            'description' => 'Training completed outside the LMS, with hours and cost.',
+            'tenant' => false, 'date' => 'completed_date', 'order' => 'id',
+            'resolve' => ['analyst_id' => ['table' => 'analysts', 'column' => 'full_name', 'as' => 'analyst']],
+        ],
 
         // ---- Admin-only ---------------------------------------------------
         'analysts' => [

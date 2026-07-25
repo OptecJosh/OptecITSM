@@ -309,6 +309,69 @@ function workflowEmitLicenceExpiries(PDO $conn): int
 }
 
 /**
+ * Analyst certifications approaching their expiry date → `certification.expiring`.
+ *
+ * Same windows and fire-once shape as the other expiries; expires_date is the
+ * fingerprint, so renewing a certification (a new expiry date) re-arms every
+ * window. Only certifications that are actually held are announced — a planned or
+ * revoked one has no expiry worth chasing.
+ */
+function workflowEmitCertificationExpiries(PDO $conn): int
+{
+    $fired = 0;
+    $windows = workflowExpiryWindows();
+    $maxWindow = max($windows);
+
+    try {
+        $rows = $conn->prepare(
+            "SELECT ac.id, ac.title, ac.expires_date, ac.analyst_id, a.full_name AS analyst_name, a.email AS analyst_email,
+                    m.full_name AS manager_name, m.email AS manager_email,
+                    DATEDIFF(ac.expires_date, CURDATE()) AS days_remaining
+               FROM analyst_certifications ac
+               JOIN analysts a ON a.id = ac.analyst_id
+          LEFT JOIN analysts m ON m.id = a.manager_id
+              WHERE ac.expires_date IS NOT NULL
+                AND ac.status = 'achieved'
+                AND a.is_active = 1
+                AND ac.expires_date >= CURDATE()
+                AND ac.expires_date <= DATE_ADD(CURDATE(), INTERVAL ? DAY)"
+        );
+        $rows->execute([$maxWindow]);
+    } catch (Exception $e) {
+        return 0;   // table absent (pre-Database-Verify)
+    }
+
+    foreach ($rows->fetchAll(PDO::FETCH_ASSOC) as $c) {
+        $days = (int)$c['days_remaining'];
+        foreach ($windows as $w) {
+            if ($days > $w) continue;
+
+            $fired += workflowEmitOnce(
+                $conn,
+                'certification.expiring',
+                'certification:' . (int)$c['id'] . ':' . $w,
+                (string)$c['expires_date'],
+                [
+                    'certification' => [
+                        'id'             => (int)$c['id'],
+                        'title'          => $c['title'],
+                        'expires_date'   => $c['expires_date'],
+                        'days_remaining' => $days,
+                        'analyst_id'     => (int)$c['analyst_id'],
+                        'analyst_name'   => $c['analyst_name'],
+                        'analyst_email'  => $c['analyst_email'],
+                        'manager_name'   => $c['manager_name'],
+                        'manager_email'  => $c['manager_email'],
+                    ],
+                    'window_days' => $w,
+                ]
+            ) ? 1 : 0;
+        }
+    }
+    return $fired;
+}
+
+/**
  * Everything the scheduled-trigger cron runs. SLA events are NOT here — they're
  * emitted from sla_run_breach_check(), which already walks every open ticket and
  * computes its SLA state, so emitting from there costs nothing and cannot drift
@@ -321,6 +384,7 @@ function workflowScheduledRun(PDO $conn): array
         'asset_warranty_expiring'  => workflowEmitWarrantyExpiries($conn),
         'licence_expiring'         => workflowEmitLicenceExpiries($conn),
         'asset_eol_approaching'    => workflowEmitAssetEolExpiries($conn),
+        'certification_expiring'   => workflowEmitCertificationExpiries($conn),
     ];
 }
 

@@ -100,3 +100,116 @@ function lmsMyCourses(PDO $conn, int $analystId): array {
 
     return $rows;
 }
+
+// ============================================================================
+//  Development records — certifications, training log and journal
+//
+//  Two different visibility rules live here, deliberately:
+//
+//    Certifications + training records — the compliance record. Visible to the
+//    analyst, their line manager (analysts.manager_id) and anyone who can manage
+//    the LMS (that is their job).
+//
+//    Development JOURNAL — visible ONLY to the analyst and their line manager.
+//    LMS managers and admins are NOT granted access: the journal is a private
+//    conversation between the two, and that is the whole point of it. If an
+//    organisation later wants an L&D role to read journals, that is a deliberate
+//    change to lmsJournalCanAccess(), not an accident of capability inheritance.
+// ============================================================================
+
+/** Is $viewerId the line manager of $ownerId (analysts.manager_id)? */
+function lmsIsLineManagerOf(PDO $conn, int $viewerId, int $ownerId): bool {
+    if ($viewerId <= 0 || $ownerId <= 0 || $viewerId === $ownerId) return false;
+    try {
+        $stmt = $conn->prepare("SELECT manager_id FROM analysts WHERE id = ?");
+        $stmt->execute([$ownerId]);
+        $managerId = $stmt->fetchColumn();
+        return $managerId !== false && $managerId !== null && (int)$managerId === $viewerId;
+    } catch (Exception $e) {
+        return false;   // column absent (pre-Database-Verify) → no manager access
+    }
+}
+
+/** The analysts who report to $managerId, as [{id, full_name}]. */
+function lmsDirectReports(PDO $conn, int $managerId): array {
+    if ($managerId <= 0) return [];
+    try {
+        $stmt = $conn->prepare("SELECT id, full_name FROM analysts WHERE manager_id = ? AND is_active = 1 ORDER BY full_name");
+        $stmt->execute([$managerId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Exception $e) {
+        return [];
+    }
+}
+
+/** May $viewerId see $ownerId's certifications and training records? */
+function lmsCanViewTraining(PDO $conn, int $viewerId, int $ownerId): bool {
+    if ($viewerId > 0 && $viewerId === $ownerId) return true;
+    if (lmsIsLineManagerOf($conn, $viewerId, $ownerId)) return true;
+    return lmsCanManage($conn, $viewerId);
+}
+
+/**
+ * May $viewerId add or change $ownerId's certifications / training records?
+ * Same set as viewing: your own record is yours to keep up to date, and your
+ * manager or an LMS manager can record something on your behalf.
+ */
+function lmsCanEditTraining(PDO $conn, int $viewerId, int $ownerId): bool {
+    return lmsCanViewTraining($conn, $viewerId, $ownerId);
+}
+
+/**
+ * May $viewerId read $ownerId's development journal? The analyst and their line
+ * manager, and nobody else — not LMS managers, not admins. See the note above.
+ */
+function lmsJournalCanAccess(PDO $conn, int $viewerId, int $ownerId): bool {
+    if ($viewerId <= 0 || $ownerId <= 0) return false;
+    if ($viewerId === $ownerId) return true;
+    return lmsIsLineManagerOf($conn, $viewerId, $ownerId);
+}
+
+/**
+ * The analysts whose training record $viewerId may open, as [{id, full_name,
+ * is_self}] — themselves, their direct reports, and (for an LMS manager) every
+ * active analyst. Drives the person picker on the Training page.
+ */
+function lmsTrainingRoster(PDO $conn, int $viewerId): array {
+    $rows = [];
+    try {
+        if (lmsCanManage($conn, $viewerId)) {
+            $rows = $conn->query("SELECT id, full_name FROM analysts WHERE is_active = 1 ORDER BY full_name")->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } else {
+            $self = $conn->prepare("SELECT id, full_name FROM analysts WHERE id = ?");
+            $self->execute([$viewerId]);
+            $rows = $self->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            foreach (lmsDirectReports($conn, $viewerId) as $r) $rows[] = $r;
+        }
+    } catch (Exception $e) {
+        return [];
+    }
+
+    $seen = [];
+    $out = [];
+    foreach ($rows as $r) {
+        $id = (int)$r['id'];
+        if (isset($seen[$id])) continue;
+        $seen[$id] = true;
+        $out[] = ['id' => $id, 'full_name' => $r['full_name'], 'is_self' => $id === $viewerId];
+    }
+    return $out;
+}
+
+/** Certification status values, in workflow order. */
+function lmsCertificationStatuses(): array {
+    return ['planned', 'in_progress', 'achieved', 'expired', 'revoked'];
+}
+
+/** Training record types. */
+function lmsTrainingTypes(): array {
+    return ['course', 'webinar', 'conference', 'exam', 'on_the_job', 'reading', 'other'];
+}
+
+/** Journal entry categories. */
+function lmsJournalCategories(): array {
+    return ['goal', 'progress', 'reflection', 'feedback', 'one_to_one', 'other'];
+}

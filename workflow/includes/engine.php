@@ -132,6 +132,7 @@ class WorkflowEngine
             'sla.breached'             => 'A ticket\'s SLA has been breached (time-based)',
             'contract.expiring'        => 'A contract is approaching its end date (time-based)',
             'asset.warranty_expiring'  => 'An asset\'s warranty is approaching expiry (time-based)',
+            'certification.expiring'   => 'An analyst\'s certification is approaching expiry (time-based)',
         ];
         // ---- Explicit created / updated / deleted for every CRUD + settings
         // entity. Generated from crudEntities() so the list stays maintainable,
@@ -299,6 +300,12 @@ class WorkflowEngine
             ],
             'asset.warranty_expiring' => [
                 'asset.id', 'asset.hostname', 'asset.warranty_end', 'asset.days_remaining',
+                'window_days',
+            ],
+            'certification.expiring' => [
+                'certification.id', 'certification.title', 'certification.expires_date',
+                'certification.days_remaining', 'certification.analyst_id', 'certification.analyst_name',
+                'certification.analyst_email', 'certification.manager_name', 'certification.manager_email',
                 'window_days',
             ],
         ];

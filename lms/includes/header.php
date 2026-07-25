@@ -38,6 +38,20 @@ require_once $path_prefix . 'includes/waffle-menu.php';
             </svg>
             <span><?php echo htmlspecialchars(function_exists('t') ? t('lms.nav.my_courses') : 'My courses'); ?></span>
         </a>
+        <a href="<?php echo BASE_URL; ?>lms/training.php" class="nav-btn <?php echo $current_page === 'training' ? 'active' : ''; ?>" title="Training &amp; certifications">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="8" r="6"></circle>
+                <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"></path>
+            </svg>
+            <span>Training</span>
+        </a>
+        <a href="<?php echo BASE_URL; ?>lms/journal.php" class="nav-btn <?php echo $current_page === 'journal' ? 'active' : ''; ?>" title="Development journal (you and your line manager only)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20h9"></path>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+            </svg>
+            <span>Journal</span>
+        </a>
         <?php if ($lmsCanManage): ?>
         <a href="<?php echo BASE_URL; ?>lms/" class="nav-btn <?php echo $current_page === 'lms' ? 'active' : ''; ?>" title="<?php echo htmlspecialchars(function_exists('t') ? t('lms.nav.dashboard') : 'Dashboard'); ?>">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

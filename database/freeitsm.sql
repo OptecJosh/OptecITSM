@@ -3349,6 +3349,84 @@ CREATE TABLE IF NOT EXISTS `lms_answers` (
     CONSTRAINT `fk_lms_answers_question` FOREIGN KEY (`question_id`) REFERENCES `lms_questions` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ----------------------------------------------------------
+-- Certifications, training records and the development journal.
+-- The journal is visible ONLY to the analyst it belongs to and their line
+-- manager (analysts.manager_id) — enforced in lmsJournalCanAccess().
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `lms_certifications` (
+    `id`                    INT NOT NULL AUTO_INCREMENT,
+    `name`                  VARCHAR(150) NOT NULL,
+    `issuer`                VARCHAR(150) NULL,
+    `description`           VARCHAR(500) NULL,
+    `validity_months`       INT NULL,
+    `is_active`             TINYINT(1) NOT NULL DEFAULT 1,
+    `display_order`         INT NOT NULL DEFAULT 0,
+    `created_by_id`         INT NULL,
+    `created_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `analyst_certifications` (
+    `id`                    INT NOT NULL AUTO_INCREMENT,
+    `analyst_id`            INT NOT NULL,
+    `certification_id`      INT NULL,
+    `title`                 VARCHAR(150) NOT NULL,
+    `issuer`                VARCHAR(150) NULL,
+    `status`                ENUM('planned','in_progress','achieved','expired','revoked') NOT NULL DEFAULT 'achieved',
+    `awarded_date`          DATE NULL,
+    `expires_date`          DATE NULL,
+    `credential_id`         VARCHAR(120) NULL,
+    `evidence_url`          VARCHAR(500) NULL,
+    `notes`                 VARCHAR(1000) NULL,
+    `created_by_id`         INT NULL,
+    `created_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `ix_acert_analyst` (`analyst_id`),
+    KEY `ix_acert_expires` (`expires_date`),
+    CONSTRAINT `fk_acert_analyst` FOREIGN KEY (`analyst_id`) REFERENCES `analysts` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_acert_type` FOREIGN KEY (`certification_id`) REFERENCES `lms_certifications` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `analyst_training_records` (
+    `id`                    INT NOT NULL AUTO_INCREMENT,
+    `analyst_id`            INT NOT NULL,
+    `title`                 VARCHAR(200) NOT NULL,
+    `provider`              VARCHAR(150) NULL,
+    `training_type`         ENUM('course','webinar','conference','exam','on_the_job','reading','other') NOT NULL DEFAULT 'course',
+    `completed_date`        DATE NULL,
+    `hours`                 DECIMAL(6,2) NULL,
+    `cost`                  DECIMAL(10,2) NULL,
+    `course_id`             INT NULL,
+    `evidence_url`          VARCHAR(500) NULL,
+    `notes`                 VARCHAR(1000) NULL,
+    `created_by_id`         INT NULL,
+    `created_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `ix_atrain_analyst` (`analyst_id`, `completed_date`),
+    CONSTRAINT `fk_atrain_analyst` FOREIGN KEY (`analyst_id`) REFERENCES `analysts` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_atrain_course` FOREIGN KEY (`course_id`) REFERENCES `lms_courses` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `analyst_journal_entries` (
+    `id`                    INT NOT NULL AUTO_INCREMENT,
+    `analyst_id`            INT NOT NULL,
+    `author_id`             INT NULL,
+    `entry_date`            DATE NOT NULL,
+    `category`              ENUM('goal','progress','reflection','feedback','one_to_one','other') NOT NULL DEFAULT 'progress',
+    `title`                 VARCHAR(200) NOT NULL,
+    `body`                  TEXT NULL,
+    `created_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `ix_ajournal_analyst` (`analyst_id`, `entry_date`),
+    CONSTRAINT `fk_ajournal_analyst` FOREIGN KEY (`analyst_id`) REFERENCES `analysts` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_ajournal_author` FOREIGN KEY (`author_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `lms_learning_groups` (
     `id`                    INT NOT NULL AUTO_INCREMENT,
     `name`                  VARCHAR(100) NOT NULL,

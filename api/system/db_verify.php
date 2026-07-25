@@ -1947,6 +1947,76 @@ $schema = [
         'created_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
     ],
 
+    // Certification catalogue — the certifications the organisation recognises.
+    // validity_months drives the suggested expiry date when one is awarded.
+    'lms_certifications' => [
+        'id'                    => 'INT NOT NULL AUTO_INCREMENT',
+        'name'                  => 'VARCHAR(150) NOT NULL',
+        'issuer'                => 'VARCHAR(150) NULL',
+        'description'           => 'VARCHAR(500) NULL',
+        'validity_months'       => 'INT NULL',
+        'is_active'             => 'TINYINT(1) NOT NULL DEFAULT 1',
+        'display_order'         => 'INT NOT NULL DEFAULT 0',
+        'created_by_id'         => 'INT NULL',
+        'created_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+        'updated_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
+    // A certification held (or being worked towards) by an analyst. title is
+    // denormalised so a free-text certification needs no catalogue entry.
+    'analyst_certifications' => [
+        'id'                    => 'INT NOT NULL AUTO_INCREMENT',
+        'analyst_id'            => 'INT NOT NULL',
+        'certification_id'      => 'INT NULL',
+        'title'                 => 'VARCHAR(150) NOT NULL',
+        'issuer'                => 'VARCHAR(150) NULL',
+        'status'                => "ENUM('planned','in_progress','achieved','expired','revoked') NOT NULL DEFAULT 'achieved'",
+        'awarded_date'          => 'DATE NULL',
+        'expires_date'          => 'DATE NULL',
+        'credential_id'         => 'VARCHAR(120) NULL',
+        'evidence_url'          => 'VARCHAR(500) NULL',
+        'notes'                 => 'VARCHAR(1000) NULL',
+        'created_by_id'         => 'INT NULL',
+        'created_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+        'updated_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
+    // Training completed outside (or alongside) the LMS — courses, exams,
+    // conferences, on-the-job. LMS course completions stay in lms_progress; the
+    // Training page shows both together.
+    'analyst_training_records' => [
+        'id'                    => 'INT NOT NULL AUTO_INCREMENT',
+        'analyst_id'            => 'INT NOT NULL',
+        'title'                 => 'VARCHAR(200) NOT NULL',
+        'provider'              => 'VARCHAR(150) NULL',
+        'training_type'         => "ENUM('course','webinar','conference','exam','on_the_job','reading','other') NOT NULL DEFAULT 'course'",
+        'completed_date'        => 'DATE NULL',
+        'hours'                 => 'DECIMAL(6,2) NULL',
+        'cost'                  => 'DECIMAL(10,2) NULL',
+        'course_id'             => 'INT NULL',
+        'evidence_url'          => 'VARCHAR(500) NULL',
+        'notes'                 => 'VARCHAR(1000) NULL',
+        'created_by_id'         => 'INT NULL',
+        'created_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+        'updated_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
+    // Personal training / development journal. Visible ONLY to the analyst it
+    // belongs to and their line manager (analysts.manager_id) — see
+    // lmsJournalCanAccess(). author_id records who wrote the entry, so a
+    // manager's 1:1 note and the analyst's own reflection live side by side.
+    'analyst_journal_entries' => [
+        'id'                    => 'INT NOT NULL AUTO_INCREMENT',
+        'analyst_id'            => 'INT NOT NULL',
+        'author_id'             => 'INT NULL',
+        'entry_date'            => 'DATE NOT NULL',
+        'category'              => "ENUM('goal','progress','reflection','feedback','one_to_one','other') NOT NULL DEFAULT 'progress'",
+        'title'                 => 'VARCHAR(200) NOT NULL',
+        'body'                  => 'TEXT NULL',
+        'created_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+        'updated_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
     'processes' => [
         'id'                => 'INT NOT NULL AUTO_INCREMENT',
         'title'             => 'VARCHAR(255) NOT NULL',
@@ -3372,6 +3442,46 @@ try {
     if ($tableExists('lms_answers') && $tableExists('lms_questions')) {
         if (!$fkExists('lms_answers', 'fk_lms_answers_question')) {
             try { $conn->exec("ALTER TABLE lms_answers ADD CONSTRAINT fk_lms_answers_question FOREIGN KEY (question_id) REFERENCES lms_questions (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+    }
+
+    // Certifications, training records and the development journal. Everything
+    // hangs off an analyst and dies with them (cascade); a deleted catalogue
+    // entry leaves the held certification in place (SET NULL), since the person
+    // still holds it.
+    if ($tableExists('analyst_certifications')) {
+        foreach ([['ix_acert_analyst', '(analyst_id)'], ['ix_acert_expires', '(expires_date)']] as [$idx, $cols]) {
+            if (!$idxExists('analyst_certifications', $idx)) {
+                try { $conn->exec("ALTER TABLE analyst_certifications ADD INDEX $idx $cols"); } catch (Exception $e) {}
+            }
+        }
+        if ($tableExists('analysts') && !$fkExists('analyst_certifications', 'fk_acert_analyst')) {
+            try { $conn->exec("ALTER TABLE analyst_certifications ADD CONSTRAINT fk_acert_analyst FOREIGN KEY (analyst_id) REFERENCES analysts (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if ($tableExists('lms_certifications') && !$fkExists('analyst_certifications', 'fk_acert_type')) {
+            try { $conn->exec("ALTER TABLE analyst_certifications ADD CONSTRAINT fk_acert_type FOREIGN KEY (certification_id) REFERENCES lms_certifications (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+    }
+    if ($tableExists('analyst_training_records')) {
+        if (!$idxExists('analyst_training_records', 'ix_atrain_analyst')) {
+            try { $conn->exec("ALTER TABLE analyst_training_records ADD INDEX ix_atrain_analyst (analyst_id, completed_date)"); } catch (Exception $e) {}
+        }
+        if ($tableExists('analysts') && !$fkExists('analyst_training_records', 'fk_atrain_analyst')) {
+            try { $conn->exec("ALTER TABLE analyst_training_records ADD CONSTRAINT fk_atrain_analyst FOREIGN KEY (analyst_id) REFERENCES analysts (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if ($tableExists('lms_courses') && !$fkExists('analyst_training_records', 'fk_atrain_course')) {
+            try { $conn->exec("ALTER TABLE analyst_training_records ADD CONSTRAINT fk_atrain_course FOREIGN KEY (course_id) REFERENCES lms_courses (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+    }
+    if ($tableExists('analyst_journal_entries')) {
+        if (!$idxExists('analyst_journal_entries', 'ix_ajournal_analyst')) {
+            try { $conn->exec("ALTER TABLE analyst_journal_entries ADD INDEX ix_ajournal_analyst (analyst_id, entry_date)"); } catch (Exception $e) {}
+        }
+        if ($tableExists('analysts') && !$fkExists('analyst_journal_entries', 'fk_ajournal_analyst')) {
+            try { $conn->exec("ALTER TABLE analyst_journal_entries ADD CONSTRAINT fk_ajournal_analyst FOREIGN KEY (analyst_id) REFERENCES analysts (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if ($tableExists('analysts') && !$fkExists('analyst_journal_entries', 'fk_ajournal_author')) {
+            try { $conn->exec("ALTER TABLE analyst_journal_entries ADD CONSTRAINT fk_ajournal_author FOREIGN KEY (author_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
         }
     }
 

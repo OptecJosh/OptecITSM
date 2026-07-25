@@ -12,6 +12,7 @@
  *   asset.warranty_expiring  — same windows
  *   licence.expiring         — same windows (software_licences.renewal_date)
  *   asset.eol_approaching    — same windows (assets.end_of_life_date)
+ *   certification.expiring   — same windows (analyst_certifications.expires_date)
  *
  * NOT here: `sla.warning` and `sla.breached`. Those are emitted from
  * cron/sla_breach_check.php, which already walks every open ticket and computes

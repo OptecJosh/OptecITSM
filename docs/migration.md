@@ -40,16 +40,24 @@ mapping cannot:
 
 ### Exporting from Zoho
 
-1. **Leave out the `Description` column.** Its HTML contains newlines and quotes
-   that break row alignment; excluding it took a real 23,117-row export from
-   96.9% usable to effectively 100%. Ticket bodies aren't needed for reporting —
-   export them separately against `Request Id` if you want them.
-2. **Never open the file in Excel.** It rewrites Zoho's 18-digit IDs as
+1. **Never open the file in Excel.** It rewrites Zoho's 18-digit IDs as
    `1.25E+17` and they cannot be recovered. Use a text editor, or Excel's
-   *Data → From Text/CSV* with every column set to Text.
-3. Include `Agent Name` and `Agent Tier` if your export offers them — the raw
+   *Data → From Text/CSV* with every column set to Text. This is the one that
+   actually costs you data.
+2. Include `Agent Name` and `Agent Tier` if your export offers them — the raw
    `Ticket Owner` column is a numeric ID with no name attached, so without them
    ownership and tier splits are lost.
+3. The `Description` column is fine to include. Its HTML contains newlines and
+   quotes, but the importer's CSV parser handles quoted multi-line fields
+   correctly. Excluding it only helps if your export was produced by something
+   that quotes badly — check first rather than assuming, because many teams
+   curate extra columns into the export and re-exporting would throw that work
+   away.
+
+A real 23,117-row export measured out as 22,403 clean rows (99.9%), 686
+near-blank rows the parser skips on its own, and 28 rows whose fields had shifted
+upstream. The 28 fail on an unresolvable status and are reported by row number —
+they cannot import as partial records.
 
 `Request Id` is used as the natural key, prefixed `ZD-`, so migrated tickets stay
 identifiable and can never collide with numbers this system generates.

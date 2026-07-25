@@ -10,6 +10,11 @@ let currentDate = new Date();
 let events = [];
 let selectedStatuses = new Set();
 
+// Active change freeze windows (9b follow-up), overlaid as bands on the grid.
+// Their datetimes are compared as naive wall-clock strings, exactly like change
+// work windows, so a band always lines up with the pills it sits behind.
+let freezeWindows = [];
+
 // Status definitions with colors
 // Populated at runtime from change_statuses (active rows only) so adding /
 // renaming / deactivating a status in Settings → Statuses reflects here.
@@ -26,8 +31,52 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     loadStatuses();
+    loadFreezeWindows();
     renderCalendar();
 });
+
+// Load active freeze windows once; the sidebar listing (calendar.php) renders
+// from the same payload via the onFreezeWindowsLoaded hook.
+async function loadFreezeWindows() {
+    try {
+        const response = await fetch(API_BASE + 'get_freeze_windows.php');
+        const data = await response.json();
+        if (data.success) {
+            freezeWindows = (data.windows || []).filter(w => w.is_active);
+        }
+    } catch (e) {
+        freezeWindows = [];   // freeze table absent / no access — grid renders unbanded
+    }
+    if (typeof window.onFreezeWindowsLoaded === 'function') {
+        window.onFreezeWindowsLoaded(freezeWindows);
+    }
+    renderCalendar();
+}
+
+// Freeze windows covering a YYYY-MM-DD date (naive comparison, as above).
+function getFreezesForDate(dateStr) {
+    return freezeWindows.filter(w => {
+        if (!w.starts_at || !w.ends_at) return false;
+        return dateStr >= w.starts_at.slice(0, 10) && dateStr <= w.ends_at.slice(0, 10);
+    });
+}
+
+// "All changes" or the categories/companies a window is scoped to — shown in the
+// band tooltip so a scoped freeze isn't mistaken for a blanket one.
+function freezeScopeText(w) {
+    const parts = (w.tenant_names || []).concat(w.category_names || []);
+    return parts.length ? parts.join(', ') : 'all changes';
+}
+
+// The band's vertical extent within one day, in the hour-grid's 60px-per-hour
+// space. A window that starts before / ends after the day fills it.
+function freezeDayBounds(w, dateStr) {
+    const startDay = w.starts_at.slice(0, 10);
+    const endDay = w.ends_at.slice(0, 10);
+    const startHour = dateStr === startDay ? getEventHour(w.starts_at) : 0;
+    const endHour = dateStr === endDay ? Math.max(getEventHour(w.ends_at), startHour + 1) : 24;
+    return { top: startHour * 60, height: Math.max((endHour - startHour) * 60, 20) };
+}
 
 // Load status filters from the change_statuses table (active rows only).
 // Sorts by display_order so the order matches Settings.
@@ -240,12 +289,22 @@ function renderMonthView(container) {
         const dateStr = formatDateForCompare(current);
         const dayEvents = getEventsForDate(dateStr);
 
+        const dayFreezes = getFreezesForDate(dateStr);
+
         let classes = 'month-day';
         if (isOtherMonth) classes += ' other-month';
         if (isToday) classes += ' today';
+        if (dayFreezes.length) classes += ' freeze-day';
 
-        html += `<div class="${classes}" data-date="${dateStr}">`;
+        const freezeTitle = dayFreezes.length
+            ? ` title="Change freeze: ${escapeHtml(dayFreezes.map(w => w.name + ' (' + freezeScopeText(w) + ')').join('; '))}"`
+            : '';
+
+        html += `<div class="${classes}" data-date="${dateStr}"${freezeTitle}>`;
         html += `<div class="day-number">${current.getDate()}</div>`;
+        if (dayFreezes.length) {
+            html += `<div class="freeze-tag">${escapeHtml(dayFreezes.length === 1 ? dayFreezes[0].name : dayFreezes.length + ' freezes')}</div>`;
+        }
         html += '<div class="day-events">';
 
         const maxDisplay = 3;
@@ -309,6 +368,15 @@ function renderWeekView(container) {
             html += `<div class="week-time-slot"></div>`;
         }
 
+        // Freeze bands first, so change pills paint on top of them.
+        getFreezesForDate(dateStr).forEach(w => {
+            const b = freezeDayBounds(w, dateStr);
+            html += `<div class="freeze-band" style="top: ${b.top}px; height: ${b.height}px;"
+                          title="Change freeze: ${escapeHtml(w.name)} (${escapeHtml(freezeScopeText(w))})">
+                          <span>${escapeHtml(w.name)}</span>
+                     </div>`;
+        });
+
         // Add events
         const dayEvents = getEventsForDate(dateStr);
         dayEvents.forEach(evt => {
@@ -361,6 +429,15 @@ function renderDayView(container) {
     for (let hour = 0; hour < 24; hour++) {
         html += `<div class="day-time-slot"></div>`;
     }
+
+    // Freeze bands first, so change pills paint on top of them.
+    getFreezesForDate(dateStr).forEach(w => {
+        const b = freezeDayBounds(w, dateStr);
+        html += `<div class="freeze-band" style="top: ${b.top}px; height: ${b.height}px;"
+                      title="Change freeze: ${escapeHtml(w.name)} (${escapeHtml(freezeScopeText(w))})">
+                      <span>${escapeHtml(w.name)} &middot; ${escapeHtml(freezeScopeText(w))}</span>
+                 </div>`;
+    });
 
     // Timed events
     timedEvents.forEach(evt => {

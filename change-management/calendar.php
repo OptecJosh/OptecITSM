@@ -136,6 +136,50 @@ $translationNamespaces = ['common', 'change-management'];
             padding-top: 10px;
             text-align: right;
         }
+
+        /* Change freeze overlay (9b follow-up): month cells get a hatched tint,
+           week/day views get a positioned band behind the change pills. */
+        .month-day.freeze-day {
+            background-image: repeating-linear-gradient(135deg,
+                rgba(220, 38, 38, 0.10) 0, rgba(220, 38, 38, 0.10) 6px,
+                transparent 6px, transparent 13px);
+        }
+        .freeze-tag {
+            font-size: 9.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: #b91c1c;
+            margin: 0 2px 2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .freeze-band {
+            position: absolute;
+            left: 0;
+            right: 0;
+            z-index: 0;
+            pointer-events: none;
+            border-top: 1px dashed rgba(185, 28, 28, 0.55);
+            border-bottom: 1px dashed rgba(185, 28, 28, 0.55);
+            background-image: repeating-linear-gradient(135deg,
+                rgba(220, 38, 38, 0.13) 0, rgba(220, 38, 38, 0.13) 6px,
+                transparent 6px, transparent 13px);
+        }
+        .freeze-band span {
+            display: block;
+            padding: 2px 4px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: #b91c1c;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .week-event, .day-event { z-index: 1; }
     </style>
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <?php echo Tz::scriptTag(); ?>
@@ -191,33 +235,27 @@ $translationNamespaces = ['common', 'change-management'];
         <div id="changePopupContent"></div>
     </div>
 
-    <script>window.API_BASE = '../api/change-management/';</script>
-    <script src="../assets/js/change-calendar.js?v=3"></script>
     <script>
-    // Phase 9b: list current/upcoming freeze windows in the sidebar (additive;
-    // does not touch the calendar grid renderer). Full grid band overlay is a
-    // later enhancement.
-    (function () {
+    // Phase 9b: current/upcoming freeze windows in the sidebar. change-calendar.js
+    // does the one fetch (it also bands the grid) and hands the payload here.
+    window.onFreezeWindowsLoaded = function (active) {
+        if (!active || !active.length) return;
         function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
         function fmt(dt){ if(!dt) return ''; var d=new Date(dt.replace(' ','T')+'Z'); return isNaN(d)?esc(dt):d.toLocaleDateString([], {month:'short',day:'numeric'}); }
-        fetch('../api/change-management/get_freeze_windows.php')
-            .then(function(r){return r.json();})
-            .then(function(data){
-                if(!data.success || !data.windows || !data.windows.length) return;
-                var active = data.windows.filter(function(w){return w.is_active;});
-                if(!active.length) return;
-                var html = active.map(function(w){
-                    var band = w.in_effect ? '#dc2626' : '#f59e0b';
-                    return '<div style="border-left:3px solid '+band+';padding:4px 8px;font-size:12px;color:var(--text,#333);">'
-                        + '<div style="font-weight:600;">'+esc(w.name)+'</div>'
-                        + '<div style="color:var(--text-dim,#6b7280);">'+fmt(w.starts_at)+' – '+fmt(w.ends_at)+(w.in_effect?' · in effect':'')+'</div>'
-                        + '</div>';
-                }).join('');
-                document.getElementById('freezeList').innerHTML = html;
-                document.getElementById('freezeSection').style.display = '';
-            })
-            .catch(function(){});
-    })();
+        var html = active.map(function(w){
+            var band = w.in_effect ? '#dc2626' : '#f59e0b';
+            var scope = (w.tenant_names || []).concat(w.category_names || []);
+            return '<div style="border-left:3px solid '+band+';padding:4px 8px;font-size:12px;color:var(--text,#333);">'
+                + '<div style="font-weight:600;">'+esc(w.name)+'</div>'
+                + '<div style="color:var(--text-dim,#6b7280);">'+fmt(w.starts_at)+' – '+fmt(w.ends_at)+(w.in_effect?' · in effect':'')+'</div>'
+                + '<div style="color:var(--text-dim,#6b7280);">'+(scope.length ? esc(scope.join(', ')) : 'All changes')+'</div>'
+                + '</div>';
+        }).join('');
+        document.getElementById('freezeList').innerHTML = html;
+        document.getElementById('freezeSection').style.display = '';
+    };
     </script>
+    <script>window.API_BASE = '../api/change-management/';</script>
+    <script src="../assets/js/change-calendar.js?v=4"></script>
 </body>
 </html>

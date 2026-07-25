@@ -63,6 +63,13 @@ $translationNamespaces = ['common', 'change-management'];
             background: var(--surface, #fff); color: var(--text, #222); box-sizing: border-box;
         }
         .fz-field textarea { resize: vertical; min-height: 56px; }
+        .fz-field select[multiple] {
+            width: 100%; padding: 6px; border: 1px solid var(--border, #e5e7eb); border-radius: 6px; font-size: 13px;
+            background: var(--surface, #fff); color: var(--text, #222); box-sizing: border-box; min-height: 74px;
+        }
+        .fz-hint { font-size: 11.5px; color: var(--text-dim, #6b7280); margin-top: 3px; }
+        .fz-scope { font-size: 12px; color: var(--text-dim, #6b7280); }
+        .fz-chip { display: inline-block; padding: 1px 7px; margin: 1px 3px 1px 0; border-radius: 10px; font-size: 11px; background: var(--surface-2, #eceff3); color: var(--text, #333); }
         .fz-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text, #222); }
         .fz-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
     </style>
@@ -75,7 +82,7 @@ $translationNamespaces = ['common', 'change-management'];
             <div class="fz-head">
                 <div>
                     <h2>Change freeze windows</h2>
-                    <p>Blackout periods when changes should not be scheduled. Scheduling or approving a change inside a freeze raises a soft warning; Emergency-type changes are exempt.</p>
+                    <p>Blackout periods when changes should not be scheduled. Scheduling or approving a change inside a freeze raises a soft warning; Emergency-type changes are exempt. A window can be narrowed to particular change categories or companies &mdash; leave both empty and it covers every change.</p>
                 </div>
                 <button class="btn btn-primary" id="fzAddBtn" onclick="fzOpenModal()" style="display:none;">New freeze window</button>
             </div>
@@ -91,6 +98,16 @@ $translationNamespaces = ['common', 'change-management'];
             <div class="fz-field"><label>Starts</label><input type="datetime-local" id="fzStart"></div>
             <div class="fz-field"><label>Ends</label><input type="datetime-local" id="fzEnd"></div>
             <div class="fz-field"><label>Reason (optional)</label><textarea id="fzReason" maxlength="500"></textarea></div>
+            <div class="fz-field">
+                <label>Change categories</label>
+                <select id="fzCategories" multiple></select>
+                <div class="fz-hint">Leave empty to freeze every category.</div>
+            </div>
+            <div class="fz-field" id="fzTenantField" style="display:none;">
+                <label>Companies</label>
+                <select id="fzTenants" multiple></select>
+                <div class="fz-hint">Leave empty to freeze every company.</div>
+            </div>
             <div class="fz-field"><label class="fz-check"><input type="checkbox" id="fzActive" checked> Active</label></div>
             <div class="fz-modal-actions">
                 <button class="btn btn-secondary" onclick="fzCloseModal()">Cancel</button>
@@ -99,6 +116,6 @@ $translationNamespaces = ['common', 'change-management'];
         </div>
     </div>
 
-    <script src="freeze.js?v=1"></script>
+    <script src="freeze.js?v=2"></script>
 </body>
 </html>

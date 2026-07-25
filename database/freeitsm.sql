@@ -1943,6 +1943,21 @@ CREATE TABLE IF NOT EXISTS `change_freeze_windows` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------
+-- Freeze window scoping (9b follow-up). No rows for a window = global (the
+-- original behaviour). Rows narrow it: OR within a scope_type, AND across types.
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `change_freeze_scopes` (
+    `id`                INT NOT NULL AUTO_INCREMENT,
+    `freeze_window_id`  INT NOT NULL,
+    `scope_type`        ENUM('category','tenant') NOT NULL,
+    `scope_id`          INT NOT NULL,
+    `created_datetime`  DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_change_freeze_scope` (`freeze_window_id`, `scope_type`, `scope_id`),
+    CONSTRAINT `fk_change_freeze_scope_window` FOREIGN KEY (`freeze_window_id`) REFERENCES `change_freeze_windows` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------
 -- Affected CIs on a change (Phase 9c): which CMDB objects a change touches.
 -- Mirrors ticket_cmdb_objects but has no is_primary (a change has no
 -- SLA-driving CI). Drives CMDB impact analysis → a suggested risk impact score.

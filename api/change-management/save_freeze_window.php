@@ -1,8 +1,12 @@
 <?php
 /**
  * API: Create or update a change freeze window (Phase 9b). Admin only.
- * POST JSON { id?, name, starts_at, ends_at, reason?, is_active? }
+ * POST JSON { id?, name, starts_at, ends_at, reason?, is_active?,
+ *             category_ids?: int[], tenant_ids?: int[] }
  * Datetimes are 'YYYY-MM-DD HH:MM[:SS]' (from a datetime-local input).
+ *
+ * category_ids / tenant_ids replace the window's scope rows wholesale; empty (or
+ * absent on create) means the window is global. Only ids that exist are kept.
  */
 session_start(['read_and_close' => true]);
 require_once '../../config.php';
@@ -22,6 +26,33 @@ function freeze_norm_dt($v): ?string {
     $v = str_replace('T', ' ', $v);
     $ts = strtotime($v);
     return $ts === false ? null : date('Y-m-d H:i:s', $ts);
+}
+
+/** Positive ints from a payload list that actually exist in $table. */
+function freeze_valid_ids(PDO $conn, $raw, string $table): array {
+    if (!is_array($raw)) return [];
+    $ids = array_values(array_unique(array_filter(array_map('intval', $raw), fn($i) => $i > 0)));
+    if (!$ids) return [];
+    try {
+        $ph = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $conn->prepare("SELECT id FROM {$table} WHERE id IN ($ph)");
+        $stmt->execute($ids);
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    } catch (Exception $e) {
+        return [];   // table absent on a minimal install
+    }
+}
+
+/** Replace a window's scope rows with the given category/company ids. */
+function freeze_write_scopes(PDO $conn, int $windowId, array $categoryIds, array $tenantIds): void {
+    try {
+        $conn->prepare("DELETE FROM change_freeze_scopes WHERE freeze_window_id = ?")->execute([$windowId]);
+        $ins = $conn->prepare("INSERT INTO change_freeze_scopes (freeze_window_id, scope_type, scope_id, created_datetime) VALUES (?, ?, ?, UTC_TIMESTAMP())");
+        foreach ($categoryIds as $id) $ins->execute([$windowId, 'category', $id]);
+        foreach ($tenantIds as $id)   $ins->execute([$windowId, 'tenant', $id]);
+    } catch (Exception $e) {
+        error_log('freeze scope write failed: ' . $e->getMessage());   // window itself still saved
+    }
 }
 
 try {
@@ -46,6 +77,9 @@ try {
     if (mb_strlen($reason) > 500) $reason = mb_substr($reason, 0, 500);
     $reason = $reason === '' ? null : $reason;
 
+    $categoryIds = freeze_valid_ids($conn, $data['category_ids'] ?? null, 'change_categories');
+    $tenantIds   = freeze_valid_ids($conn, $data['tenant_ids'] ?? null, 'tenants');
+
     if ($id) {
         $chk = $conn->prepare("SELECT 1 FROM change_freeze_windows WHERE id = ?");
         $chk->execute([$id]);
@@ -64,6 +98,8 @@ try {
         )->execute([$name, $starts, $ends, $reason, $isActive, $analystId]);
         $newId = (int)$conn->lastInsertId();
     }
+
+    freeze_write_scopes($conn, $newId, $categoryIds, $tenantIds);
 
     echo json_encode(['success' => true, 'id' => $newId]);
 

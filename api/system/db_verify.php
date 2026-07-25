@@ -1510,6 +1510,17 @@ $schema = [
         'updated_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
     ],
 
+    // Freeze window scoping (9b follow-up). No rows = the window is global (the
+    // original behaviour). Rows narrow it: OR within a scope_type, AND across
+    // types — "Finance company AND Network category".
+    'change_freeze_scopes' => [
+        'id'                => 'INT NOT NULL AUTO_INCREMENT',
+        'freeze_window_id'  => 'INT NOT NULL',
+        'scope_type'        => "ENUM('category','tenant') NOT NULL",
+        'scope_id'          => 'INT NOT NULL',
+        'created_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
     // Affected CIs on a change (Phase 9c) — mirror ticket_cmdb_objects (no
     // is_primary; a change has no SLA-driving CI). Feeds CMDB impact → suggested risk.
     'change_cmdb_objects' => [
@@ -4134,6 +4145,16 @@ try {
         }
         if ($tableExists('analysts') && !$fkExists('change_freeze_windows', 'fk_change_freeze_creator')) {
             try { $conn->exec("ALTER TABLE change_freeze_windows ADD CONSTRAINT fk_change_freeze_creator FOREIGN KEY (created_by_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+    }
+
+    // Freeze window scoping (9b follow-up) — one row per scoped category/company.
+    if ($tableExists('change_freeze_scopes')) {
+        if (!$idxExists('change_freeze_scopes', 'uq_change_freeze_scope')) {
+            try { $conn->exec("ALTER TABLE change_freeze_scopes ADD UNIQUE KEY uq_change_freeze_scope (freeze_window_id, scope_type, scope_id)"); } catch (Exception $e) {}
+        }
+        if ($tableExists('change_freeze_windows') && !$fkExists('change_freeze_scopes', 'fk_change_freeze_scope_window')) {
+            try { $conn->exec("ALTER TABLE change_freeze_scopes ADD CONSTRAINT fk_change_freeze_scope_window FOREIGN KEY (freeze_window_id) REFERENCES change_freeze_windows (id) ON DELETE CASCADE"); } catch (Exception $e) {}
         }
     }
 

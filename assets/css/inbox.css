@@ -3522,3 +3522,85 @@ body.ticket-popout .ticket-toolbar {
     border-bottom: 1px solid currentColor;
 }
 .wf-diagnosis-link:hover { opacity: 0.75; }
+
+/* ===== Collapsible reading-pane sections ==================================
+ * The panels under the email thread (affected CIs, custom fields, SLA, time,
+ * notes) share this shell, deliberately quieter than the Properties header
+ * above them: same chevron and summary idiom, but sitting in the body rather
+ * than acting as a bar across the pane. See ticketSection() in inbox.js.
+ */
+.ticket-section {
+    margin: 12px 0 0;
+    border: 1px solid var(--border-soft, #e3e8ea);
+    border-radius: 8px;
+    background: var(--surface, #fff);
+    overflow: hidden;
+}
+
+.ticket-section-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 14px;
+    cursor: pointer;
+    user-select: none;
+    background: var(--surface-2, #f8f9fa);
+    transition: background 0.15s;
+}
+
+.ticket-section-head:hover { background: var(--surface-hover, #f0f2f4); }
+
+.ticket-section-chevron {
+    font-size: 10px;
+    color: var(--text-dim, #90a4ae);
+    transition: transform 0.2s;
+    flex-shrink: 0;
+}
+
+.ticket-section.expanded .ticket-section-chevron { transform: rotate(180deg); }
+
+.ticket-section-title {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted, #546e7a);
+    flex-shrink: 0;
+}
+
+/* The summary is the whole point of collapsing: it must stay readable and
+   truncate rather than wrap the header onto a second line. */
+.ticket-section-summary {
+    font-size: 12px;
+    color: var(--text-dim, #78909c);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ticket-section-actions { flex-shrink: 0; }
+
+.ticket-section-good { color: #2e7d32; font-weight: 600; }
+.ticket-section-warn { color: #b45309; font-weight: 600; }
+.ticket-section-bad  { color: #c62828; font-weight: 600; }
+
+.ticket-section-body { display: none; padding: 12px 14px 14px; }
+.ticket-section.expanded .ticket-section-body { display: block; }
+
+/* The panels kept their own wrappers so their inner CSS still applies, but the
+   shell now owns the chrome — strip the duplicate frame and top margin. */
+.ticket-section-body > .cmdb-section,
+.ticket-section-body > .sla-section,
+.ticket-section-body > .notes-section,
+.ticket-section-body > .time-entries-section,
+.ticket-section-body > .ticket-custom-fields {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}

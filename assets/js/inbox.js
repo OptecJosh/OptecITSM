@@ -2852,11 +2852,22 @@ function renderTicketCustomFields(fields) {
                 ${renderCustomFieldInput(f)}
             </div>`;
     }).join('');
-    return `
-        <div class="ticket-custom-fields" style="margin-top:16px;padding:14px 16px;border:1px solid var(--border-soft,#e3e8ea);border-radius:8px;">
-            <div style="font-weight:600;font-size:13px;color:#455a64;margin-bottom:12px;">${escapeHtml(t('tickets.custom_fields.section_pane_title'))}</div>
-            ${rows}
-        </div>`;
+
+    // Summary: how many are actually filled in, so a collapsed section shows
+    // whether anything is outstanding.
+    const set = fields.filter(f => f.value !== null && f.value !== undefined && f.value !== '').length;
+    const missingRequired = fields.filter(f =>
+        f.is_required && (f.value === null || f.value === undefined || f.value === '')).length;
+    const summary = escapeHtml(set + ' of ' + fields.length + ' set')
+        + (missingRequired ? ` <span class="ticket-section-warn">${escapeHtml(missingRequired + ' required missing')}</span>` : '');
+
+    return ticketSection(
+        'custom',
+        t('tickets.custom_fields.section_pane_title'),
+        summary,
+        '',
+        `<div class="ticket-custom-fields">${rows}</div>`
+    );
 }
 
 function renderCustomFieldInput(f) {
@@ -3488,6 +3499,56 @@ function toggleTicketProperties(event) {
     }
 }
 
+/* ===== Collapsible reading-pane sections =====================================
+ *
+ * The panels below the email thread (affected CIs, custom fields, SLA, time,
+ * notes) each used to render their own header and sit permanently open, which
+ * pushed the actual conversation off the screen. They now share one shell that
+ * behaves like the Properties panel above them: a header with a chevron, a
+ * SUMMARY so a collapsed section still tells you something, and an optional
+ * actions slot for the buttons that used to live in the bespoke headers.
+ *
+ * Open/closed is remembered per section per analyst in localStorage, so someone
+ * who always wants time entries open gets them open. SLA is the only one open by
+ * default — it is the one with a deadline attached.
+ */
+
+const TICKET_SECTION_DEFAULT_OPEN = { sla: true, cmdb: false, custom: false, time: false, notes: false };
+
+function ticketSectionIsOpen(key) {
+    try {
+        const stored = localStorage.getItem('ticketSection.' + key);
+        if (stored === '1') return true;
+        if (stored === '0') return false;
+    } catch (e) { /* private mode — fall back to the default */ }
+    return !!TICKET_SECTION_DEFAULT_OPEN[key];
+}
+
+function toggleTicketSection(key) {
+    const el = document.querySelector('.ticket-section[data-section="' + key + '"]');
+    if (!el) return;
+    const open = el.classList.toggle('expanded');
+    try { localStorage.setItem('ticketSection.' + key, open ? '1' : '0'); } catch (e) { /* ignore */ }
+}
+
+/**
+ * Render one collapsible section. `summary` shows in the header when collapsed
+ * (and stays visible when open — it reads as a count, not a spoiler).
+ * `actions` is raw HTML for buttons; clicks inside it never toggle the section.
+ */
+function ticketSection(key, title, summary, actions, body) {
+    return `
+        <div class="ticket-section${ticketSectionIsOpen(key) ? ' expanded' : ''}" data-section="${escapeHtml(key)}">
+            <div class="ticket-section-head" onclick="toggleTicketSection('${escapeHtml(key)}')">
+                <span class="ticket-section-chevron">&#9660;</span>
+                <h3 class="ticket-section-title">${escapeHtml(title)}</h3>
+                ${summary ? `<span class="ticket-section-summary">${summary}</span>` : ''}
+                ${actions ? `<span class="ticket-section-actions" onclick="event.stopPropagation()">${actions}</span>` : ''}
+            </div>
+            <div class="ticket-section-body">${body}</div>
+        </div>`;
+}
+
 // Close ticket properties panel when clicking outside
 document.addEventListener('click', function(event) {
     const container = document.getElementById('ticketPropertiesContainer');
@@ -3558,12 +3619,20 @@ function renderCmdbObjects(ticketId) {
         </a>
     `).join('');
 
-    container.innerHTML = `
-        <div class="cmdb-section">
-            <div class="cmdb-section-head">
-                <h3>${escapeHtml(t('tickets.cmdb.section_title'))}</h3>
-                <button class="btn-link" onclick="openLinkCmdbPicker(${ticketId})">${escapeHtml(t('tickets.cmdb.link_btn'))}</button>
-            </div>
+    // Summary: how many CIs, and which one drives the SLA — the two facts worth
+    // seeing without expanding.
+    const primary = cmdbObjectsForTicket.find(l => l.is_primary);
+    const summary = cmdbObjectsForTicket.length
+        ? escapeHtml(cmdbObjectsForTicket.length + (cmdbObjectsForTicket.length === 1 ? ' item' : ' items'))
+          + (primary ? ' &middot; primary: ' + escapeHtml(primary.name) : '')
+        : escapeHtml(t('tickets.cmdb.empty'));
+
+    container.innerHTML = ticketSection(
+        'cmdb',
+        t('tickets.cmdb.section_title'),
+        summary,
+        `<button class="btn-link" onclick="openLinkCmdbPicker(${ticketId})">${escapeHtml(t('tickets.cmdb.link_btn'))}</button>`,
+        `<div class="cmdb-section">
             ${cmdbObjectsForTicket.length === 0
                 ? `<div class="cmdb-empty">${escapeHtml(t('tickets.cmdb.empty'))}</div>`
                 : `<div class="cmdb-link-list">${cards}</div>`}
@@ -3571,11 +3640,15 @@ function renderCmdbObjects(ticketId) {
                 <input type="text" id="cmdbPickerInput_${ticketId}" placeholder="${escapeHtml(t('tickets.cmdb.search_placeholder'))}" autocomplete="off">
                 <div class="cmdb-picker-results" id="cmdbPickerResults_${ticketId}"></div>
             </div>
-        </div>
-    `;
+        </div>`
+    );
 }
 
 function openLinkCmdbPicker(ticketId) {
+    // The button lives in the section header, which can be collapsed — expand it
+    // first or the picker opens somewhere the analyst cannot see.
+    const section = document.querySelector('.ticket-section[data-section="cmdb"]');
+    if (section && !section.classList.contains('expanded')) toggleTicketSection('cmdb');
     const picker = document.getElementById('cmdbPicker_' + ticketId);
     const input  = document.getElementById('cmdbPickerInput_' + ticketId);
     const results = document.getElementById('cmdbPickerResults_' + ticketId);
@@ -3867,7 +3940,7 @@ function renderNotes() {
         return;
     }
 
-    let html = '<div class="notes-section"><div class="notes-header">Notes</div>';
+    let html = '<div class="notes-section">';
 
     currentNotes.forEach(note => {
         html += `
@@ -3882,7 +3955,18 @@ function renderNotes() {
     });
 
     html += '</div>';
-    container.innerHTML = html;
+
+    const last = currentNotes[0];
+    const summary = escapeHtml(currentNotes.length + (currentNotes.length === 1 ? ' note' : ' notes'))
+        + (last && last.analyst_name ? ' &middot; latest by ' + escapeHtml(last.analyst_name) : '');
+
+    container.innerHTML = ticketSection(
+        'notes',
+        'Notes',
+        summary,
+        `<button class="btn-link" onclick="openNoteModal()">Add note</button>`,
+        html
+    );
 }
 
 // Open note modal
@@ -5419,9 +5503,18 @@ function renderTimeEntries(totalMinutes) {
         }).join('');
     }
 
-    container.innerHTML = `
-        <div class="time-entries-section">
-            <div class="time-entries-header">${escapeHtml(t('tickets.time_entries.section_title'))}${totalLabel}</div>
+    const summaryBits = [totalMinutes > 0 ? escapeHtml(formatMinutes(totalMinutes)) : 'none logged'];
+    if (currentTimeEntries.length) {
+        summaryBits.push(escapeHtml(currentTimeEntries.length + (currentTimeEntries.length === 1 ? ' entry' : ' entries')));
+    }
+    const timeSummary = summaryBits.join(' &middot; ');
+
+    container.innerHTML = ticketSection(
+        'time',
+        t('tickets.time_entries.section_title'),
+        timeSummary,
+        '',
+        `<div class="time-entries-section">
             <form class="time-entry-form" onsubmit="event.preventDefault(); saveTimeEntry();">
                 <input type="number" id="timeEntryMinutes" class="time-entry-input-minutes"
                        min="1" step="1" placeholder="${escapeHtml(t('tickets.time_entries.minutes_placeholder'))}" required>
@@ -5430,8 +5523,8 @@ function renderTimeEntries(totalMinutes) {
                 <button type="submit" class="time-entry-add-btn">${escapeHtml(t('tickets.time_entries.add_btn'))}</button>
             </form>
             <div class="time-entry-list">${rowsHtml}</div>
-        </div>
-    `;
+        </div>`
+    );
 }
 
 async function saveTimeEntry() {
@@ -6277,14 +6370,28 @@ function renderSlaPanel(sla) {
         policyLine = `<div class="sla-policy-line">Policy: <strong>${escapeHtml(sla.policy.name)}</strong>${origin}</div>`;
     }
 
-    container.innerHTML = `
-        <div class="sla-section">
-            <div class="sla-section-header">SLA</div>
+    // Summary: the most urgent of the two targets, so a collapsed SLA section
+    // still says whether this ticket is in trouble.
+    const summarise = (label, target) => {
+        if (!target) return '';
+        if (target.breached) return `<span class="ticket-section-bad">${label} breached</span>`;
+        if (target.achieved_at !== null) return `<span class="ticket-section-good">${label} met</span>`;
+        return `${label} ${fmt(target.remaining_minutes)} left`;
+    };
+    const slaSummary = [summarise('Response', sla.response), summarise('Resolution', sla.resolution)]
+        .filter(Boolean).join(' &middot; ');
+
+    container.innerHTML = ticketSection(
+        'sla',
+        'SLA',
+        slaSummary,
+        '',
+        `<div class="sla-section">
             ${policyLine}
             ${renderRow('Response', sla.response)}
             ${renderRow('Resolution', sla.resolution)}
-        </div>
-    `;
+        </div>`
+    );
 
     // Phase 4B: mirror a compact status into the summary chip near the top.
     updateSlaSummaryChip(sla);

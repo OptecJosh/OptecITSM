@@ -70,7 +70,9 @@ $translationNamespaces = ['common', 'system'];
 
             <div class="bk-card">
                 <h3>Export</h3>
-                <p>Export an entity to CSV. The header row matches what import expects, so you can export, edit in a spreadsheet, and re-import.</p>
+                <p>Export an entity to CSV. The header row matches what import expects, so you can export, edit in a spreadsheet, and re-import.
+                   For a read-only export of any module's data (tickets, changes, contracts, KPIs and the rest, CSV or JSON), use
+                   <a href="../../reporting/export/">Reporting &rsaquo; Data export</a>.</p>
                 <div class="bk-row">
                     <div class="bk-field">
                         <label>Entity</label>

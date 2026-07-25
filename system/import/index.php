@@ -70,6 +70,10 @@ $translationNamespaces = ['common', 'system'];
                analyst or requester must already exist, and an unrecognised name is reported rather than silently blanked.
                Nothing is written until you commit, and a commit is one transaction: it either all lands or none of it does.
                The column names match <a href="../../reporting/export/">Reporting &rsaquo; Export</a>, so you can export, edit and re-import.</p>
+            <p class="im-lead"><strong>Need test data?</strong> The repository ships a ready-made UAT bundle in
+               <code>database/demo-csv/</code> &mdash; seventeen interlocking files (customers, suppliers, contracts, assets,
+               tickets, problems, changes, certifications and more) with a README giving the load order. Import them in
+               filename order and you have a populated system to test against.</p>
 
             <div class="im-card">
                 <h3>1. Choose what you are importing</h3>

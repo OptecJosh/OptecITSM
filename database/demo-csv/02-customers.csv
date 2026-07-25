@@ -1,0 +1,13 @@
+name,account_ref,contact_name,contact_email,contact_phone,is_active,notes
+Northgate Foods,NGF-001,Priya Raman,priya.raman@northgatefoods.example,0161 496 0121,1,"Manufacturing. 3 sites, 24x7 line monitoring. Escalation path agreed with plant managers."
+Harlow & Boyd LLP,HBL-002,Duncan Boyd,d.boyd@harlowboyd.example,020 7946 0333,1,Legal. Very sensitive to any downtime during court hours (09:00-17:00).
+Cranbourne Academy Trust,CAT-003,Meera Shah,m.shah@cranbourne.example,0117 496 0177,1,"Education. 6 schools, term-time change freeze."
+Pentland Logistics,PLG-004,Ross McAllister,ross.m@pentlandlogistics.example,0141 496 0212,1,Logistics. Depot WAN links are the usual culprit.
+Wexford Medical Group,WMG-005,Dr Aoife Nolan,a.nolan@wexfordmedical.example,0113 496 0455,1,Healthcare. Clinical systems out of scope; we cover the estate only.
+Brightling Retail,BRT-006,Sam Okonjo,sam.okonjo@brightling.example,0121 496 0788,1,"Retail. 40 stores, EPOS uptime is the metric they care about."
+Ardleigh Construction,ARD-007,Tanya Whitmore,t.whitmore@ardleigh.example,01206 496 011,1,"Construction. Site cabins on 4G, expect patchy connectivity."
+Silverwood Financial,SVW-008,Gerald Pike,g.pike@silverwoodfin.example,020 7946 0912,1,Financial services. Change approval requires their CAB sign-off too.
+Meridian Housing,MER-009,Beth Cargill,b.cargill@meridianhousing.example,0191 496 0344,1,Housing association. Field staff on tablets.
+Kestrel Aviation Services,KAV-010,Idris Lamb,i.lamb@kestrelaviation.example,01293 496 088,1,Aviation ground services. Airside access needed for on-site work.
+Thornbury Council,THC-011,Marion Deeks,m.deeks@thornbury.example,01454 496 099,1,Public sector. Procurement is slow; keep quotes valid 90 days.
+Larkspur Media,LKM-012,Cody Vance,cody@larkspurmedia.example,020 7946 0455,0,"Former customer - contract ended, kept for reporting history."

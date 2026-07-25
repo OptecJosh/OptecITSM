@@ -1,0 +1,21 @@
+analyst_email,work_date,start_time,end_time,hours,overtime_type,rate_multiplier,reason,status
+james.smith@example.com,2026-05-16,06:00,08:00,2.00,weekend,2.00,P1 depot WAN outage - stayed on the bridge until the circuit was stable,approved
+sarah.williams@example.com,2026-05-19,18:00,21:30,3.50,weekday,1.50,Core switch replacement window,approved
+michael.jones@example.com,2026-05-22,18:00,22:00,4.00,weekday,1.50,July patch ring - server reboots outside business hours,approved
+laura.brown@example.com,2026-05-25,06:00,11:00,5.00,weekday,1.50,Emergency reboot of SRV-APP02 after AV quarantine,pending
+james.smith@example.com,2026-05-28,18:00,20:30,2.50,weekday,1.50,Weekend cover while the overflow desk contract was being signed,rejected
+sarah.williams@example.com,2026-05-31,18:00,00:00,6.00,weekday,1.50,Wifi firmware pilot in the warehouse before the early shift,approved
+michael.jones@example.com,2026-06-03,06:00,08:00,2.00,weekday,1.50,Air-con failure - stayed to fit and monitor portable cooling,approved
+laura.brown@example.com,2026-06-06,18:00,21:30,3.50,weekend,2.00,Month-end finance support after the index change,approved
+james.smith@example.com,2026-06-09,18:00,22:00,4.00,weekday,1.50,Scanner rollout at Leeds depot ahead of the picking shift,pending
+sarah.williams@example.com,2026-06-12,06:00,11:00,5.00,weekday,1.50,On-call callout - backup job failure investigation,rejected
+michael.jones@example.com,2026-06-15,18:00,20:30,2.50,weekday,1.50,P1 depot WAN outage - stayed on the bridge until the circuit was stable,approved
+laura.brown@example.com,2026-06-18,18:00,00:00,6.00,weekday,1.50,Core switch replacement window,approved
+james.smith@example.com,2026-06-21,06:00,08:00,2.00,weekday,1.50,July patch ring - server reboots outside business hours,approved
+sarah.williams@example.com,2026-06-24,18:00,21:30,3.50,weekday,1.50,Emergency reboot of SRV-APP02 after AV quarantine,pending
+michael.jones@example.com,2026-06-27,18:00,22:00,4.00,weekend,2.00,Weekend cover while the overflow desk contract was being signed,rejected
+laura.brown@example.com,2026-06-30,06:00,11:00,5.00,weekday,1.50,Wifi firmware pilot in the warehouse before the early shift,approved
+james.smith@example.com,2026-07-03,18:00,20:30,2.50,weekday,1.50,Air-con failure - stayed to fit and monitor portable cooling,approved
+sarah.williams@example.com,2026-07-06,18:00,00:00,6.00,weekday,1.50,Month-end finance support after the index change,approved
+michael.jones@example.com,2026-07-09,06:00,08:00,2.00,weekday,1.50,Scanner rollout at Leeds depot ahead of the picking shift,pending
+laura.brown@example.com,2026-07-12,18:00,21:30,3.50,weekday,1.50,On-call callout - backup job failure investigation,rejected

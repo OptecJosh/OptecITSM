@@ -1,0 +1,11 @@
+contract_number,title,supplier,contract_start,contract_end,notice_period_days,contract_value,currency,cost_centre,service_hours,response_sla,resolution_sla,coverage_notes
+CTR-2026-001,Hardware supply and next-day replacement,Ravensworth IT Distribution,2025-01-31,2027-01-31,90,48000.0,GBP,IT-CAPEX,Mon-Fri 08:00-18:00,4 business hours,Next business day,"Covers laptops, desktops and monitors on the standard build list."
+CTR-2026-002,Network support and circuit management,Calderstone Networks Ltd,2025-06-20,2026-07-05,60,66500.0,GBP,IT-OPEX,24x7,1 hour P1,8 hours P1,EXPIRED ON PURPOSE - use this to test the expiry reminder and renewal flow.
+CTR-2026-003,Microsoft 365 E3 licensing,Ashcombe Software Group,2025-08-29,2026-08-29,30,121000.0,GBP,IT-LIC,Business hours,Next business day,5 business days,True-up each April. Seat count reconciled against the licence compliance view.
+CTR-2026-004,Cloud hosting and offsite backup,Brookmere Cloud Services,2024-11-12,2026-11-12,90,93750.0,GBP,IT-OPEX,24x7,30 minutes P1,4 hours P1,Includes 30-day retention and two DR tests a year.
+CTR-2026-005,Managed print service,Tidewell Print Solutions,2025-11-17,2027-11-17,60,28400.0,GBP,FAC-OPEX,Mon-Fri 09:00-17:00,8 business hours,2 business days,"Per-click billing. Consumables included, staples are not."
+CTR-2026-006,SOC monitoring and annual pen test,Glenmoor Security Partners,2026-01-26,2026-07-31,90,74000.0,GBP,SEC-OPEX,24x7,15 minutes P1,2 hours P1,EXPIRES IN DAYS - use for the 7-day expiry reminder window.
+CTR-2026-007,Mobile estate and SIP trunks,Pellworth Telecom,2024-08-24,2027-05-21,30,41200.0,GBP,IT-OPEX,Business hours,1 business day,5 business days,"180 handsets, 6 SIP channels."
+CTR-2026-008,Comms room maintenance and cabling,Marlbrook Facilities,2026-04-21,2028-04-20,90,15900.0,GBP,FAC-CAPEX,Mon-Fri 08:00-16:00,2 business days,10 business days,"Quarterly air-con service, ad-hoc cabling at day rate."
+CTR-2026-009,Out-of-hours service desk overflow,Brookmere Cloud Services,2026-05-26,2028-05-25,60,52000.0,GBP,IT-OPEX,18:00-08:00 + weekends,30 minutes P1,4 hours P1,Overflow only; tickets are handed back at 08:00.
+CTR-2026-010,Legacy AS400 support (winding down),Ravensworth IT Distribution,2024-02-06,2026-01-06,30,9800.0,GBP,IT-OPEX,Business hours,2 business days,10 business days,Long expired - keep inactive to test filtering out dead contracts.

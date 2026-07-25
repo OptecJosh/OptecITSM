@@ -1,0 +1,21 @@
+title,description,status,priority,start_date,due_date,completed_datetime
+Chase Calderstone for the CRC error report,,To Do,High,2026-07-23,2026-07-28,
+Book Marlbrook engineer for air-con replacement,,In Progress,Urgent,2026-07-24,2026-07-27,
+Write up the month-end index change for the CAB,,Done,Medium,2026-07-13,2026-07-17,2026-07-17 16:00:00
+Order 15 scanner docks for Leeds mezzanine,,To Do,Medium,2026-07-25,2026-08-01,
+Reconcile M365 seat count before the April true-up,,To Do,High,2026-07-26,2026-08-15,
+Draft the quarterly access review evidence pack,,In Progress,Medium,2026-07-21,2026-07-30,
+Decommission the AS400 gateway once traffic is zero,,Blocked,Low,2026-07-05,2026-09-03,
+Archive old ISO images from SRV-FILE01,,Done,Low,2026-06-30,2026-07-05,2026-07-05 16:00:00
+Test the bonded 4G failover at Bristol depot,,To Do,High,2026-07-27,2026-08-03,
+Update the new starter runbook for the Win11 build,,In Progress,Medium,2026-07-19,2026-08-04,
+Review overtime claims for the June payroll cut-off,,Done,High,2026-06-25,2026-06-29,2026-06-29 16:00:00
+Refresh the ITIL certification matrix for the team,,To Do,Low,2026-07-28,2026-08-24,
+Schedule the two DR tests required by CTR-2026-004,,To Do,Medium,2026-07-29,2026-09-08,
+Collect pen test evidence for Glenmoor renewal,,In Progress,Urgent,2026-07-22,2026-07-29,
+Retire the last four out-of-warranty laptops,,To Do,Low,2026-07-30,2026-08-19,
+Publish the phishing awareness KB article,,Done,Medium,2026-07-16,2026-07-18,2026-07-18 16:00:00
+Confirm term-time freeze dates with Cranbourne,,Done,Low,2026-07-10,2026-07-11,2026-07-11 16:00:00
+Rebuild the guest wifi DHCP scope with 4h leases,,Done,Medium,2026-07-03,2026-07-04,2026-07-04 16:00:00
+Get quotes for the SQL 2022 upgrade licensing,,To Do,Medium,2026-07-31,2026-08-29,
+Tidy the CMDB relationships for the EPOS service,,To Do,Low,2026-08-01,2026-09-03,

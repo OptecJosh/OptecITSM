@@ -1,0 +1,33 @@
+name,class,is_planned
+SRV-DC01,Server,no
+SRV-DC02,Server,no
+SRV-FILE01,Server,no
+SRV-APP01,Server,no
+SRV-APP02,Server,no
+SRV-SQL01,Server,no
+SRV-SQL02,Server,no
+SRV-BACKUP01,Server,no
+SRV-RDS01,Server,no
+SRV-PRINT01,Server,no
+SQLDB-Finance,Database,no
+SQLDB-WMS,Database,no
+SQLDB-ITSM,Database,no
+SQLDB-Reporting,Database,no
+Sage 200,Application,no
+Warehouse Management System,Application,no
+Microsoft 365,Application,no
+Payroll Portal,Application,no
+EPOS Central,Application,no
+Site Access Control,Application,no
+Active Directory,Service,no
+DNS / DHCP,Service,no
+File and Print,Service,no
+Email Flow,Service,no
+Offsite Backup,Service,no
+Remote Access (VPN),Service,no
+FW-HQ-01,Network Device,no
+SW-HQ-CORE-01,Network Device,no
+SW-HQ-EDGE-02,Network Device,no
+AP-HQ-FLOOR2-05,Network Device,no
+RTR-DEPOT-LEEDS,Network Device,no
+RTR-DEPOT-BRISTOL,Network Device,no

@@ -1,0 +1,16 @@
+title,description,start_datetime,end_datetime,all_day,location
+Core switch replacement window,Change window - SW-HQ-CORE-01 swap,2026-08-06 20:00:00,2026-08-07 00:00:00,no,HQ comms room
+July server patch ring,Monthly patch baseline,2026-07-07 19:00:00,2026-07-08 01:00:00,no,Remote
+Wifi AP firmware upgrade (aisle 7 pilot),Pilot before estate-wide rollout,2026-07-31 06:00:00,2026-07-31 09:00:00,no,Warehouse
+Cranbourne term-time change freeze,No non-emergency changes,2026-08-14 09:00:00,2026-08-14 09:00:00,yes,Customer site
+Quarterly DR test - Brookmere,Contractual DR test 1 of 2,2026-08-27 09:00:00,2026-08-27 17:00:00,no,Remote
+Glenmoor annual pen test,External testing window,2026-07-05 09:00:00,2026-07-07 01:00:00,no,Remote
+CAB - weekly,Standing change advisory board,2026-07-27 10:00:00,2026-07-27 11:00:00,no,Meeting room 2
+CAB - weekly,Standing change advisory board,2026-08-03 10:00:00,2026-08-03 11:00:00,no,Meeting room 2
+Air-con replacement - HQ comms room,Marlbrook engineer on site,2026-08-08 08:00:00,2026-08-08 14:00:00,no,HQ comms room
+Leeds depot switch install,New PoE switch for mezzanine,2026-08-03 07:30:00,2026-08-03 12:30:00,no,Leeds depot
+Payroll cut-off - overtime claims due,All claims approved by 12:00,2026-07-29 09:00:00,2026-07-29 12:00:00,no,Remote
+New starter induction - 12 seasonal staff,Accounts and kit handover,2026-08-05 09:00:00,2026-08-05 11:00:00,no,Warehouse training room
+Sage 200 month-end freeze,Avoid changes touching finance systems,2026-08-22 00:00:00,2026-08-22 00:00:00,yes,Remote
+ITSM SQL 2022 upgrade (provisional),Awaiting CAB approval,2026-09-18 19:00:00,2026-09-19 00:00:00,no,Remote
+Team training - detection engineering,L3 development session,2026-08-10 13:00:00,2026-08-10 16:00:00,no,Meeting room 1

@@ -1,0 +1,13 @@
+name,issuer,description,validity_months,display_order,is_active
+ITIL 4 Foundation,PeopleCert,Service management fundamentals - expected for every analyst.,,10,yes
+CompTIA A+,CompTIA,Core hardware and OS troubleshooting.,36,20,yes
+CompTIA Network+,CompTIA,Networking fundamentals.,36,30,yes
+CompTIA Security+,CompTIA,Security baseline for L2 and above.,36,40,yes
+Microsoft MD-102 Endpoint Administrator,Microsoft,Intune and endpoint management.,12,50,yes
+Microsoft AZ-104 Azure Administrator,Microsoft,Azure administration.,12,60,yes
+Microsoft SC-200 Security Operations Analyst,Microsoft,SOC analyst track - L2/L3.,12,70,yes
+Cisco CCNA,Cisco,Routing and switching - required for depot network work.,36,80,yes
+Fortinet NSE 4,Fortinet,Firewall administration.,24,90,yes
+VMware VCP-DCV,Broadcom,Virtualisation - one holder minimum per shift.,24,100,yes
+Certified Ethical Hacker,EC-Council,Offensive security awareness for L3.,36,110,yes
+ISO 27001 Lead Implementer,PECB,Needed for the certification audit.,36,120,no

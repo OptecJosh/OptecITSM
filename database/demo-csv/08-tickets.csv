@@ -1,0 +1,41 @@
+ticket_number,subject,created_datetime,closed_datetime,acknowledged_datetime,status,priority,ticket_type,origin,customer,requester_email,first_time_fix
+,Laptop will not power on after update,2026-04-28 08:40:00,,2026-04-28 09:25:00,Open,High,Incident,Phone,Northgate Foods,olivia.ashworth@northgate-demo.co.uk,no
+,Cannot access shared finance folder,2026-04-30 08:40:00,,2026-04-30 09:55:00,In Progress,Normal,Incident,Email,Harlow & Boyd LLP,noah.bramley@northgate-demo.co.uk,no
+,Request new starter account - Warehouse,2026-05-02 08:40:00,,2026-05-02 09:55:00,On Hold,Normal,Service Request,Email,Cranbourne Academy Trust,amelia.cavendish@northgate-demo.co.uk,no
+,Outlook repeatedly asking for password,2026-05-04 08:40:00,2026-05-08 14:30:00,2026-05-04 09:55:00,Closed,Normal,Incident,Phone,Pentland Logistics,oliver.dunmore@northgate-demo.co.uk,no
+,Depot WAN link dropping every few minutes,2026-05-06 08:40:00,2026-05-07 14:30:00,2026-05-06 09:25:00,Closed,Critical,Incident,Email,Wexford Medical Group,isla.ellwood@northgate-demo.co.uk,yes
+,Please install Sage 200 client,2026-05-08 08:40:00,,2026-05-08 09:55:00,Open,Low,Service Request,Email,Brightling Retail,arthur.fairbrother@northgate-demo.co.uk,no
+,Printer on floor 2 jamming constantly,2026-05-10 08:40:00,,2026-05-10 09:55:00,In Progress,Low,Incident,Phone,Ardleigh Construction,freya.gledhill@northgate-demo.co.uk,no
+,MFA reset - lost phone,2026-05-12 08:40:00,,2026-05-12 09:25:00,On Hold,High,Incident,Email,Silverwood Financial,leo.hartley@northgate-demo.co.uk,no
+,New starter kit for 3 site engineers,2026-05-14 08:40:00,2026-05-18 14:30:00,2026-05-14 09:55:00,Closed,Normal,Service Request,Email,Meridian Housing,ava.inskip@northgate-demo.co.uk,yes
+,EPOS till 4 offline at Brightling Leeds,2026-05-16 08:40:00,2026-05-17 14:30:00,2026-05-16 09:25:00,Closed,Critical,Incident,Phone,Kestrel Aviation Services,henry.jerrard@northgate-demo.co.uk,no
+,"Mailbox full, cannot send",2026-05-18 08:40:00,,2026-05-18 09:55:00,Open,Normal,Incident,Email,Thornbury Council,ivy.kentish@northgate-demo.co.uk,no
+,How do I share a Teams recording?,2026-05-20 08:40:00,,2026-05-20 09:55:00,In Progress,Low,Question,Email,Northgate Foods,jack.lomax@northgate-demo.co.uk,no
+,VPN disconnects when on site cabin 4G,2026-05-22 08:40:00,,2026-05-22 09:25:00,On Hold,High,Incident,Phone,Harlow & Boyd LLP,poppy.marchant@northgate-demo.co.uk,no
+,Request additional monitor,2026-05-24 08:40:00,2026-05-28 14:30:00,2026-05-24 09:55:00,Closed,Low,Service Request,Email,Cranbourne Academy Trust,charlie.newbold@northgate-demo.co.uk,no
+,Backup job failed overnight - SQLDB-Finance,2026-05-26 08:40:00,2026-05-27 14:30:00,2026-05-26 09:25:00,Closed,High,Incident,Email,Pentland Logistics,mia.ollerton@northgate-demo.co.uk,no
+,Suspicious phishing email reported,2026-05-28 08:40:00,,2026-05-28 09:25:00,Open,High,Incident,Phone,Wexford Medical Group,thomas.pemberton@northgate-demo.co.uk,no
+,Access to Payroll Portal for new HR advisor,2026-05-30 08:40:00,,2026-05-30 09:55:00,In Progress,Normal,Service Request,Email,Brightling Retail,willow.quarrell@northgate-demo.co.uk,no
+,Warehouse scanners not connecting to WMS,2026-06-01 08:40:00,,2026-06-01 09:25:00,On Hold,Critical,Incident,Email,Ardleigh Construction,oscar.rushworth@northgate-demo.co.uk,no
+,Password expired while working away,2026-06-03 08:40:00,2026-06-07 14:30:00,2026-06-03 09:55:00,Closed,Normal,Incident,Phone,Silverwood Financial,rosie.sanderling@northgate-demo.co.uk,no
+,Order replacement docking station,2026-06-05 08:40:00,2026-06-09 14:30:00,2026-06-05 09:55:00,Closed,Low,Service Request,Email,Meridian Housing,george.thorncroft@northgate-demo.co.uk,no
+,Site Access Control card reader unresponsive,2026-06-07 08:40:00,,2026-06-07 09:25:00,Open,High,Incident,Email,Kestrel Aviation Services,ella.underhill@northgate-demo.co.uk,no
+,Request shared mailbox for tenders inbox,2026-06-09 08:40:00,,2026-06-09 09:55:00,In Progress,Low,Service Request,Phone,Thornbury Council,theo.vasey@northgate-demo.co.uk,no
+,Sage 200 reports running very slowly,2026-06-11 08:40:00,,2026-06-11 09:55:00,On Hold,Normal,Incident,Email,Northgate Foods,sofia.wetherby@northgate-demo.co.uk,no
+,Guest wifi not issuing addresses,2026-06-13 08:40:00,2026-06-17 14:30:00,2026-06-13 09:55:00,Closed,Normal,Incident,Email,Harlow & Boyd LLP,alfie.yarrow@northgate-demo.co.uk,no
+,Decommission leaver account - Legal,2026-06-15 08:40:00,2026-06-19 14:30:00,2026-06-15 09:55:00,Closed,Normal,Service Request,Phone,Cranbourne Academy Trust,olivia.ashworth@northgate-demo.co.uk,yes
+,Teams call quality poor from Bristol depot,2026-06-17 08:40:00,,2026-06-17 09:55:00,Open,Normal,Incident,Email,Pentland Logistics,noah.bramley@northgate-demo.co.uk,no
+,Two-factor prompt loop on new phone,2026-06-19 08:40:00,,2026-06-19 09:55:00,In Progress,Normal,Incident,Email,Wexford Medical Group,amelia.cavendish@northgate-demo.co.uk,no
+,Request Adobe Acrobat licence,2026-06-21 08:40:00,,2026-06-21 09:55:00,On Hold,Low,Service Request,Phone,Brightling Retail,oliver.dunmore@northgate-demo.co.uk,no
+,File server disk nearly full,2026-06-23 08:40:00,2026-06-24 14:30:00,2026-06-23 09:25:00,Closed,High,Incident,Email,Ardleigh Construction,isla.ellwood@northgate-demo.co.uk,yes
+,Cannot print to MFD after firmware update,2026-06-25 08:40:00,2026-06-29 14:30:00,2026-06-25 09:55:00,Closed,Normal,Incident,Email,Silverwood Financial,arthur.fairbrother@northgate-demo.co.uk,no
+,New depot switch install - Leeds,2026-06-27 08:40:00,,2026-06-27 09:55:00,Open,Normal,Service Request,Phone,Meridian Housing,freya.gledhill@northgate-demo.co.uk,no
+,Recover deleted contract folder,2026-06-29 08:40:00,,2026-06-29 09:25:00,In Progress,High,Incident,Email,Kestrel Aviation Services,leo.hartley@northgate-demo.co.uk,no
+,Set up meeting room display,2026-07-01 08:40:00,,2026-07-01 09:55:00,On Hold,Low,Service Request,Email,Thornbury Council,ava.inskip@northgate-demo.co.uk,no
+,Antivirus flagged file on SRV-APP02,2026-07-03 08:40:00,2026-07-04 14:30:00,2026-07-03 09:25:00,Closed,High,Incident,Phone,Northgate Foods,henry.jerrard@northgate-demo.co.uk,no
+,Request bulk export of ITSM tickets,2026-07-05 08:40:00,2026-07-09 14:30:00,2026-07-05 09:55:00,Closed,Low,Question,Email,Harlow & Boyd LLP,ivy.kentish@northgate-demo.co.uk,no
+,Onboard 12 seasonal warehouse staff,2026-07-07 08:40:00,,2026-07-07 09:25:00,Open,High,Service Request,Email,Cranbourne Academy Trust,jack.lomax@northgate-demo.co.uk,no
+,Air-con alarm in HQ comms room,2026-07-09 08:40:00,,2026-07-09 09:25:00,In Progress,Critical,Incident,Phone,Pentland Logistics,poppy.marchant@northgate-demo.co.uk,no
+,Mobile handset replacement - damaged screen,2026-07-11 08:40:00,,2026-07-11 09:55:00,On Hold,Normal,Service Request,Email,Wexford Medical Group,charlie.newbold@northgate-demo.co.uk,no
+,SharePoint sync errors on 4 laptops,2026-07-13 08:40:00,2026-07-17 14:30:00,2026-07-13 09:55:00,Closed,Normal,Incident,Email,Brightling Retail,mia.ollerton@northgate-demo.co.uk,no
+,Quarterly access review evidence needed,2026-07-15 08:40:00,2026-07-19 14:30:00,2026-07-15 09:55:00,Closed,Normal,Question,Phone,Ardleigh Construction,thomas.pemberton@northgate-demo.co.uk,no

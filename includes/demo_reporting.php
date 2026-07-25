@@ -17,6 +17,15 @@
  * a management pack exists to tell. The curves are declared in
  * demoReportingCurves() so they can be tuned in one place.
  *
+ * IMPORTANT — configure SLA targets BEFORE generating. Cycle times are generated
+ * as a multiple of each priority's own SLA target (see demoReportingTargets()),
+ * so the outcome the SLA engine later computes matches the intended story. An
+ * earlier version invented absolute durations instead, and on an install whose
+ * targets were tighter than those durations every single ticket breached — SLA
+ * attainment came out a flat 0% and the trend was worthless. A priority with no
+ * target still gets plausible cycle times, but its tickets are recorded 'na'
+ * and drop out of attainment entirely.
+ *
  * Safety
  *   - Every generated ticket is numbered DMO-YYMM-NNNN. That prefix is the only
  *     thing purge looks at, so it can never delete a real ticket.
@@ -47,10 +56,18 @@ function demoReportingCurves(float $m): array {
     return [
         // Volume grows ~50% across the period.
         'volume_factor'    => 0.78 + 0.55 * $m,
-        // Response and resolution times nearly halve.
-        'ack_factor'       => 1.95 - 1.05 * $m,
-        'resolve_factor'   => 1.70 - 0.80 * $m,
-        // SLA breaches fall from ~22% to ~6%.
+        // Cycle times are expressed as a MULTIPLE OF THE INSTALL'S OWN SLA TARGET,
+        // not as absolute minutes. A median at 0.95x target breaches about half
+        // the time once the long tail is applied; a median at 0.55x breaches
+        // rarely. That is what moves attainment from roughly 55% to the low 90s
+        // across the period, and it means the generator adapts to whatever
+        // targets are configured instead of assuming any particular scale.
+        // See demoReportingTargets(). Absolute fallbacks below are used only for
+        // priorities that have no target at all.
+        'ack_multiplier'   => 0.90 - 0.38 * $m,
+        'res_multiplier'   => 0.95 - 0.40 * $m,
+        // Fallback breach rate, used only when a priority has no SLA target and
+        // met/breached therefore cannot be derived from one.
         'breach_rate'      => 0.22 - 0.16 * $m,
         // Satisfaction climbs from ~3.7 to ~4.6.
         'csat_mean'        => 3.70 + 0.90 * $m,
@@ -73,22 +90,94 @@ function demoReportingSeasonality(int $calendarMonth): float {
     return $s[$calendarMonth] ?? 1.0;
 }
 
-/** Per-priority base minutes: [ack, resolve] before the improvement factors. */
-function demoReportingPriorityBase(string $name): array {
-    $n = strtolower($name);
-    if (str_contains($n, 'critical') || str_contains($n, 'urgent') || $n === 'p1') return [9, 300];
-    if (str_contains($n, 'high')  || $n === 'p2') return [25, 700];
-    if (str_contains($n, 'low')   || $n === 'p4') return [180, 4600];
-    return [65, 1700];   // medium / anything unrecognised
+/**
+ * Rank a priority from its name: 1 = most urgent … 4 = least.
+ *
+ * Used for both frequency and the absolute fallback times. Handles the two
+ * naming styles installs actually use — words (Critical / High / Normal / Low)
+ * and codes (P1…P4, Sev1…Sev4) — and treats anything unrecognised as middling,
+ * which is the safe default because it neither floods the demo with fake P1s nor
+ * hides a priority entirely.
+ */
+function demoReportingPriorityRank(string $name): int {
+    $n = strtolower(trim($name));
+    // Codes first: a name like "P1 - 24/7" must not fall through to the word
+    // matching below and end up ranked as a mid-priority.
+    if (preg_match('/\b(?:p|sev|sev\.|severity|tier)\s*([1-4])\b/', $n, $m)) return (int)$m[1];
+    if (str_contains($n, 'critical') || str_contains($n, 'urgent') || str_contains($n, 'emergency')) return 1;
+    if (str_contains($n, 'high')) return 2;
+    if (str_contains($n, 'low') || str_contains($n, 'minor') || str_contains($n, 'planning')) return 4;
+    return 3;   // normal / medium / anything unrecognised
 }
 
-/** Relative frequency of each priority, by name. */
+/**
+ * Absolute [ack, resolve] minutes, used ONLY when a priority has no SLA target
+ * to scale against. Kept deliberately generous — with no target there is nothing
+ * to breach, so these only need to look plausible in the cycle-time charts.
+ */
+function demoReportingPriorityBase(string $name): array {
+    switch (demoReportingPriorityRank($name)) {
+        case 1:  return [9, 300];
+        case 2:  return [25, 700];
+        case 4:  return [180, 4600];
+        default: return [65, 1700];
+    }
+}
+
+/** Relative frequency of each priority: a healthy desk is mostly P3/P4. */
 function demoReportingPriorityWeight(string $name): int {
-    $n = strtolower($name);
-    if (str_contains($n, 'critical') || str_contains($n, 'urgent') || $n === 'p1') return 5;
-    if (str_contains($n, 'high') || $n === 'p2') return 20;
-    if (str_contains($n, 'low')  || $n === 'p4') return 25;
-    return 50;
+    switch (demoReportingPriorityRank($name)) {
+        case 1:  return 5;
+        case 2:  return 20;
+        case 4:  return 25;
+        default: return 50;
+    }
+}
+
+/**
+ * The install's own SLA targets, per priority id.
+ *
+ * Reads the DEFAULT policy's targets (sla_policy_targets), which is what the SLA
+ * engine resolves for a ticket with no company- or device-specific override, and
+ * falls back to the legacy per-priority columns for installs that predate
+ * policies. Returns [priority_id => ['response' => ?int, 'resolution' => ?int]].
+ *
+ * This is the whole point of the rework: generated cycle times are scaled to
+ * these numbers, so the SLA outcomes the engine later computes agree with the
+ * story the data is meant to tell. Previously the generator invented absolute
+ * durations and a separate breach rate, and if the install's targets happened to
+ * be tighter than those durations every single ticket breached — which made SLA
+ * attainment a flat zero and the whole trend useless.
+ */
+function demoReportingTargets(PDO $conn): array {
+    $out = [];
+
+    // Legacy per-priority columns first, so a policy target can overwrite them.
+    try {
+        foreach ($conn->query("SELECT id, sla_response_minutes, sla_resolution_minutes FROM ticket_priorities")->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $out[(int)$r['id']] = [
+                'response'   => $r['sla_response_minutes']   !== null ? (int)$r['sla_response_minutes']   : null,
+                'resolution' => $r['sla_resolution_minutes'] !== null ? (int)$r['sla_resolution_minutes'] : null,
+            ];
+        }
+    } catch (Exception $e) { /* pre-SLA install */ }
+
+    try {
+        $rows = $conn->query(
+            "SELECT t.priority_id, t.sla_response_minutes, t.sla_resolution_minutes
+               FROM sla_policy_targets t
+               JOIN sla_policies p ON p.id = t.policy_id
+              WHERE p.is_default = 1 AND p.is_active = 1"
+        )->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as $r) {
+            $out[(int)$r['priority_id']] = [
+                'response'   => $r['sla_response_minutes']   !== null ? (int)$r['sla_response_minutes']   : null,
+                'resolution' => $r['sla_resolution_minutes'] !== null ? (int)$r['sla_resolution_minutes'] : null,
+            ];
+        }
+    } catch (Exception $e) { /* policy tables absent */ }
+
+    return $out;
 }
 
 /**
@@ -174,6 +263,9 @@ function demoReportingLookups(PDO $conn): array {
         'customers'       => $q("SELECT id, name FROM customers WHERE is_active = 1"),
         'users'           => $q("SELECT id FROM users LIMIT 500"),
     ];
+    // Cycle times are generated relative to these, so they must be read before
+    // any ticket is built.
+    $out['targets'] = demoReportingTargets($conn);
 
     $missing = [];
     if (!$out['statuses_open'])   $missing[] = 'an open ticket status';
@@ -489,9 +581,21 @@ function demoReportingOneTicket(PDO $conn, array $stmts, array &$counts, array $
     $createdTs = strtotime($createdAt . ' UTC');
 
     // ---- cycle times -------------------------------------------------------
+    // Scaled to this priority's own SLA target where it has one, so the outcome
+    // the SLA engine computes later matches the intended narrative. Only where a
+    // priority has no target do we fall back to absolute minutes.
+    $target = $look['targets'][(int)$priority['id']] ?? ['response' => null, 'resolution' => null];
     [$ackBase, $resBase] = demoReportingPriorityBase($priority['name']);
-    $ackMins = max(1, (int)round($ackBase * $curves['ack_factor'] * demoSkewedFactor()));
-    $resMins = max($ackMins + 5, (int)round($resBase * $curves['resolve_factor'] * demoSkewedFactor()));
+
+    $ackMins = $target['response'] !== null && $target['response'] > 0
+        ? max(1, (int)round($target['response'] * $curves['ack_multiplier'] * demoSkewedFactor()))
+        : max(1, (int)round($ackBase * 1.4 * demoSkewedFactor()));
+
+    $resMins = $target['resolution'] !== null && $target['resolution'] > 0
+        ? (int)round($target['resolution'] * $curves['res_multiplier'] * demoSkewedFactor())
+        : (int)round($resBase * 1.2 * demoSkewedFactor());
+    // Resolution must always trail acknowledgement, whatever the draws produced.
+    $resMins = max($ackMins + 5, $resMins);
 
     // Recent tickets are still in flight; older ones are essentially all done.
     $stillOpen = $ctx['is_current_month'] ? (mt_rand(1, 100) <= 35) : (mt_rand(1, 1000) <= 12);
@@ -523,24 +627,46 @@ function demoReportingOneTicket(PDO $conn, array $stmts, array &$counts, array $
     $endTs = $closedAt ? strtotime($closedAt . ' UTC') : time();
 
     // ---- SLA outcome -------------------------------------------------------
+    // Derived from the generated durations against the real target — the same
+    // comparison sla_get_state() makes — rather than rolled independently. That
+    // way this snapshot and a later cron/sla_snapshot_rebuild.php agree instead
+    // of contradicting each other. (The engine counts BUSINESS minutes against
+    // the policy's calendar, so on a business-hours calendar it will be slightly
+    // more generous than the wall-clock arithmetic here; on a 24/7 calendar the
+    // two match.)
     if ($stmts['sla']) {
-        $respTarget = (int)($priority['sla_response_minutes'] ?? 0);
-        $resTarget  = (int)($priority['sla_resolution_minutes'] ?? 0);
-        $breached   = (mt_rand(1, 1000) / 1000) < $curves['breach_rate'];
+        $respTarget = (int)($target['response'] ?? 0);
+        $resTarget  = (int)($target['resolution'] ?? 0);
 
-        if ($stillOpen) {
-            $respState = $ackMins <= ($respTarget ?: $ackMins) ? 'met' : 'breached';
-            $resState  = $breached ? 'breached' : (mt_rand(1, 100) <= 25 ? 'approaching' : 'ok');
-            $resRemain = $resState === 'breached' ? -mt_rand(30, 2000) : mt_rand(15, 3000);
+        if (!$respTarget && !$resTarget) {
+            // No target on this priority: nothing to be met or breached.
+            $stmts['sla']->execute([$ticketId, 'na', null, 'na', null, 'priority', gmdate('Y-m-d H:i:s')]);
         } else {
-            $respState = ($respTarget && $ackMins > $respTarget) || $breached ? 'breached' : 'met';
-            $resState  = $breached ? 'breached' : 'met';
-            $resRemain = $breached ? -mt_rand(20, 4000) : mt_rand(10, 4000);
-        }
-        if (!$respTarget && !$resTarget) { $respState = 'na'; $resState = 'na'; $resRemain = null; }
+            $respState  = 'na';
+            $respRemain = null;
+            if ($respTarget) {
+                $respState  = $ackMins <= $respTarget ? 'met' : 'breached';
+                $respRemain = $respTarget - $ackMins;
+            }
 
-        $stmts['sla']->execute([$ticketId, $respState, $stillOpen ? mt_rand(-500, 500) : null,
-            $resState, $resRemain, 'priority', gmdate('Y-m-d H:i:s')]);
+            $resState  = 'na';
+            $resRemain = null;
+            if ($resTarget) {
+                if ($stillOpen) {
+                    // Elapsed so far, not the resolution it would have had.
+                    $elapsed   = max(0, (int)round((time() - $createdTs) / 60));
+                    $resRemain = $resTarget - $elapsed;
+                    $resState  = $resRemain < 0 ? 'breached'
+                               : ($resRemain <= $resTarget * 0.2 ? 'approaching' : 'ok');
+                } else {
+                    $resState  = $resMins <= $resTarget ? 'met' : 'breached';
+                    $resRemain = $resTarget - $resMins;
+                }
+            }
+
+            $stmts['sla']->execute([$ticketId, $respState, $respRemain,
+                $resState, $resRemain, 'priority', gmdate('Y-m-d H:i:s')]);
+        }
         $counts['sla_snapshots']++;
     }
 

@@ -41,10 +41,21 @@ try {
             $untiered = (int)$conn->query("SELECT COUNT(*) FROM analysts WHERE (tier IS NULL OR tier = '') AND (is_active = 1 OR is_active IS NULL)")->fetchColumn();
         } catch (Exception $e) { /* column may predate the KPI phase */ }
 
+        // Cycle times are scaled to these, so a priority without a target
+        // produces tickets that can never count towards SLA attainment.
+        $withTargets = 0;
+        $totalPriorities = count($look['priorities']);
+        foreach ($look['priorities'] as $p) {
+            $t = $look['targets'][(int)$p['id']] ?? null;
+            if ($t && ((int)($t['response'] ?? 0) > 0 || (int)($t['resolution'] ?? 0) > 0)) $withTargets++;
+        }
+
         echo json_encode([
-            'success'         => true,
-            'existing'        => $existing,
-            'ready'           => $look['ok'],
+            'success'            => true,
+            'existing'           => $existing,
+            'ready'              => $look['ok'],
+            'priorities'         => $totalPriorities,
+            'priorities_with_sla'=> $withTargets,
             'missing'         => $look['missing'],
             'analysts'        => count($look['analysts']),
             'untiered'        => $untiered,

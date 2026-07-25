@@ -161,6 +161,19 @@ improve across the period, and CSAT climbs. A report built on flat random data
 demonstrates nothing, so the curves are explicit — see
 `demoReportingCurves()` in `includes/demo_reporting.php` to re-tune them.
 
+**Configure SLA targets first.** Resolution and response times are generated as a
+multiple of each priority's own SLA target, so that the outcomes the SLA engine
+computes afterwards line up with the intended trend — attainment rising from
+roughly 50% to the low 90s across the period. Generate before setting targets and
+the tickets come out `na`, contributing nothing to attainment. Order:
+
+1. Tickets → Settings → SLA: enforcement date back-dated **before** the demo
+   window, a response/resolution target on every priority, and a calendar on each.
+2. Generate the history.
+3. `cron/sla_snapshot_rebuild.php`, then `cron/kpi_snapshot.php --backfill=18`.
+
+The generator warns on screen if any priority is missing a target.
+
 Notes:
 
 - Every generated ticket is numbered `DMO-YYMM-NNNN`. **Remove** on the same

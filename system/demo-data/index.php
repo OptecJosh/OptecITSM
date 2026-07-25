@@ -728,6 +728,21 @@ if (!isset($_SESSION['analyst_id'])) {
             if (data.untiered) {
                 bits.push('<span class="rep-warn">' + data.untiered + ' active analyst(s) have no tier, so tier-split KPIs will be blank unless you tick the box above.</span>');
             }
+            /* Cycle times are generated as a multiple of each priority's SLA target,
+               so a priority with no target yields tickets that can never count
+               towards attainment. Worth saying before 2,000 rows are written. */
+            if (typeof data.priorities_with_sla === 'number') {
+                if (data.priorities_with_sla === 0) {
+                    bits.push('<span class="rep-warn">No ticket priority has an SLA target, so SLA attainment will be empty. '
+                        + 'Set targets in Tickets &rsaquo; Settings &rsaquo; SLA <em>before</em> generating — resolution times are '
+                        + 'generated relative to them.</span>');
+                } else if (data.priorities_with_sla < data.priorities) {
+                    bits.push('<span class="rep-warn">' + (data.priorities - data.priorities_with_sla) + ' of '
+                        + data.priorities + ' priorities have no SLA target; their tickets will not count towards attainment.</span>');
+                } else {
+                    bits.push('All ' + data.priorities + ' priorities have an SLA target — resolution times will be generated relative to them.');
+                }
+            }
             if (!data.customers) bits.push('No active customers, so the customer dimension will be empty.');
             if (!data.portal_users) bits.push('No portal users, so tickets will have no requester.');
 

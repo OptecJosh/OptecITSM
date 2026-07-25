@@ -40,6 +40,13 @@ function getSystemAreas() {
             'keywords' => 'system.landing.import_keywords',
         ],
         [
+            'icon'     => 'reset',
+            'url'      => 'reset/',
+            'title'    => 'system.landing.reset_title',
+            'desc'     => 'system.landing.reset_desc',
+            'keywords' => 'system.landing.reset_keywords',
+        ],
+        [
             'icon'     => 'migrate',
             'url'      => 'migrate/',
             'title'    => 'system.landing.migrate_title',
@@ -193,6 +200,7 @@ function systemAreaIcon($key) {
         'audit'       => '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline>',
         'backup'      => '<ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"></path>',
         'import'      => '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line>',
+        'reset'       => '<polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6M14 11v6"></path>',
         'migrate'     => '<path d="M4 7h11"></path><polyline points="12 4 15 7 12 10"></polyline><path d="M20 17H9"></path><polyline points="12 14 9 17 12 20"></polyline>',
         'encryption'  => '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>',
         'modules'     => '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',

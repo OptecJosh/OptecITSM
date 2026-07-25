@@ -389,13 +389,12 @@ function sla_build_breach_email_body(array $merge, array $target, string $target
 </div>';
 }
 
-function sla_format_minutes(int $mins): string {
-    $n = abs($mins);
-    if ($n < 60) return $mins . 'm';
-    $h = intdiv($n, 60); $r = $n % 60;
-    $sign = $mins < 0 ? '-' : '';
-    return $sign . ($r ? "{$h}h {$r}m" : "{$h}h");
-}
+// sla_format_minutes() lives in includes/sla.php, which this file requires at the
+// top. A second, byte-for-byte equivalent copy used to sit here, which made
+// loading this file a fatal "cannot redeclare" — and therefore broke both
+// cron/sla_breach_check.php and cron/sla_snapshot_rebuild.php, the only two
+// callers. Removed rather than guarded with function_exists, so there stays
+// exactly one definition of it.
 
 /**
  * Check if we've already fired this notification for (ticket, target, trigger).
@@ -430,16 +429,22 @@ function sla_get_first_active_mailbox(PDO $conn): ?array {
  *
  * Returns { processed, tracked, errors:[...] } for the cron wrapper to log.
  */
-function sla_rebuild_snapshots(PDO $conn): array {
+function sla_rebuild_snapshots(PDO $conn, ?array $ticketIds = null): array {
     $summary = ['processed' => 0, 'tracked' => 0, 'errors' => []];
 
     $settings = sla_load_settings($conn);
     $warningThreshold = (float)($settings['sla_warning_threshold_percent'] ?? 80);
 
-    // Stream ids in ascending order; a helpdesk's ticket count is modest, but
-    // fetch just the id column to keep the working set small.
-    $ids = $conn->query("SELECT id FROM tickets WHERE deleted_datetime IS NULL ORDER BY id ASC")
-                ->fetchAll(PDO::FETCH_COLUMN);
+    if ($ticketIds !== null) {
+        // Scoped rebuild — used after a migration to stamp SLA outcomes onto the
+        // tickets just imported, without recomputing the entire history.
+        $ids = array_values(array_unique(array_map('intval', $ticketIds)));
+    } else {
+        // Stream ids in ascending order; a helpdesk's ticket count is modest, but
+        // fetch just the id column to keep the working set small.
+        $ids = $conn->query("SELECT id FROM tickets WHERE deleted_datetime IS NULL ORDER BY id ASC")
+                    ->fetchAll(PDO::FETCH_COLUMN);
+    }
 
     foreach ($ids as $ticketId) {
         try {

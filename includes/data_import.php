@@ -679,11 +679,14 @@ function data_import_plan(PDO $conn, array $spec, int $analystId, string $csv): 
     $toCreate = 0;
     $toUpdate = 0;
     $rowNum   = 1;   // the header was row 1
+    // A one-off migration from another system is far bigger than a routine CSV
+    // load, so the spec may raise the cap (see includes/data_migrate.php).
+    $rowCap   = max(1, (int)($spec['row_cap'] ?? data_import_row_cap()));
 
     while (($cells = fgetcsv($fh)) !== false) {
         $rowNum++;
-        if ($rowNum - 1 > data_import_row_cap()) {
-            $errors[] = ['row' => $rowNum, 'message' => 'Row cap (' . data_import_row_cap() . ') reached - the rest of the file was ignored'];
+        if ($rowNum - 1 > $rowCap) {
+            $errors[] = ['row' => $rowNum, 'message' => 'Row cap (' . $rowCap . ') reached - the rest of the file was ignored'];
             break;
         }
         if (count(array_filter($cells, fn($c) => trim((string)$c) !== '')) === 0) continue;   // blank line

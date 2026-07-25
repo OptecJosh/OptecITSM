@@ -52,6 +52,9 @@ return [
         'import_title'    => 'Mass import',
         'import_desc'     => 'Load CSV into any data module - tickets, assets, CMDB, changes, contracts, customers and more - with a preview before anything is written.',
         'import_keywords' => 'mass import bulk import csv load data migration tickets assets cmdb changes contracts customers overtime kpi certifications training preview commit template spreadsheet onboarding',
+        'migrate_title'    => 'Migrate from another system',
+        'migrate_desc'     => 'Bring history across from your old helpdesk: map its column names and status values to ours, preview, then reconcile what was loaded.',
+        'migrate_keywords' => 'migrate migration cutover import legacy old system servicenow freshservice zendesk jira spiceworks manageengine osticket column mapping field mapping value mapping reconcile backfill go live transition switch platform',
 
         'topology_title'    => 'Topology',
         'topology_desc'     => 'See how companies, mailboxes, domains, sign-in and analysts fit together',

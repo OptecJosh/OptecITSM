@@ -8,6 +8,14 @@
  * and imported values persist. Run daily to keep the current month live; it also
  * accepts ?period=YYYY-MM to (re)compute a closed month.
  *
+ * From the command line (no token needed):
+ *   php cron/kpi_snapshot.php                       current month
+ *   php cron/kpi_snapshot.php --period=2026-03      one specific month
+ *   php cron/kpi_snapshot.php --backfill=18         the last 18 months, oldest first
+ * $_GET is empty under the CLI SAPI, so ?period= is unreachable there — hence the
+ * flags. --backfill is what you want after migrating history or generating the
+ * reporting demo, otherwise the scorecard has a single month in it and no trend.
+ *
  * Reuses the SLA breach cron's security + logging harness (shared token, per-IP
  * lockout, min-interval, sla_cron_runs logging) with a "[kpi-snapshot]" marker so
  * the sibling crons never rate-limit each other.
@@ -73,7 +81,38 @@ try {
         if ($age !== false && (int)$age < $minInterval) { http_response_code(429); kpicron_log_finish($conn, $runId, 'rate_limited', [], "min interval"); echo "Rate limited.\n"; exit; }
     }
 
-    $period = kpi_valid_period($_GET['period'] ?? '') ?? date('Y-m');
+    // Which period(s) to compute.
+    //
+    // Over HTTP that is ?period=YYYY-MM, defaulting to the current month — the
+    // daily-cron behaviour, unchanged. From the CLI $_GET is always empty, so a
+    // command-line run could only ever do the current month; that made it
+    // impossible to populate a scorecard over back-dated history (a migration, or
+    // the reporting demo generator) without issuing one HTTP request per month and
+    // waiting out the rate limit between each. --period and --backfill fix that in
+    // a single invocation: the min-interval check above has already run once, and
+    // the loop below is inside it.
+    $periods = [];
+    if ($isCli) {
+        $argPeriod = null;
+        $backfill = 0;
+        foreach (array_slice($argv ?? [], 1) as $arg) {
+            if (preg_match('/^--period=(.+)$/', $arg, $m))   $argPeriod = kpi_valid_period(trim($m[1]));
+            elseif (preg_match('/^--backfill=(\d+)$/', $arg, $m)) $backfill = (int)$m[1];
+        }
+        if ($backfill > 0) {
+            // N whole months ending with the current one, oldest first.
+            $backfill = min($backfill, 120);
+            $anchor = new DateTime(($argPeriod ?? date('Y-m')) . '-01', new DateTimeZone('UTC'));
+            for ($i = $backfill - 1; $i >= 0; $i--) {
+                $d = (clone $anchor)->modify("-{$i} months");
+                $periods[] = $d->format('Y-m');
+            }
+        } else {
+            $periods[] = $argPeriod ?? date('Y-m');
+        }
+    } else {
+        $periods[] = kpi_valid_period($_GET['period'] ?? '') ?? date('Y-m');
+    }
 
     $defs = $conn->query("SELECT id, scorecard, name, direction, green_threshold, amber_threshold FROM kpi_definitions WHERE is_active = 1")->fetchAll(PDO::FETCH_ASSOC);
     $upsert = $conn->prepare(
@@ -83,21 +122,31 @@ try {
     );
 
     $computed = 0; $skipped = 0; $errors = 0;
-    foreach ($defs as $d) {
-        try {
-            $val = kpi_engine_compute($conn, $d['scorecard'], $d['name'], $period);
-            if ($val === null) { $skipped++; continue; }
-            $status = kpi_compute_status($d['direction'], $d['green_threshold'], $d['amber_threshold'], $val);
-            $upsert->execute([(int)$d['id'], $period, $val, $status]);
-            $computed++;
-        } catch (Exception $e) { $errors++; error_log('[kpi_snapshot] ' . $d['name'] . ': ' . $e->getMessage()); }
+    foreach ($periods as $period) {
+        $pComputed = 0; $pSkipped = 0;
+        foreach ($defs as $d) {
+            try {
+                $val = kpi_engine_compute($conn, $d['scorecard'], $d['name'], $period);
+                if ($val === null) { $pSkipped++; continue; }
+                $status = kpi_compute_status($d['direction'], $d['green_threshold'], $d['amber_threshold'], $val);
+                $upsert->execute([(int)$d['id'], $period, $val, $status]);
+                $pComputed++;
+            } catch (Exception $e) { $errors++; error_log('[kpi_snapshot] ' . $d['name'] . ': ' . $e->getMessage()); }
+        }
+        $computed += $pComputed;
+        $skipped  += $pSkipped;
+        // Per-period line, so a backfill shows its progress rather than going
+        // quiet for a minute and then printing one total.
+        if (count($periods) > 1) echo "  {$period}: computed {$pComputed}, skipped {$pSkipped}\n";
     }
 
     $elapsed = round((microtime(true) - $startedAt) * 1000);
     $outcome = ($errors > 0 && $computed === 0) ? 'error' : 'ok';
-    kpicron_log_finish($conn, $runId, $outcome, ['computed' => $computed, 'skipped' => $skipped, 'errors' => $errors], "period=$period");
+    $periodNote = count($periods) === 1 ? "period={$periods[0]}"
+        : 'periods=' . $periods[0] . '..' . end($periods) . ' (' . count($periods) . ')';
+    kpicron_log_finish($conn, $runId, $outcome, ['computed' => $computed, 'skipped' => $skipped, 'errors' => $errors], $periodNote);
 
-    echo "KPI snapshot ($period) done in {$elapsed}ms\n  Computed: $computed\n  Skipped (manual/feed): $skipped\n  Errors: $errors\n";
+    echo "KPI snapshot ({$periodNote}) done in {$elapsed}ms\n  Computed: $computed\n  Skipped (manual/feed): $skipped\n  Errors: $errors\n";
 
 } catch (Exception $e) {
     http_response_code(500);

@@ -26,9 +26,7 @@ try {
 
     $out = [];
     foreach (data_export_datasets() as $key => $spec) {
-        if (!empty($spec['admin_only']) && !$isAdmin) continue;
-        if (!analystCanAccessModule($conn, $analystId, $spec['module'])) continue;
-        if (!data_export_available($conn, $spec)) continue;
+        if (!data_export_can($conn, $spec, $analystId, $isAdmin)) continue;
 
         $out[] = [
             'key'         => $key,
@@ -42,9 +40,27 @@ try {
         ];
     }
 
+    // Named bundles, reduced to the datasets this caller can actually receive so
+    // the UI can show an honest "16 of 18 datasets" rather than promising all.
+    $available = array_column($out, 'key');
+    $bundles = [];
+    foreach (data_export_bundles() as $bkey => $b) {
+        $keys = $b['datasets'] ?? $available;
+        $keys = array_values(array_intersect($keys, $available));
+        if (!$keys) continue;
+        $bundles[] = [
+            'key'         => $bkey,
+            'label'       => $b['label'],
+            'description' => $b['description'],
+            'count'       => count($keys),
+            'datasets'    => $keys,
+        ];
+    }
+
     echo json_encode([
         'success'   => true,
         'datasets'  => $out,
+        'bundles'   => $bundles,
         'max_rows'  => data_export_max_rows(),
     ]);
 

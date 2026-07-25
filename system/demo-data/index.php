@@ -297,6 +297,23 @@ if (!isset($_SESSION['analyst_id'])) {
         [data-theme-mode="dark"] .import-btn:disabled { background: #4a505a; color: var(--text-faint, #999); }
         [data-theme-mode="dark"] .import-btn.success { background: #2e7d32; color: #fff; }
         [data-theme-mode="dark"] .import-btn.success:hover { background: #256428; }
+        /* Reporting history generator */
+        .rep-card { align-items: flex-start; }
+        .rep-row { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 14px; }
+        .rep-row label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--text-dim, #6b7280); }
+        .rep-row input[type="number"], .rep-row input[type="text"] {
+            padding: 6px 8px; border: 1px solid var(--border, #e5e7eb); border-radius: 6px; font-size: 13px;
+            background: var(--surface, #fff); color: var(--text, #222); width: 150px; font-weight: 400;
+        }
+        .rep-hint { font-weight: 400; text-transform: none; }
+        .rep-checks { flex-direction: column; gap: 6px; }
+        .rep-check { flex-direction: row !important; align-items: center; gap: 7px; font-weight: 400; font-size: 13px; }
+        .rep-check input { margin: 0; }
+        .rep-status { margin-top: 12px; font-size: 12px; color: var(--text-dim, #6b7280); line-height: 1.5; }
+        .rep-status .rep-warn { color: #b45309; }
+        .rep-actions { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+        .rep-purge { background: transparent; border: 1px solid var(--border, #e5e7eb); color: var(--text-dim, #6b7280); }
+        [data-theme-mode="dark"] .rep-status .rep-warn { color: #fbbf24; }
         [data-theme-mode="dark"] .spinner-inline { border-color: rgba(0,0,0,0.2); border-top-color: currentColor; }
         [data-theme-mode="dark"] .error-text { color: var(--danger-text, #fca5a5); }
     </style>
@@ -504,6 +521,46 @@ if (!isset($_SESSION['analyst_id'])) {
             </div>
             <div class="error-text" id="err-dashboards" style="display:none"></div>
         </div>
+
+        <!-- Reporting history: generated, not loaded from a file -->
+        <div class="bonus-section">
+            <p class="section-label">Reporting &amp; KPI history</p>
+            <div class="bonus-card rep-card">
+                <div class="bonus-info">
+                    <h4>Generate instrumented ticket history</h4>
+                    <p>Builds months of back-dated tickets with the KPI instrumentation filled in — acknowledgement
+                       times, SLA outcomes, escalations, hold intervals, QA reviews, CSAT responses, logged time and
+                       audit trail. Use it to demonstrate the KPI scorecard and to build a management report from
+                       Reporting &rsaquo; Export.</p>
+                    <p class="bonus-detail">The data is shaped to show a service improving: volume grows with a
+                       seasonal wobble, while response and resolution times, SLA breaches and reopens all fall.</p>
+
+                    <div class="rep-row">
+                        <label>Months of history
+                            <input type="number" id="repMonths" value="18" min="1" max="36">
+                        </label>
+                        <label>Tickets per month
+                            <input type="number" id="repPerMonth" value="120" min="1" max="400">
+                        </label>
+                        <label>Seed <span class="rep-hint">(optional, for repeatable numbers)</span>
+                            <input type="text" id="repSeed" placeholder="e.g. 4242">
+                        </label>
+                    </div>
+                    <div class="rep-row rep-checks">
+                        <label class="rep-check"><input type="checkbox" id="repPurgeFirst" checked>
+                            Remove previously generated demo tickets first</label>
+                        <label class="rep-check"><input type="checkbox" id="repAssignTiers">
+                            Set tier, rate and contracted hours on analysts that have none</label>
+                    </div>
+                    <div class="rep-status" id="repStatus">Checking&hellip;</div>
+                </div>
+                <div class="rep-actions">
+                    <button class="import-btn" id="btn-report-demo" onclick="generateReportDemo(this)">Generate</button>
+                    <button class="import-btn rep-purge" id="btn-report-purge" onclick="purgeReportDemo(this)">Remove</button>
+                </div>
+            </div>
+            <div class="error-text" id="err-report-demo" style="display:none"></div>
+        </div>
     </div>
 
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
@@ -627,6 +684,147 @@ if (!isset($_SESSION['analyst_id'])) {
                 }
             } catch (e) { /* ignore - user can still click Import */ }
         })();
+
+        /* ---- reporting / KPI history generator --------------------------- */
+
+        const REPORT_DEMO_API = '../../api/system/generate_report_demo.php';
+
+        function repEsc(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        /* Report what is already generated and, more usefully, what is missing —
+           tiers and customers are set up outside this page, and without them the
+           report has visible holes. */
+        async function repLoadStatus() {
+            const el = document.getElementById('repStatus');
+            const genBtn = document.getElementById('btn-report-demo');
+            const purgeBtn = document.getElementById('btn-report-purge');
+            let data;
+            try {
+                data = await (await fetch(REPORT_DEMO_API + '?action=status')).json();
+            } catch (e) {
+                el.textContent = 'Could not check the current state.';
+                return;
+            }
+            if (!data.success) { el.textContent = data.error || 'Could not check the current state.'; return; }
+
+            const bits = [];
+            bits.push(data.existing
+                ? '<strong>' + data.existing.toLocaleString() + '</strong> generated demo ticket(s) currently present (numbered ' + repEsc(data.prefix) + '-…).'
+                : 'No generated demo tickets present yet.');
+
+            if (!data.ready) {
+                bits.push('<span class="rep-warn">Cannot generate yet — this install is missing ' + repEsc((data.missing || []).join(', ')) + '.</span>');
+                genBtn.disabled = true;
+            } else {
+                genBtn.disabled = false;
+            }
+            if (data.untiered) {
+                bits.push('<span class="rep-warn">' + data.untiered + ' active analyst(s) have no tier, so tier-split KPIs will be blank unless you tick the box above.</span>');
+            }
+            if (!data.customers) bits.push('No active customers, so the customer dimension will be empty.');
+            if (!data.portal_users) bits.push('No portal users, so tickets will have no requester.');
+
+            purgeBtn.disabled = !data.existing;
+            el.innerHTML = bits.join('<br>');
+        }
+
+        async function generateReportDemo(btn) {
+            const months = parseInt(document.getElementById('repMonths').value, 10) || 18;
+            const perMonth = parseInt(document.getElementById('repPerMonth').value, 10) || 120;
+            const purgeFirst = document.getElementById('repPurgeFirst').checked;
+            const assignTiers = document.getElementById('repAssignTiers').checked;
+
+            const approx = months * perMonth;
+            let msg = 'This will create roughly ' + approx.toLocaleString() + ' tickets with their KPI history.';
+            if (purgeFirst) msg += ' Previously generated demo tickets will be removed first.';
+            if (assignTiers) msg += ' Analysts without a tier will have a tier, loaded rate and contracted hours set.';
+            msg += ' Only do this on a test or demonstration install.';
+            if (!(await showConfirm({ title: 'Generate reporting history?', message: msg, okLabel: 'Generate' }))) return;
+
+            const errEl = document.getElementById('err-report-demo');
+            errEl.style.display = 'none';
+            btn.disabled = true;
+            const orig = btn.innerHTML;
+            btn.innerHTML = '<span class="spinner-inline"></span> Generating…';
+
+            try {
+                const body = new FormData();
+                body.append('action', 'generate');
+                body.append('months', months);
+                body.append('per_month', perMonth);
+                body.append('seed', document.getElementById('repSeed').value.trim());
+                body.append('purge_first', purgeFirst ? '1' : '0');
+                body.append('assign_tiers', assignTiers ? '1' : '0');
+
+                const data = await (await fetch(REPORT_DEMO_API, { method: 'POST', body: body })).json();
+                if (data.success) {
+                    const c = data.counts;
+                    btn.className = 'import-btn success';
+                    btn.innerHTML = checkSvg + ' ' + c.tickets.toLocaleString() + ' tickets';
+                    const parts = ['Created <strong>' + c.tickets.toLocaleString() + '</strong> tickets over '
+                        + data.months + ' month(s): ' + c.time_entries.toLocaleString() + ' time entries, '
+                        + c.audit.toLocaleString() + ' audit rows, ' + c.escalations.toLocaleString() + ' escalations, '
+                        + c.holds.toLocaleString() + ' hold events, ' + c.qa.toLocaleString() + ' QA reviews, '
+                        + c.csat.toLocaleString() + ' CSAT responses, ' + c.sla_snapshots.toLocaleString() + ' SLA snapshots.'];
+                    if (data.seed) parts.push('Seed ' + repEsc(String(data.seed)) + ' — reuse it to regenerate the same numbers.');
+                    (data.notes || []).forEach(n => parts.push(repEsc(n)));
+                    parts.push('Next: run the KPI snapshot cron to populate the scorecard, then download '
+                        + '<a href="../../reporting/export/">Reporting &rsaquo; Export</a> &rsaquo; Analytics bundle.');
+                    document.getElementById('repStatus').innerHTML = parts.join('<br>');
+                    document.getElementById('btn-report-purge').disabled = false;
+                } else {
+                    errEl.textContent = data.error;
+                    errEl.style.display = 'block';
+                    btn.innerHTML = orig;
+                }
+            } catch (e) {
+                errEl.textContent = 'Request failed: ' + e.message;
+                errEl.style.display = 'block';
+                btn.innerHTML = orig;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function purgeReportDemo(btn) {
+            if (!(await showConfirm({
+                title: 'Remove generated demo tickets?',
+                message: 'Every ticket numbered DMO-… and its history will be deleted. Real tickets are not touched.',
+                okLabel: 'Remove', okClass: 'danger'
+            }))) return;
+
+            btn.disabled = true;
+            const orig = btn.innerHTML;
+            btn.innerHTML = '<span class="spinner-inline"></span> Removing…';
+            try {
+                const body = new FormData();
+                body.append('action', 'purge');
+                const data = await (await fetch(REPORT_DEMO_API, { method: 'POST', body: body })).json();
+                if (data.success) {
+                    document.getElementById('repStatus').innerHTML =
+                        'Removed <strong>' + data.tickets.toLocaleString() + '</strong> generated ticket(s) and '
+                        + data.children.toLocaleString() + ' related row(s).';
+                    const genBtn = document.getElementById('btn-report-demo');
+                    genBtn.className = 'import-btn';
+                    genBtn.innerHTML = 'Generate';
+                } else {
+                    const errEl = document.getElementById('err-report-demo');
+                    errEl.textContent = data.error;
+                    errEl.style.display = 'block';
+                }
+            } catch (e) {
+                const errEl = document.getElementById('err-report-demo');
+                errEl.textContent = 'Request failed: ' + e.message;
+                errEl.style.display = 'block';
+            } finally {
+                btn.innerHTML = orig;
+                btn.disabled = false;
+            }
+        }
+
+        repLoadStatus();
     </script>
 </body>
 </html>

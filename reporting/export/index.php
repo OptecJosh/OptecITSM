@@ -50,6 +50,10 @@ $translationNamespaces = ['common', 'reporting'];
         .ex-desc { margin-top: 12px; font-size: 13px; color: var(--text-dim, #6b7280); min-height: 20px; }
         .ex-desc .ex-tag { display: inline-block; margin-right: 6px; padding: 1px 7px; border-radius: 10px; font-size: 11px; font-weight: 600; background: var(--surface-2, #eceff3); color: var(--text, #333); }
         .ex-note { font-size: 12px; color: var(--text-dim, #6b7280); margin-top: 10px; }
+        .ex-card-2 { margin-top: 16px; }
+        .ex-h3 { margin: 0 0 6px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+        .ex-h3 .ex-tag { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 11px; font-weight: 600; background: var(--surface-2, #eceff3); color: var(--text-dim, #6b7280); }
+        .ex-card-2 .ex-lead { margin-bottom: 14px; }
         .ex-err { color: #b91c1c; font-size: 13px; }
     </style>
 </head>
@@ -95,9 +99,33 @@ $translationNamespaces = ['common', 'reporting'];
                 <div class="ex-desc" id="exDesc">Loading datasets&hellip;</div>
                 <div class="ex-note" id="exNote"></div>
             </div>
+
+            <div class="ex-card ex-card-2" id="exBundleCard" style="display:none">
+                <h3 class="ex-h3">Bundle export <span class="ex-tag">for Power BI</span></h3>
+                <p class="ex-lead">Several datasets at once, as a zip of CSVs with a manifest and a README explaining
+                   how the files join. The ticket file is a ready-made fact table: MTTA, MTTR, SLA outcome,
+                   escalations, hold time, QA, CSAT, effort and cost are already calculated on every row, using the
+                   same definitions as the KPI scorecard.</p>
+                <div class="ex-row">
+                    <div class="ex-field">
+                        <label for="exBundle">Bundle</label>
+                        <select id="exBundle" onchange="exRenderBundle()"></select>
+                    </div>
+                    <div class="ex-field">
+                        <label for="exBFrom">From</label>
+                        <input type="date" id="exBFrom">
+                    </div>
+                    <div class="ex-field">
+                        <label for="exBTo">To</label>
+                        <input type="date" id="exBTo">
+                    </div>
+                    <button class="btn btn-primary" id="exBGo" onclick="exDownloadBundle()">Download zip</button>
+                </div>
+                <div class="ex-desc" id="exBundleDesc"></div>
+            </div>
         </div>
     </div>
 
-    <script src="export.js?v=1"></script>
+    <script src="export.js?v=2"></script>
 </body>
 </html>

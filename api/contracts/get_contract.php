@@ -24,7 +24,8 @@ try {
                    c.contract_value, c.currency,
                    c.payment_schedule_id, ps.name AS payment_schedule_name,
                    c.cost_centre, c.dms_link,
-                   c.terms_status, c.personal_data_transferred, c.dpia_required, c.dpia_completed_date, c.dpia_dms_link,
+                   c.terms_status, c.service_hours, c.response_sla, c.resolution_sla, c.coverage_notes,
+                   c.personal_data_transferred, c.dpia_required, c.dpia_completed_date, c.dpia_dms_link,
                    c.is_active, c.created_datetime,
                    s.legal_name AS supplier_name, s.trading_name AS supplier_trading_name,
                    a.full_name AS owner_name

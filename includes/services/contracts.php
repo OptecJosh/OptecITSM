@@ -52,6 +52,7 @@ class ContractsService
                 "UPDATE contracts SET contract_number=?, title=?, description=?, supplier_id=?, contract_owner_id=?,
                     contract_status_id=?, contract_start=?, contract_end=?, notice_period_days=?, notice_date=?,
                     contract_value=?, currency=?, payment_schedule_id=?, cost_centre=?, dms_link=?, terms_status=?,
+                    service_hours=?, response_sla=?, resolution_sla=?, coverage_notes=?,
                     personal_data_transferred=?, dpia_required=?, dpia_completed_date=?, dpia_dms_link=?, is_active=?
                  WHERE id=?"
             )->execute([...self::contractParams($f), $id]);
@@ -70,9 +71,10 @@ class ContractsService
             "INSERT INTO contracts (contract_number, title, description, supplier_id, contract_owner_id,
                 contract_status_id, contract_start, contract_end, notice_period_days, notice_date,
                 contract_value, currency, payment_schedule_id, cost_centre, dms_link, terms_status,
+                service_hours, response_sla, resolution_sla, coverage_notes,
                 personal_data_transferred, dpia_required, dpia_completed_date, dpia_dms_link,
                 is_active, created_datetime)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())"
         )->execute(self::contractParams($f));
         $newId = (int)$conn->lastInsertId();
         WorkflowEngine::dispatch('contract.created', ['contract' => ['id' => $newId, 'title' => $f['title'] ?? null, 'status_id' => $f['contract_status_id'] ?? null, 'supplier_id' => $f['supplier_id'] ?? null]]);
@@ -244,6 +246,7 @@ class ContractsService
             $f['contract_number'], $f['title'], $f['description'], $f['supplier_id'], $f['contract_owner_id'],
             $f['contract_status_id'], $f['contract_start'], $f['contract_end'], $f['notice_period_days'], $f['notice_date'],
             $f['contract_value'], $f['currency'], $f['payment_schedule_id'], $f['cost_centre'], $f['dms_link'], $f['terms_status'],
+            $f['service_hours'], $f['response_sla'], $f['resolution_sla'], $f['coverage_notes'],
             $f['personal_data_transferred'], $f['dpia_required'], $f['dpia_completed_date'], $f['dpia_dms_link'], $f['is_active'],
         ];
     }
@@ -302,6 +305,14 @@ class ContractsService
         $f['cost_centre']  = ($v = trim((string)$get('cost_centre', ''))) !== '' ? $v : null;
         $f['dms_link']     = ($v = trim((string)$get('dms_link', ''))) !== '' ? $v : null;
         $f['terms_status'] = ($v = trim((string)$get('terms_status', ''))) !== '' ? $v : null;
+
+        // Service / SLA coverage — free text so it can hold whatever the contract
+        // words it as ("24x7", "Mon-Fri 09:00-17:00", "4 business hours").
+        foreach (['service_hours' => 100, 'response_sla' => 100, 'resolution_sla' => 100, 'coverage_notes' => 500] as $key => $max) {
+            $v = trim((string)$get($key, ''));
+            $f[$key] = $v !== '' ? mb_substr($v, 0, $max) : null;
+        }
+
         $f['personal_data_transferred'] = $get('personal_data_transferred') === null ? null : (int)(bool)$get('personal_data_transferred');
         $f['dpia_required']             = $get('dpia_required') === null ? null : (int)(bool)$get('dpia_required');
         $f['dpia_dms_link'] = ($v = trim((string)$get('dpia_dms_link', ''))) !== '' ? $v : null;

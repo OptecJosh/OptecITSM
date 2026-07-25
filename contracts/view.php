@@ -487,6 +487,24 @@ if (!$contract_id) {
                         <div class="value dms-link">${c.dms_link ? '<a href="' + escapeHtml(c.dms_link) + '" target="_blank">' + escapeHtml(c.dms_link) + '</a>' : '-'}</div>
                     </div>
 
+                    <div class="section-divider"><h3>${escapeHtml(window.t('contracts.detail.section_coverage'))}</h3></div>
+                    <div class="detail-group">
+                        <label>${escapeHtml(window.t('contracts.detail.service_hours'))}</label>
+                        <div class="value">${escapeHtml(c.service_hours || '-')}</div>
+                    </div>
+                    <div class="detail-group">
+                        <label>${escapeHtml(window.t('contracts.detail.response_sla'))}</label>
+                        <div class="value">${escapeHtml(c.response_sla || '-')}</div>
+                    </div>
+                    <div class="detail-group">
+                        <label>${escapeHtml(window.t('contracts.detail.resolution_sla'))}</label>
+                        <div class="value">${escapeHtml(c.resolution_sla || '-')}</div>
+                    </div>
+                    ${c.coverage_notes ? `<div class="detail-group full-width">
+                        <label>${escapeHtml(window.t('contracts.detail.coverage_notes'))}</label>
+                        <div class="value">${escapeHtml(c.coverage_notes)}</div>
+                    </div>` : ''}
+
                     <div class="section-divider"><h3>${escapeHtml(window.t('contracts.detail.section_terms'))}</h3></div>
                     <div class="detail-group">
                         <label>${escapeHtml(window.t('contracts.detail.terms'))}</label>

@@ -2,8 +2,9 @@
 /**
  * API: Reverse coverage view (Phase 9d) — contracts that cover an asset.
  * GET ?asset_id=<id>. Returns { success, contracts:[{id, contract_number, title,
- * contract_end, is_active}] }. Powers an asset's "covered by contract X" panel
- * (and is available to the REST/API surface).
+ * contract_end, is_active, service_hours, response_sla, resolution_sla,
+ * coverage_notes}] }. Powers the asset detail "Contract coverage" panel (and is
+ * available to the REST/API surface).
  */
 session_start(['read_and_close' => true]);
 require_once '../../config.php';
@@ -23,9 +24,12 @@ try {
 
     $stmt = $conn->prepare(
         "SELECT c.id, c.contract_number, c.title,
-                DATE_FORMAT(c.contract_end, '%Y-%m-%d') AS contract_end, c.is_active
+                DATE_FORMAT(c.contract_end, '%Y-%m-%d') AS contract_end, c.is_active,
+                c.service_hours, c.response_sla, c.resolution_sla, c.coverage_notes,
+                s.legal_name AS supplier_name
            FROM contract_assets ca
            JOIN contracts c ON c.id = ca.contract_id
+      LEFT JOIN suppliers s ON s.id = c.supplier_id
           WHERE ca.asset_id = ?
        ORDER BY c.contract_end IS NULL, c.contract_end ASC"
     );
@@ -39,6 +43,11 @@ try {
             'title'           => $r['title'],
             'contract_end'    => $r['contract_end'],
             'is_active'       => (int)$r['is_active'] === 1,
+            'supplier_name'   => $r['supplier_name'],
+            'service_hours'   => $r['service_hours'],
+            'response_sla'    => $r['response_sla'],
+            'resolution_sla'  => $r['resolution_sla'],
+            'coverage_notes'  => $r['coverage_notes'],
         ];
     }
 

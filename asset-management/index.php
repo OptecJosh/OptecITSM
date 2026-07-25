@@ -1289,6 +1289,12 @@ $translationNamespaces = ['common', 'asset-management'];
                             <input type="text" class="info-value-input" maxlength="100" value="${escapeHtml(selectedAsset.disposal_method || '')}" placeholder="-" onchange="updateAssetField('disposal_method', this.value)">
                         </div>
                     </div>
+                    <div class="disks-section" id="assetContractsSection" style="display:none;">
+                        <div class="section-header">
+                            <span class="section-title">Contract coverage</span>
+                        </div>
+                        <div id="assetContractsList"></div>
+                    </div>
                     <div class="disks-section">
                         <div class="section-header">
                             <span class="section-title">${window.t('asset-management.detail.storage')}</span>
@@ -1321,6 +1327,7 @@ $translationNamespaces = ['common', 'asset-management'];
 
             // Load assigned users, disks, devices, installed software, and (if matched) Intune data
             loadAssignedUsers(assetId);
+            loadAssetContracts(assetId);
             loadDisks(assetId);
             loadDevices(assetId);
             loadInstalledSoftware(assetId);
@@ -1367,6 +1374,47 @@ $translationNamespaces = ['common', 'asset-management'];
         }
 
         // Load disks for an asset
+        // Contracts covering this asset (reverse side of the contract's "Covered
+        // assets" panel). The endpoint needs Contracts module access, so an
+        // analyst without it just never sees the section.
+        async function loadAssetContracts(assetId) {
+            const section = document.getElementById('assetContractsSection');
+            const list = document.getElementById('assetContractsList');
+            if (!section || !list) return;
+            section.style.display = 'none';
+            try {
+                const response = await fetch(`../api/contracts/get_asset_contracts.php?asset_id=${assetId}`);
+                const data = await response.json();
+                if (!data.success || !data.contracts || !data.contracts.length) return;
+
+                list.innerHTML = data.contracts.map(c => {
+                    const expired = c.contract_end && new Date(c.contract_end) < new Date(new Date().toDateString());
+                    const terms = [
+                        c.service_hours ? 'Hours: ' + escapeHtml(c.service_hours) : '',
+                        c.response_sla ? 'Response: ' + escapeHtml(c.response_sla) : '',
+                        c.resolution_sla ? 'Resolution: ' + escapeHtml(c.resolution_sla) : '',
+                    ].filter(Boolean).join(' &middot; ');
+                    const state = !c.is_active ? 'inactive' : (expired ? 'expired' : '');
+                    return `<div style="padding:10px 0;border-bottom:1px solid var(--border,#e5e7eb);">
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                            <a href="../contracts/view.php?id=${c.id}" style="font-weight:600;">${escapeHtml(c.title || c.contract_number)}</a>
+                            <span style="font-size:11.5px;color:var(--text-dim,#6b7280);">${escapeHtml(c.contract_number || '')}</span>
+                            ${state ? `<span style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#b45309;">${state}</span>` : ''}
+                        </div>
+                        <div style="font-size:12px;color:var(--text-dim,#6b7280);margin-top:3px;">
+                            ${terms || 'No service terms recorded on the contract.'}
+                            ${c.contract_end ? ' &middot; ends ' + escapeHtml(c.contract_end) : ''}
+                            ${c.supplier_name ? ' &middot; ' + escapeHtml(c.supplier_name) : ''}
+                        </div>
+                        ${c.coverage_notes ? `<div style="font-size:12px;color:var(--text-dim,#6b7280);margin-top:2px;">${escapeHtml(c.coverage_notes)}</div>` : ''}
+                    </div>`;
+                }).join('');
+                section.style.display = '';
+            } catch (error) {
+                /* contracts module absent or no access — leave the section hidden */
+            }
+        }
+
         async function loadDisks(assetId) {
             try {
                 const response = await fetch(`${API_BASE}get_asset_disks.php?asset_id=${assetId}`);

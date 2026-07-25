@@ -2530,6 +2530,11 @@ $schema = [
         'cost_centre'               => 'VARCHAR(100) NULL',
         'dms_link'                  => 'VARCHAR(500) NULL',
         'terms_status'              => 'VARCHAR(20) NULL',
+        // Service / SLA coverage (9d follow-up): what the contract actually covers.
+        'service_hours'             => 'VARCHAR(100) NULL',
+        'response_sla'              => 'VARCHAR(100) NULL',
+        'resolution_sla'            => 'VARCHAR(100) NULL',
+        'coverage_notes'            => 'VARCHAR(500) NULL',
         'personal_data_transferred' => 'TINYINT(1) NULL',
         'dpia_required'             => 'TINYINT(1) NULL',
         'dpia_completed_date'       => 'DATE NULL',

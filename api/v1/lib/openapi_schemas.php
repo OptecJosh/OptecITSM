@@ -2895,11 +2895,15 @@ return array (
           'nullable' => true,
           'description' => 'External document URL.',
         ),
-        'governance' => 
+        'coverage' =>
+        array (
+          '$ref' => '#/components/schemas/ContractCoverage',
+        ),
+        'governance' =>
         array (
           '$ref' => '#/components/schemas/ContractGovernance',
         ),
-        'is_active' => 
+        'is_active' =>
         array (
           'type' => 'boolean',
         ),
@@ -2952,7 +2956,38 @@ return array (
         ),
       ),
     ),
-    'ContractGovernance' => 
+    'ContractCoverage' =>
+    array (
+      'type' => 'object',
+      'description' => 'What the contract covers in service terms. Free text, as worded in the contract.',
+      'properties' =>
+      array (
+        'service_hours' =>
+        array (
+          'type' => 'string',
+          'nullable' => true,
+          'example' => '24x7',
+        ),
+        'response_sla' =>
+        array (
+          'type' => 'string',
+          'nullable' => true,
+          'example' => '4 business hours',
+        ),
+        'resolution_sla' =>
+        array (
+          'type' => 'string',
+          'nullable' => true,
+          'example' => 'Next business day',
+        ),
+        'notes' =>
+        array (
+          'type' => 'string',
+          'nullable' => true,
+        ),
+      ),
+    ),
+    'ContractGovernance' =>
     array (
       'type' => 'object',
       'description' => 'GDPR / data-protection governance fields.',

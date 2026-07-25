@@ -75,6 +75,12 @@ function apiSerializeContract(array $r): array {
         ],
         'cost_centre'     => $r['cost_centre'],
         'dms_link'        => $r['dms_link'],
+        'coverage'        => [
+            'service_hours'  => $r['service_hours'] ?? null,
+            'response_sla'   => $r['response_sla'] ?? null,
+            'resolution_sla' => $r['resolution_sla'] ?? null,
+            'notes'          => $r['coverage_notes'] ?? null,
+        ],
         'governance'      => [
             'terms_status'              => $r['terms_status'],
             'personal_data_transferred' => $r['personal_data_transferred'] === null ? null : (bool)$r['personal_data_transferred'],

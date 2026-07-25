@@ -340,6 +340,29 @@ $contract_id = $_GET['id'] ?? null;
                         </div>
                     </div>
 
+                    <div class="form-section"><?php echo htmlspecialchars(t('contracts.detail.section_coverage')); ?></div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="serviceHours"><?php echo htmlspecialchars(t('contracts.detail.service_hours')); ?></label>
+                            <input type="text" id="serviceHours" maxlength="100" placeholder="24x7">
+                        </div>
+                        <div class="form-group">
+                            <label for="responseSla"><?php echo htmlspecialchars(t('contracts.detail.response_sla')); ?></label>
+                            <input type="text" id="responseSla" maxlength="100" placeholder="4 business hours">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="resolutionSla"><?php echo htmlspecialchars(t('contracts.detail.resolution_sla')); ?></label>
+                            <input type="text" id="resolutionSla" maxlength="100" placeholder="Next business day">
+                        </div>
+                        <div></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="coverageNotes"><?php echo htmlspecialchars(t('contracts.detail.coverage_notes')); ?></label>
+                        <input type="text" id="coverageNotes" maxlength="500">
+                    </div>
+
                     <div class="form-section"><?php echo htmlspecialchars(t('contracts.edit.section_documents')); ?></div>
                     <div class="form-group">
                         <label for="dmsLink"><?php echo htmlspecialchars(t('contracts.edit.dms_link_contract')); ?></label>
@@ -549,6 +572,10 @@ $contract_id = $_GET['id'] ?? null;
                     document.getElementById('paymentScheduleId').value = c.payment_schedule_id || '';
                     document.getElementById('costCentre').value = c.cost_centre || '';
                     document.getElementById('dmsLink').value = c.dms_link || '';
+                    document.getElementById('serviceHours').value = c.service_hours || '';
+                    document.getElementById('responseSla').value = c.response_sla || '';
+                    document.getElementById('resolutionSla').value = c.resolution_sla || '';
+                    document.getElementById('coverageNotes').value = c.coverage_notes || '';
                     document.getElementById('termsStatus').value = c.terms_status || '';
                     document.getElementById('personalDataTransferred').checked = !!c.personal_data_transferred;
                     document.getElementById('dpiaRequired').checked = !!c.dpia_required;
@@ -580,6 +607,10 @@ $contract_id = $_GET['id'] ?? null;
                 payment_schedule_id: document.getElementById('paymentScheduleId').value || null,
                 cost_centre: document.getElementById('costCentre').value.trim(),
                 dms_link: document.getElementById('dmsLink').value.trim(),
+                service_hours: document.getElementById('serviceHours').value.trim(),
+                response_sla: document.getElementById('responseSla').value.trim(),
+                resolution_sla: document.getElementById('resolutionSla').value.trim(),
+                coverage_notes: document.getElementById('coverageNotes').value.trim(),
                 terms_status: document.getElementById('termsStatus').value || null,
                 personal_data_transferred: document.getElementById('personalDataTransferred').checked ? 1 : 0,
                 dpia_required: document.getElementById('dpiaRequired').checked ? 1 : 0,

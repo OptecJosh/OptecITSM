@@ -3486,6 +3486,17 @@ try {
         }
     }
 
+    // 14a: the KB-article KPIs were seeded 'Manual' before the engine could count
+    // them. It can now (knowledge_articles + knowledge_article_versions by author
+    // tier), so promote them to 'Ready'. Scoped to rows still saying 'Manual' so a
+    // deliberate change by an admin is never overwritten.
+    if ($tableExists('kpi_definitions')) {
+        try {
+            $conn->prepare("UPDATE kpi_definitions SET source_status = 'Ready', updated_datetime = UTC_TIMESTAMP()
+                             WHERE name = 'Knowledge base articles' AND source_status = 'Manual'")->execute();
+        } catch (Exception $e) {}
+    }
+
     // 12b settings. Defaults are deliberately conservative: the timer observes and
     // proposes, so it is on, but nothing is logged under 2 minutes and 5 minutes
     // without interaction ends the session.
@@ -4223,7 +4234,7 @@ try {
               ['L1','','Avg first response time','Plain-language companion to MTTA, per priority for client-facing use.','Within response SLA per priority; trend flat or falling.','Ready','min','lower',null,null],
               ['L1','','QA pass rate','Sampled L1 tickets scored against the triage/documentation standard.','>= 90% on a monthly sample of 5-10 tickets per analyst.','Manual','%','higher',90,80],
               ['L1','','MTTR (resolve)','Acknowledgement to full resolution.','Baseline in Q1, then reduce ~10% per quarter.','Ready','hrs','lower',null,null],
-              ['L1','','Knowledge base articles','New/updated KB articles captured from L1 work.','4 per month across L1; peer-reviewed, no stubs.','Manual','count','higher',4,2],
+              ['L1','','Knowledge base articles','New/updated KB articles captured from L1 work.','4 per month across L1; peer-reviewed, no stubs.','Ready','count','higher',4,2],
               // ---- L2 ----
               ['L2','','MTTR (respond)','Acknowledgement to containment or first effective action.','P1 <= 1 hr, P2 <= 4 hrs (Standard tier); trend falling.','Ready','hrs','lower',null,null],
               ['L2','','MTTR (resolve)','Acknowledgement to full resolution.','Baseline in Q1, then reduce ~10% per quarter.','Ready','hrs','lower',null,null],
@@ -4236,7 +4247,7 @@ try {
               ['L2','','Avg on-hold time','Time tickets sit on hold (client/vendor waits) per ticket.','Baseline in Q1; falling, with hold reasons captured.','Ready','hrs','lower',null,null],
               ['L2','','Escalation handover quality','Escalations to L3 meeting the written handover standard.','>= 95% of escalations; scored in the monthly QA sample.','Manual','%','higher',95,90],
               ['L2','','Ramp adherence','Daily closed-ticket reviews held for analysts in a 90-day ramp.','>= 90% of scheduled sessions; skips are reportable.','Manual','%','higher',90,80],
-              ['L2','','Knowledge base articles','New/updated KB articles from L2 work.','6 per month across L2; peer-reviewed, no stubs.','Manual','count','higher',6,3],
+              ['L2','','Knowledge base articles','New/updated KB articles from L2 work.','6 per month across L2; peer-reviewed, no stubs.','Ready','count','higher',6,3],
               // ---- L3 detection ----
               ['L3','','Dwell time','Attacker presence before detection (headline security outcome).','Below the published industry median and falling.','Feed','days','lower',null,null],
               ['L3','','MTTD','Event occurring to the operation noticing.','Baseline once SIEM first-seen lands, then reduce ~10%/qtr.','Feed','hrs','lower',null,null],
@@ -4255,7 +4266,7 @@ try {
               ['L3_BAU','','Reopen rate (L3-closed)','Quality check on L3 resolutions.','<= 2%.','Ready','%','lower',2,4],
               ['L3_BAU','','Complex & emergency change success','Emergency/non-standard changes L3 approves and executes.','>= 98% success; every failed/rolled-back change reviewed.','Ready','%','higher',98,95],
               ['L3_BAU','','Vendor / TAC escalation management','Third-party escalations owned by L3 (open count, age, chase).','Every open case chased/updated weekly; none idle > 14 days.','Ready','count','lower',null,null],
-              ['L3_BAU','','Knowledge base articles','New/updated KB and runbook content from L3 work.','8 per month across L3; peer-reviewed, no stubs.','Manual','count','higher',8,4],
+              ['L3_BAU','','Knowledge base articles','New/updated KB and runbook content from L3 work.','8 per month across L3; peer-reviewed, no stubs.','Ready','count','higher',8,4],
               ['L3_BAU','','Mentoring & review delivery','L3 time in the improvement loop (reviews, tabletops, ramp).','100% of scheduled sessions; >= 1 review/tabletop per engineer/month.','Manual','%','higher',100,90],
               // ---- Combined 4.1 Service delivery ----
               ['COMBINED','Service delivery','SLA attainment %','Overall, reported with the NOC vs SOC split.','>= 95%, rising toward 98%.','Ready','%','higher',95,90],

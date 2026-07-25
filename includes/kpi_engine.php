@@ -214,6 +214,31 @@ function kpi_engine_compute(PDO $conn, string $scorecard, string $name, string $
             return $v === null ? null : round($v, 1);
         }
 
+        // --- KB articles written or revised in the month, by tier (14a) ---
+        //
+        // Was a manual count typed into the scorecard, which is absurd when the KB
+        // is in the same database. An article counts once for the tier even if it
+        // was both created and revised in the month, and a revision counts for
+        // whoever saved that version - which is the behaviour the target
+        // ("N per month across the tier, peer-reviewed, no stubs") describes.
+        if ($name === 'Knowledge base articles') {
+            $tierWhere = $tier !== null ? ' AND a.tier = ?' : '';
+            $tierArgs  = $tier !== null ? [$tier] : [];
+            return kpi_scalar($conn,
+                "SELECT COUNT(DISTINCT x.article_id) FROM (
+                        SELECT ka.id AS article_id
+                          FROM knowledge_articles ka
+                          JOIN analysts a ON a.id = ka.author_id
+                         WHERE ka.created_datetime >= ? AND ka.created_datetime < ?$tierWhere
+                        UNION
+                        SELECT kav.article_id
+                          FROM knowledge_article_versions kav
+                          JOIN analysts a ON a.id = kav.saved_by_id
+                         WHERE kav.saved_datetime >= ? AND kav.saved_datetime < ?$tierWhere
+                    ) x",
+                array_merge([$start, $end], $tierArgs, [$start, $end], $tierArgs));
+        }
+
         // --- Avg time spent per ticket (hours), from time entries in month ---
         if ($name === 'Avg time spent per ticket') {
             return kpi_scalar($conn,

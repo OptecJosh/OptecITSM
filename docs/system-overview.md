@@ -184,7 +184,7 @@ or it is silently dropped — no error, the value just never arrives. If a field
 | Priority | `ticket_priorities` | selects the SLA target row, not the target itself |
 | Audit trail | `ticket_audit` | the SLA engine *reads* this to reconstruct time — see §6 |
 | Notes | `ticket_notes` | internal updates |
-| Time entries | `ticket_time_entries` | feeds effort, cost-per-ticket and utilisation. `source` is `manual` or `auto` |
+| Time entries | `ticket_time_entries` | feeds effort, cost-per-ticket and utilisation. `source` (`manual`/`auto`) records origin; both count |
 | View sessions | `ticket_view_sessions` | how long an analyst had the ticket open and focused — a *proposal*, not billable time |
 | CSAT | `ticket_csat_responses` | tokenised survey URL, HMAC-derived, one row per request |
 | Watchers | `ticket_watchers` | notification fan-out |
@@ -594,10 +594,11 @@ part; load `database/demo-csv/` first so there is data to test against.
    tickets out of every tier scorecard. That is expected, not a bug.
 4. **Tracked time is only ever a proposal.** The view timer accumulates focused
    seconds into `ticket_view_sessions`; nothing becomes a time entry until the
-   analyst accepts it, and what lands is stamped `source = 'auto'`. **The KPI
-   engine counts `manual` only**, so switching the timer on never moves anyone's
-   cost or utilisation figures. If you ever want auto time in those numbers, that
-   is a deliberate change to `kpi_manual_time_filter()`.
+   analyst accepts it, and what lands is stamped `source = 'auto'`. Once accepted
+   it counts like any other entry — including in cost per ticket, utilisation,
+   tickets per FTE and the out-of-hours rate. So the effort KPIs get more
+   complete as analysts accept tracked time, which is the intent; `source` is
+   there to explain a rise, not to exclude it.
 5. **KPI instrumentation is best-effort by contract.** It must never break a ticket
    update; a `[kpi]` line in the error log means the capture failed and the update
    still committed.

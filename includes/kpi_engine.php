@@ -33,30 +33,6 @@ function kpi_owner_filter(?string $tier): array {
     return [' JOIN analysts ka ON ka.id = t.owner_id', ' AND ka.tier = ?', [$tier]];
 }
 
-/**
- * Effort metrics count MANUAL time only (12b).
- *
- * The view timer proposes time and the analyst accepts it as source='auto'.
- * Counting that here would have moved cost per ticket, utilisation and the
- * out-of-hours rate on the day the timer shipped, which is exactly the kind of
- * silent restatement that makes people stop believing a KPI. Returns '' on an
- * install where the column does not exist yet, so a pre-Database-Verify deploy
- * keeps computing rather than going blank.
- */
-function kpi_manual_time_filter(PDO $conn, string $alias = 'te'): string {
-    static $has = null;
-    if ($has === null) {
-        try {
-            $has = $conn->query("SHOW COLUMNS FROM ticket_time_entries LIKE 'source'")->fetch(PDO::FETCH_ASSOC) !== false;
-        } catch (Exception $e) {
-            $has = false;
-        }
-    }
-    if (!$has) return '';
-    $col = $alias === '' ? '`source`' : "$alias.`source`";
-    return " AND $col = 'manual'";
-}
-
 /** Run a query, return the first column of the first row as float|null. */
 function kpi_scalar(PDO $conn, string $sql, array $params) {
     $s = $conn->prepare($sql);
@@ -73,8 +49,6 @@ function kpi_engine_compute(PDO $conn, string $scorecard, string $name, string $
     $tier = ['L1' => 'L1', 'L2' => 'L2', 'L3' => 'L3', 'L3_BAU' => 'L3', 'COMBINED' => null][$scorecard] ?? null;
     [$start, $end] = kpi_month_bounds($period);
     [$oj, $ow, $op] = kpi_owner_filter($tier);
-    $manualOnly     = kpi_manual_time_filter($conn, 'te');   // effort/cost: typed time only
-    $manualOnlyBare = kpi_manual_time_filter($conn, '');
     $begins = fn($needle) => strpos($name, $needle) === 0;
 
     try {
@@ -244,7 +218,7 @@ function kpi_engine_compute(PDO $conn, string $scorecard, string $name, string $
             return kpi_scalar($conn,
                 "SELECT SUM(te.time_spent_minutes)/60 / NULLIF(COUNT(DISTINCT te.ticket_id),0)
                    FROM ticket_time_entries te JOIN tickets t ON t.id = te.ticket_id$oj
-                  WHERE te.is_active = 1{$manualOnly} AND te.entry_datetime >= ? AND te.entry_datetime < ?$ow",
+                  WHERE te.is_active = 1 AND te.entry_datetime >= ? AND te.entry_datetime < ?$ow",
                 array_merge([$start, $end], $op));
         }
 
@@ -253,11 +227,11 @@ function kpi_engine_compute(PDO $conn, string $scorecard, string $name, string $
             return kpi_scalar($conn,
                 "SELECT SUM(te.time_spent_minutes/60 * COALESCE(a2.loaded_rate,0)) / NULLIF(COUNT(DISTINCT te.ticket_id),0)
                    FROM ticket_time_entries te JOIN analysts a2 ON a2.id = te.analyst_id
-                  WHERE te.is_active = 1{$manualOnly} AND te.entry_datetime >= ? AND te.entry_datetime < ?",
+                  WHERE te.is_active = 1 AND te.entry_datetime >= ? AND te.entry_datetime < ?",
                 [$start, $end]);
         }
         if ($name === 'Utilisation %') {
-            $logged = kpi_scalar($conn, "SELECT SUM(time_spent_minutes)/60 FROM ticket_time_entries WHERE is_active = 1{$manualOnlyBare} AND entry_datetime >= ? AND entry_datetime < ?", [$start, $end]);
+            $logged = kpi_scalar($conn, "SELECT SUM(time_spent_minutes)/60 FROM ticket_time_entries WHERE is_active = 1 AND entry_datetime >= ? AND entry_datetime < ?", [$start, $end]);
             $avail = kpi_scalar($conn, "SELECT SUM(COALESCE(contracted_weekly_hours,0)) FROM analysts WHERE is_active = 1");
             $weeks = kpi_days_in_month($period) / 7;
             return ($avail && $avail > 0) ? round(($logged ?? 0) / ($avail * $weeks) * 100, 1) : null;
@@ -271,7 +245,7 @@ function kpi_engine_compute(PDO $conn, string $scorecard, string $name, string $
             return kpi_scalar($conn,
                 "SELECT SUM(CASE WHEN HOUR(entry_datetime) < 8 OR HOUR(entry_datetime) >= 18 OR DAYOFWEEK(entry_datetime) IN (1,7) THEN time_spent_minutes ELSE 0 END)
                         / NULLIF(SUM(time_spent_minutes),0) * 100
-                   FROM ticket_time_entries WHERE is_active = 1{$manualOnlyBare} AND entry_datetime >= ? AND entry_datetime < ?",
+                   FROM ticket_time_entries WHERE is_active = 1 AND entry_datetime >= ? AND entry_datetime < ?",
                 [$start, $end]);
         }
         if ($name === 'CSAT / customer happiness') {

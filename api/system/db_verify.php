@@ -694,9 +694,8 @@ $schema = [
         'entry_datetime'      => 'DATETIME NOT NULL',
         'is_active'           => 'TINYINT(1) NOT NULL DEFAULT 1',
         // 12b: where the entry came from. 'manual' is what an analyst typed;
-        // 'auto' is time they accepted from the view timer. The KPI engine counts
-        // manual only, so turning the timer on does not move anybody's cost or
-        // utilisation figures — see includes/kpi_engine.php.
+        // 'auto' is time they accepted from the view timer. Both count towards the
+        // effort and cost KPIs; this column exists so the split stays reportable.
         'source'              => "ENUM('manual','auto') NOT NULL DEFAULT 'manual'",
         'created_datetime'    => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
         'updated_datetime'    => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',

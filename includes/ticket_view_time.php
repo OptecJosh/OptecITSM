@@ -7,10 +7,14 @@
  * analyst per ticket, carrying the seconds they were focused on it.
  *
  * THE RULE THAT MAKES IT TRUSTWORTHY: a session is a PROPOSAL, never a time
- * entry. Nothing reaches ticket_time_entries until the analyst accepts it, and
- * what lands is stamped source='auto' so the KPI engine can keep counting only
- * what people actually claimed. Silently billing observed time would make every
- * cost figure in the system suspect the day it shipped.
+ * entry. Nothing reaches ticket_time_entries until the analyst accepts it.
+ * Silently billing observed time would make every cost figure in the system
+ * suspect the day it shipped.
+ *
+ * Accepted time IS counted by the KPI engine, exactly like typed time - cost per
+ * ticket, utilisation, tickets per FTE and the out-of-hours rate all include it.
+ * `source` still records where each entry came from, so the split stays
+ * reportable and exportable, but it no longer changes what the metrics count.
  *
  * What is deliberately NOT counted:
  *   - a hidden or unfocused tab (the client only beats while visible)

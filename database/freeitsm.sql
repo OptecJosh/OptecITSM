@@ -820,8 +820,8 @@ CREATE TABLE IF NOT EXISTS `ticket_time_entries` (
     `time_spent_minutes`  INT NOT NULL,
     `entry_datetime`      DATETIME NOT NULL,
     `is_active`           TINYINT(1) NOT NULL DEFAULT 1,
-    -- Where the entry came from. The KPI engine counts 'manual' only, so
-    -- enabling the view timer never moves cost or utilisation figures.
+    -- Where the entry came from ('auto' = accepted from the view timer). Both
+    -- count towards the effort and cost KPIs; this keeps the split reportable.
     `source`              ENUM('manual','auto') NOT NULL DEFAULT 'manual',
     `created_datetime`    DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_datetime`    DATETIME NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

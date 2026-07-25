@@ -50,6 +50,12 @@ $translationNamespaces = ['common', 'system'];
         .im-contract table { width: 100%; border-collapse: collapse; margin-top: 8px; }
         .im-contract td, .im-contract th { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--border, #f0f1f3); font-size: 12px; vertical-align: top; }
         .im-warn { color: #b45309; font-size: 12.5px; margin-top: 10px; }
+        .im-detected { margin-top: 8px; font-size: 12.5px; color: var(--text-dim, #6b7280); min-height: 18px; }
+        .im-detected .ok { color: #166534; }
+        .im-target { font-size: 13px; color: var(--text-dim, #6b7280); margin-bottom: 10px; }
+        .im-target strong { color: var(--text, #222); }
+        .im-muted { color: var(--text-dim, #9ca3af); }
+        .im-target code { background: var(--surface-2, #eceff3); padding: 1px 5px; border-radius: 4px; font-size: 11.5px; }
         .im-result { margin-top: 14px; font-size: 13px; }
         .im-result .err { color: #b91c1c; }
         .im-result .ok { color: #166534; font-weight: 600; }
@@ -101,10 +107,12 @@ $translationNamespaces = ['common', 'system'];
                     <span class="im-tile" id="imFileState">or paste below</span>
                 </div>
                 <textarea id="imCsv" placeholder="first row = column names, e.g.&#10;subject,status,priority,owner&#10;Printer offline,Open,High,Jane Bloggs"></textarea>
+                <div class="im-detected" id="imDetected"></div>
             </div>
 
             <div class="im-card">
                 <h3>3. Preview, then commit</h3>
+                <div class="im-target" id="imTarget"></div>
                 <div class="im-row">
                     <button class="btn btn-secondary" onclick="imPreview()">Preview</button>
                     <button class="btn btn-primary" id="imCommit" onclick="imCommit()" disabled>Commit import</button>

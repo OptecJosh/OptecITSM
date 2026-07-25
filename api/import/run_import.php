@@ -39,7 +39,25 @@ try {
         exit;
     }
 
-    $planned = data_import_plan($conn, $spec, $analystId, $csv);
+    // A header mismatch is nearly always the wrong dataset selected rather than a
+    // bad file, so answer with the dataset the columns actually look like.
+    try {
+        $planned = data_import_plan($conn, $spec, $analystId, $csv);
+    } catch (Exception $e) {
+        $suggestions = [];
+        foreach (data_import_detect(data_import_header($csv)) as $cand) {
+            if ($cand['key'] === $key || !$cand['usable'] || $cand['coverage'] < 0.5) continue;
+            if (!analystCanAccessModule($conn, $analystId, $datasets[$cand['key']]['module'])) continue;
+            $suggestions[] = ['key' => $cand['key'], 'label' => $cand['label'], 'coverage' => $cand['coverage']];
+            if (count($suggestions) >= 2) break;
+        }
+        echo json_encode([
+            'success'     => false,
+            'error'       => $e->getMessage(),
+            'suggestions' => $suggestions,
+        ]);
+        exit;
+    }
 
     if ($mode === 'preview') {
         // A few resolved rows so the tester can see what will actually be written.

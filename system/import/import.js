@@ -44,18 +44,104 @@ async function imLoad() {
     imRenderDatasets();
 }
 
-function imRenderDatasets() {
+function imRenderDatasets(selectKey) {
     const group = document.getElementById('imModule').value;
     const inGroup = imDatasets.filter(d => d.group === group);
     document.getElementById('imDataset').innerHTML = inGroup.map(d => `<option value="${imEsc(d.key)}">${imEsc(d.label)}</option>`).join('');
+    if (selectKey && inGroup.some(d => d.key === selectKey)) {
+        document.getElementById('imDataset').value = selectKey;
+    }
     imRenderContract();
+}
+
+/** Select a dataset by key, switching the module group with it. */
+function imSelectDataset(key) {
+    const d = imDatasets.find(x => x.key === key);
+    if (!d) return;
+    document.getElementById('imModule').value = d.group;
+    imRenderDatasets(key);
+}
+
+/**
+ * Which dataset does the pasted/chosen CSV look like? Same ranking the server
+ * uses: a dataset that has everything it needs beats one that merely shares
+ * column names, then best coverage of the header row wins.
+ */
+function imDetect(csv) {
+    const firstLine = String(csv || '').split(/\r?\n/)[0] || '';
+    const header = firstLine.replace(/^﻿/, '').split(',')
+        .map(h => h.trim().replace(/^"|"$/g, '').toLowerCase())
+        .filter(Boolean);
+    if (!header.length) return null;
+
+    const scored = imDatasets.map(d => {
+        const accepted = (d.template || []).map(c => c.toLowerCase());
+        const required = d.columns.filter(c => c.required).map(c => c.name.toLowerCase())
+            .concat(d.lookups.filter(l => l.required).map(l => l.name.toLowerCase()));
+        const matched = header.filter(h => accepted.includes(h)).length;
+        return {
+            key: d.key, label: d.label, matched: matched,
+            coverage: matched / header.length,
+            usable: required.every(r => header.includes(r)),
+        };
+    }).filter(s => s.matched > 0);
+
+    scored.sort((a, b) => (a.usable !== b.usable) ? (a.usable ? -1 : 1)
+        : (b.coverage - a.coverage) || (b.matched - a.matched));
+
+    const best = scored[0];
+    if (!best || !best.usable || best.coverage < 0.5) return null;
+
+    // Two datasets fitting equally well is a coin toss, and switching on a coin
+    // toss is worse than not switching. Offer both instead.
+    const next = scored[1];
+    if (next && next.usable === best.usable && next.coverage === best.coverage) {
+        return { ambiguous: true, options: [best, next] };
+    }
+    return best;
+}
+
+/**
+ * Point the dataset at whatever the CSV looks like. Called whenever the CSV
+ * changes, so the commonest mistake here - right file, wrong dropdown - fixes
+ * itself before Preview is ever pressed.
+ */
+function imAutoSelect(csv, sourceLabel) {
+    const best = imDetect(csv);
+    const note = document.getElementById('imDetected');
+    if (!best) { note.innerHTML = ''; return; }
+
+    if (best.ambiguous) {
+        note.innerHTML = 'These columns fit more than one dataset &mdash; pick the one you meant: '
+            + best.options.map(o =>
+                `<button class="btn btn-secondary btn-sm" onclick="imSelectDataset('${imEsc(o.key)}')">${imEsc(o.label)}</button>`
+              ).join(' ');
+        return;
+    }
+
+    const current = imCurrent();
+    if (current && current.key === best.key) {
+        note.innerHTML = '<span class="ok">These columns match the selected dataset (' + imEsc(best.label) + ').</span>';
+        return;
+    }
+    imSelectDataset(best.key);
+    note.innerHTML = '<span class="ok">Dataset switched to <strong>' + imEsc(best.label) + '</strong></span> '
+        + '&mdash; that is what ' + imEsc(sourceLabel || 'this CSV') + ' looks like. Change it above if that is not what you meant.';
 }
 
 function imRenderContract() {
     imLock('Preview first — commit unlocks once a preview succeeds.');
     const d = imCurrent();
     const host = document.getElementById('imContract');
-    if (!d) { host.textContent = ''; return; }
+    const target = document.getElementById('imTarget');
+    if (!d) { host.textContent = ''; if (target) target.textContent = ''; return; }
+
+    // Say out loud what is about to be written to, above the buttons — the wrong
+    // dataset is otherwise invisible until an error mentions a stray column.
+    if (target) {
+        target.innerHTML = 'Importing into <strong>' + imEsc(d.group) + ' &rsaquo; ' + imEsc(d.label)
+            + '</strong> <span class="im-muted">(table <code>' + imEsc(d.table) + '</code>)</span>';
+    }
 
     const required = d.columns.filter(c => c.required).map(c => c.name)
         .concat(d.lookups.filter(l => l.required).map(l => l.name));
@@ -104,9 +190,11 @@ function imReadFile() {
     const file = input.files[0];
     const reader = new FileReader();
     reader.onload = () => {
-        document.getElementById('imCsv').value = String(reader.result || '');
+        const csv = String(reader.result || '');
+        document.getElementById('imCsv').value = csv;
         state.textContent = file.name + ' loaded (' + Math.round(file.size / 1024) + ' KB)';
         imLock('CSV changed — preview again before committing.');
+        imAutoSelect(csv, file.name);
     };
     reader.onerror = () => { state.textContent = 'Could not read that file'; };
     reader.readAsText(file);
@@ -129,11 +217,24 @@ async function imRun(mode) {
     } catch (e) { r = { success: false, error: 'Network error' }; }
 
     if (!r.success) {
-        host.innerHTML = '<span class="err">' + imEsc(r.error || 'Failed') + '</span>';
+        // A header mismatch usually means the wrong dataset, not a bad file — so
+        // offer the switch rather than just restating the missing column.
+        const alts = (r.suggestions || []).map(s =>
+            `<button class="btn btn-secondary btn-sm" style="margin-top:6px;" onclick="imSwitchAndPreview('${imEsc(s.key)}')">`
+            + `Switch to ${imEsc(s.label)} and preview</button>`).join(' ');
+        host.innerHTML = '<span class="err">' + imEsc(r.error || 'Failed') + '</span>'
+            + (alts ? '<div style="margin-top:6px;">This file\'s columns look like a different dataset:</div><div>' + alts + '</div>' : '');
         imLock('Fix the problem above, then preview again.');
         return null;
     }
     return r;
+}
+
+async function imSwitchAndPreview(key) {
+    imSelectDataset(key);
+    document.getElementById('imDetected').innerHTML =
+        '<span class="ok">Dataset switched to <strong>' + imEsc(imCurrent() ? imCurrent().label : key) + '</strong>.</span>';
+    await imPreview();
 }
 
 function imErrorTable(errors, count) {
@@ -195,5 +296,10 @@ async function imCommit() {
 
 document.addEventListener('DOMContentLoaded', () => {
     imLoad();
-    document.getElementById('imCsv').addEventListener('input', () => imLock('CSV changed — preview again before committing.'));
+    const csvBox = document.getElementById('imCsv');
+    csvBox.addEventListener('input', () => imLock('CSV changed — preview again before committing.'));
+    // Detect on paste and on leaving the box, not per keystroke — switching the
+    // dataset under someone mid-type would be worse than the problem it solves.
+    csvBox.addEventListener('paste', () => setTimeout(() => imAutoSelect(csvBox.value, 'the pasted CSV'), 0));
+    csvBox.addEventListener('change', () => imAutoSelect(csvBox.value, 'this CSV'));
 });

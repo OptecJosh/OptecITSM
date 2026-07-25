@@ -470,6 +470,70 @@ function data_import_normalise(string $col, array $spec, $raw): array {
     }
 }
 
+/** The lowercased header row of a CSV, or [] if it has none. */
+function data_import_header(string $csv): array {
+    $line = strtok($csv, "\r\n");
+    if ($line === false) return [];
+    $cells = str_getcsv($line);
+    if (!$cells) return [];
+    $cells[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string)$cells[0]);
+    return array_values(array_filter(array_map(fn($h) => strtolower(trim((string)$h)), $cells), fn($h) => $h !== ''));
+}
+
+/** Every column name a dataset accepts, lowercased. */
+function data_import_accepted_columns(array $spec): array {
+    return array_map('strtolower', data_import_template_columns($spec));
+}
+
+/** The columns a dataset cannot import without, lowercased. */
+function data_import_required_columns(array $spec): array {
+    $req = [];
+    foreach ($spec['columns'] as $col => $c) {
+        if (!empty($c['required'])) $req[] = strtolower($col);
+    }
+    foreach ($spec['lookups'] ?? [] as $col => $lk) {
+        if (!empty($lk['required'])) $req[] = strtolower($col);
+    }
+    return $req;
+}
+
+/**
+ * Which dataset does this CSV look like?
+ *
+ * Picking the wrong dataset is the easiest mistake to make here — the file is
+ * right, the dropdown is on last time's choice, and the only symptom is a
+ * complaint about a column the file was never meant to have. So rather than
+ * leave the user to decode that, rank every dataset by how well its accepted
+ * columns cover the header row, and let the caller offer the better match.
+ *
+ * @return array<int,array{key:string,label:string,matched:int,coverage:float,usable:bool}>
+ *         best first; only datasets sharing at least one column are returned.
+ */
+function data_import_detect(array $header): array {
+    if (!$header) return [];
+    $scored = [];
+    foreach (data_import_datasets() as $key => $spec) {
+        $accepted = data_import_accepted_columns($spec);
+        $matched = count(array_intersect($header, $accepted));
+        if ($matched === 0) continue;
+        $missing = array_diff(data_import_required_columns($spec), $header);
+        $scored[] = [
+            'key'      => $key,
+            'label'    => $spec['label'],
+            'matched'  => $matched,
+            'coverage' => round($matched / count($header), 3),
+            'usable'   => empty($missing),      // has everything it must have
+        ];
+    }
+    // A dataset that could actually run wins over one that merely shares names.
+    usort($scored, function ($a, $b) {
+        if ($a['usable'] !== $b['usable']) return $a['usable'] ? -1 : 1;
+        if ($a['coverage'] !== $b['coverage']) return $b['coverage'] <=> $a['coverage'];
+        return $b['matched'] <=> $a['matched'];
+    });
+    return $scored;
+}
+
 /**
  * Resolve a lookup value ("Open", "Jane Bloggs", "jane@example.com") to an id.
  * Cached per table+value; case-insensitive; returns null when not found so the

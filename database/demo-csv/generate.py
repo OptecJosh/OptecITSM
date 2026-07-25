@@ -223,6 +223,52 @@ SUBJECTS = [
     ('SharePoint sync errors on 4 laptops', 'Incident', 'Normal'),
     ('Quarterly access review evidence needed', 'Question', 'Normal'),
 ]
+# One opening message per subject: the importer turns `body` into the ticket's
+# initial email, which is what makes it appear in the ticket list at all.
+BODIES = [
+    "It was fine yesterday. This morning it powers on for a second, fans spin, then nothing. Tried a different charger and a different socket.",
+    "I can get to the Sales folder but the Finance one gives 'access denied'. I need the month-end pack by Thursday.",
+    "New warehouse operative starting Monday. Needs the same access as the existing pickers plus a scanner.",
+    "Every hour or so Outlook pops up asking for my password. I type it, it goes away, then it comes back.",
+    "The Leeds depot link keeps dropping. Teams calls fail and the WMS scanners lose their session. It has been happening since about 08:30.",
+    "Please install the Sage 200 client on my laptop - I have just moved to the finance team.",
+    "The printer on floor 2 jams on nearly every job. There is no paper stuck that I can see.",
+    "I have lost my phone so I cannot approve the sign-in prompt. I am locked out of everything.",
+    "Three site engineers start next week. Each needs a laptop, a phone and access to the site drive.",
+    "Till 4 at the Leeds store is offline - it will not connect to EPOS Central. The other three tills are fine.",
+    "My mailbox is full and I cannot send anything. I have deleted what I can.",
+    "How do I share a Teams recording with someone outside the company?",
+    "The VPN drops every few minutes when I am working from the site cabin on 4G. It is fine on wifi at the office.",
+    "Could I have a second monitor please? I am working across two spreadsheets most of the day.",
+    "The overnight backup for SQLDB-Finance failed again. This is the third time this month.",
+    "I have had an email claiming to be from the bank asking me to confirm my details. I have not clicked anything.",
+    "Our new HR advisor needs access to the Payroll Portal - same level as the existing advisors.",
+    "The scanners in aisle 7 keep losing their WMS session when the pickers move between racks.",
+    "My password expired while I am away from the office and I cannot change it over VPN.",
+    "My docking station has stopped charging the laptop. The lights come on but nothing else happens.",
+    "The card reader on the side entrance is unresponsive. Staff are having to come round to reception.",
+    "Please set up a shared mailbox for tenders so the whole bid team can see incoming enquiries.",
+    "The Sage reports that used to take a minute are taking ten. It started around the 28th.",
+    "Guests cannot get onto the wifi - it connects but never gets an address. We have visitors in all week.",
+    "Please disable the account for the legal assistant who left on Friday and forward her mail to her manager.",
+    "Teams calls from the Bristol depot are breaking up badly. Video is worse than audio.",
+    "I set up my new phone and now the two-factor prompt just loops - approve, then it asks again.",
+    "I need Adobe Acrobat to edit the tender PDFs. Reader will not let me combine documents.",
+    "SRV-FILE01 is at 92% again. We had to clear space last month too.",
+    "Since the printer firmware update I cannot print at all - error 0x0000011b.",
+    "The Leeds mezzanine extension needs a switch installing before the new scanner docks arrive.",
+    "I have deleted the contracts folder by mistake. I need it back if possible - there is work in there from this week.",
+    "The meeting room display will not pick up my laptop over HDMI or wirelessly.",
+    "Antivirus has quarantined a file on SRV-APP02 and the application will not start.",
+    "Can I get an export of all our tickets for the last quarter for the board pack?",
+    "Twelve seasonal staff start in the warehouse on the 1st. They all need accounts and scanner logins.",
+    "The comms room is alarming on temperature again. It is noticeably warm in there.",
+    "I dropped my work phone and the screen is cracked - it still works but it is hard to read.",
+    "Four of us are getting SharePoint sync errors on the tender library. The files look out of date.",
+    "I need the evidence pack for the quarterly access review - who has access to what.",
+]
+assert len(BODIES) == len(SUBJECTS), (len(BODIES), len(SUBJECTS))
+
 tickets = []
 for i, (subject, ttype, prio) in enumerate(SUBJECTS):
     created_off = -88 + i * 2
@@ -240,6 +286,10 @@ for i, (subject, ttype, prio) in enumerate(SUBJECTS):
     tickets.append([
         '',                                  # ticket_number - blank so one is generated
         subject,
+        BODIES[i],
+        # Alternate the two departments the core demo data creates, so the
+        # department folders in the ticket list are actually populated.
+        'Infrastructure' if i % 3 == 2 else 'IT Support',
         dt(created_off, 8, 40),
         closed,
         ack,
@@ -252,8 +302,9 @@ for i, (subject, ttype, prio) in enumerate(SUBJECTS):
         'yes' if status == 'Closed' and i % 4 == 0 else 'no',
     ])
 write('08-tickets.csv',
-      ['ticket_number', 'subject', 'created_datetime', 'closed_datetime', 'acknowledged_datetime',
-       'status', 'priority', 'ticket_type', 'origin', 'customer', 'requester_email', 'first_time_fix'],
+      ['ticket_number', 'subject', 'body', 'department', 'created_datetime', 'closed_datetime',
+       'acknowledged_datetime', 'status', 'priority', 'ticket_type', 'origin', 'customer',
+       'requester_email', 'first_time_fix'],
       tickets)
 
 # ------------------------------------------------------------------- problems --

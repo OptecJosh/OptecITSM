@@ -22,6 +22,13 @@
  *   lookups     [csv column => ['table','name','target','required'?]] — resolve a
  *               name to an id and write it to `target`
  *   notes       one-line hint shown in the UI
+ *   post_insert named hook run after a row is CREATED (not on update), for the
+ *               rows a single table cannot express - see data_import_post_insert()
+ *
+ * A column marked 'virtual' => true is validated and carried through the plan but
+ * never written to the target table; it exists for the post-insert hook. Tickets
+ * use this for `body`, which belongs in the initial email rather than on the
+ * ticket row.
  *
  * Deliberately NOT importable: analysts (they carry credentials and module access
  * — create staff in System > Analysts), and anything holding secrets or wiring
@@ -42,10 +49,14 @@ function data_import_datasets(): array {
             'match' => 'ticket_number', 'tenant' => true,
             'generate' => ['ticket_number' => 'ticket'],
             'defaults' => ['created_datetime' => 'now'],
-            'notes' => 'Leave ticket_number blank to create new tickets (one is generated); supply it to update. Names must already exist — statuses, priorities and the rest are matched by name.',
+            'notes' => 'Leave ticket_number blank to create new tickets (one is generated); supply it to update. Names must already exist — statuses, priorities and the rest are matched by name. `body` is the opening message: it becomes the ticket's first email, which is what makes it show up in the ticket list.',
+            'post_insert' => 'ticket_seed_email',
             'columns' => [
                 'ticket_number'         => ['type' => 'string', 'max' => 50],
                 'subject'               => ['type' => 'string', 'max' => 255, 'required' => true],
+                // Not a tickets column: the opening message, which becomes the
+                // ticket's initial email so it appears in the inbox at all.
+                'body'                  => ['type' => 'text', 'virtual' => true],
                 'created_datetime'      => ['type' => 'datetime'],
                 'closed_datetime'       => ['type' => 'datetime'],
                 'work_start_datetime'   => ['type' => 'datetime'],
@@ -692,12 +703,15 @@ function data_import_plan(PDO $conn, array $spec, int $analystId, string $csv): 
         if (count(array_filter($cells, fn($c) => trim((string)$c) !== '')) === 0) continue;   // blank line
 
         $values   = [];
+        $virtual  = [];      // validated but never written to the target table
         $rowError = null;
 
         foreach ($colIndex as $col => $idx) {
             [$ok, $val, $err] = data_import_normalise($col, $spec['columns'][$col], $cells[$idx] ?? '');
             if (!$ok) { $rowError = $err; break; }
-            if ($val !== null) $values[$col] = $val;
+            if ($val === null) continue;
+            if (!empty($spec['columns'][$col]['virtual'])) $virtual[$col] = $val;
+            else                                          $values[$col] = $val;
         }
         if ($rowError) { $errors[] = ['row' => $rowNum, 'message' => $rowError]; continue; }
 
@@ -728,7 +742,7 @@ function data_import_plan(PDO $conn, array $spec, int $analystId, string $csv): 
         }
 
         if ($existingId) $toUpdate++; else $toCreate++;
-        $plan[] = ['row' => $rowNum, 'id' => $existingId, 'values' => $values];
+        $plan[] = ['row' => $rowNum, 'id' => $existingId, 'values' => $values, 'virtual' => $virtual];
     }
     fclose($fh);
 
@@ -798,7 +812,15 @@ function data_import_commit(PDO $conn, array $spec, int $analystId, array $plan)
             $sql = "INSERT INTO `{$spec['table']}` (`" . implode('`, `', $cols) . "`) VALUES ("
                  . implode(', ', array_fill(0, count($cols), '?')) . ")";
             $conn->prepare($sql)->execute(array_values($vals));
+            $newId = (int)$conn->lastInsertId();
             $created++;
+
+            // Rows a single table cannot express - a ticket's opening email, say.
+            // Inside the transaction, so a failing hook rolls the whole run back
+            // rather than leaving a ticket nobody can see.
+            if (!empty($spec['post_insert'])) {
+                data_import_post_insert($conn, $spec['post_insert'], $newId, $vals, $p['virtual'] ?? []);
+            }
         }
         $conn->commit();
     } catch (Exception $e) {
@@ -807,4 +829,76 @@ function data_import_commit(PDO $conn, array $spec, int $analystId, array $plan)
     }
 
     return ['created' => $created, 'updated' => $updated];
+}
+
+/**
+ * Post-insert hooks — the rows a single-table import cannot express.
+ *
+ * Dispatched by name from the registry rather than by closure so the spec stays
+ * printable, and so the set of things an import can touch stays enumerable here.
+ */
+function data_import_post_insert(PDO $conn, string $hook, int $newId, array $values, array $virtual): void {
+    if ($hook === 'ticket_seed_email') {
+        ticket_import_seed_email($conn, $newId, $values, $virtual);
+        return;
+    }
+    throw new Exception('Unknown post-insert hook: ' . $hook);
+}
+
+/**
+ * Give an imported ticket its opening email.
+ *
+ * THE REASON THIS EXISTS: the ticket list is built FROM the emails table
+ * (get_emails.php starts at "latest email per ticket" and joins tickets to it),
+ * exactly as TicketsService::createTicket assumes when it writes an initial email
+ * alongside every ticket it creates. A ticket with no email row is real, counted
+ * in every folder badge, reportable and exportable - and invisible in the inbox.
+ * An importer that produced those was worse than useless for testing, because
+ * everything said the data was there.
+ *
+ * The requester's address is used where the CSV named one, since that is what the
+ * list shows as the sender; otherwise a neutral placeholder, because from_address
+ * is NOT NULL.
+ */
+function ticket_import_seed_email(PDO $conn, int $ticketId, array $values, array $virtual): void {
+    $subject = (string)($values['subject'] ?? '(no subject)');
+    $body    = trim((string)($virtual['body'] ?? ''));
+    if ($body === '') {
+        $body = 'Imported ticket — no message body was supplied.';
+    }
+
+    // Sender: the linked portal user if the CSV resolved one.
+    $from = 'imported@localhost';
+    $fromName = 'Imported';
+    if (!empty($values['user_id'])) {
+        try {
+            $u = $conn->prepare("SELECT email, display_name FROM users WHERE id = ?");
+            $u->execute([(int)$values['user_id']]);
+            if ($row = $u->fetch(PDO::FETCH_ASSOC)) {
+                $from = $row['email'] ?: $from;
+                $fromName = $row['display_name'] ?: $row['email'];
+            }
+        } catch (Exception $e) { /* fall back to the placeholder */ }
+    }
+
+    // Date the email to the ticket, not to now, or an imported back-dated ticket
+    // sorts to the top of the list.
+    $received = !empty($values['created_datetime']) ? $values['created_datetime'] : gmdate('Y-m-d H:i:s');
+
+    $conn->prepare(
+        "INSERT INTO emails
+            (mailbox_id, subject, from_address, from_name, to_recipients, received_datetime,
+             body_preview, body_content, body_type, has_attachments, importance,
+             is_read, ticket_id, is_initial, direction)
+         VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, 'html', 0, 'normal', 1, ?, 1, 'Imported')"
+    )->execute([
+        mb_substr($subject, 0, 500),
+        $from,
+        mb_substr($fromName, 0, 255),
+        $from,
+        $received,
+        mb_substr(strip_tags($body), 0, 200),
+        nl2br(htmlspecialchars($body)),
+        $ticketId,
+    ]);
 }

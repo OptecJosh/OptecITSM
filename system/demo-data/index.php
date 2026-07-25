@@ -298,6 +298,7 @@ if (!isset($_SESSION['analyst_id'])) {
         [data-theme-mode="dark"] .import-btn.success { background: #2e7d32; color: #fff; }
         [data-theme-mode="dark"] .import-btn.success:hover { background: #256428; }
         /* Reporting history generator */
+        .rep-section { margin-top: 8px; }
         .rep-card { align-items: flex-start; }
         .rep-row { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 14px; }
         .rep-row label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--text-dim, #6b7280); }
@@ -522,8 +523,12 @@ if (!isset($_SESSION['analyst_id'])) {
             <div class="error-text" id="err-dashboards" style="display:none"></div>
         </div>
 
-        <!-- Reporting history: generated, not loaded from a file -->
-        <div class="bonus-section">
+        <!-- Reporting history: generated, not loaded from a file.
+             Deliberately NOT .bonus-section — that class is display:none and gets
+             revealed by checkBonusEligibility() for sections that depend on another
+             module being imported first. This one has no prerequisite, so it must
+             be visible from the start. -->
+        <div class="rep-section">
             <p class="section-label">Reporting &amp; KPI history</p>
             <div class="bonus-card rep-card">
                 <div class="bonus-info">

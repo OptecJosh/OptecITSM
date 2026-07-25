@@ -88,10 +88,21 @@ function scheduled_report_render_csv(array $report): string {
 }
 
 /**
+ * The CSV attachment filename for a schedule: a slug of its name + today's date.
+ */
+function scheduled_report_csv_filename(array $schedule, ?DateTimeImmutable $now = null): string {
+    $slug = strtolower(preg_replace('/[^A-Za-z0-9]+/', '-', (string)($schedule['name'] ?? 'report')) ?? '');
+    $slug = trim($slug, '-');
+    if ($slug === '') $slug = 'report';
+    $slug = substr($slug, 0, 60);
+    $now = $now ?: new DateTimeImmutable('now', new DateTimeZone('UTC'));
+    return $slug . '-' . $now->format('Y-m-d') . '.csv';
+}
+
+/**
  * Build the [subject, htmlBody] for a scheduled report email. The body always
- * carries a summary table; when the format includes 'csv' the raw CSV is
- * appended as a copy-pasteable <pre> block (the provider send paths are
- * HTML-only — file attachments are a future enhancement).
+ * carries a summary table; when the format includes 'csv' the CSV travels as a
+ * real file attachment (see mailer_send_html) and the body just names the file.
  */
 function scheduled_report_render_email(array $schedule, array $report): array {
     $name     = (string)($schedule['name'] ?? 'Ticket report');
@@ -135,10 +146,8 @@ function scheduled_report_render_email(array $schedule, array $report): array {
     $csvBlock = '';
     if ($showCsv) {
         $csvBlock = '
-        <div style="margin-top:16px;">
-            <div style="font-size:12px;color:#6b7280;margin-bottom:4px;">CSV</div>
-            <pre style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:4px;padding:10px;font-size:12px;overflow:auto;white-space:pre;">'
-            . $esc(scheduled_report_render_csv($report)) . '</pre>
+        <div style="margin-top:16px;font-size:12px;color:#6b7280;">
+            The full data set is attached as <strong>' . $esc(scheduled_report_csv_filename($schedule)) . '</strong>.
         </div>';
     }
 

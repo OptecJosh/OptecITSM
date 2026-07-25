@@ -410,7 +410,7 @@ function imapHandleAfterProcessing(array $mailbox, int $uid, string $action, ?st
  * $to / $cc are semicolon/comma separated address strings. Outbound attachments
  * are not supported (parity with the Gmail send path) — replies are HTML only.
  */
-function imapSmtpSend(array $mailbox, string $to, string $cc, string $subject, string $htmlBody): void {
+function imapSmtpSend(array $mailbox, string $to, string $cc, string $subject, string $htmlBody, array $attachments = []): void {
     $host = $mailbox['smtp_server'] ?? '';
     $port = (int) ($mailbox['smtp_port'] ?? 587);
     $enc  = strtolower($mailbox['smtp_encryption'] ?? 'tls');
@@ -471,7 +471,7 @@ function imapSmtpSend(array $mailbox, string $to, string $cc, string $subject, s
         }
 
         imapSmtpCommand($fp, 'DATA', [354]);
-        $message = imapSmtpBuildMessage($from, $mailbox['name'] ?? '', $toList, $ccList, $subject, $htmlBody);
+        $message = imapSmtpBuildMessage($from, $mailbox['name'] ?? '', $toList, $ccList, $subject, $htmlBody, $attachments);
         // Dot-stuff and terminate.
         $message = preg_replace('/^\./m', '..', $message);
         fwrite($fp, $message . "\r\n.\r\n");
@@ -483,8 +483,11 @@ function imapSmtpSend(array $mailbox, string $to, string $cc, string $subject, s
     }
 }
 
-/** Assemble the raw RFC 2822 HTML message. */
-function imapSmtpBuildMessage(string $from, string $fromName, array $toList, array $ccList, string $subject, string $htmlBody): string {
+/**
+ * Assemble the raw RFC 2822 HTML message. With $attachments it becomes a
+ * multipart/mixed message (HTML part first, then one part per file).
+ */
+function imapSmtpBuildMessage(string $from, string $fromName, array $toList, array $ccList, string $subject, string $htmlBody, array $attachments = []): string {
     $headers = [];
     $fromHeader = $fromName !== ''
         ? imapSmtpEncodeHeader($fromName) . ' <' . $from . '>'
@@ -496,12 +499,34 @@ function imapSmtpBuildMessage(string $from, string $fromName, array $toList, arr
     }
     $headers[] = 'Subject: ' . imapSmtpEncodeHeader($subject);
     $headers[] = 'MIME-Version: 1.0';
-    $headers[] = 'Content-Type: text/html; charset=UTF-8';
-    $headers[] = 'Content-Transfer-Encoding: base64';
 
     $encodedBody = chunk_split(base64_encode($htmlBody), 76, "\r\n");
 
-    return implode("\r\n", $headers) . "\r\n\r\n" . $encodedBody;
+    if (empty($attachments)) {
+        $headers[] = 'Content-Type: text/html; charset=UTF-8';
+        $headers[] = 'Content-Transfer-Encoding: base64';
+        return implode("\r\n", $headers) . "\r\n\r\n" . $encodedBody;
+    }
+
+    $boundary = 'b' . md5(uniqid((string)count($attachments), true));
+    $headers[] = 'Content-Type: multipart/mixed; boundary="' . $boundary . '"';
+
+    $body = '--' . $boundary . "\r\n"
+        . "Content-Type: text/html; charset=UTF-8\r\n"
+        . "Content-Transfer-Encoding: base64\r\n\r\n"
+        . $encodedBody;
+    foreach ($attachments as $a) {
+        $name = str_replace('"', '', (string)($a['name'] ?? 'attachment'));
+        $type = (string)($a['type'] ?? 'application/octet-stream');
+        $body .= '--' . $boundary . "\r\n"
+            . 'Content-Type: ' . $type . '; name="' . $name . "\"\r\n"
+            . 'Content-Disposition: attachment; filename="' . $name . "\"\r\n"
+            . "Content-Transfer-Encoding: base64\r\n\r\n"
+            . chunk_split(base64_encode((string)($a['content'] ?? '')), 76, "\r\n");
+    }
+    $body .= '--' . $boundary . "--\r\n";
+
+    return implode("\r\n", $headers) . "\r\n\r\n" . $body;
 }
 
 /** RFC 2047 encode a header value if it contains non-ASCII. */

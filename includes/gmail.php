@@ -80,12 +80,14 @@ function gmailGetValidAccessToken(PDO $conn, array $mailbox, array $tokenData): 
 /**
  * Send an email via the Gmail API.
  *
- * $to       - recipient email address
- * $subject  - email subject
- * $htmlBody - HTML body content
- * $from     - sender email address (the mailbox address)
+ * $to          - recipient email address
+ * $subject     - email subject
+ * $htmlBody    - HTML body content
+ * $from        - sender email address (the mailbox address)
+ * $attachments - [['name'=>..,'type'=>..,'content'=>rawBytes], ...]; when present
+ *                the message is sent as multipart/mixed instead of text/html.
  */
-function gmailSendEmail(string $accessToken, string $to, string $subject, string $htmlBody, string $from = ''): void {
+function gmailSendEmail(string $accessToken, string $to, string $subject, string $htmlBody, string $from = '', array $attachments = []): void {
     // Build RFC 2822 message
     $boundary = md5(uniqid(time()));
     $headers = "MIME-Version: 1.0\r\n";
@@ -94,9 +96,27 @@ function gmailSendEmail(string $accessToken, string $to, string $subject, string
     }
     $headers .= "To: $to\r\n";
     $headers .= "Subject: $subject\r\n";
-    $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
-    $headers .= "\r\n";
-    $rawMessage = $headers . $htmlBody;
+    if ($attachments) {
+        $headers .= "Content-Type: multipart/mixed; boundary=\"$boundary\"\r\n\r\n";
+        $rawMessage = $headers
+            . "--$boundary\r\n"
+            . "Content-Type: text/html; charset=UTF-8\r\n"
+            . "Content-Transfer-Encoding: base64\r\n\r\n"
+            . chunk_split(base64_encode($htmlBody), 76, "\r\n");
+        foreach ($attachments as $a) {
+            $name = str_replace('"', '', (string)$a['name']);
+            $rawMessage .= "--$boundary\r\n"
+                . 'Content-Type: ' . (string)$a['type'] . '; name="' . $name . "\"\r\n"
+                . 'Content-Disposition: attachment; filename="' . $name . "\"\r\n"
+                . "Content-Transfer-Encoding: base64\r\n\r\n"
+                . chunk_split(base64_encode((string)$a['content']), 76, "\r\n");
+        }
+        $rawMessage .= "--$boundary--\r\n";
+    } else {
+        $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+        $headers .= "\r\n";
+        $rawMessage = $headers . $htmlBody;
+    }
 
     // Base64url encode
     $encoded = rtrim(strtr(base64_encode($rawMessage), '+/', '-_'), '=');

@@ -4,8 +4,9 @@
  *
  * Picks every due scheduled_report row (is_active = 1, next_run_at <= now UTC),
  * runs its saved group_by + filters through the shared ticket_report_run()
- * (scoped to the report creator's company access), renders a CSV + HTML summary
- * per its `format`, emails the recipients via the generic mailer, then advances
+ * (scoped to the report creator's company access), renders an HTML summary and —
+ * for the csv/both formats — a real CSV file attachment per its `format`, emails
+ * the recipients via the generic mailer, then advances
  * next_run_at to the next cadence boundary and stamps last_run_at.
  *
  * Reuses the SLA breach cron's security + logging harness verbatim (shared
@@ -175,7 +176,18 @@ try {
 
             $report = ticket_report_run($conn, $scopeAnalystId, (string)$schedule['group_by'], $filters);
             [$subject, $html] = scheduled_report_render_email($schedule, $report);
-            mailer_send_html($conn, $recipients, $subject, $html);
+
+            // Formats that include the CSV send it as a real file attachment.
+            $attachments = [];
+            $format = (string)($schedule['format'] ?? 'both');
+            if ($format === 'csv' || $format === 'both') {
+                $attachments[] = [
+                    'name'    => scheduled_report_csv_filename($schedule),
+                    'type'    => 'text/csv; charset=UTF-8',
+                    'content' => scheduled_report_render_csv($report),
+                ];
+            }
+            mailer_send_html($conn, $recipients, $subject, $html, null, $attachments);
 
             $conn->prepare("UPDATE scheduled_report SET next_run_at = ?, last_run_at = UTC_TIMESTAMP() WHERE id = ?")
                  ->execute([$nextRun, $id]);

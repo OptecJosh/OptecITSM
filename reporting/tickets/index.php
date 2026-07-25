@@ -121,9 +121,9 @@ $translationNamespaces = ['common', 'reporting'];
             </label>
             <label>Delivery format
                 <select id="rbSchedFormat">
-                    <option value="both" selected>Summary + CSV</option>
+                    <option value="both" selected>Summary + CSV attachment</option>
                     <option value="summary">Summary only</option>
-                    <option value="csv">CSV only</option>
+                    <option value="csv">CSV attachment only</option>
                 </select>
             </label>
             <label>Recipients<textarea id="rbSchedRecipients" placeholder="email@example.com, another@example.com"></textarea></label>

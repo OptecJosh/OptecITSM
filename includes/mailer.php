@@ -23,13 +23,34 @@ function mailer_first_active_mailbox(PDO $conn): ?array {
 }
 
 /**
+ * Normalise an attachment list to [['name','type','content'], ...], dropping
+ * anything without a name or body. Content is raw bytes (each provider path does
+ * its own base64).
+ */
+function mailer_clean_attachments(array $attachments): array {
+    $out = [];
+    foreach ($attachments as $a) {
+        $name = trim((string)($a['name'] ?? ''));
+        $content = (string)($a['content'] ?? '');
+        if ($name === '' || $content === '') continue;
+        $out[] = [
+            'name'    => basename($name),
+            'type'    => trim((string)($a['type'] ?? '')) ?: 'application/octet-stream',
+            'content' => $content,
+        ];
+    }
+    return $out;
+}
+
+/**
  * Send an HTML email to one or more recipients from $mailbox (defaults to the
  * first active mailbox). Throws on unrecoverable errors (no mailbox, bad token,
  * send failure) so the caller can log per-report.
  *
- * @param string[] $recipients  validated email addresses
+ * @param string[] $recipients   validated email addresses
+ * @param array[]  $attachments  [['name'=>'x.csv','type'=>'text/csv','content'=>rawBytes], ...]
  */
-function mailer_send_html(PDO $conn, array $recipients, string $subject, string $htmlBody, ?array $mailbox = null): void {
+function mailer_send_html(PDO $conn, array $recipients, string $subject, string $htmlBody, ?array $mailbox = null, array $attachments = []): void {
     $recipients = array_values(array_filter($recipients, fn($e) => is_string($e) && $e !== ''));
     if (!$recipients) {
         throw new Exception('no recipients');
@@ -65,12 +86,14 @@ function mailer_send_html(PDO $conn, array $recipients, string $subject, string 
         }
     }
 
+    $attachments = mailer_clean_attachments($attachments);
+
     foreach ($recipients as $to) {
         if ($provider === 'imap') {
-            imapSmtpSend($mailbox, $to, '', $subject, $htmlBody);
+            imapSmtpSend($mailbox, $to, '', $subject, $htmlBody, $attachments);
         } elseif ($provider === 'google') {
             $from = $mailbox['target_mailbox'] ?? '';
-            gmailSendEmail($accessToken, $to, $subject, $htmlBody, $from);
+            gmailSendEmail($accessToken, $to, $subject, $htmlBody, $from, $attachments);
         } else {
             $message = [
                 'message' => [
@@ -80,6 +103,14 @@ function mailer_send_html(PDO $conn, array $recipients, string $subject, string 
                 ],
                 'saveToSentItems' => false,
             ];
+            foreach ($attachments as $a) {
+                $message['message']['attachments'][] = [
+                    '@odata.type'  => '#microsoft.graph.fileAttachment',
+                    'name'         => $a['name'],
+                    'contentType'  => $a['type'],
+                    'contentBytes' => base64_encode($a['content']),
+                ];
+            }
             templateSendViaGraph($accessToken, $message);
         }
     }

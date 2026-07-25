@@ -269,11 +269,28 @@ function data_migrate_suggest(array $sourceHeader, array $spec): array {
     return ['mapping' => $mapping, 'detail' => $detail, 'conflicts' => $conflicts, 'unmapped' => $unmapped];
 }
 
+/** The CSV's header row, original case and order, without reading the body. */
+function data_migrate_header(string $csv): array {
+    $line = strtok($csv, "\r\n");
+    if ($line === false) return [];
+    $cells = str_getcsv($line);
+    if (!$cells) return [];
+    $cells[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string)$cells[0]);
+    return array_map(fn($h) => trim((string)$h), $cells);
+}
+
 /**
- * Parse a CSV string into [header, rows]. Rows beyond the migration cap are
- * dropped and the count reported, so a truncated load is never silent.
+ * Parse a CSV string into [header, rows, truncated]. Rows beyond the migration
+ * cap are dropped and the count reported, so a truncated load is never silent.
+ *
+ * $keepIdx optionally restricts which columns are RETAINED. Exports from other
+ * platforms are wide — a real Zoho file carries 258 columns of which about 23 are
+ * ever read — and holding the other 235 costs around 400 MB on a 23,000-row file,
+ * enough to exhaust the memory limit before a single row is written. Cells
+ * outside the set are replaced by the empty string rather than removed, so every
+ * column index stays valid and callers need no special handling.
  */
-function data_migrate_parse(string $csv): array {
+function data_migrate_parse(string $csv, ?array $keepIdx = null): array {
     $fh = fopen('php://temp', 'r+');
     fwrite($fh, $csv);
     rewind($fh);
@@ -282,15 +299,44 @@ function data_migrate_parse(string $csv): array {
     $header[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string)$header[0]);
     $header = array_map(fn($h) => trim((string)$h), $header);
 
+    $keep = $keepIdx === null ? null : array_flip($keepIdx);
+    $width = count($header);
+
     $rows = [];
     $truncated = 0;
     while (($cells = fgetcsv($fh)) !== false) {
         if (count(array_filter($cells, fn($c) => trim((string)$c) !== '')) === 0) continue;
         if (count($rows) >= data_migrate_row_cap()) { $truncated++; continue; }
+        if ($keep !== null) {
+            $slim = array_fill(0, $width, '');
+            foreach ($keep as $i => $_) {
+                if (isset($cells[$i])) $slim[$i] = $cells[$i];
+            }
+            $cells = $slim;
+        }
         $rows[] = $cells;
     }
     fclose($fh);
     return [$header, $rows, $truncated];
+}
+
+/**
+ * Which column indices a preset actually needs — mapped fields, the derived
+ * aggregates and the natural key. Used to prune the parse on a wide export.
+ */
+function data_migrate_preset_indices(array $preset, array $header): array {
+    $index = [];
+    foreach ($header as $i => $h) $index[trim($h)] = $i;
+
+    $want = array_keys($preset['columns'] ?? []);
+    foreach ($preset['derive'] ?? [] as $src) $want[] = $src;
+    if (!empty($preset['key_column'])) $want[] = $preset['key_column'];
+
+    $idx = [];
+    foreach ($want as $name) {
+        if (isset($index[$name])) $idx[] = $index[$name];
+    }
+    return array_values(array_unique($idx));
 }
 
 /**

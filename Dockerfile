@@ -28,6 +28,10 @@ COPY . /var/www/html/
 COPY docker/config.php /var/www/html/config.php
 COPY docker/db_config.php /var/www/html/db_config.php
 
+# PHP limits. The stock defaults (8M POST, 128M memory) are far too small for the
+# bulk import / migration screens, which fail as an unexplained "Network error".
+COPY docker/php.ini /usr/local/etc/php/conf.d/zz-freeitsm.ini
+
 # Create directories for uploads, attachments, and encryption keys
 RUN mkdir -p /var/www/html/tickets/attachments \
     /var/www/html/change-management/attachments \

@@ -28,11 +28,13 @@ function migrate_sources(): array {
         'zoho_desk' => [
             'label'   => 'Zoho Desk',
             'dataset' => 'tickets',
-            'notes'   => 'Export tickets from Zoho Desk WITHOUT the Description column — its HTML '
-                       . 'contains newlines and quotes that break row alignment in most exports, and '
-                       . 'the body text is not needed for reporting. Never open the file in Excel '
-                       . 'before importing: it rewrites Zoho\'s 18-digit IDs as scientific notation '
-                       . '(1.25E+17) and they cannot be recovered.',
+            'notes'   => 'Never open a Zoho export in Excel before importing — it rewrites the '
+                       . '18-digit IDs as scientific notation (1.25E+17) and they cannot be '
+                       . 'recovered. Use a text editor, or Data > From Text/CSV with every column '
+                       . 'set to Text. Include Agent Name and Agent Tier if your export offers '
+                       . 'them: the raw Ticket Owner column is a numeric id with no name attached, '
+                       . 'so without them ownership and tier splits are lost. Day-first dates and '
+                       . 'millisecond durations are converted for you.',
 
             // Natural key. Zoho's own "ID" is an 18-digit number that Excel
             // destroys; Request Id is short, stable and survives.
@@ -172,9 +174,14 @@ function migrate_transform(string $kind, string $value): string {
  * reconciliation paths are identical whether the operator picked a preset or
  * mapped the columns by hand.
  *
- * @return array{mapping:array, value_map:array, rows:array, missing:array, derive_idx:array}
+ * $rows is taken BY REFERENCE and rewritten in place. Building a transformed
+ * copy doubled peak memory on a large migration — 318 MB became 600 MB on a
+ * 22,000-row file — for no benefit, since the untransformed rows are never
+ * wanted again.
+ *
+ * @return array{mapping:array, value_map:array, missing:array, derive_idx:array}
  */
-function migrate_apply_source(array $preset, array $header, array $rows): array {
+function migrate_apply_source(array $preset, array $header, array &$rows): array {
     $index = [];
     foreach ($header as $i => $h) $index[trim($h)] = $i;
 
@@ -194,25 +201,30 @@ function migrate_apply_source(array $preset, array $header, array $rows): array 
     }
 
     // Transforms are applied to the source cells before the generic rewrite, so
-    // everything downstream sees canonical values.
-    $out = [];
-    foreach ($rows as $cells) {
-        foreach ($preset['transforms'] ?? [] as $src => $kind) {
-            if (!isset($index[$src])) continue;
-            $i = $index[$src];
+    // everything downstream sees canonical values. Resolve the work out of the
+    // loop: this runs once per row across tens of thousands of rows.
+    $transforms = [];
+    foreach ($preset['transforms'] ?? [] as $src => $kind) {
+        if (isset($index[$src])) $transforms[$index[$src]] = $kind;
+    }
+    $keyI = (!empty($preset['key_column']) && isset($index[$preset['key_column']]))
+        ? $index[$preset['key_column']] : null;
+    $keyPrefix = $preset['key_prefix'] ?? '';
+
+    foreach ($rows as &$cells) {
+        foreach ($transforms as $i => $kind) {
             $cells[$i] = migrate_transform($kind, (string)($cells[$i] ?? ''));
         }
         // Prefix the natural key so a migrated ticket is identifiable forever,
         // and cannot collide with a number this system generates itself.
-        if (!empty($preset['key_column']) && isset($index[$preset['key_column']])) {
-            $i = $index[$preset['key_column']];
-            $k = trim((string)($cells[$i] ?? ''));
-            $cells[$i] = ($k !== '' && preg_match('/^[A-Za-z0-9._-]+$/', $k))
-                ? ($preset['key_prefix'] ?? '') . $k
+        if ($keyI !== null) {
+            $k = trim((string)($cells[$keyI] ?? ''));
+            $cells[$keyI] = ($k !== '' && preg_match('/^[A-Za-z0-9._-]+$/', $k))
+                ? $keyPrefix . $k
                 : '';   // unusable key → importer reports the row rather than inventing one
         }
-        $out[] = $cells;
     }
+    unset($cells);   // break the reference before it can alias the last row
 
     // Value maps are keyed by OUR field in the preset; the rewrite wants them
     // keyed by the SOURCE column.
@@ -221,6 +233,6 @@ function migrate_apply_source(array $preset, array $header, array $rows): array 
         if (isset($preset['values'][$target])) $valueMap[$src] = $preset['values'][$target];
     }
 
-    return ['mapping' => $mapping, 'value_map' => $valueMap, 'rows' => $out,
+    return ['mapping' => $mapping, 'value_map' => $valueMap,
             'missing' => $missing, 'derive_idx' => $deriveIdx];
 }

@@ -25,11 +25,56 @@ header('Content-Type: application/json');
 // A migration file can be large and the commit does a lot of work per row.
 @set_time_limit(900);
 
+/**
+ * Turn a fatal into JSON.
+ *
+ * Exhausting memory or time on a big file makes PHP emit an HTML error page,
+ * which reaches the browser as "Unexpected token '<'" — an error that says
+ * nothing about the actual problem and sends people looking for a bug in the
+ * file. Report the real cause and the setting that governs it.
+ */
+register_shutdown_function(function () {
+    $e = error_get_last();
+    if (!$e || !in_array($e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) return;
+
+    $msg = $e['message'];
+    if (stripos($msg, 'allowed memory size') !== false) {
+        $msg = 'The server ran out of memory reading this file (memory_limit is '
+             . ini_get('memory_limit') . '). Split the export by date, or raise memory_limit '
+             . 'in docker/php.ini and rebuild.';
+    } elseif (stripos($msg, 'maximum execution time') !== false) {
+        $msg = 'The server timed out processing this file (max_execution_time is '
+             . ini_get('max_execution_time') . 's). Split the export by date, or raise it '
+             . 'in docker/php.ini and rebuild.';
+    }
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: application/json');
+    }
+    echo json_encode(['success' => false, 'error' => $msg]);
+});
+
+// Read the body once — php://input is not reliably re-readable across SAPIs.
+$rawInput = file_get_contents('php://input');
+
+// A body larger than post_max_size is discarded by PHP before this script runs,
+// leaving an empty input and a baffling "No CSV supplied". Say what happened.
+$declared = (int)($_SERVER['CONTENT_LENGTH'] ?? 0);
+if ($declared > 0 && $rawInput === '') {
+    echo json_encode(['success' => false, 'error' => 'The upload (' . round($declared / 1048576, 1)
+        . ' MB) is larger than this server accepts (post_max_size is ' . ini_get('post_max_size')
+        . '). Raise it in docker/php.ini and rebuild, or split the export by date.']);
+    exit;
+}
+
 try {
     $conn = connectToDatabase();
     $analystId = (int)$_SESSION['analyst_id'];
 
-    $in = json_decode(file_get_contents('php://input'), true) ?: [];
+    $in = json_decode($rawInput, true) ?: [];
+    // Free the raw body before parsing: on a 30 MB migration it is a 30 MB string
+    // that is never needed again, and the parse below is the memory high-water mark.
+    $rawInput = '';
     $mode = $in['mode'] ?? 'analyse';
 
     // ---- what can this admin migrate into? ------------------------------
@@ -71,10 +116,6 @@ try {
     $csv = (string)($in['csv'] ?? '');
     if (trim($csv) === '') throw new Exception('No CSV supplied');
 
-    $parsed = data_migrate_parse($csv);
-    [$header, $rows, $truncated] = $parsed;
-    if (!$rows) throw new Exception('The CSV has a header but no data rows');
-
     // A named source preset replaces the guessed mapping with a known-good one
     // and, crucially, normalises the cells first — day-first dates and
     // millisecond durations would otherwise be imported as-is and be wrong in a
@@ -82,6 +123,8 @@ try {
     $sourceKey = trim((string)($in['source'] ?? ''));
     $preset = null;
     $applied = null;
+    $keepIdx = null;
+
     if ($sourceKey !== '') {
         $allSources = migrate_sources();
         if (!isset($allSources[$sourceKey])) throw new Exception('Unknown source preset: ' . $sourceKey);
@@ -89,8 +132,19 @@ try {
         if ($preset['dataset'] !== $datasetKey) {
             throw new Exception("The {$preset['label']} preset imports into '{$preset['dataset']}', not '{$datasetKey}'");
         }
+        // Read the header alone first so the parse can discard the columns this
+        // preset will never touch — on a wide export that is the difference
+        // between ~500 MB and ~60 MB of resident rows.
+        $keepIdx = data_migrate_preset_indices($preset, data_migrate_header($csv));
+    }
+
+    $parsed = data_migrate_parse($csv, $keepIdx);
+    [$header, $rows, $truncated] = $parsed;
+    if (!$rows) throw new Exception('The CSV has a header but no data rows');
+
+    if ($preset !== null) {
+        // Rewrites $rows in place — see migrate_apply_source().
         $applied = migrate_apply_source($preset, $header, $rows);
-        $rows = $applied['rows'];
         $parsed = [$header, $rows, $truncated];
     }
 

@@ -49,6 +49,9 @@ return [
         'backup_title'    => 'Backup & data',
         'backup_desc'     => 'Download a full database backup, and export or import assets and portal users as CSV.',
         'backup_keywords' => 'backup restore dump mysqldump export import csv data migration assets users bulk load spreadsheet',
+        'import_title'    => 'Mass import',
+        'import_desc'     => 'Load CSV into any data module - tickets, assets, CMDB, changes, contracts, customers and more - with a preview before anything is written.',
+        'import_keywords' => 'mass import bulk import csv load data migration tickets assets cmdb changes contracts customers overtime kpi certifications training preview commit template spreadsheet onboarding',
 
         'topology_title'    => 'Topology',
         'topology_desc'     => 'See how companies, mailboxes, domains, sign-in and analysts fit together',

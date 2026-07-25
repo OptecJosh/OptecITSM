@@ -61,7 +61,9 @@ $translationNamespaces = ['common', 'reporting'];
             <h2>Data export</h2>
             <p class="ex-lead">Export the data behind any module you have access to, as CSV (opens in Excel) or JSON.
                Exports are read-only and respect your permissions: you only see datasets for your modules, and
-               company-scoped data is limited to your active company.</p>
+               company-scoped data is limited to your active company.
+               Going the other way? <a href="../../system/import/">System &rsaquo; Mass import</a> loads CSV into any
+               module using these same column names (administrators only).</p>
 
             <div class="ex-card">
                 <div class="ex-row">

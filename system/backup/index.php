@@ -87,6 +87,8 @@ $translationNamespaces = ['common', 'system'];
 
             <div class="bk-card">
                 <h3>Import</h3>
+                <p>For anything beyond assets and portal users, use <a href="../import/">Mass import</a> &mdash; it covers
+                   every data module, resolves lookups by name, and previews before it writes.</p>
                 <p>Paste CSV (first row = column names). Recognised columns are matched by
                    <strong>hostname</strong> (assets) or <strong>email</strong> (users) to create or update records;
                    other columns are ignored. Preview first &mdash; nothing is written until you commit.</p>

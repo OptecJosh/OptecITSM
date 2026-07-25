@@ -26,6 +26,7 @@ if (!$ticket_id) {
 
 try {
     $conn = connectToDatabase();
+    require_once '../../includes/ticket_view_time.php';
 
     // Multi-tenancy: don't reveal a ticket in a company this analyst can't access.
     if (!analystCanAccessTicket($conn, (int)$_SESSION['analyst_id'], $ticket_id)) {
@@ -33,7 +34,12 @@ try {
         exit;
     }
 
+    // 12b: `source` only exists once Database Verify has run, and code always
+    // ships first — so ask for it only when it is there.
+    $sourceCol = viewTimeHasSourceColumn($conn) ? 'te.source,' : "'manual' AS source,";
+
     $sql = "SELECT
+                $sourceCol
                 te.id,
                 te.ticket_id,
                 te.analyst_id,
@@ -63,10 +69,14 @@ try {
         }
     }
 
+    // 12b: unclaimed view time for THIS analyst, so the pane can offer to log it
+    // without a second round trip.
     echo json_encode([
-        'success' => true,
-        'entries' => $entries,
-        'total_minutes' => $totalMinutes
+        'success'       => true,
+        'entries'       => $entries,
+        'total_minutes' => $totalMinutes,
+        'pending_auto'  => viewTimePending($conn, (int)$ticket_id, (int)$_SESSION['analyst_id']),
+        'auto_enabled'  => viewTimeEnabled($conn),
     ]);
 
 } catch (Exception $e) {

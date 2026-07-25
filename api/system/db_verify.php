@@ -693,8 +693,30 @@ $schema = [
         'time_spent_minutes'  => 'INT NOT NULL',
         'entry_datetime'      => 'DATETIME NOT NULL',
         'is_active'           => 'TINYINT(1) NOT NULL DEFAULT 1',
+        // 12b: where the entry came from. 'manual' is what an analyst typed;
+        // 'auto' is time they accepted from the view timer. The KPI engine counts
+        // manual only, so turning the timer on does not move anybody's cost or
+        // utilisation figures — see includes/kpi_engine.php.
+        'source'              => "ENUM('manual','auto') NOT NULL DEFAULT 'manual'",
         'created_datetime'    => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
         'updated_datetime'    => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+    ],
+
+    // 12b: how long an analyst actually had a ticket open and focused. One open
+    // session per analyst per ticket, extended by a heartbeat from the reading
+    // pane; idle time beyond the threshold is never accumulated. Sessions are
+    // PROPOSALS - nothing becomes billable time until the analyst accepts it,
+    // which is why converted_entry_id and dismissed_at both exist.
+    'ticket_view_sessions' => [
+        'id'                  => 'INT NOT NULL AUTO_INCREMENT',
+        'ticket_id'           => 'INT NOT NULL',
+        'analyst_id'          => 'INT NOT NULL',
+        'started_at'          => 'DATETIME NOT NULL',
+        'last_seen_at'        => 'DATETIME NOT NULL',
+        'focused_seconds'     => 'INT NOT NULL DEFAULT 0',
+        'converted_entry_id'  => 'INT NULL',
+        'dismissed_at'        => 'DATETIME NULL',
+        'created_datetime'    => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
     ],
 
     // Multi-tenancy foundation — a single install can host multiple client
@@ -3443,6 +3465,38 @@ try {
         if (!$fkExists('lms_answers', 'fk_lms_answers_question')) {
             try { $conn->exec("ALTER TABLE lms_answers ADD CONSTRAINT fk_lms_answers_question FOREIGN KEY (question_id) REFERENCES lms_questions (id) ON DELETE CASCADE"); } catch (Exception $e) {}
         }
+    }
+
+    // 12b: view sessions hang off a ticket and an analyst and die with either.
+    if ($tableExists('ticket_view_sessions')) {
+        foreach ([['ix_tvs_open', '(analyst_id, ticket_id, dismissed_at, converted_entry_id)'],
+                  ['ix_tvs_ticket', '(ticket_id)']] as [$idx, $cols]) {
+            if (!$idxExists('ticket_view_sessions', $idx)) {
+                try { $conn->exec("ALTER TABLE ticket_view_sessions ADD INDEX $idx $cols"); } catch (Exception $e) {}
+            }
+        }
+        if ($tableExists('tickets') && !$fkExists('ticket_view_sessions', 'fk_tvs_ticket')) {
+            try { $conn->exec("ALTER TABLE ticket_view_sessions ADD CONSTRAINT fk_tvs_ticket FOREIGN KEY (ticket_id) REFERENCES tickets (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if ($tableExists('analysts') && !$fkExists('ticket_view_sessions', 'fk_tvs_analyst')) {
+            try { $conn->exec("ALTER TABLE ticket_view_sessions ADD CONSTRAINT fk_tvs_analyst FOREIGN KEY (analyst_id) REFERENCES analysts (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if ($tableExists('ticket_time_entries') && !$fkExists('ticket_view_sessions', 'fk_tvs_entry')) {
+            try { $conn->exec("ALTER TABLE ticket_view_sessions ADD CONSTRAINT fk_tvs_entry FOREIGN KEY (converted_entry_id) REFERENCES ticket_time_entries (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+    }
+
+    // 12b settings. Defaults are deliberately conservative: the timer observes and
+    // proposes, so it is on, but nothing is logged under 2 minutes and 5 minutes
+    // without interaction ends the session.
+    foreach ([
+        'time_auto_track_enabled' => '1',
+        'time_auto_idle_seconds'  => '300',
+        'time_auto_min_minutes'   => '2',
+    ] as $key => $default) {
+        try {
+            $conn->prepare("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES (?, ?)")->execute([$key, $default]);
+        } catch (Exception $e) {}
     }
 
     // Certifications, training records and the development journal. Everything

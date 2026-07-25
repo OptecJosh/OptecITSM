@@ -1980,6 +1980,7 @@ function displayEmail(email, recordings) {
     loadTicketTags(email.ticket_id);
     loadTicketWatchers(email.ticket_id);
     loadTimeEntries(email.ticket_id);
+    startViewTimer(email.ticket_id);          // 12b: begin counting focused time
     loadSlaState(email.ticket_id);
     loadTicketCustomFieldsPane(email.ticket_id);
 
@@ -5444,18 +5445,126 @@ function selectEmailFullScreen(emailId) {
  * API lives at api/tickets/{get,save,delete}_time_entry.php.
  */
 let currentTimeEntries = [];
+let currentPendingAuto = null;   // 12b: unclaimed view time for this analyst
 
 async function loadTimeEntries(ticketId) {
     try {
         const response = await fetch(`${API_BASE}get_time_entries.php?ticket_id=${ticketId}`);
         const data = await response.json();
         currentTimeEntries = data.success ? data.entries : [];
+        currentPendingAuto = data.success ? (data.pending_auto || null) : null;
         renderTimeEntries(data.success ? data.total_minutes : 0);
     } catch (e) {
         console.error('Time entries load failed:', e);
         currentTimeEntries = [];
+        currentPendingAuto = null;
         renderTimeEntries(0);
     }
+}
+
+/* --- View timer (12b) ------------------------------------------------------
+ * Beats every 30s while this tab is visible AND the analyst has interacted in
+ * the last couple of minutes, so reading a ticket counts and leaving it open in
+ * a background tab does not. The server clamps each beat, ends a session after
+ * its idle threshold, and never turns any of it into billable time on its own —
+ * the analyst accepts it from the Time section.
+ */
+const VIEW_BEAT_MS = 30000;
+const VIEW_ACTIVE_WINDOW_MS = 120000;
+let viewBeatTimer = null;
+let viewBeatTicketId = null;
+let viewLastInteraction = Date.now();
+let viewLastBeatAt = 0;
+
+['mousemove', 'keydown', 'click', 'scroll', 'focus'].forEach(evt =>
+    document.addEventListener(evt, () => { viewLastInteraction = Date.now(); }, { passive: true }));
+
+function startViewTimer(ticketId) {
+    stopViewTimer();
+    if (!ticketId) return;
+    viewBeatTicketId = ticketId;
+    viewLastBeatAt = Date.now();
+    viewLastInteraction = Date.now();
+    viewBeatTimer = setInterval(sendViewBeat, VIEW_BEAT_MS);
+}
+
+function stopViewTimer() {
+    if (viewBeatTimer) clearInterval(viewBeatTimer);
+    viewBeatTimer = null;
+    viewBeatTicketId = null;
+}
+
+async function sendViewBeat(final) {
+    if (!viewBeatTicketId) return;
+    if (document.visibilityState !== 'visible') { viewLastBeatAt = Date.now(); return; }
+    if (Date.now() - viewLastInteraction > VIEW_ACTIVE_WINDOW_MS) { viewLastBeatAt = Date.now(); return; }
+
+    const seconds = Math.round((Date.now() - viewLastBeatAt) / 1000);
+    viewLastBeatAt = Date.now();
+    if (seconds <= 0) return;
+
+    const body = JSON.stringify({ ticket_id: viewBeatTicketId, seconds: seconds });
+    try {
+        // keepalive so the last beat still lands when the tab is closing.
+        const r = await fetch(API_BASE + 'ticket_heartbeat.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body, keepalive: !!final,
+        });
+        const d = await r.json();
+        if (d.success && d.pending) {
+            currentPendingAuto = d.pending;
+            updateTimeSectionSummary();
+        }
+    } catch (e) { /* a missed beat is only ever a missed beat */ }
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        viewLastBeatAt = Date.now();          // don't bill the time the tab was hidden
+        viewLastInteraction = Date.now();
+    } else {
+        sendViewBeat(true);
+    }
+});
+window.addEventListener('pagehide', () => sendViewBeat(true));
+
+/** Live-update the Time header while the timer runs, without a full re-render. */
+function updateTimeSectionSummary() {
+    const el = document.querySelector('.ticket-section[data-section="time"] .ticket-section-summary');
+    if (!el || !currentPendingAuto || !currentPendingAuto.proposable) return;
+    const tracked = ' &middot; <span class="ticket-section-warn">' +
+        escapeHtml(formatMinutes(currentPendingAuto.minutes)) + ' tracked, not logged</span>';
+    if (el.dataset.base === undefined) el.dataset.base = el.innerHTML;
+    el.innerHTML = el.dataset.base + tracked;
+}
+
+async function logTrackedTime() {
+    if (!currentEmail || !currentPendingAuto) return;
+    const input = document.getElementById('trackedMinutes');
+    const minutes = input ? parseInt(input.value, 10) : currentPendingAuto.minutes;
+    if (!minutes || minutes < 1) { showToast('Enter how many minutes to log', 'error'); return; }
+    try {
+        const r = await fetch(API_BASE + 'resolve_view_time.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticket_id: currentEmail.ticket_id, action: 'log', minutes: minutes }),
+        });
+        const d = await r.json();
+        if (!d.success) { showToast('Could not log tracked time: ' + (d.error || ''), 'error'); return; }
+        showToast('Logged ' + formatMinutes(minutes), 'success');
+        loadTimeEntries(currentEmail.ticket_id);
+    } catch (e) { showToast('Failed to log tracked time', 'error'); }
+}
+
+async function dismissTrackedTime() {
+    if (!currentEmail) return;
+    try {
+        const r = await fetch(API_BASE + 'resolve_view_time.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticket_id: currentEmail.ticket_id, action: 'dismiss' }),
+        });
+        const d = await r.json();
+        if (!d.success) { showToast('Could not discard tracked time', 'error'); return; }
+        loadTimeEntries(currentEmail.ticket_id);
+    } catch (e) { showToast('Failed to discard tracked time', 'error'); }
 }
 
 // Convert minutes int to a short display string: 45 → "45m", 90 → "1h 30m".
@@ -5493,6 +5602,7 @@ function renderTimeEntries(totalMinutes) {
                 <div class="time-entry-item">
                     <div class="time-entry-row">
                         <span class="time-entry-spent">${escapeHtml(formatMinutes(e.time_spent_minutes))}</span>
+                        ${e.source === 'auto' ? '<span class="time-entry-auto" title="Accepted from the view timer">tracked</span>' : ''}
                         <span class="time-entry-analyst">${escapeHtml(e.analyst_name)}</span>
                         <span class="time-entry-date">${formatDateTime(e.entry_datetime)}</span>
                         ${deleteBtn}
@@ -5507,7 +5617,23 @@ function renderTimeEntries(totalMinutes) {
     if (currentTimeEntries.length) {
         summaryBits.push(escapeHtml(currentTimeEntries.length + (currentTimeEntries.length === 1 ? ' entry' : ' entries')));
     }
+    const pending = currentPendingAuto && currentPendingAuto.proposable ? currentPendingAuto : null;
+    if (pending) {
+        summaryBits.push('<span class="ticket-section-warn">' + escapeHtml(formatMinutes(pending.minutes)) + ' tracked, not logged</span>');
+    }
     const timeSummary = summaryBits.join(' &middot; ');
+
+    // 12b: the tracked-time proposal. Deliberately an offer with an editable
+    // number, not a fait accompli — the analyst decides what was really spent.
+    const pendingHtml = pending ? `
+        <div class="tracked-time-prompt">
+            <span class="tracked-time-text">You have had this ticket open for
+                <strong>${escapeHtml(formatMinutes(pending.minutes))}</strong>.</span>
+            <input type="number" id="trackedMinutes" class="time-entry-input-minutes" min="1" step="1"
+                   value="${pending.minutes}" title="Adjust before logging">
+            <button type="button" class="time-entry-add-btn" onclick="logTrackedTime()">Log it</button>
+            <button type="button" class="btn-link" onclick="dismissTrackedTime()">Discard</button>
+        </div>` : '';
 
     container.innerHTML = ticketSection(
         'time',
@@ -5515,6 +5641,7 @@ function renderTimeEntries(totalMinutes) {
         timeSummary,
         '',
         `<div class="time-entries-section">
+            ${pendingHtml}
             <form class="time-entry-form" onsubmit="event.preventDefault(); saveTimeEntry();">
                 <input type="number" id="timeEntryMinutes" class="time-entry-input-minutes"
                        min="1" step="1" placeholder="${escapeHtml(t('tickets.time_entries.minutes_placeholder'))}" required>

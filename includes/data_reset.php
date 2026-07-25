@@ -55,6 +55,7 @@ function data_reset_groups(): array {
                 'ticket_watchers', 'ticket_links', 'ticket_approvals', 'ticket_tag_map',
                 'ticket_cmdb_objects', 'ticket_sla_snapshot', 'ticket_escalations',
                 'ticket_hold_events', 'ticket_qa_reviews', 'ticket_recordings',
+                'ticket_view_sessions',
                 'email_attachments', 'emails',
                 'webchat_messages', 'webchat_conversations',
                 ['table' => 'custom_field_values', 'where' => "entity_type = 'ticket'"],

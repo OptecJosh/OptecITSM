@@ -184,7 +184,8 @@ or it is silently dropped — no error, the value just never arrives. If a field
 | Priority | `ticket_priorities` | selects the SLA target row, not the target itself |
 | Audit trail | `ticket_audit` | the SLA engine *reads* this to reconstruct time — see §6 |
 | Notes | `ticket_notes` | internal updates |
-| Time entries | `ticket_time_entries` | feeds effort, cost-per-ticket and utilisation |
+| Time entries | `ticket_time_entries` | feeds effort, cost-per-ticket and utilisation. `source` is `manual` or `auto` |
+| View sessions | `ticket_view_sessions` | how long an analyst had the ticket open and focused — a *proposal*, not billable time |
 | CSAT | `ticket_csat_responses` | tokenised survey URL, HMAC-derived, one row per request |
 | Watchers | `ticket_watchers` | notification fan-out |
 | Ticket links | `ticket_links` | `related` (symmetric), `duplicate`, `parent`; informational only, same-company |
@@ -591,17 +592,23 @@ part; load `database/demo-csv/` first so there is data to test against.
    counter.
 3. **A ticket's tier is its owner's tier.** An analyst with no tier keeps their
    tickets out of every tier scorecard. That is expected, not a bug.
-4. **KPI instrumentation is best-effort by contract.** It must never break a ticket
+4. **Tracked time is only ever a proposal.** The view timer accumulates focused
+   seconds into `ticket_view_sessions`; nothing becomes a time entry until the
+   analyst accepts it, and what lands is stamped `source = 'auto'`. **The KPI
+   engine counts `manual` only**, so switching the timer on never moves anyone's
+   cost or utilisation figures. If you ever want auto time in those numbers, that
+   is a deliberate change to `kpi_manual_time_filter()`.
+5. **KPI instrumentation is best-effort by contract.** It must never break a ticket
    update; a `[kpi]` line in the error log means the capture failed and the update
    still committed.
-5. **The Default company owns `NULL`-tenant rows.** Any new scoped query must keep
+6. **The Default company owns `NULL`-tenant rows.** Any new scoped query must keep
    that, or unrouted tickets disappear.
-6. **CMDB, contracts and customers are shared across companies on purpose.**
-7. **Always pass a `Cap::` constant.** A mistyped capability string is a privilege
+7. **CMDB, contracts and customers are shared across companies on purpose.**
+8. **Always pass a `Cap::` constant.** A mistyped capability string is a privilege
    escalation that only non-admins ever see.
-8. **Change risk is never auto-written.** The CMDB suggests; the analyst decides.
-9. **Freeze windows warn, they do not block** — and emergency changes are exempt.
-10. **The journal's visibility rule lives in one function.** Keep it that way.
-11. **Workflow actions run synchronously in the host request.** Slow action, slow
+9. **Change risk is never auto-written.** The CMDB suggests; the analyst decides.
+10. **Freeze windows warn, they do not block** — and emergency changes are exempt.
+11. **The journal's visibility rule lives in one function.** Keep it that way.
+12. **Workflow actions run synchronously in the host request.** Slow action, slow
     save.
-12. **The JSON demo importer truncates tables.** Test installs only.
+13. **The JSON demo importer truncates tables.** Test installs only.

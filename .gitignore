@@ -127,3 +127,6 @@ yarn-error.log
 *.backup
 *.old
 *.orig
+
+# Office lock files
+~$*

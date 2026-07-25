@@ -36,14 +36,23 @@ try {
     if (!isset($datasets[$key])) export_fail(400, 'Unknown dataset');
     $spec = $datasets[$key];
 
-    if (!analystCanAccessModule($conn, $analystId, 'reporting')
-        || !analystCanAccessModule($conn, $analystId, $spec['module'])) {
+    $isAdmin = analystIsAdmin($conn, $analystId);
+
+    // Reporting is the surface gate; the per-dataset rule then lives in one
+    // place (data_export_can) shared with the dataset list and the bundle. The
+    // two checks either side of it exist only to return a precise message.
+    if (!analystCanAccessModule($conn, $analystId, 'reporting')) {
         export_fail(403, 'You do not have access to this data');
     }
-    if (!empty($spec['admin_only']) && !analystIsAdmin($conn, $analystId)) {
+    if (!empty($spec['admin_only']) && !$isAdmin) {
         export_fail(403, 'This dataset is restricted to administrators');
     }
-    if (!data_export_available($conn, $spec)) export_fail(404, 'This dataset is not available on this install');
+    if (!data_export_available($conn, $spec)) {
+        export_fail(404, 'This dataset is not available on this install');
+    }
+    if (!data_export_can($conn, $spec, $analystId, $isAdmin)) {
+        export_fail(403, 'You do not have access to this data');
+    }
 
     $from = data_export_valid_date($_GET['from'] ?? null);
     $to   = data_export_valid_date($_GET['to'] ?? null);

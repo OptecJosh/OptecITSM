@@ -10,6 +10,7 @@
 
 const EX_API = '../../api/export/';
 let exDatasets = [];
+let exBundles = [];
 let exMaxRows = 0;
 
 function exEsc(s) {
@@ -33,7 +34,9 @@ async function exLoad() {
         return;
     }
     exDatasets = data.datasets || [];
+    exBundles = data.bundles || [];
     exMaxRows = data.max_rows || 0;
+    exRenderBundles();
 
     if (!exDatasets.length) {
         desc.textContent = 'No datasets are available for your modules.';
@@ -100,6 +103,42 @@ function exDownload() {
     if (d.has_date && from) params.set('from', from);
     if (d.has_date && to) params.set('to', to);
     window.location = EX_API + 'export_dataset.php?' + params.toString();
+}
+
+/* ---- bundle export ---------------------------------------------------- */
+
+/* Hide the whole card when no bundle has any dataset this analyst can reach —
+   an empty select with a live button is worse than no card at all. */
+function exRenderBundles() {
+    const card = document.getElementById('exBundleCard');
+    if (!card) return;
+    if (!exBundles.length) { card.style.display = 'none'; return; }
+    card.style.display = '';
+    document.getElementById('exBundle').innerHTML =
+        exBundles.map(b => `<option value="${exEsc(b.key)}">${exEsc(b.label)}</option>`).join('');
+    exRenderBundle();
+}
+
+function exRenderBundle() {
+    const b = exBundles.find(x => x.key === document.getElementById('exBundle').value);
+    const desc = document.getElementById('exBundleDesc');
+    if (!b) { desc.textContent = ''; return; }
+    desc.innerHTML = '<span class="ex-tag">' + b.count + ' dataset' + (b.count === 1 ? '' : 's') + '</span>'
+        + exEsc(b.description || '')
+        + '<br><span style="font-size:12px">Includes: ' + exEsc(b.datasets.join(', ')) + '</span>'
+        + '<br><span style="font-size:12px">Dates filter each dataset on its own date column; datasets without one '
+        + 'are exported in full.</span>';
+}
+
+function exDownloadBundle() {
+    const b = exBundles.find(x => x.key === document.getElementById('exBundle').value);
+    if (!b) return;
+    const params = new URLSearchParams({ bundle: b.key });
+    const from = document.getElementById('exBFrom').value;
+    const to = document.getElementById('exBTo').value;
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    window.location = EX_API + 'export_bundle.php?' + params.toString();
 }
 
 document.addEventListener('DOMContentLoaded', exLoad);

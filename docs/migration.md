@@ -26,6 +26,64 @@ with the wrong data in it.
 Once the file is translated it goes through the *same* writer as Mass import, so
 validation, tenancy and the audit trail are identical.
 
+## Zoho Desk
+
+Pick **Zoho Desk** in *Coming from* and the column mapping, value translations
+and format handling are all applied for you. Two things it does that a manual
+mapping cannot:
+
+- **Day-first dates.** Zoho exports `13/01/2025 16:48`. Left alone, PHP reads
+  `01/02/2025` as 1 February or 2 January depending on the wind. The preset
+  converts to ISO before the importer sees it.
+- **Millisecond durations.** `Resolution Time in Business Hours` of `108960000`
+  is 30.3 hours, not 108 million minutes.
+
+### Exporting from Zoho
+
+1. **Leave out the `Description` column.** Its HTML contains newlines and quotes
+   that break row alignment; excluding it took a real 23,117-row export from
+   96.9% usable to effectively 100%. Ticket bodies aren't needed for reporting —
+   export them separately against `Request Id` if you want them.
+2. **Never open the file in Excel.** It rewrites Zoho's 18-digit IDs as
+   `1.25E+17` and they cannot be recovered. Use a text editor, or Excel's
+   *Data → From Text/CSV* with every column set to Text.
+3. Include `Agent Name` and `Agent Tier` if your export offers them — the raw
+   `Ticket Owner` column is a numeric ID with no name attached, so without them
+   ownership and tier splits are lost.
+
+`Request Id` is used as the natural key, prefixed `ZD-`, so migrated tickets stay
+identifiable and can never collide with numbers this system generates.
+
+### What comes across
+
+Zoho measures more than most exports, so several metrics I'd otherwise have
+written off do survive:
+
+| Zoho column | Becomes | Why it's legitimate |
+|---|---|---|
+| `SLA Violation Type` | `ticket_sla_snapshot` | Zoho's own verdict, **not recomputed** — historic attainment stays the number you published |
+| `Number of Reopen` | `ticket_audit` Status rows | Real measured count, reshaped so our reopen metric counts it |
+| `Number of Reassign` | `ticket_audit` Owner rows | As above, for ticket bounce |
+| `Is Escalated` | `ticket_escalations` | Real flag; tier from `Agent Tier` |
+| `Total Time Spent` | `ticket_time_entries` | Real effort figure |
+
+This is reshaping real measurements into our schema, not inventing history. A
+blank column still produces no row, so "never recorded" stays distinguishable
+from "zero".
+
+Two columns are usually **empty** in practice and worth checking in your own
+export before relying on them: `Happiness Rating` (CSAT) and
+`Ticket On Hold Time`.
+
+### Protecting published figures
+
+After migrating, set **`kpi_cutover_month`** in `system_settings` to the first
+month this system is authoritative for. `cron/kpi_snapshot.php` then refuses to
+compute any earlier period, so a routine `--backfill` can never restate history
+your customers have already seen in a monthly review. Without it, one cron run
+silently overwrites migrated KPI values with figures computed against *our*
+calendars and targets — which will not match.
+
 ## Order of loading
 
 Names are resolved, not invented, so a thing must exist before the thing that

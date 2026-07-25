@@ -108,6 +108,10 @@ $translationNamespaces = ['common', 'system'];
                 <p class="mg-hint">Pick the target, then the CSV your old system exported.</p>
                 <div class="mg-row">
                     <div class="mg-field">
+                        <label for="mgSource">Coming from</label>
+                        <select id="mgSource" onchange="mgReset()"></select>
+                    </div>
+                    <div class="mg-field">
                         <label for="mgDataset">Migrate into</label>
                         <select id="mgDataset" onchange="mgReset()"></select>
                     </div>
@@ -164,6 +168,6 @@ $translationNamespaces = ['common', 'system'];
         </div>
     </div>
 
-    <script src="migrate.js?v=1"></script>
+    <script src="migrate.js?v=2"></script>
 </body>
 </html>

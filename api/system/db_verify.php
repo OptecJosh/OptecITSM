@@ -4580,6 +4580,12 @@ try {
             'sla_cron_min_interval_seconds'   => '30',
             // How many days to keep rows in sla_cron_runs before pruning
             'sla_cron_log_retention_days'     => '30',
+            // First month (YYYY-MM) this system is authoritative for. NULL = none,
+            // so the KPI cron computes any period asked of it. Set it after
+            // migrating history from another platform: cron/kpi_snapshot.php then
+            // refuses to recompute earlier months, protecting the figures already
+            // published to customers from being quietly restated.
+            'kpi_cutover_month'               => null,
             // Outbound-webhook delivery worker (cron/webhook_deliveries.php):
             // shared secret for HTTP invocation + min seconds between runs +
             // how long to keep delivered/dead rows before pruning.

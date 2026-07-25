@@ -16,6 +16,11 @@
  * flags. --backfill is what you want after migrating history or generating the
  * reporting demo, otherwise the scorecard has a single month in it and no trend.
  *
+ * Cutover: if system_settings.kpi_cutover_month is set (YYYY-MM), periods before
+ * it are never computed. That protects KPI values migrated from a previous
+ * platform — the figures already published to customers — from being silently
+ * recomputed by this cron. See docs/migration.md.
+ *
  * Reuses the SLA breach cron's security + logging harness (shared token, per-IP
  * lockout, min-interval, sla_cron_runs logging) with a "[kpi-snapshot]" marker so
  * the sibling crons never rate-limit each other.
@@ -112,6 +117,39 @@ try {
         }
     } else {
         $periods[] = kpi_valid_period($_GET['period'] ?? '') ?? date('Y-m');
+    }
+
+    // ---- cutover guard ---------------------------------------------------
+    // Months migrated from a previous platform hold ITS numbers — the ones
+    // already shown to customers in monthly reviews. Recomputing them here with
+    // our engine, our calendars and our targets would silently change published
+    // history. kpi_measurements has no 'source' or 'locked' column to protect
+    // them, so this setting is the only thing standing between a routine
+    // --backfill and a rewritten past. Set kpi_cutover_month to the first month
+    // this system is authoritative for; anything earlier is left alone.
+    $cutover = null;
+    try {
+        $st = $conn->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'kpi_cutover_month'");
+        $st->execute();
+        $raw = (string)$st->fetchColumn();
+        $cutover = kpi_valid_period($raw);
+    } catch (Exception $e) { /* setting absent = no cutover configured */ }
+
+    $skippedPeriods = [];
+    if ($cutover !== null) {
+        $before = $periods;
+        $periods = array_values(array_filter($periods, fn($p) => $p >= $cutover));
+        $skippedPeriods = array_values(array_diff($before, $periods));
+        if ($skippedPeriods) {
+            echo "  Cutover {$cutover}: leaving " . count($skippedPeriods)
+               . " earlier period(s) untouched (migrated history)\n";
+        }
+        if (!$periods) {
+            kpicron_log_finish($conn, $runId, 'ok', ['computed' => 0, 'skipped' => 0, 'errors' => 0],
+                "all requested periods precede cutover {$cutover}");
+            echo "Nothing to do: every requested period is before the cutover month {$cutover}.\n";
+            exit;
+        }
     }
 
     $defs = $conn->query("SELECT id, scorecard, name, direction, green_threshold, amber_threshold FROM kpi_definitions WHERE is_active = 1")->fetchAll(PDO::FETCH_ASSOC);

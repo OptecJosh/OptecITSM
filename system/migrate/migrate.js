@@ -15,6 +15,7 @@
 const MG_API = '../../api/system/migrate.php';
 
 let mgTargets = [];
+let mgSources = [];
 let mgCsv = '';
 let mgAnalysis = null;
 let mgMapping = {};
@@ -55,9 +56,13 @@ async function mgLoadTargets() {
     if (!data.success) { mgError('mgErr1', data.error); return; }
 
     mgTargets = data.targets || [];
+    mgSources = data.sources || [];
     mgBackfillReport = data.backfill || null;
     document.getElementById('mgDataset').innerHTML =
         mgTargets.map(t => `<option value="${mgEsc(t.key)}">${mgEsc(t.label)}</option>`).join('');
+    document.getElementById('mgSource').innerHTML =
+        '<option value="">Another system (map columns myself)</option>'
+        + mgSources.map(s => `<option value="${mgEsc(s.key)}">${mgEsc(s.label)}</option>`).join('');
     mgRenderDatasetHint();
 }
 
@@ -66,13 +71,36 @@ function mgCurrentTarget() {
     return mgTargets.find(t => t.key === k) || null;
 }
 
+function mgCurrentSource() {
+    const k = document.getElementById('mgSource').value;
+    return mgSources.find(s => s.key === k) || null;
+}
+
+/* A preset knows which dataset it loads into, so pin it rather than let the two
+   selects disagree and fail on the server. */
+function mgSyncDatasetToSource() {
+    const s = mgCurrentSource();
+    const ds = document.getElementById('mgDataset');
+    if (s && mgTargets.some(t => t.key === s.dataset)) {
+        ds.value = s.dataset;
+        ds.disabled = true;
+    } else {
+        ds.disabled = false;
+    }
+}
+
 function mgRenderDatasetHint() {
+    mgSyncDatasetToSource();
     const t = mgCurrentTarget();
+    const s = mgCurrentSource();
     const el = document.getElementById('mgDatasetHint');
     if (!t) { el.textContent = ''; return; }
-    el.innerHTML = mgEsc(t.hint)
+    let html = '';
+    if (s && s.notes) html += '<div class="mg-warn" style="margin-bottom:10px">' + mgEsc(s.notes) + '</div>';
+    html += mgEsc(t.hint)
         + (t.required.length ? '<br>Required: <strong>' + mgEsc(t.required.join(', ')) + '</strong>' : '')
         + '<br>Fields available: ' + mgEsc(t.columns.join(', '));
+    el.innerHTML = html;
 }
 
 /* Changing the target invalidates every downstream decision. */
@@ -104,13 +132,17 @@ async function mgAnalyseCsv() {
     if (!t || !mgCsv) return;
 
     let data;
-    try { data = await mgPost({ mode: 'analyse', dataset: t.key, csv: mgCsv }); }
+    const src = mgCurrentSource();
+    try { data = await mgPost({ mode: 'analyse', dataset: t.key, csv: mgCsv, source: src ? src.key : '' }); }
     catch (e) { mgError('mgErr1', 'Request failed: ' + e.message); return; }
     if (!data.success) { mgError('mgErr1', data.error); return; }
 
     mgAnalysis = data;
     mgMapping = Object.assign({}, data.mapping);
-    mgValueMap = {};
+    // A preset ships value translations too (its statuses and priorities onto
+    // ours); adopt them so the operator reviews decisions rather than makes
+    // fifteen of them from scratch.
+    mgValueMap = (data.value_map && typeof data.value_map === 'object') ? data.value_map : {};
     mgCreate = [];
 
     mgRenderMap();
@@ -195,7 +227,8 @@ async function mgRefreshValues() {
     const t = mgCurrentTarget();
     if (!t || !mgCsv) return;
     try {
-        const data = await mgPost({ mode: 'preview', dataset: t.key, csv: mgCsv, mapping: mgMapping, value_map: {} });
+        const src = mgCurrentSource();
+        const data = await mgPost({ mode: 'preview', dataset: t.key, csv: mgCsv, source: src ? src.key : '', mapping: mgMapping, value_map: mgValueMap });
         if (data.success) { mgAnalysis.values = data.values; mgRenderValues(); }
     } catch (e) { /* the preview button will surface any real problem */ }
 }
@@ -287,8 +320,10 @@ async function mgRun(mode) {
 
     let data;
     try {
+        const src = mgCurrentSource();
         data = await mgPost({
             mode: mode, dataset: t.key, csv: mgCsv,
+            source: src ? src.key : '',
             mapping: mgMapping, value_map: mgValueMap,
             create_values: mode === 'commit' ? mgCreate : []
         });
@@ -349,7 +384,24 @@ function mgRenderResult(data, mode) {
             + '</div>';
     }
 
-    if (data.backfill) {
+    if (data.derived && !data.derived.error) {
+        const d = data.derived;
+        html += '<div class="mg-note"><strong>Carried across from the source’s own figures:</strong> '
+            + (d.sla || 0).toLocaleString() + ' SLA outcome(s), '
+            + (d.reopen_audit || 0).toLocaleString() + ' reopen(s), '
+            + (d.reassign_audit || 0).toLocaleString() + ' reassignment(s), '
+            + (d.escalations || 0).toLocaleString() + ' escalation(s), '
+            + (d.time_entries || 0).toLocaleString() + ' time entr(ies).'
+            + (d.skipped ? ' ' + d.skipped.toLocaleString() + ' row(s) had no matching ticket.' : '')
+            + '</div>';
+    } else if (data.derived && data.derived.error) {
+        html += '<div class="mg-note mg-new">Could not carry across the source’s measured figures: '
+            + mgEsc(data.derived.error) + '</div>';
+    }
+
+    if (data.backfill && data.backfill.note) {
+        html += '<div class="mg-note">' + mgEsc(data.backfill.note) + '</div>';
+    } else if (data.backfill) {
         const b = data.backfill;
         html += '<div class="mg-note">SLA outcomes computed for ' + (b.processed || 0).toLocaleString()
             + ' ticket(s); ' + (b.tracked || 0).toLocaleString() + ' have an SLA that applies.'

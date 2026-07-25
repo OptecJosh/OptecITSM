@@ -452,6 +452,154 @@ function data_migrate_backfill_sla(PDO $conn, array $ticketIds): array {
 }
 
 /**
+ * Turn a source platform's measured aggregates into our child records.
+ *
+ * This is NOT the fabrication the backfill report warns against. Zoho Desk (and
+ * others) export real counts it measured — "this ticket was reopened twice",
+ * "reassigned three times", "SLA: Resolution Violation". Our KPI engine derives
+ * the same facts by counting rows in ticket_audit and reading
+ * ticket_sla_snapshot, so the counts have to be reshaped into that form or the
+ * migrated history reports zero for metrics the old system measured perfectly
+ * well. Reshaping a real measurement is fair; inventing an escalation that never
+ * happened is not, and nothing here does the latter.
+ *
+ * Two honesty rules:
+ *   - Only writes what the source actually measured. A blank column produces no
+ *     row, so "we never recorded this" stays distinguishable from "it was zero".
+ *   - The synthesised audit rows carry no invented detail beyond what is needed
+ *     for the count to come out right, and every one of them belongs to a ticket
+ *     whose number carries the source's prefix (ZD-…), so migrated history is
+ *     always identifiable as such.
+ *
+ * SLA states are taken from the source's own verdict rather than recomputed
+ * against our targets — that is the whole point, since those are the figures
+ * already published to customers. remaining_mins is left NULL because we do not
+ * know the old platform's targets and a guess would be worse than a blank.
+ *
+ * @param  array $derived  ticket_number => [name => raw value]
+ * @return array counts per child type, plus anything skipped
+ */
+function data_migrate_derive_children(PDO $conn, array $derived, int $analystId): array {
+    $counts = ['sla' => 0, 'reopen_audit' => 0, 'reassign_audit' => 0,
+               'escalations' => 0, 'time_entries' => 0, 'skipped' => 0];
+    if (!$derived) return $counts;
+
+    // Resolve ticket_number → id, created/closed, owner, in chunks.
+    $numbers = array_keys($derived);
+    $tickets = [];
+    foreach (array_chunk($numbers, 500) as $chunk) {
+        $ph = implode(',', array_fill(0, count($chunk), '?'));
+        $st = $conn->prepare("SELECT id, ticket_number, created_datetime, closed_datetime, owner_id
+                                FROM tickets WHERE ticket_number IN ({$ph})");
+        $st->execute($chunk);
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $tickets[$r['ticket_number']] = $r;
+    }
+    if (!$tickets) return $counts;
+
+    // Status names for the reopen audit rows — the reopen metric looks for a
+    // Status change leaving an is_closed status, so the names must be real ones.
+    $closedName = null; $openName = null;
+    try {
+        $closedName = $conn->query("SELECT name FROM ticket_statuses WHERE is_closed = 1 ORDER BY display_order, id LIMIT 1")->fetchColumn() ?: null;
+        $openName   = $conn->query("SELECT name FROM ticket_statuses WHERE is_closed = 0 ORDER BY display_order, id LIMIT 1")->fetchColumn() ?: null;
+    } catch (Exception $e) { /* handled below */ }
+
+    $has = function (string $t) use ($conn): bool {
+        try { $conn->query("SELECT 1 FROM `{$t}` LIMIT 0"); return true; } catch (Exception $e) { return false; }
+    };
+
+    $slaStmt = $has('ticket_sla_snapshot') ? $conn->prepare(
+        "INSERT INTO ticket_sla_snapshot (ticket_id, response_state, response_remaining_mins,
+             resolution_state, resolution_remaining_mins, policy_source, computed_at)
+         VALUES (?,?,NULL,?,NULL,'migrated',UTC_TIMESTAMP())
+         ON DUPLICATE KEY UPDATE response_state = VALUES(response_state),
+                                 resolution_state = VALUES(resolution_state),
+                                 policy_source = VALUES(policy_source)") : null;
+    $auditStmt = $has('ticket_audit') ? $conn->prepare(
+        "INSERT INTO ticket_audit (ticket_id, analyst_id, field_name, old_value, new_value, created_datetime)
+         VALUES (?,?,?,?,?,?)") : null;
+    $escStmt = $has('ticket_escalations') ? $conn->prepare(
+        "INSERT INTO ticket_escalations (ticket_id, from_analyst_id, to_analyst_id, from_tier, to_tier, escalated_at, picked_up_at, note)
+         VALUES (?,?,NULL,?,?,?,NULL,?)") : null;
+    $timeStmt = $has('ticket_time_entries') ? $conn->prepare(
+        "INSERT INTO ticket_time_entries (ticket_id, analyst_id, notes, time_spent_minutes, entry_datetime, is_active, created_datetime)
+         VALUES (?,?,?,?,?,1,?)") : null;
+
+    /** Spread n synthetic events evenly across the ticket's life. */
+    $stamp = function (array $t, int $i, int $n): string {
+        $start = strtotime(($t['created_datetime'] ?? '') . ' UTC') ?: time();
+        $end   = strtotime(($t['closed_datetime'] ?? '') . ' UTC') ?: ($start + 3600);
+        if ($end <= $start) $end = $start + 3600;
+        return gmdate('Y-m-d H:i:s', (int)round($start + ($end - $start) * (($i + 1) / ($n + 1))));
+    };
+
+    $intOf = fn($v) => preg_match('/^\d+$/', trim((string)$v)) ? (int)trim((string)$v) : 0;
+
+    foreach ($derived as $number => $d) {
+        if (!isset($tickets[$number])) { $counts['skipped']++; continue; }
+        $t = $tickets[$number];
+        $tid = (int)$t['id'];
+        $who = (int)($t['owner_id'] ?: $analystId);
+
+        // ---- SLA verdict, straight from the source -----------------------
+        if ($slaStmt && isset($d['sla_violation'])) {
+            $v = strtolower(trim((string)$d['sla_violation']));
+            $resp = $reso = null;
+            if ($v === 'not violated')                            { $resp = 'met';      $reso = 'met'; }
+            elseif ($v === 'response violation')                  { $resp = 'breached'; $reso = 'met'; }
+            elseif ($v === 'resolution violation')                { $resp = 'met';      $reso = 'breached'; }
+            elseif ($v === 'response and resolution violation')   { $resp = 'breached'; $reso = 'breached'; }
+            if ($resp !== null) { $slaStmt->execute([$tid, $resp, $reso]); $counts['sla']++; }
+        }
+
+        // ---- reopens ------------------------------------------------------
+        if ($auditStmt && $closedName && $openName) {
+            $n = $intOf($d['reopen_count'] ?? 0);
+            for ($i = 0; $i < min($n, 20); $i++) {
+                $auditStmt->execute([$tid, $who, 'Status', $closedName, $openName, $stamp($t, $i, max($n, 1))]);
+                $counts['reopen_audit']++;
+            }
+        }
+
+        // ---- reassignments (ticket bounce) --------------------------------
+        if ($auditStmt) {
+            $n = $intOf($d['reassign_count'] ?? 0);
+            for ($i = 0; $i < min($n, 30); $i++) {
+                // The metric counts 'Owner' rows; the old/new names were not
+                // exported, so they are left blank rather than guessed.
+                $auditStmt->execute([$tid, $who, 'Owner', null, null, $stamp($t, $i, max($n, 1))]);
+                $counts['reassign_audit']++;
+            }
+        }
+
+        // ---- escalation ---------------------------------------------------
+        if ($escStmt && isset($d['escalated'])) {
+            $e = strtolower(trim((string)$d['escalated']));
+            if ($e === 'true' || $e === '1' || $e === 'yes') {
+                $tier = $intOf($d['agent_tier'] ?? 0);
+                $from = $tier >= 1 && $tier <= 3 ? 'L' . $tier : 'L1';
+                $to   = 'L' . min(3, max(2, $tier + 1));
+                $escStmt->execute([$tid, $t['owner_id'] ?: null, $from, $to,
+                    $stamp($t, 0, 1), 'Migrated: source recorded this ticket as escalated']);
+                $counts['escalations']++;
+            }
+        }
+
+        // ---- effort -------------------------------------------------------
+        if ($timeStmt) {
+            $mins = $intOf($d['time_spent_mins'] ?? 0);
+            if ($mins > 0) {
+                $timeStmt->execute([$tid, $who, 'Migrated: total time spent recorded by the previous system',
+                    $mins, $stamp($t, 0, 1), $stamp($t, 0, 1)]);
+                $counts['time_entries']++;
+            }
+        }
+    }
+
+    return $counts;
+}
+
+/**
  * What reporting fields a migration can and cannot fill, for the operator to
  * read BEFORE cutover rather than discover in a board pack afterwards.
  *

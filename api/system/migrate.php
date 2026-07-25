@@ -18,6 +18,7 @@ require_once '../../config.php';
 require_once '../../includes/admin_api_guard.php';   // auth + admin
 require_once '../../includes/functions.php';
 require_once '../../includes/data_migrate.php';
+require_once '../../includes/migrate_sources.php';
 
 header('Content-Type: application/json');
 
@@ -45,9 +46,16 @@ try {
                 'required' => data_import_required_columns($spec),
             ];
         }
+        $sources = [];
+        foreach (migrate_sources() as $key => $s) {
+            $sources[] = ['key' => $key, 'label' => $s['label'],
+                          'dataset' => $s['dataset'], 'notes' => $s['notes'] ?? ''];
+        }
+
         echo json_encode([
             'success'  => true,
             'targets'  => $out,
+            'sources'  => $sources,
             'row_cap'  => data_migrate_row_cap(),
             'backfill' => data_migrate_backfill_report(),
         ]);
@@ -67,10 +75,39 @@ try {
     [$header, $rows, $truncated] = $parsed;
     if (!$rows) throw new Exception('The CSV has a header but no data rows');
 
+    // A named source preset replaces the guessed mapping with a known-good one
+    // and, crucially, normalises the cells first — day-first dates and
+    // millisecond durations would otherwise be imported as-is and be wrong in a
+    // way nothing downstream could detect.
+    $sourceKey = trim((string)($in['source'] ?? ''));
+    $preset = null;
+    $applied = null;
+    if ($sourceKey !== '') {
+        $allSources = migrate_sources();
+        if (!isset($allSources[$sourceKey])) throw new Exception('Unknown source preset: ' . $sourceKey);
+        $preset = $allSources[$sourceKey];
+        if ($preset['dataset'] !== $datasetKey) {
+            throw new Exception("The {$preset['label']} preset imports into '{$preset['dataset']}', not '{$datasetKey}'");
+        }
+        $applied = migrate_apply_source($preset, $header, $rows);
+        $rows = $applied['rows'];
+        $parsed = [$header, $rows, $truncated];
+    }
+
     // ---- analyse ---------------------------------------------------------
     if ($mode === 'analyse') {
-        $suggest = data_migrate_suggest($header, $spec);
+        // A preset is authoritative; only fall back to guessing without one.
+        $suggest = $applied !== null
+            ? ['mapping' => $applied['mapping'], 'detail' => [], 'conflicts' => [],
+               'unmapped' => array_values(array_diff($header, array_keys($applied['mapping'])))]
+            : data_migrate_suggest($header, $spec);
         echo json_encode([
+            'source'         => $sourceKey ?: null,
+            'source_label'   => $preset['label'] ?? null,
+            'source_notes'   => $preset['notes'] ?? null,
+            'source_missing' => $applied['missing'] ?? [],
+            'source_derives' => $applied ? array_keys($applied['derive_idx']) : [],
+            'value_map'      => $applied['value_map'] ?? new stdClass(),
             'success'    => true,
             'dataset'    => $datasetKey,
             'label'      => $spec['label'],
@@ -90,12 +127,15 @@ try {
         exit;
     }
 
-    // preview and commit both need the caller's chosen mapping.
+    // preview and commit both need a mapping: the caller's, or the preset's when
+    // the caller has not overridden it.
     $mapping = is_array($in['mapping'] ?? null) ? $in['mapping'] : [];
     $mapping = array_filter($mapping, fn($t) => is_string($t) && $t !== '');
+    if (!$mapping && $applied !== null) $mapping = $applied['mapping'];
     if (!$mapping) throw new Exception('No column mapping was supplied');
 
     $valueMap = is_array($in['value_map'] ?? null) ? $in['value_map'] : [];
+    if (!$valueMap && $applied !== null) $valueMap = $applied['value_map'];
 
     // Every mapped target must be a real field of this dataset — the mapping
     // arrives from the browser, so it is not trusted.
@@ -162,10 +202,46 @@ try {
             }
         }
 
-        // 3. Backfill what can honestly be derived. For tickets that means SLA
+        // 3. Reshape the source's own measured aggregates into our child rows —
+        //    SLA verdict, reopens, reassignments, escalation, effort. Done before
+        //    the SLA rebuild below so that, where the source gave us a verdict,
+        //    it is already in place.
+        $derivedCounts = null;
+        if ($applied !== null && $applied['derive_idx']) {
+            $keyIdx = array_search($preset['key_column'] ?? '', $header, true);
+            if ($keyIdx !== false) {
+                $derived = [];
+                foreach ($rows as $cells) {
+                    $num = trim((string)($cells[$keyIdx] ?? ''));
+                    if ($num === '') continue;
+                    $vals = [];
+                    foreach ($applied['derive_idx'] as $name => $i) {
+                        $vals[$name] = (string)($cells[$i] ?? '');
+                    }
+                    $derived[$num] = $vals;
+                }
+                try {
+                    $derivedCounts = data_migrate_derive_children($conn, $derived, $analystId);
+                } catch (Exception $e) {
+                    $derivedCounts = ['error' => $e->getMessage()];
+                    error_log('migrate: child derivation failed: ' . $e->getMessage());
+                }
+            }
+        }
+
+        // 4. Backfill what can honestly be derived. For tickets that means SLA
         //    outcomes, computed by the real SLA engine from the imported dates.
+        //    Skipped when the source supplied its own verdict: recomputing would
+        //    overwrite the figures already published to customers, which is
+        //    exactly what the migration is trying to preserve.
         $backfill = null;
-        if ($datasetKey === 'tickets' && $touchedIds) {
+        $sourceGaveSla = is_array($derivedCounts) && !empty($derivedCounts['sla']);
+        if ($sourceGaveSla) {
+            $backfill = ['processed' => 0, 'tracked' => 0, 'errors' => [],
+                'note' => 'SLA outcomes were taken from the source export (' . $derivedCounts['sla']
+                        . ' tickets) and deliberately NOT recomputed, so historic attainment matches '
+                        . 'what the previous system reported.'];
+        } elseif ($datasetKey === 'tickets' && $touchedIds) {
             try {
                 $backfill = data_migrate_backfill_sla($conn, $touchedIds);
             } catch (Exception $e) {
@@ -188,6 +264,7 @@ try {
             'mode'           => 'commit',
             'reconcile'      => data_migrate_reconcile($parsed, $plan, $commit),
             'created_values' => $createdValues,
+            'derived'        => $derivedCounts,
             'backfill'       => $backfill,
             'backfill_report'=> data_migrate_backfill_report(),
             'errors'         => array_slice($plan['errors'], 0, 100),

@@ -76,6 +76,10 @@ $translationNamespaces = ['common', 'system'];
                analyst or requester must already exist, and an unrecognised name is reported rather than silently blanked.
                Nothing is written until you commit, and a commit is one transaction: it either all lands or none of it does.
                The column names match <a href="../../reporting/export/">Reporting &rsaquo; Export</a>, so you can export, edit and re-import.</p>
+            <p class="im-lead"><strong>Coming from another helpdesk?</strong> Use
+               <a href="../migrate/">Migrate from another system</a> instead. It takes the file your old platform
+               exported as-is &mdash; you map its column names and its status and category values onto ours, and it
+               reconciles what was loaded so you can prove nothing was lost before cutover.</p>
             <p class="im-lead"><strong>Need test data?</strong> The repository ships a ready-made UAT bundle in
                <code>database/demo-csv/</code> &mdash; seventeen interlocking files (customers, suppliers, contracts, assets,
                tickets, problems, changes, certifications and more) with a README giving the load order. Import them in

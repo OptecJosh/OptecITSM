@@ -1,0 +1,516 @@
+<?php
+/**
+ * Migration from another ticketing system.
+ *
+ * The mass importer (includes/data_import.php) already knows how to validate and
+ * write every dataset, but it requires OUR column names. An export from another
+ * platform has its own: "Case Number", "Date Opened", "Assigned To", and its own
+ * status and category names that mean the same things ours do but do not match a
+ * single string. Two problems, therefore, and neither is about writing rows:
+ *
+ *   1. COLUMN mapping — which source header feeds which of our fields.
+ *   2. VALUE mapping — what "Awaiting Customer" or "Sev 2" corresponds to here,
+ *      and whether a value we have never seen should be created or redirected.
+ *
+ * So this file does not import anything. It maps, translates and rewrites the
+ * file into the canonical header form, then hands it to data_import_plan() /
+ * data_import_commit() — the same code path, and therefore the same validation,
+ * tenancy handling and audit trail as a routine CSV load. Forking the writer
+ * would have meant two places where a ticket can be created differently.
+ *
+ * On backfill: what CAN be derived from migrated data is derived (SLA outcomes
+ * come from the real dates through the existing SLA engine). What cannot is
+ * reported as a gap and left empty — see data_migrate_backfill_report(). An
+ * escalation that never happened, a hold that was never recorded and a QA review
+ * that was never done are not recoverable from a ticket export, and inventing
+ * them would put fiction into the system of record and into every KPI computed
+ * from it afterwards.
+ */
+
+require_once __DIR__ . '/data_import.php';
+require_once __DIR__ . '/sla.php';
+require_once __DIR__ . '/sla_notifications.php';
+
+/** A migration is a one-off bulk load, so it gets a much higher ceiling. */
+function data_migrate_row_cap(): int { return 100000; }
+
+/**
+ * Datasets offered as migration targets, in the order you should load them.
+ *
+ * Order matters: a ticket's requester, owner and customer must exist before the
+ * ticket referencing them can resolve, and the migration deliberately will not
+ * create staff or portal accounts (see data_migrate_creatable_tables).
+ */
+function data_migrate_targets(): array {
+    return [
+        'portal_users'  => 'Requesters / end users — load before tickets',
+        'customers'     => 'Customer accounts — load before tickets',
+        'assets'        => 'Hardware inventory',
+        'cmdb_objects'  => 'Configuration items',
+        'suppliers'     => 'Suppliers',
+        'contracts'     => 'Contracts',
+        'tickets'       => 'Tickets — the main history',
+        'problems'      => 'Problems / known errors',
+        'changes'       => 'Changes',
+        'knowledge'     => 'Knowledge articles',
+        'tasks'         => 'Tasks',
+    ];
+}
+
+/**
+ * Lookup tables the migration may CREATE missing values in.
+ *
+ * Deliberately excludes `analysts` and `users`: those are login-capable records.
+ * Creating a hundred staff accounts as a side effect of a CSV upload is not
+ * something an import screen should be able to do, so unresolved names in those
+ * columns stay an error and the operator maps them to real accounts (or imports
+ * the portal_users dataset first).
+ */
+function data_migrate_creatable_tables(): array {
+    return [
+        'ticket_statuses', 'ticket_priorities', 'ticket_types', 'ticket_categories',
+        'ticket_subcategories', 'ticket_origins', 'departments', 'ticket_streams',
+        'customers', 'asset_types', 'asset_status_types', 'asset_locations',
+        'change_statuses', 'change_priorities', 'change_types', 'change_categories',
+        'problem_statuses', 'problem_priorities', 'task_statuses', 'task_priorities',
+        'supplier_types', 'supplier_statuses', 'contract_statuses', 'cmdb_classes',
+    ];
+}
+
+/**
+ * Source header names commonly used by other platforms, per target field.
+ *
+ * Drawn from the exports people actually arrive with (ServiceNow, Freshservice,
+ * Zendesk, Jira Service Management, ManageEngine, Spiceworks, osTicket). The
+ * mapping is only ever a SUGGESTION — every one is shown to the operator and can
+ * be overridden before anything is read.
+ */
+function data_migrate_synonyms(): array {
+    return [
+        'ticket_number'         => ['case number', 'case id', 'case', 'ticket id', 'ticket no', 'ticket number',
+                                    'ticket', 'number', 'id', 'reference', 'ref', 'incident number', 'incident id',
+                                    'request id', 'request number', 'key', 'display id'],
+        'subject'               => ['title', 'summary', 'short description', 'subject', 'issue', 'problem summary',
+                                    'request title', 'headline'],
+        'created_datetime'      => ['created', 'created at', 'created on', 'created date', 'created time',
+                                    'date created', 'opened', 'opened at', 'date opened', 'open date',
+                                    'open time', 'submitted', 'submitted at', 'submitted date',
+                                    'request time', 'reported date', 'sys created on', 'date time opened',
+                                    'initiated', 'logged', 'logged at', 'logged date'],
+        'closed_datetime'       => ['closed', 'closed at', 'closed on', 'date closed', 'close date',
+                                    'closed time', 'resolved', 'resolved at', 'resolved date',
+                                    'resolved time', 'resolution date', 'resolution time',
+                                    'completed', 'completed at', 'solved', 'solved at', 'date solved',
+                                    'date time closed'],
+        'acknowledged_datetime' => ['first response', 'first response at', 'first responded', 'first reply',
+                                    'first reply at', 'responded at', 'acknowledged', 'acknowledged at',
+                                    'first response time', 'date of first response'],
+        'work_start_datetime'   => ['work start', 'started', 'started at', 'work started'],
+        'first_time_fix'        => ['first time fix', 'ftf', 'first contact resolution', 'fcr',
+                                    'resolved first contact', 'one touch'],
+        'status'                => ['status', 'state', 'ticket status', 'case status', 'request status',
+                                    'incident state', 'current status'],
+        'priority'              => ['priority', 'urgency', 'severity', 'impact level', 'ticket priority'],
+        'ticket_type'           => ['type', 'ticket type', 'request type', 'record type', 'case type'],
+        'category'              => ['category', 'issue type', 'classification', 'service category',
+                                    'problem type', 'main category'],
+        'subcategory'           => ['subcategory', 'sub category', 'sub-category', 'secondary category',
+                                    'issue subtype'],
+        'department'            => ['department', 'dept', 'business unit', 'division', 'group', 'team'],
+        'origin'                => ['source', 'channel', 'origin', 'contact type', 'via', 'received via',
+                                    'submitted via', 'medium'],
+        'owner'                 => ['assigned to', 'assignee', 'owner', 'technician', 'agent',
+                                    'assigned agent', 'assigned technician', 'resolved by', 'handled by'],
+        'assigned_analyst'      => ['assigned analyst', 'secondary assignee', 'co-owner'],
+        'requester_email'       => ['requester email', 'contact email', 'reporter email', 'user email',
+                                    'submitter email', 'email', 'requester', 'reported by email',
+                                    'caller email', 'from', 'from address'],
+        'customer'              => ['customer', 'account', 'client', 'company', 'organisation', 'organization',
+                                    'account name', 'customer name'],
+        // Assets and CMDB
+        'hostname'              => ['hostname', 'host name', 'name', 'device name', 'computer name',
+                                    'asset name', 'ci name', 'machine name'],
+        'serial_number'         => ['serial number', 'serial', 'serial no', 'service tag'],
+        'service_tag'           => ['service tag', 'asset tag', 'tag'],
+        'manufacturer'          => ['manufacturer', 'make', 'vendor', 'brand'],
+        'model'                 => ['model', 'model number'],
+        'operating_system'      => ['operating system', 'os', 'os version', 'platform'],
+        'purchase_date'         => ['purchase date', 'purchased', 'date purchased', 'acquired', 'acquisition date'],
+        'warranty_expiry'       => ['warranty expiry', 'warranty end', 'warranty expiration', 'warranty until'],
+    ];
+}
+
+/** Reduce a header to a comparable form: lowercase, alphanumerics only. */
+function data_migrate_normalise_header(string $h): string {
+    $h = strtolower(trim($h));
+    $h = preg_replace('/^\xEF\xBB\xBF/', '', $h);
+    // "Ticket # (ID)" and "ticket_id" should compare equal.
+    $h = preg_replace('/[^a-z0-9]+/', ' ', $h);
+    return trim(preg_replace('/\s+/', ' ', $h));
+}
+
+/**
+ * Does a known synonym appear inside this header as whole word(s)?
+ *
+ * Whole-word only: without the word boundaries "id" would match "valid" and
+ * "paid", and a header called "Paid Date" would confidently claim the ticket
+ * number. Multi-word phrase hits score higher than single-word hits because they
+ * are far less likely to be coincidence.
+ *
+ * @return array{term:string,phrase:bool}|null the longest match, or null
+ */
+function data_migrate_synonym_within(string $normalisedHeader, array $normalisedSynonyms): ?array {
+    $best = null;
+    foreach ($normalisedSynonyms as $s) {
+        if ($s === '' || $s === $normalisedHeader) continue;
+        // Single-character or two-character terms are too generic to match loosely.
+        if (strlen($s) < 3) continue;
+        if (!preg_match('/(?:^|\s)' . preg_quote($s, '/') . '(?:\s|$)/', $normalisedHeader)) continue;
+        $phrase = str_contains($s, ' ');
+        if ($best === null || strlen($s) > strlen($best['term'])) {
+            $best = ['term' => $s, 'phrase' => $phrase];
+        }
+    }
+    return $best;
+}
+
+/**
+ * Suggest a source-column → target-field mapping.
+ *
+ * Scoring is deliberately conservative and explains itself, because a silent
+ * wrong guess here corrupts a migration in a way that is very hard to see
+ * afterwards: every row imports "successfully" with the wrong data in it. Each
+ * suggestion carries a confidence and a reason so the operator can see WHY the
+ * mapping was proposed and reject it.
+ *
+ * A target can only be claimed once — the best-scoring source wins and any other
+ * contender is reported as a conflict rather than silently dropped.
+ *
+ * @return array{mapping:array<string,string>, detail:array, conflicts:array, unmapped:array}
+ */
+function data_migrate_suggest(array $sourceHeader, array $spec): array {
+    $targets = data_import_accepted_columns($spec);
+    $syn = data_migrate_synonyms();
+
+    // score[target][source] = [confidence, reason]
+    $candidates = [];
+    foreach ($sourceHeader as $src) {
+        $n = data_migrate_normalise_header($src);
+        if ($n === '') continue;
+        foreach ($targets as $t) {
+            $tn = data_migrate_normalise_header($t);
+            $conf = 0; $why = '';
+
+            $syns = isset($syn[$t]) ? array_map('data_migrate_normalise_header', $syn[$t]) : [];
+
+            if ($n === $tn) {
+                $conf = 100; $why = 'exact column name';
+            } elseif ($syns && in_array($n, $syns, true)) {
+                $conf = 92; $why = 'known name used by other systems';
+            } elseif ($syns && ($hit = data_migrate_synonym_within($n, $syns)) !== null) {
+                // "Issue Summary" contains "summary"; "Date Opened" contains
+                // "opened". Generalising this beats extending the synonym list
+                // with every prefix another vendor might bolt on.
+                $conf = $hit['phrase'] ? 84 : 74;
+                $why = 'contains the known term "' . $hit['term'] . '"';
+            } elseif ($n !== '' && $tn !== '' && (str_contains($n, $tn) || str_contains($tn, $n))) {
+                // Substring matches are weak: "date" matches far too much, so
+                // require a reasonable length before trusting one.
+                $shorter = min(strlen($n), strlen($tn));
+                $conf = $shorter >= 5 ? 68 : 40;
+                $why = 'partial name match';
+            } else {
+                similar_text($n, $tn, $pct);
+                if ($pct >= 80) { $conf = 60; $why = 'similar name'; }
+            }
+
+            if ($conf > 0) $candidates[$t][$src] = [$conf, $why];
+        }
+    }
+
+    // Resolve: each target takes its best source; each source is used once.
+    $mapping = [];      // source => target
+    $detail = [];       // source => [target, confidence, reason]
+    $conflicts = [];
+    $usedSources = [];
+
+    // Order targets by their best available confidence so strong matches claim
+    // their column before a weaker target can steal it.
+    $bestFor = [];
+    foreach ($candidates as $t => $srcs) {
+        $bestFor[$t] = max(array_map(fn($c) => $c[0], $srcs));
+    }
+    arsort($bestFor);
+
+    foreach (array_keys($bestFor) as $t) {
+        $srcs = $candidates[$t];
+        uasort($srcs, fn($a, $b) => $b[0] <=> $a[0]);
+        $claimed = false;
+        foreach ($srcs as $src => [$conf, $why]) {
+            if (isset($usedSources[$src])) continue;
+            if ($conf < 55) continue;                 // too weak to propose
+            if (!$claimed) {
+                $mapping[$src] = $t;
+                $detail[$src] = ['target' => $t, 'confidence' => $conf, 'reason' => $why];
+                $usedSources[$src] = true;
+                $claimed = true;
+            } else {
+                $conflicts[] = ['source' => $src, 'target' => $t, 'confidence' => $conf,
+                                'note' => 'also looked like ' . $t];
+            }
+        }
+    }
+
+    $unmapped = [];
+    foreach ($sourceHeader as $src) {
+        if (!isset($mapping[$src]) && data_migrate_normalise_header($src) !== '') $unmapped[] = $src;
+    }
+
+    return ['mapping' => $mapping, 'detail' => $detail, 'conflicts' => $conflicts, 'unmapped' => $unmapped];
+}
+
+/**
+ * Parse a CSV string into [header, rows]. Rows beyond the migration cap are
+ * dropped and the count reported, so a truncated load is never silent.
+ */
+function data_migrate_parse(string $csv): array {
+    $fh = fopen('php://temp', 'r+');
+    fwrite($fh, $csv);
+    rewind($fh);
+    $header = fgetcsv($fh);
+    if ($header === false || !$header) { fclose($fh); throw new Exception('The CSV has no header row'); }
+    $header[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string)$header[0]);
+    $header = array_map(fn($h) => trim((string)$h), $header);
+
+    $rows = [];
+    $truncated = 0;
+    while (($cells = fgetcsv($fh)) !== false) {
+        if (count(array_filter($cells, fn($c) => trim((string)$c) !== '')) === 0) continue;
+        if (count($rows) >= data_migrate_row_cap()) { $truncated++; continue; }
+        $rows[] = $cells;
+    }
+    fclose($fh);
+    return [$header, $rows, $truncated];
+}
+
+/**
+ * For every mapped lookup column, report the distinct source values and whether
+ * each already resolves.
+ *
+ * This is the heart of a safe migration: it is the operator's chance to see that
+ * their old system's twelve statuses collapse onto our five, BEFORE any row is
+ * written, and to decide per value whether to map it or create it.
+ *
+ * @return array<string,array{target:string,table:string,creatable:bool,values:array}>
+ */
+function data_migrate_value_report(PDO $conn, array $spec, array $header, array $rows, array $mapping): array {
+    $creatable = data_migrate_creatable_tables();
+    $out = [];
+
+    foreach ($mapping as $src => $target) {
+        if (!isset($spec['lookups'][$target])) continue;
+        $lk = $spec['lookups'][$target];
+        $idx = array_search($src, $header, true);
+        if ($idx === false) continue;
+
+        $counts = [];
+        foreach ($rows as $cells) {
+            $v = trim((string)($cells[$idx] ?? ''));
+            if ($v === '') continue;
+            $counts[$v] = ($counts[$v] ?? 0) + 1;
+        }
+        // Most frequent first: that is the order in which decisions matter.
+        arsort($counts);
+
+        $values = [];
+        foreach ($counts as $v => $n) {
+            $values[] = [
+                'value'    => (string)$v,
+                'rows'     => $n,
+                'resolves' => data_import_lookup($conn, $lk, (string)$v) !== null,
+            ];
+        }
+        $out[$src] = [
+            'target'    => $target,
+            'table'     => $lk['table'],
+            'required'  => !empty($lk['required']),
+            'creatable' => in_array($lk['table'], $creatable, true),
+            'blank_rows' => count($rows) - array_sum($counts),
+            'values'    => $values,
+        ];
+    }
+    return $out;
+}
+
+/**
+ * Create missing lookup rows.
+ *
+ * @param  array $requests [ ['table' => ..., 'value' => ...], … ]
+ * @return array{created:int, refused:array}
+ */
+function data_migrate_create_lookup_values(PDO $conn, array $spec, array $requests): array {
+    $creatable = data_migrate_creatable_tables();
+    $created = 0;
+    $refused = [];
+
+    // Which name column each lookup table uses, taken from the dataset spec so
+    // this never disagrees with how the importer resolves the same value.
+    $nameCol = [];
+    foreach ($spec['lookups'] ?? [] as $lk) $nameCol[$lk['table']] = $lk['name'];
+
+    foreach ($requests as $r) {
+        $table = (string)($r['table'] ?? '');
+        $value = trim((string)($r['value'] ?? ''));
+        if ($table === '' || $value === '') continue;
+
+        if (!in_array($table, $creatable, true)) {
+            $refused[] = ['table' => $table, 'value' => $value,
+                          'reason' => 'values in this table cannot be created by a migration'];
+            continue;
+        }
+        if (!isset($nameCol[$table])) {
+            $refused[] = ['table' => $table, 'value' => $value, 'reason' => 'not a lookup of this dataset'];
+            continue;
+        }
+        $col = $nameCol[$table];
+
+        // Already there (someone else's run, or a duplicate request) — not an error.
+        $lk = ['table' => $table, 'name' => $col];
+        if (data_import_lookup($conn, $lk, $value) !== null) continue;
+
+        try {
+            $conn->prepare("INSERT INTO `{$table}` (`{$col}`) VALUES (?)")->execute([$value]);
+            $created++;
+        } catch (Exception $e) {
+            // Most often a NOT NULL column with no default that this table needs.
+            $refused[] = ['table' => $table, 'value' => $value, 'reason' => $e->getMessage()];
+        }
+    }
+    return ['created' => $created, 'refused' => $refused];
+}
+
+/**
+ * Rewrite the source rows into a CSV with our canonical header, applying the
+ * column mapping and any per-value translations.
+ *
+ * $valueMap is [ source_column => [ source_value => replacement_value ] ]. A
+ * replacement of '' means "leave this cell empty", which is how an operator
+ * discards a value that has no equivalent here.
+ */
+function data_migrate_rewrite(array $header, array $rows, array $mapping, array $valueMap = []): string {
+    // Keep only mapped columns, in a stable order.
+    $cols = [];      // target => source index
+    foreach ($mapping as $src => $target) {
+        $idx = array_search($src, $header, true);
+        if ($idx === false || $target === '') continue;
+        $cols[$target] = ['idx' => $idx, 'src' => $src];
+    }
+    if (!$cols) throw new Exception('No columns are mapped, so there is nothing to import');
+
+    $fh = fopen('php://temp', 'r+');
+    fputcsv($fh, array_keys($cols));
+    foreach ($rows as $cells) {
+        $out = [];
+        foreach ($cols as $target => $c) {
+            $v = trim((string)($cells[$c['idx']] ?? ''));
+            if (isset($valueMap[$c['src']]) && array_key_exists($v, $valueMap[$c['src']])) {
+                $v = (string)$valueMap[$c['src']][$v];
+            }
+            $out[] = $v;
+        }
+        fputcsv($fh, $out);
+    }
+    rewind($fh);
+    $csv = stream_get_contents($fh);
+    fclose($fh);
+    return $csv;
+}
+
+/**
+ * Return the dataset spec with the migration row cap applied, so a big one-off
+ * load is not truncated at the routine 5,000-row limit.
+ */
+function data_migrate_spec(string $key): array {
+    $all = data_import_datasets();
+    if (!isset($all[$key])) throw new Exception('Unknown dataset: ' . $key);
+    $spec = $all[$key];
+    $spec['row_cap'] = data_migrate_row_cap();
+    return $spec;
+}
+
+/**
+ * Stamp SLA outcomes onto migrated tickets.
+ *
+ * This is a genuine derivation, not an invention: the SLA engine reads the
+ * ticket's real created / acknowledged / closed timestamps and its priority's
+ * targets and works out whether each was met. It is the same call the nightly
+ * rebuild makes, so a migrated ticket reports exactly as a native one does.
+ */
+function data_migrate_backfill_sla(PDO $conn, array $ticketIds): array {
+    if (!$ticketIds) return ['processed' => 0, 'tracked' => 0, 'errors' => []];
+    return sla_rebuild_snapshots($conn, $ticketIds);
+}
+
+/**
+ * What reporting fields a migration can and cannot fill, for the operator to
+ * read BEFORE cutover rather than discover in a board pack afterwards.
+ *
+ * The honest position: anything derivable from the imported columns is derived;
+ * anything that was never recorded stays empty. Synthesising escalations, holds
+ * or QA reviews would make every historic KPI computed from them a fiction, and
+ * the fiction would be indistinguishable from real data a year later.
+ */
+function data_migrate_backfill_report(): array {
+    return [
+        'derived' => [
+            'SLA response and resolution outcome — computed from the imported dates and your priority targets.',
+            'MTTA — computed from created → acknowledged, if you mapped a first-response column.',
+            'MTTR — computed from created → closed.',
+            'Reopen and bounce counts — will read 0 for migrated tickets (see below).',
+            'Effort and cost — populated only if you also migrate time entries.',
+        ],
+        'not_filled' => [
+            'ticket_audit'        => 'No field-change history exists in a ticket export, so reopen and reassignment ("bounce") counts read 0 for migrated tickets. Trend them from the cutover date forward.',
+            'ticket_escalations'  => 'Tier escalations were not recorded in a form that transfers. Escalation rate and time-to-escalate start at cutover.',
+            'ticket_hold_events'  => 'On-hold intervals do not transfer, so "MTTR excluding hold" equals MTTR for migrated tickets.',
+            'ticket_qa_reviews'   => 'QA reviews are ours, not the old system\'s. QA pass rate starts at cutover.',
+            'ticket_csat_responses' => 'Survey responses can be migrated separately if your old platform exported them; otherwise CSAT starts at cutover.',
+        ],
+        'advice' => 'Put a marker on the cutover date in any trend chart. Metrics that depend on '
+                  . 'the tables above are only comparable from that date, and a chart that silently '
+                  . 'mixes the two periods will look like a sudden improvement that never happened.',
+    ];
+}
+
+/**
+ * Reconcile a run: what came in, what went out, and what did not make it.
+ *
+ * The point is provable completeness — the number a migration is signed off on.
+ */
+function data_migrate_reconcile(array $parsed, array $plan, ?array $commit = null): array {
+    [, $rows, $truncated] = $parsed;
+    $sourceRows = count($rows);
+    $planned = count($plan['plan'] ?? []);
+    $errors  = count($plan['errors'] ?? []);
+
+    $rec = [
+        'source_rows'      => $sourceRows,
+        'truncated_rows'   => $truncated,
+        'rows_planned'     => $planned,
+        'rows_with_errors' => $errors,
+        'to_create'        => $plan['to_create'] ?? 0,
+        'to_update'        => $plan['to_update'] ?? 0,
+        'ignored_columns'  => $plan['ignored'] ?? [],
+    ];
+    if ($commit !== null) {
+        $rec['created'] = $commit['created'] ?? 0;
+        $rec['updated'] = $commit['updated'] ?? 0;
+        $rec['written'] = ($commit['created'] ?? 0) + ($commit['updated'] ?? 0);
+        $rec['balanced'] = ($rec['written'] + $errors + $truncated) === $sourceRows;
+        $rec['unaccounted'] = $sourceRows - $rec['written'] - $errors - $truncated;
+    } else {
+        $rec['balanced'] = ($planned + $errors + $truncated) === $sourceRows;
+        $rec['unaccounted'] = $sourceRows - $planned - $errors - $truncated;
+    }
+    return $rec;
+}

@@ -323,7 +323,7 @@ class ProblemsService
     /** Link the change that fixes a problem. Returns [problem_id, change_id, title, linked]. */
     public static function linkChange(PDO $conn, ActorContext $ctx, int $problemId, array $in): array
     {
-        self::loadProblem($conn, $ctx, $problemId);   // 404
+        $problem = self::loadProblem($conn, $ctx, $problemId);   // 404
         $actorId = $ctx->actorId;
 
         $changeId = isset($in['change_id']) ? (int)$in['change_id'] : 0;
@@ -331,7 +331,7 @@ class ProblemsService
             throw new ServiceError('validation', 'missing_field', "'change_id' is required.");
         }
         try {
-            $cStmt = $conn->prepare("SELECT id, title FROM changes WHERE id = ?");
+            $cStmt = $conn->prepare("SELECT id, title, tenant_id FROM changes WHERE id = ?");
             $cStmt->execute([$changeId]);
             $change = $cStmt->fetch(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
@@ -339,6 +339,21 @@ class ProblemsService
         }
         if (!$change) {
             throw new ServiceError('validation', 'invalid_field', "Unknown change id: {$changeId}");
+        }
+
+        // The actor must be able to see the change too (its company scope), and
+        // the change must belong to the same company as the problem. Same rule as
+        // linkTicket; NULL tenant_id normalises to the Default company.
+        if (isMultiTenant($conn)) {
+            $default = getDefaultTenantId($conn);
+            $cTid = $change['tenant_id'] === null ? $default : (int)$change['tenant_id'];
+            if ($ctx->companyScope !== null && !in_array($cTid, $ctx->companyScope, true)) {
+                throw new ServiceError('validation', 'invalid_field', "Unknown change id: {$changeId}");
+            }
+            $pTid = $problem['tenant_id'] === null ? $default : (int)$problem['tenant_id'];
+            if ($pTid !== $cTid) {
+                throw new ServiceError('validation', 'invalid_field', 'That change belongs to a different company than this problem.');
+            }
         }
 
         $dup = $conn->prepare("SELECT id FROM change_relations WHERE change_id = ? AND related_type = 'problem' AND related_id = ?");

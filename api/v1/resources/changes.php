@@ -299,7 +299,8 @@ function apiChangesGet(PDO $conn, array $apiKey, array $params, array $body): vo
     try {
         // Scope linked problems to the key's company: a cross-company
         // change_relations row must not leak another company's problem (Phase
-        // 10e — linkChange doesn't enforce same-company the way linkTicket does).
+        // 10e). linkChange now enforces same-company on write, but legacy rows
+        // predating that check can still exist, so keep filtering on read.
         [$pScopeSql, $pScopeArgs] = apiKeyTenantFilter($conn, $apiKey, 'p');
         $pr = $conn->prepare(
             "SELECT p.id, p.problem_number, p.title, cr.relation_type

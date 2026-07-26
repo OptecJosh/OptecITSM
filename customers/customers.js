@@ -48,7 +48,7 @@ function cuRenderForm(c){
             <div class="cu-field full"><label>Name *</label><input type="text" id="cuName" value="${cuEsc(c.name||'')}"></div>
             <div class="cu-field"><label>Account reference</label><input type="text" id="cuRef" value="${cuEsc(c.account_ref||'')}"></div>
             <div class="cu-field"><label>Company</label><select id="cuTenant">${cuCompanyOptions(c.tenant_id)}</select></div>
-            <div class="cu-field"><label>Contact name</label><input type="text" id="cuContact" value="${cuEsc(c.contact_name||'')}"></div>
+            <div class="cu-field"><label>Contact name${isNew?'':' <span class="cu-hint">(default contact)</span>'}</label><input type="text" id="cuContact" value="${cuEsc(c.contact_name||'')}"></div>
             <div class="cu-field"><label>Contact email</label><input type="email" id="cuEmail" value="${cuEsc(c.contact_email||'')}"></div>
             <div class="cu-field"><label>Contact phone</label><input type="text" id="cuPhone" value="${cuEsc(c.contact_phone||'')}"></div>
             <div class="cu-field"><label class="toggle-inline"><input type="checkbox" id="cuActive" ${c.is_active!==false?'checked':''}> Active</label></div>
@@ -60,8 +60,127 @@ function cuRenderForm(c){
             <span class="spacer"></span>
         </div>
         <div class="cu-err" id="cuErr"></div>
+        ${isNew ? '' : cuContactsSection()}
         ${isNew ? '' : cuCiSection()}`;
-    if (!isNew) cuLoadCis();
+    if (!isNew) { cuLoadContacts(); cuLoadCis(); }
+}
+
+// ---- 13a: contacts -------------------------------------------------------
+// The three contact fields above are the DEFAULT contact's, kept in step by the
+// API. This panel is where the customer's other people live.
+function cuContactsSection(){
+    return `
+        <div class="cu-ci">
+            <h4>Contacts</h4>
+            <div id="cuContactsList"></div>
+            <div class="cu-actions" style="margin-top:10px;">
+                <button class="btn btn-secondary" onclick="cuContactEdit(null)">Add contact</button>
+            </div>
+            <div id="cuContactForm"></div>
+        </div>`;
+}
+
+let cuContacts = [];
+
+async function cuLoadContacts(){
+    if(!cuCurrent || !cuCurrent.id) return;
+    try {
+        const d = await (await fetch(CU_API + 'get_contacts.php?customer_id=' + cuCurrent.id + '&all=1')).json();
+        cuContacts = (d.success && d.contacts) ? d.contacts : [];
+        cuRenderContacts(d.success ? d.available !== false : true);
+    } catch(e){ cuContacts = []; cuRenderContacts(true); }
+}
+
+function cuRenderContacts(available){
+    const el = document.getElementById('cuContactsList');
+    if(!el) return;
+    if(!available){
+        el.innerHTML = '<div style="color:var(--text-dim,#6b7280);font-size:13px;margin-top:10px;">Run Database Verify to enable multiple contacts.</div>';
+        return;
+    }
+    if(!cuContacts.length){
+        el.innerHTML = '<div style="color:var(--text-dim,#6b7280);font-size:13px;margin-top:10px;">No contacts yet — the contact details above become the first one when you save.</div>';
+        return;
+    }
+    el.innerHTML = '<table class="cu-ci-tbl"><tbody>' + cuContacts.map(k => `
+        <tr${k.is_active ? '' : ' style="opacity:0.55;"'}>
+            <td>
+                <strong>${cuEsc(k.name)}</strong>
+                ${k.is_default ? ' <span class="cu-badge">Default</span>' : ''}
+                ${k.is_active ? '' : ' <span class="cu-hint">(inactive)</span>'}
+                ${k.job_title ? `<div class="cu-hint">${cuEsc(k.job_title)}</div>` : ''}
+            </td>
+            <td>${cuEsc(k.email||'')}${k.phone ? `<div class="cu-hint">${cuEsc(k.phone)}</div>` : ''}</td>
+            <td style="text-align:right;white-space:nowrap;">
+                ${k.is_default ? '' : `<button class="btn btn-link" onclick="cuContactMakeDefault(${k.id})">Make default</button>`}
+                <button class="btn btn-link" onclick="cuContactEdit(${k.id})">Edit</button>
+                <button class="btn btn-link" onclick="cuContactDelete(${k.id})">Delete</button>
+            </td>
+        </tr>`).join('') + '</tbody></table>';
+}
+
+function cuContactEdit(id){
+    const k = id ? cuContacts.find(x => x.id === id) : null;
+    const el = document.getElementById('cuContactForm');
+    if(!el) return;
+    el.innerHTML = `
+        <div class="cu-grid" style="margin-top:12px;">
+            <div class="cu-field"><label>Name *</label><input type="text" id="cuKName" value="${cuEsc(k?k.name:'')}"></div>
+            <div class="cu-field"><label>Job title</label><input type="text" id="cuKTitle" value="${cuEsc(k?(k.job_title||''):'')}"></div>
+            <div class="cu-field"><label>Email</label><input type="email" id="cuKEmail" value="${cuEsc(k?(k.email||''):'')}"></div>
+            <div class="cu-field"><label>Phone</label><input type="text" id="cuKPhone" value="${cuEsc(k?(k.phone||''):'')}"></div>
+            <div class="cu-field full"><label>Notes</label><textarea id="cuKNotes" rows="2">${cuEsc(k?(k.notes||''):'')}</textarea></div>
+            <div class="cu-field"><label class="toggle-inline"><input type="checkbox" id="cuKActive" ${(!k||k.is_active)?'checked':''}> Active</label></div>
+            <div class="cu-field"><label class="toggle-inline"><input type="checkbox" id="cuKDefault" ${k&&k.is_default?'checked':''}> Default contact</label></div>
+        </div>
+        <div class="cu-actions">
+            <button class="btn btn-primary" onclick="cuContactSave(${k?k.id:'null'})">Save contact</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('cuContactForm').innerHTML=''">Cancel</button>
+        </div>
+        <div class="cu-err" id="cuKErr"></div>`;
+}
+
+async function cuContactSave(id){
+    if(!cuCurrent || !cuCurrent.id) return;
+    const payload = {
+        id: id || null,
+        customer_id: cuCurrent.id,
+        name: document.getElementById('cuKName').value.trim(),
+        job_title: document.getElementById('cuKTitle').value.trim(),
+        email: document.getElementById('cuKEmail').value.trim(),
+        phone: document.getElementById('cuKPhone').value.trim(),
+        notes: document.getElementById('cuKNotes').value.trim(),
+        is_active: document.getElementById('cuKActive').checked ? 1 : 0,
+        is_default: document.getElementById('cuKDefault').checked ? 1 : 0,
+    };
+    if(!payload.name){ document.getElementById('cuKErr').textContent = 'Name is required.'; return; }
+    try {
+        const d = await (await fetch(CU_API + 'save_contact.php', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})).json();
+        if(!d.success){ document.getElementById('cuKErr').textContent = d.error || 'Save failed'; return; }
+        document.getElementById('cuContactForm').innerHTML = '';
+        // Reopen: the default may have moved, and the fields at the top of the
+        // form mirror it.
+        cuOpen(cuCurrent.id);
+    } catch(e){ document.getElementById('cuKErr').textContent = 'Network error'; }
+}
+
+async function cuContactMakeDefault(id){
+    if(!cuCurrent || !cuCurrent.id) return;
+    try {
+        const d = await (await fetch(CU_API + 'set_default_contact.php', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({customer_id:cuCurrent.id, contact_id:id})})).json();
+        if(!d.success){ alert(d.error||'Failed'); return; }
+        cuOpen(cuCurrent.id);
+    } catch(e){ alert('Network error'); }
+}
+
+async function cuContactDelete(id){
+    const k = cuContacts.find(x => x.id === id);
+    if(!confirm('Delete contact "' + (k?k.name:'') + '"? Tickets naming it fall back to the customer\'s default.')) return;
+    try {
+        const d = await (await fetch(CU_API + 'delete_contact.php', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:id})})).json();
+        if(!d.success){ alert(d.error||'Delete failed'); return; }
+        cuOpen(cuCurrent.id);
+    } catch(e){ alert('Network error'); }
 }
 
 function cuCiSection(){

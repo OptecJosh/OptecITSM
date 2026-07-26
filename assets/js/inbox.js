@@ -1840,6 +1840,7 @@ function displayEmail(email, recordings) {
                         <input type="text" class="toolbar-select" id="customerSearch" autocomplete="off" placeholder="Search customer…" value="${escapeHtml(email.customer_name || '')}" oninput="customerSearchDebounced()">
                         <div id="customerResults" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:60;background:var(--surface,#fff);border:1px solid var(--border,#e5e7eb);border-radius:6px;margin-top:2px;max-height:220px;overflow:auto;box-shadow:0 4px 14px rgba(0,0,0,.18);"></div>
                         <div id="customerContact" style="font-size:11px;color:var(--text-dim,#6b7280);margin-top:3px;">${escapeHtml([email.customer_contact_name, email.customer_contact_email, email.customer_contact_phone].filter(Boolean).join(' · '))}</div>
+                        <select class="toolbar-select" id="ticketContactSelect" style="display:none;margin-top:4px;font-size:11px;" onchange="assignTicketContact()"></select>
                     </div>
                     <div class="toolbar-field">
                         <label class="toolbar-label">Stream</label>
@@ -1986,6 +1987,7 @@ function displayEmail(email, recordings) {
     loadTicketWatchers(email.ticket_id);
     loadTimeEntries(email.ticket_id);
     startViewTimer(email.ticket_id);          // 12b: begin counting focused time
+    loadTicketContacts(email.customer_id, email.customer_contact_id);   // 13a
     loadSlaState(email.ticket_id);
     loadTicketCustomFieldsPane(email.ticket_id);
 
@@ -3146,6 +3148,68 @@ async function runCustomerSearch() {
         box.style.display = 'block';
     } catch (e) { box.style.display = 'none'; }
 }
+/* --- 13a: which contact this ticket concerns -------------------------------
+ * The line under the customer shows the customer's DEFAULT contact. When the
+ * customer has more than one, a picker appears so this ticket can name a
+ * different one — a customer with several sites is the case that needs it.
+ * Choosing nothing leaves it on the default, which is what NULL has always
+ * meant on tickets.customer_contact_id.
+ */
+let ticketContacts = [];
+
+async function loadTicketContacts(customerId, selectedContactId) {
+    const sel = document.getElementById('ticketContactSelect');
+    if (!sel) return;
+    ticketContacts = [];
+    if (!customerId) { sel.style.display = 'none'; return; }
+
+    try {
+        const d = await (await fetch(CUSTOMERS_API + 'get_contacts.php?customer_id=' + encodeURIComponent(customerId))).json();
+        ticketContacts = (d.success && d.contacts) ? d.contacts : [];
+    } catch (e) { ticketContacts = []; }
+
+    // One contact is the same as none to choose from — don't add a control that
+    // can only ever have one answer.
+    if (ticketContacts.length < 2) { sel.style.display = 'none'; return; }
+
+    const def = ticketContacts.find(k => k.is_default);
+    sel.innerHTML =
+        `<option value="">${escapeHtml(def ? 'Default — ' + def.name : 'Default contact')}</option>` +
+        ticketContacts.map(k =>
+            `<option value="${k.id}" ${selectedContactId == k.id ? 'selected' : ''}>${escapeHtml(k.name)}${k.job_title ? ' (' + escapeHtml(k.job_title) + ')' : ''}</option>`
+        ).join('');
+    sel.value = selectedContactId ? String(selectedContactId) : '';
+    sel.style.display = '';
+}
+
+async function assignTicketContact() {
+    if (!currentEmail) return;
+    const sel = document.getElementById('ticketContactSelect');
+    if (!sel) return;
+    const contactId = sel.value || null;
+    const oldName = currentEmail.customer_contact_id
+        ? (ticketContacts.find(k => k.id == currentEmail.customer_contact_id) || {}).name || null
+        : null;
+    const chosen = contactId ? ticketContacts.find(k => k.id == contactId) : null;
+
+    try {
+        const r = await fetch(API_BASE + 'assign_ticket.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticket_id: currentEmail.ticket_id, customer_contact_id: contactId })
+        });
+        const d = await r.json();
+        if (!d.success) { showToast('Could not set the contact: ' + (d.error || ''), 'error'); return; }
+
+        await logAudit(currentEmail.ticket_id, 'Contact', oldName, chosen ? chosen.name : null);
+        currentEmail.customer_contact_id = contactId ? parseInt(contactId, 10) : null;
+
+        // Show whichever contact now applies: the chosen one, or the default.
+        const show = chosen || ticketContacts.find(k => k.is_default) || null;
+        const cc = document.getElementById('customerContact');
+        if (cc) cc.textContent = show ? [show.name, show.email, show.phone].filter(Boolean).join(' · ') : '';
+    } catch (e) { showToast('Failed to set the contact', 'error'); }
+}
+
 async function assignCustomer(id) {
     const box = document.getElementById('customerResults');
     const oldValue = currentEmail.customer_name || null;
@@ -3166,6 +3230,15 @@ async function assignCustomer(id) {
             document.getElementById('customerSearch').value = chosen ? chosen.name : '';
             const cc = document.getElementById('customerContact');
             if (cc) cc.textContent = chosen ? [chosen.contact_name, chosen.contact_email, chosen.contact_phone].filter(Boolean).join(' · ') : '';
+
+            // 13a: a contact belongs to one customer, so the previous choice is
+            // gone — the server has already cleared it. Reload the picker for
+            // whoever the ticket now belongs to.
+            if (data.contact_cleared) {
+                await logAudit(currentEmail.ticket_id, 'Contact', currentEmail.customer_contact_name || null, null);
+            }
+            currentEmail.customer_contact_id = null;
+            await loadTicketContacts(currentEmail.customer_id, null);
         } else {
             showToast('Error assigning customer: ' + data.error, 'error');
         }

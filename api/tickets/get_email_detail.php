@@ -208,6 +208,39 @@ try {
 
     // Ticket-to-ticket links (parent / children / duplicates / related), grouped
     // from this ticket's perspective. Degrades to empty if the table is absent.
+    // 13a: which of the customer's contacts this ticket concerns. Fetched
+    // separately rather than joined into the main query above, so a
+    // pre-Database-Verify install (no customer_contact_id column, no
+    // customer_contacts table) still returns a ticket instead of erroring.
+    //
+    // customer_contact_name/email/phone above are the customer's DEFAULT, via
+    // the mirror. They are overwritten here only when this ticket names a
+    // specific contact, so "no choice made" keeps showing the default — which is
+    // exactly what NULL has always meant on that column.
+    require_once '../../includes/customer_contacts.php';
+    $email['customer_contact_id']    = null;
+    $email['customer_contact_is_default'] = true;
+    if (ticketCustomerContactColumnExists($conn) && !empty($email['customer_id'])) {
+        try {
+            $cq = $conn->prepare(
+                "SELECT cc.id, cc.name, cc.email, cc.phone, cc.job_title
+                   FROM tickets t
+                   JOIN customer_contacts cc ON cc.id = t.customer_contact_id
+                  WHERE t.id = ?"
+            );
+            $cq->execute([(int)$email['ticket_id']]);
+            $chosen = $cq->fetch(PDO::FETCH_ASSOC);
+            if ($chosen) {
+                $email['customer_contact_id']         = (int)$chosen['id'];
+                $email['customer_contact_name']       = $chosen['name'];
+                $email['customer_contact_email']      = $chosen['email'];
+                $email['customer_contact_phone']      = $chosen['phone'];
+                $email['customer_contact_job_title']  = $chosen['job_title'];
+                $email['customer_contact_is_default'] = false;
+            }
+        } catch (Exception $e) { /* leave the default showing */ }
+    }
+
     $email['linked_tickets'] = ['parent' => null, 'children' => [], 'duplicate_of' => null, 'duplicates' => [], 'related' => []];
     try {
         require_once '../../includes/ticket_links.php';

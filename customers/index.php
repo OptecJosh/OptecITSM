@@ -64,6 +64,11 @@ $translationNamespaces = ['common'];
         table.cu-ci-tbl td { padding: 7px 8px; border-bottom: 1px solid var(--border,#eee); color: var(--text,#222); }
         .cu-empty { padding: 40px; text-align: center; color: var(--text-dim,#888); font-size: 14px; }
         .cu-err { color: #b91c1c; font-size: 13px; margin-top: 8px; }
+        /* 13a: contacts panel */
+        .cu-hint { font-size: 12px; font-weight: 400; color: var(--text-muted,#6b7280); }
+        .cu-badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 10px; background: var(--surface-2,#eef2ff); color: #3730a3; vertical-align: middle; }
+        .btn-link { background: none; border: none; padding: 2px 6px; font-size: 12.5px; color: #2563eb; cursor: pointer; }
+        .btn-link:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -82,6 +87,6 @@ $translationNamespaces = ['common'];
             </div>
         </div>
     </div>
-    <script src="customers.js?v=1"></script>
+    <script src="customers.js?v=2"></script>
 </body>
 </html>

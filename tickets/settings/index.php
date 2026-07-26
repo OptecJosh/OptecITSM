@@ -387,13 +387,14 @@ $translationNamespaces = ['common', 'tickets'];
                     <tr>
                         <th><?php echo htmlspecialchars(t('tickets.settings.columns.name')); ?></th>
                         <th><?php echo htmlspecialchars(t('tickets.settings.columns.description')); ?></th>
+                        <th><?php echo htmlspecialchars(t('tickets.settings.category_type.column')); ?></th>
                         <th><?php echo htmlspecialchars(t('tickets.settings.columns.order')); ?></th>
                         <th><?php echo htmlspecialchars(t('tickets.settings.columns.status')); ?></th>
                         <th><?php echo htmlspecialchars(t('tickets.settings.columns.actions')); ?></th>
                     </tr>
                 </thead>
                 <tbody id="categories-list">
-                    <tr><td colspan="5" style="text-align: center;"><?php echo htmlspecialchars(t('tickets.settings.loading')); ?></td></tr>
+                    <tr><td colspan="6" style="text-align: center;"><?php echo htmlspecialchars(t('tickets.settings.loading')); ?></td></tr>
                 </tbody>
             </table>
             <!-- Phase 7c: the service catalog reuses this same capability -->
@@ -1194,6 +1195,16 @@ $translationNamespaces = ['common', 'tickets'];
                 <div class="form-group" id="itemDescriptionGroup">
                     <label for="itemDescription"><?php echo htmlspecialchars(t('tickets.settings.columns.description')); ?></label>
                     <textarea id="itemDescription"></textarea>
+                </div>
+
+                <!-- 12c: which ticket type this category belongs to. Blank = every
+                     type, which is what every pre-12c category is. -->
+                <div class="form-group" id="itemTicketTypeGroup" style="display: none;">
+                    <label for="itemTicketType"><?php echo htmlspecialchars(t('tickets.settings.category_type.label')); ?></label>
+                    <select id="itemTicketType">
+                        <option value=""><?php echo htmlspecialchars(t('tickets.settings.category_type.any')); ?></option>
+                    </select>
+                    <small style="display: block; color: var(--text-muted, #666); margin-top: 4px;"><?php echo htmlspecialchars(t('tickets.settings.category_type.help')); ?></small>
                 </div>
 
                 <div class="form-group" id="itemColourGroup" style="display: none;">
@@ -2357,6 +2368,41 @@ $translationNamespaces = ['common', 'tickets'];
             document.getElementById('itemClosedGroup').style.display      = isStatus ? '' : 'none';
             document.getElementById('itemPausesSlaGroup').style.display   = isStatus ? '' : 'none';
             document.getElementById('itemDefaultGroup').style.display     = isColouredLookup ? '' : 'none';
+            // 12c: only a category can belong to a ticket type.
+            document.getElementById('itemTicketTypeGroup').style.display  = type === 'category' ? '' : 'none';
+        }
+
+        // 12c: the ticket types offered by the category modal's scope picker.
+        // Loaded once and reused; a category with no type is available on every
+        // type, which is what the blank option means.
+        let categoryTicketTypes = [];
+
+        async function loadCategoryTicketTypes() {
+            if (categoryTicketTypes.length) return categoryTicketTypes;
+            try {
+                const r = await fetch(API_BASE + 'get_ticket_types.php');
+                const d = await r.json();
+                categoryTicketTypes = (d.success && d.ticket_types) ? d.ticket_types : [];
+            } catch (e) {
+                categoryTicketTypes = [];
+            }
+            return categoryTicketTypes;
+        }
+
+        async function populateItemTicketType(selectedId) {
+            const sel = document.getElementById('itemTicketType');
+            if (!sel) return;
+            const types = await loadCategoryTicketTypes();
+            sel.innerHTML = `<option value="">${escapeHtml(t('tickets.settings.category_type.any'))}</option>` +
+                types.map(ty => `<option value="${ty.id}" ${selectedId == ty.id ? 'selected' : ''}>${escapeHtml(ty.name)}</option>`).join('');
+            sel.value = selectedId ? String(selectedId) : '';
+        }
+
+        /** Label for a category's type scope, for the settings list. */
+        function categoryTypeLabel(ticketTypeId) {
+            if (!ticketTypeId) return t('tickets.settings.category_type.any');
+            const ty = categoryTicketTypes.find(x => x.id == ticketTypeId);
+            return ty ? ty.name : '#' + ticketTypeId;
         }
 
         // Load teams
@@ -2539,6 +2585,8 @@ $translationNamespaces = ['common', 'tickets'];
         // Load ticket categories
         async function loadTicketCategories() {
             try {
+                // Names first, so the Type column reads "Incident" rather than "#3".
+                await loadCategoryTicketTypes();
                 const response = await fetch(API_BASE + 'get_ticket_categories.php?manage=1');
                 const data = await response.json();
 
@@ -2557,6 +2605,7 @@ $translationNamespaces = ['common', 'tickets'];
                 <tr>
                     <td><strong>${escapeHtml(cat.name)}</strong></td>
                     <td>${escapeHtml(cat.description || '')}</td>
+                    <td>${escapeHtml(categoryTypeLabel(cat.ticket_type_id))}</td>
                     <td>${cat.display_order}</td>
                     <td><span class="status-badge status-${cat.is_active ? 'active' : 'inactive'}">${cat.is_active ? 'Active' : 'Inactive'}</span></td>
                     <td>
@@ -2579,7 +2628,7 @@ $translationNamespaces = ['common', 'tickets'];
 
             const cats = (data && data.ticket_categories) ? data.ticket_categories : [];
             if (cats.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No categories found</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No categories found</td></tr>';
                 return;
             }
             tbody.innerHTML = cats.map(ticketCategoryRowEditable).join('');
@@ -2587,12 +2636,12 @@ $translationNamespaces = ['common', 'tickets'];
 
         function renderTicketCategoriesScoped(tbody, scoped) {
             const groupRow = (label, hint) =>
-                `<tr class="tt-group-row"><td colspan="5" style="background:#f7f9fa;border-top:1px solid #e3e8ea;font-size:12px;font-weight:600;color:#455a64;padding:10px;">${escapeHtml(label)}${hint ? ` <span style="font-weight:400;color:#90a4ae;">— ${escapeHtml(hint)}</span>` : ''}</td></tr>`;
+                `<tr class="tt-group-row"><td colspan="6" style="background:#f7f9fa;border-top:1px solid #e3e8ea;font-size:12px;font-weight:600;color:#455a64;padding:10px;">${escapeHtml(label)}${hint ? ` <span style="font-weight:400;color:#90a4ae;">— ${escapeHtml(hint)}</span>` : ''}</td></tr>`;
 
             let html = '';
             html += groupRow(`${scoped.company.name}’s own categories`);
             if (!scoped.own.length) {
-                html += '<tr><td colspan="5" style="color:#aaa;font-style:italic;padding:10px;">None yet — use Add to create a category just for this company.</td></tr>';
+                html += '<tr><td colspan="6" style="color:#aaa;font-style:italic;padding:10px;">None yet — use Add to create a category just for this company.</td></tr>';
             } else {
                 html += scoped.own.map(ticketCategoryRowEditable).join('');
             }
@@ -2610,6 +2659,7 @@ $translationNamespaces = ['common', 'tickets'];
                     <tr style="${dim}">
                         <td><strong>${escapeHtml(c.name)}</strong></td>
                         <td>${escapeHtml(c.description || '')}</td>
+                        <td>${escapeHtml(categoryTypeLabel(c.ticket_type_id))}</td>
                         <td>${c.display_order}</td>
                         <td>${statusCell}</td>
                         <td>
@@ -3173,6 +3223,7 @@ $translationNamespaces = ['common', 'tickets'];
             document.getElementById('itemPausesSla').checked = false;
             document.getElementById('itemDefault').checked = false;
             configureModalFields(type);
+            if (type === 'category') populateItemTicketType('');
             document.getElementById('editModal').classList.add('active');
         }
 
@@ -3230,6 +3281,7 @@ $translationNamespaces = ['common', 'tickets'];
                         document.getElementById('itemPausesSla').checked = !!item.pauses_sla;
                         document.getElementById('itemDefault').checked = !!item.is_default;
                         configureModalFields(type);
+                        if (type === 'category') await populateItemTicketType(item.ticket_type_id || '');
                         document.getElementById('editModal').classList.add('active');
                     }
                 }
@@ -3452,6 +3504,10 @@ $translationNamespaces = ['common', 'tickets'];
                     display_order: parseInt(document.getElementById('itemOrder').value),
                     is_active: document.getElementById('itemActive').checked ? 1 : 0
                 };
+                // 12c: blank means "every ticket type", which the API reads as null.
+                if (type === 'category') {
+                    formData.ticket_type_id = document.getElementById('itemTicketType').value || null;
+                }
             }
 
             try {

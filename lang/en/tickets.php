@@ -440,6 +440,14 @@ return [
             'action'       => 'Action',
             'reason'       => 'Reason',
         ],
+        // 12c: a category may belong to one ticket type, or to none — and none
+        // means every type, which is what every category was before 12c.
+        'category_type' => [
+            'column' => 'Ticket type',
+            'label'  => 'Available on',
+            'any'    => 'Every ticket type',
+            'help'   => 'Leave this as every ticket type unless the category only makes sense for one of them. Changing a ticket to a type its category does not cover clears the category.',
+        ],
         // Tooltips on the icon buttons in the Actions column. Edit/Delete
         // reuse the existing common.edit / common.delete keys.
         'tooltips' => [

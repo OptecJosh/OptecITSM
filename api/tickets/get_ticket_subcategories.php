@@ -6,6 +6,12 @@
  * (?category_id=). Subcategories follow the same "global default + per-company
  * add/hide" model (design §7) as categories themselves.
  *
+ * 12c deliberately gives this no ticket_type_id parameter. A subcategory belongs
+ * to exactly one category, and that category already carries the type scope — so
+ * asking for the subcategories of a category the current type allows can only
+ * ever return subcategories that type allows. A type parameter here would be a
+ * second copy of a rule that is already enforced one level up.
+ *
  * Two response shapes:
  *   - default (consumer, e.g. the ticket form): `ticket_subcategories` = the
  *     RESOLVED visible list for the active company (global-not-hidden + own).

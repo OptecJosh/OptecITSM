@@ -67,32 +67,30 @@ function ticketCategoryTypeWhere(PDO $conn, ?int $typeId, string $alias = ''): s
  */
 function ticketCategoryFitsType(PDO $conn, ?int $categoryId, ?int $typeId): bool {
     if (!$categoryId || !$typeId) return true;
-    if (!ticketCategoryTypeColumnExists($conn)) return true;
-    try {
-        $stmt = $conn->prepare("SELECT ticket_type_id FROM ticket_categories WHERE id = ?");
-        $stmt->execute([$categoryId]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($row === false) return true;
-        if ($row['ticket_type_id'] === null) return true;
-        return (int)$row['ticket_type_id'] === (int)$typeId;
-    } catch (Exception $e) {
-        return true;
-    }
+    $scope = ticketCategoryTypeId($conn, $categoryId);
+    if ($scope === null) return true;          // unscoped: fits every type
+    return $scope === (int)$typeId;
 }
 
 /**
  * The ticket type a category is scoped to, or null for "every type" (and for a
  * category that does not exist, or a schema that has not caught up).
+ *
+ * Cached per request: a bulk import or migration asks this once per row, and
+ * there are only ever a handful of distinct categories in a file of any size.
  */
 function ticketCategoryTypeId(PDO $conn, ?int $categoryId): ?int {
+    static $cache = [];
     if (!$categoryId) return null;
     if (!ticketCategoryTypeColumnExists($conn)) return null;
+    if (array_key_exists($categoryId, $cache)) return $cache[$categoryId];
     try {
         $stmt = $conn->prepare("SELECT ticket_type_id FROM ticket_categories WHERE id = ?");
         $stmt->execute([$categoryId]);
         $val = $stmt->fetchColumn();
-        return ($val === false || $val === null) ? null : (int)$val;
+        $cache[$categoryId] = ($val === false || $val === null) ? null : (int)$val;
     } catch (Exception $e) {
-        return null;
+        $cache[$categoryId] = null;
     }
+    return $cache[$categoryId];
 }

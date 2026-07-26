@@ -41,6 +41,27 @@ require_once __DIR__ . '/tenancy.php';
 /** Hard cap on rows per import run. */
 function data_import_row_cap(): int { return 5000; }
 
+/**
+ * Run one named cross-field rule over a row's resolved values.
+ * Returns an error message, or null when the row is acceptable.
+ *
+ * These only ever judge what the row itself supplies. A row that names just one
+ * side of a pair — updating a ticket's type without naming a category, say — is
+ * passed through: this function is not given the existing record, and guessing
+ * at one would cost a query per row on files of 20,000+.
+ */
+function data_import_row_check(PDO $conn, string $check, array $values): ?string {
+    if ($check === 'ticket_category_type') {
+        require_once __DIR__ . '/ticket_categories.php';
+        $categoryId = isset($values['category_id'])    ? (int)$values['category_id']    : null;
+        $typeId     = isset($values['ticket_type_id']) ? (int)$values['ticket_type_id'] : null;
+        if (!ticketCategoryFitsType($conn, $categoryId, $typeId)) {
+            return 'category is not available on that ticket_type - widen the category to every type, or correct the pairing';
+        }
+    }
+    return null;
+}
+
 function data_import_datasets(): array {
     return [
         // ---- Tickets ------------------------------------------------------
@@ -49,8 +70,11 @@ function data_import_datasets(): array {
             'match' => 'ticket_number', 'tenant' => true,
             'generate' => ['ticket_number' => 'ticket'],
             'defaults' => ['created_datetime' => 'now'],
-            'notes' => 'Leave ticket_number blank to create new tickets (one is generated); supply it to update. Names must already exist — statuses, priorities and the rest are matched by name. `body` is the opening message: it becomes the ticket's first email, which is what makes it show up in the ticket list.',
+            'notes' => 'Leave ticket_number blank to create new tickets (one is generated); supply it to update. Names must already exist — statuses, priorities and the rest are matched by name. `body` is the opening message: it becomes the ticket\'s first email, which is what makes it show up in the ticket list. A category restricted to one ticket type can only be used on tickets of that type.',
             'post_insert' => 'ticket_seed_email',
+            // 12c: a category restricted to one ticket type may only be used on
+            // that type. Checked here rather than per-column, since it needs both.
+            'row_checks'  => ['ticket_category_type'],
             'columns' => [
                 'ticket_number'         => ['type' => 'string', 'max' => 50],
                 'subject'               => ['type' => 'string', 'max' => 255, 'required' => true],
@@ -726,6 +750,14 @@ function data_import_plan(PDO $conn, array $spec, int $analystId, string $csv): 
             $id = data_import_lookup($conn, $lk, $raw);
             if ($id === null) { $rowError = "$col \"$raw\" does not exist - create it first, or correct the spelling"; break; }
             $values[$lk['target']] = $id;
+        }
+        // Cross-field rules the per-column and per-lookup loops cannot see,
+        // because each of those only ever looks at one cell. Reported the same
+        // way as an unresolvable lookup, for the same reason: a value this
+        // importer cannot honour is an error, never a silent NULL.
+        foreach (($spec['row_checks'] ?? []) as $check) {
+            $msg = data_import_row_check($conn, $check, $values);
+            if ($msg !== null) { $rowError = $msg; break; }
         }
         if ($rowError) { $errors[] = ['row' => $rowNum, 'message' => $rowError]; continue; }
 

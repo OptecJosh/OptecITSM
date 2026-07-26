@@ -31,8 +31,13 @@ try {
         if (array_key_exists($k, $data)) $in[$k] = $data[$k];
     }
 
-    TicketsService::updateTicket($conn, ActorContext::fromSession($conn), (int)$ticketId, $in, false);
-    echo json_encode(['success' => true]);
+    $outcome = [];
+    TicketsService::updateTicket($conn, ActorContext::fromSession($conn), (int)$ticketId, $in, false, $outcome);
+
+    // 12c: `category_cleared` says the ticket's category no longer fitted its new
+    // type and was dropped. The UI has to hear about it — it audits client-side,
+    // and the analyst should be told rather than discovering an empty field.
+    echo json_encode(['success' => true] + $outcome);
 } catch (ServiceError $e) {
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
 } catch (Exception $e) {

@@ -94,6 +94,14 @@ class TicketsService
         self::validateLookupId($conn, 'ticket_types', $typeId, 'ticket type');
         self::validateLookupId($conn, 'ticket_origins', $originId, 'origin');
         self::validateLookupId($conn, 'ticket_categories', $categoryId, 'category');
+        // 12c: a category scoped to another ticket type cannot be used here. On
+        // create there is nothing to salvage, so this is a plain refusal — unlike
+        // update, where a type change clears a category that is already present.
+        require_once __DIR__ . '/../ticket_categories.php';
+        if (!ticketCategoryFitsType($conn, $categoryId, $typeId)) {
+            throw new ServiceError('validation', 'invalid_field',
+                'That category is not available for the selected ticket type.');
+        }
         if ($subcategoryId !== null) {
             $sStmt = $conn->prepare("SELECT category_id FROM ticket_subcategories WHERE id = ? LIMIT 1");
             $sStmt->execute([$subcategoryId]);
@@ -208,9 +216,15 @@ class TicketsService
      * Apply a partial update to a ticket. $writeAudit toggles the server-side
      * audit trail (API: true; UI: false — it audits client-side). Returns void;
      * the adapter reloads for its response.
+     *
+     * $outcome receives anything the caller has to tell the user about that it
+     * did not ask for — currently just 12c's category_cleared, when a ticket
+     * type change stranded the category the ticket was carrying. Optional, so
+     * the callers that do not care are unaffected.
      */
-    public static function updateTicket(PDO $conn, ActorContext $ctx, int $ticketId, array $in, bool $writeAudit): void
+    public static function updateTicket(PDO $conn, ActorContext $ctx, int $ticketId, array $in, bool $writeAudit, &$outcome = null): void
     {
+        $outcome = [];
         $current = self::loadTicket($conn, $ctx, $ticketId);   // 404 (unknown / out of scope)
         if ($current['deleted_datetime'] !== null) {
             throw new ServiceError('conflict', 'conflict', 'Ticket is in the trash. Restore it before updating.');
@@ -262,6 +276,51 @@ class TicketsService
                 $args[]    = $newPriorityId;
                 $audits[]  = ['Priority', $current['priority_name'], $newPriorityName];
                 $priorityChanged = true;
+            }
+        }
+
+        // 12c: a category may be scoped to one ticket type, so changing the type
+        // can strand the category a ticket already carries.
+        //
+        // Two different situations, deliberately handled differently. If the
+        // caller names a category that does not fit, that is a mistake and is
+        // refused. If the type alone moves out from under an existing category,
+        // refusing would leave the analyst unable to correct a mis-typed ticket
+        // at all — so the category is cleared, reported back, and (for the UI,
+        // which audits client-side) logged by the caller.
+        $categoryCleared = null;
+        if (array_key_exists('ticket_type_id', $in) || array_key_exists('category_id', $in)) {
+            require_once __DIR__ . '/../ticket_categories.php';
+
+            $typeSent = array_key_exists('ticket_type_id', $in);
+            $effectiveTypeId = $typeSent
+                ? (($in['ticket_type_id'] === '' || $in['ticket_type_id'] === null) ? null : (int)$in['ticket_type_id'])
+                : ($current['ticket_type_id'] !== null ? (int)$current['ticket_type_id'] : null);
+
+            $categorySent = array_key_exists('category_id', $in)
+                && $in['category_id'] !== '' && $in['category_id'] !== null;
+            $effectiveCategoryId = array_key_exists('category_id', $in)
+                ? (($in['category_id'] === '' || $in['category_id'] === null) ? null : (int)$in['category_id'])
+                : ($current['category_id'] !== null ? (int)$current['category_id'] : null);
+
+            if ($effectiveTypeId !== null && $effectiveCategoryId !== null
+                && !ticketCategoryFitsType($conn, $effectiveCategoryId, $effectiveTypeId)) {
+
+                if ($categorySent) {
+                    throw new ServiceError('validation', 'invalid_field',
+                        'That category is not available for the selected ticket type.');
+                }
+
+                $categoryCleared = [
+                    'category_id'      => $effectiveCategoryId,
+                    'category_name'    => $current['category_name'],
+                    'subcategory_id'   => $current['subcategory_id'] !== null ? (int)$current['subcategory_id'] : null,
+                    'subcategory_name' => $current['subcategory_name'],
+                ];
+                // The subcategory goes with it — it belongs to the category, not
+                // to the ticket, so leaving it would be an orphan.
+                $in['category_id']    = null;
+                $in['subcategory_id'] = null;
             }
         }
 
@@ -388,6 +447,13 @@ class TicketsService
         $updates[] = 'updated_datetime = UTC_TIMESTAMP()';
         $args[]    = $ticketId;
         $conn->prepare('UPDATE tickets SET ' . implode(', ', $updates) . ' WHERE id = ?')->execute($args);
+
+        // Only report the clear once it has actually been written — reported
+        // before the UPDATE, a later throw would leave the caller telling the
+        // analyst about something that did not happen.
+        if ($categoryCleared !== null) {
+            $outcome['category_cleared'] = $categoryCleared;
+        }
 
         if ($writeAudit) {
             foreach ($audits as [$field, $old, $new]) {

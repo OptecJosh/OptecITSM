@@ -1652,9 +1652,10 @@ function displayEmail(email, recordings) {
         `<option value="${type.id}" ${email.ticket_type_id == type.id ? 'selected' : ''}>${escapeHtml(type.name)}</option>`
     ).join('');
 
-    // Build category dropdown. Subcategory options depend on the selected
-    // category and are populated asynchronously after render (populateSubcategorySelect).
-    const categoryOptions = ticketCategories.map(cat =>
+    // Build category dropdown, offering only the categories valid for this
+    // ticket's type (12c). Subcategory options depend on the selected category
+    // and are populated asynchronously after render (populateSubcategorySelect).
+    const categoryOptions = categoriesForType(email.ticket_type_id).map(cat =>
         `<option value="${cat.id}" ${email.category_id == cat.id ? 'selected' : ''}>${escapeHtml(cat.name)}</option>`
     ).join('');
 
@@ -2737,6 +2738,25 @@ async function assignTicketType() {
         if (data.success) {
             await logAudit(currentEmail.ticket_id, 'Ticket Type', oldValue, newValue);
             currentEmail.ticket_type_id = ticketTypeId || null;
+
+            // 12c: the new type may not offer the category the ticket was
+            // carrying, in which case the server has already dropped it. Say so
+            // plainly and record it — a field that empties itself without
+            // explanation is worse than the mis-filing it fixes.
+            if (data.category_cleared) {
+                const cleared = data.category_cleared;
+                await logAudit(currentEmail.ticket_id, 'Category', cleared.category_name, null);
+                if (cleared.subcategory_id) {
+                    await logAudit(currentEmail.ticket_id, 'Subcategory', cleared.subcategory_name, null);
+                }
+                currentEmail.category_id = null;
+                currentEmail.subcategory_id = null;
+                showToast(`Category “${cleared.category_name}” isn’t available for ${newValue} — it has been cleared`, 'info');
+            }
+
+            // Re-offer only the categories this type allows.
+            populateCategorySelect(currentEmail.ticket_type_id, currentEmail.category_id);
+            await populateSubcategorySelect(currentEmail.category_id);
         } else {
             showToast('Error assigning ticket type: ' + data.error, 'error');
         }
@@ -2814,6 +2834,26 @@ async function assignSubcategory() {
 
 // (Re)populate the reading-pane subcategory select for the given category,
 // preselecting currentEmail.subcategory_id if it's still valid for it.
+/* --- Category ↔ ticket type (12c) ------------------------------------------
+ * A category either belongs to one ticket type or, with no type set, to every
+ * type. ticketCategories deliberately stays the FULL list — getDisplayName()
+ * resolves audit labels from it, including for a category the current type no
+ * longer offers — so the narrowing happens here, at render time.
+ */
+function categoriesForType(typeId) {
+    if (!typeId) return ticketCategories;
+    return ticketCategories.filter(c => !c.ticket_type_id || c.ticket_type_id == typeId);
+}
+
+/** Rebuild the category picker for a ticket type, keeping the selection if it survives. */
+function populateCategorySelect(typeId, selectedCategoryId) {
+    const sel = document.getElementById('categorySelect');
+    if (!sel) return;
+    sel.innerHTML = '<option value=""></option>' + categoriesForType(typeId).map(cat =>
+        `<option value="${cat.id}" ${selectedCategoryId == cat.id ? 'selected' : ''}>${escapeHtml(cat.name)}</option>`
+    ).join('');
+}
+
 async function populateSubcategorySelect(categoryId) {
     const sel = document.getElementById('subcategorySelect');
     if (!sel) return;
@@ -4813,6 +4853,8 @@ function openNewTicketModal() {
         ticketTypes.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
 
     // Populate category dropdown; subcategory stays empty/disabled until a category is chosen.
+    // No type is chosen yet, so every category is offered — onNewTicketTypeChange
+    // narrows it as soon as one is (12c).
     const catSelect = document.getElementById('newTicketCategory');
     catSelect.innerHTML = '<option value="">-- Select --</option>' +
         ticketCategories.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
@@ -4878,6 +4920,27 @@ async function loadNewTicketMailboxes() {
 
 function closeNewTicketModal() {
     document.getElementById('newTicketModal').classList.remove('active');
+}
+
+// 12c: narrow the New Ticket modal's category list to the chosen type. A
+// selection that the new type does not offer is dropped rather than carried
+// silently into a ticket the category does not belong on.
+async function onNewTicketTypeChange() {
+    const typeId = document.getElementById('newTicketType').value;
+    const catSelect = document.getElementById('newTicketCategory');
+    if (!catSelect) return;
+
+    const allowed = categoriesForType(typeId);
+    const previous = catSelect.value;
+    const survives = previous && allowed.some(c => c.id == previous);
+
+    catSelect.innerHTML = '<option value="">-- Select --</option>' +
+        allowed.map(c => `<option value="${c.id}" ${survives && c.id == previous ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('');
+
+    if (previous && !survives) {
+        showToast('That category isn’t available for this ticket type', 'info');
+    }
+    await onNewTicketCategoryChange();
 }
 
 // Repopulate the New Ticket modal's subcategory dropdown when its category changes.

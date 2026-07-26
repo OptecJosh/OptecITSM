@@ -9,12 +9,17 @@
  *     company (tenant_id set). You may edit/delete only that company's own
  *     categories; the shared defaults are managed from the MSP/Default context
  *     (and hidden, not edited, per company).
+ *
+ * 12c: `ticket_type_id` narrows the category to one ticket type. Absent, empty
+ * or 0 means "every type", which is both the default and what every category
+ * created before 12c is.
  */
 session_start(['read_and_close' => true]);
 require_once '../../config.php';
 require_once '../../includes/functions.php';
 require_once '../../includes/rbac.php';
 require_once '../../includes/tenancy.php';
+require_once '../../includes/ticket_categories.php';
 
 header('Content-Type: application/json');
 
@@ -33,6 +38,7 @@ try {
     $description   = $data['description'] ?? '';
     $display_order = (int)($data['display_order'] ?? 0);
     $is_active     = !empty($data['is_active']) ? 1 : 0;
+    $ticketTypeId  = !empty($data['ticket_type_id']) ? (int)$data['ticket_type_id'] : null;
 
     if ($name === '') {
         throw new Exception('Name is required');
@@ -40,6 +46,16 @@ try {
 
     $conn = connectToDatabase();
     $analystId = (int)$_SESSION['analyst_id'];
+
+    // A category may only be narrowed to a type that exists. Silently storing a
+    // dangling id would hide the category from every ticket without saying why.
+    if ($ticketTypeId !== null) {
+        $ts = $conn->prepare("SELECT id FROM ticket_types WHERE id = ?");
+        $ts->execute([$ticketTypeId]);
+        if (!$ts->fetch()) {
+            throw new Exception('That ticket type no longer exists');
+        }
+    }
 
     $multi        = isMultiTenant($conn);
     $activeId     = getActiveTenantId($conn, $analystId);
@@ -90,11 +106,23 @@ try {
             }
         }
 
-        $stmt = $conn->prepare("UPDATE ticket_categories SET name = ?, description = ?, display_order = ?, is_active = ? WHERE id = ?");
-        $stmt->execute([$name, $description, $display_order, $is_active, $id]);
+        // Pre-Database-Verify installs have no type column; the save must still
+        // work, it just cannot record a scope yet.
+        if (ticketCategoryTypeColumnExists($conn)) {
+            $stmt = $conn->prepare("UPDATE ticket_categories SET name = ?, description = ?, display_order = ?, is_active = ?, ticket_type_id = ? WHERE id = ?");
+            $stmt->execute([$name, $description, $display_order, $is_active, $ticketTypeId, $id]);
+        } else {
+            $stmt = $conn->prepare("UPDATE ticket_categories SET name = ?, description = ?, display_order = ?, is_active = ? WHERE id = ?");
+            $stmt->execute([$name, $description, $display_order, $is_active, $id]);
+        }
     } else {
-        $stmt = $conn->prepare("INSERT INTO ticket_categories (name, description, display_order, is_active, tenant_id) VALUES (?, ?, ?, ?, ?)");
-        $stmt->execute([$name, $description, $display_order, $is_active, $scopeTenant]);
+        if (ticketCategoryTypeColumnExists($conn)) {
+            $stmt = $conn->prepare("INSERT INTO ticket_categories (name, description, display_order, is_active, ticket_type_id, tenant_id) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$name, $description, $display_order, $is_active, $ticketTypeId, $scopeTenant]);
+        } else {
+            $stmt = $conn->prepare("INSERT INTO ticket_categories (name, description, display_order, is_active, tenant_id) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$name, $description, $display_order, $is_active, $scopeTenant]);
+        }
     }
 
     wf_emit('ticket_category', $id ? 'updated' : 'created', $id ? (int)$id : (int)$conn->lastInsertId(), $name);

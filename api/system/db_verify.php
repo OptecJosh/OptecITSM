@@ -229,6 +229,11 @@ $schema = [
         'description'       => 'VARCHAR(255) NULL',
         'is_active'         => 'TINYINT(1) NULL DEFAULT 1',
         'display_order'     => 'INT NULL DEFAULT 0',
+        // 12c: which ticket type this category belongs to. NULL = available to
+        // EVERY type. That default is what makes the migration free — every
+        // category that existed before this column keeps working everywhere
+        // until someone deliberately scopes it.
+        'ticket_type_id'    => 'INT NULL',
         'tenant_id'         => 'INT NULL',
         'created_datetime'  => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
     ],
@@ -3475,10 +3480,37 @@ try {
         $cnt = (int) $conn->query("SELECT COUNT(*) FROM ticket_types")->fetchColumn();
         if ($cnt === 0) {
             $conn->exec("INSERT INTO ticket_types (name, description, is_active, display_order, tenant_id) VALUES
-                ('Incident',        'Something is broken or not working as expected',   1, 10, NULL),
+                ('Incident',        'Something is broken or not working as expected',    1, 10, NULL),
                 ('Service Request', 'A request for something new or a standard change',  1, 20, NULL),
-                ('Question',        'A general query or how-to',                         1, 30, NULL)");
-            $results[] = ['table' => 'ticket_types', 'status' => 'seeded', 'details' => ['Inserted 3 default ticket types']];
+                ('Question',        'A general query or how-to',                         1, 30, NULL),
+                ('Event',           'Raised by monitoring rather than by a person',      1, 40, NULL)");
+            $results[] = ['table' => 'ticket_types', 'status' => 'seeded', 'details' => ['Inserted 4 default ticket types']];
+            // Event has now been offered on this install. Without this marker a
+            // fresh install that later deleted Event would be given it back by
+            // the upgrade branch below.
+            try { $conn->prepare("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('ticket_type_event_seeded', '1')")->execute(); } catch (Exception $e) {}
+        } else {
+            // 12c adds Event to installs that already have the original three.
+            // Guarded by a one-shot marker rather than "insert if absent", so an
+            // operator who deletes Event does not get it back on every verify —
+            // the same respect the empty-table rule above shows.
+            $seeded = false;
+            try {
+                $s = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'ticket_type_event_seeded'");
+                $seeded = $s->fetchColumn() !== false;
+            } catch (Exception $e) { $seeded = true; }   // no settings table: don't guess
+
+            if (!$seeded) {
+                try {
+                    $has = $conn->query("SELECT id FROM ticket_types WHERE tenant_id IS NULL AND LOWER(name) = 'event'")->fetchColumn();
+                    if ($has === false) {
+                        $conn->exec("INSERT INTO ticket_types (name, description, is_active, display_order, tenant_id)
+                                     VALUES ('Event', 'Raised by monitoring rather than by a person', 1, 40, NULL)");
+                        $results[] = ['table' => 'ticket_types', 'status' => 'seeded', 'details' => ['Added the Event ticket type']];
+                    }
+                    $conn->prepare("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('ticket_type_event_seeded', '1')")->execute();
+                } catch (Exception $e) {}
+            }
         }
     }
 
@@ -3791,6 +3823,17 @@ try {
         }
         if (!$idxExists('ticket_categories', 'uq_ticket_categories_tenant_name')) {
             try { $conn->exec("ALTER TABLE ticket_categories ADD UNIQUE KEY uq_ticket_categories_tenant_name (tenant_id, name)"); } catch (Exception $e) {}
+        }
+    }
+    // 12c: a category may belong to one ticket type. SET NULL on delete, because
+    // removing a type should widen its categories back to universal rather than
+    // delete work; NULL already means "every type".
+    if ($tableExists('ticket_categories') && $tableExists('ticket_types') && $colExists('ticket_categories', 'ticket_type_id')) {
+        if (!$idxExists('ticket_categories', 'ix_ticket_categories_type')) {
+            try { $conn->exec("ALTER TABLE ticket_categories ADD INDEX ix_ticket_categories_type (ticket_type_id)"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('ticket_categories', 'fk_ticket_categories_type')) {
+            try { $conn->exec("ALTER TABLE ticket_categories ADD CONSTRAINT fk_ticket_categories_type FOREIGN KEY (ticket_type_id) REFERENCES ticket_types (id) ON DELETE SET NULL"); } catch (Exception $e) {}
         }
     }
     if ($tableExists('ticket_subcategories') && $tableExists('ticket_categories')) {

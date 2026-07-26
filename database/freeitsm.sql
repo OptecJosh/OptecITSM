@@ -284,10 +284,18 @@ CREATE TABLE IF NOT EXISTS `ticket_categories` (
     `description`       VARCHAR(255) NULL,
     `is_active`         TINYINT(1) NULL DEFAULT 1,
     `display_order`     INT NULL DEFAULT 0,
+    -- 12c: which ticket type this category belongs to. NULL = available to
+    -- EVERY type, which is what makes the migration free — every category that
+    -- existed before this column stays valid everywhere until someone
+    -- deliberately scopes it. Deleting a type therefore widens its categories
+    -- back to universal (SET NULL) rather than destroying them.
+    `ticket_type_id`    INT NULL,
     `tenant_id`         INT NULL,
     `created_datetime`  DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uq_ticket_categories_tenant_name` (`tenant_id`, `name`)
+    UNIQUE KEY `uq_ticket_categories_tenant_name` (`tenant_id`, `name`),
+    KEY `ix_ticket_categories_type` (`ticket_type_id`),
+    CONSTRAINT `fk_ticket_categories_type` FOREIGN KEY (`ticket_type_id`) REFERENCES `ticket_types` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `ticket_subcategories` (

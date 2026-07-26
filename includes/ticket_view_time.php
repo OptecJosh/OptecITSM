@@ -22,8 +22,8 @@
  *     ticket, which carries the tail earned while it was still on screen)
  *   - idle time past time_auto_idle_seconds (a new session starts instead, so a
  *     ticket left open overnight proposes nothing for the night)
- *   - anything under time_auto_min_minutes, so opening a ticket to read it does
- *     not litter the log with one-minute entries
+ *   - anything under time_auto_min_seconds (30s), so glancing at a ticket in
+ *     passing does not litter the log with one-minute entries
  *
  * Two analysts on the same ticket both accumulate their own session. That is
  * correct: they are both spending time on it.
@@ -34,20 +34,33 @@ function viewTimeSettings(PDO $conn): array {
     static $cache = null;
     if ($cache !== null) return $cache;
 
-    $defaults = ['time_auto_track_enabled' => 1, 'time_auto_idle_seconds' => 300, 'time_auto_min_minutes' => 2];
+    $defaults = ['time_auto_track_enabled' => 1, 'time_auto_idle_seconds' => 300, 'time_auto_min_seconds' => 30];
     $out = $defaults;
+    $stored = [];
     try {
-        $keys = array_keys($defaults);
+        $keys = array_merge(array_keys($defaults), ['time_auto_min_minutes']);
         $ph = implode(',', array_fill(0, count($keys), '?'));
         $stmt = $conn->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ($ph)");
         $stmt->execute($keys);
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            $out[$row['setting_key']] = (int)$row['setting_value'];
+            $stored[$row['setting_key']] = (int)$row['setting_value'];
         }
     } catch (Exception $e) { /* pre-seed install — defaults stand */ }
 
+    foreach (array_keys($defaults) as $key) {
+        if (isset($stored[$key])) $out[$key] = $stored[$key];
+    }
+
+    // The floor used to be whole minutes, which could not express "anything from
+    // 30 seconds". Where an install had tuned the old key and the new one has not
+    // been seeded yet, carry the old intent across rather than silently applying
+    // a different threshold than the operator chose.
+    if (!isset($stored['time_auto_min_seconds']) && isset($stored['time_auto_min_minutes'])) {
+        $out['time_auto_min_seconds'] = $stored['time_auto_min_minutes'] * 60;
+    }
+
     $out['time_auto_idle_seconds'] = max(60, min(3600, $out['time_auto_idle_seconds']));
-    $out['time_auto_min_minutes']  = max(1, min(120, $out['time_auto_min_minutes']));
+    $out['time_auto_min_seconds']  = max(15, min(7200, $out['time_auto_min_seconds']));
     $cache = $out;
     return $cache;
 }
@@ -147,15 +160,20 @@ function viewTimePending(PDO $conn, int $ticketId, int $analystId): array {
         $seconds += (int)$r['focused_seconds'];
         $ids[] = (int)$r['id'];
     }
-    // Round to the nearest minute, but never propose zero for real time spent.
+    // Round to the nearest minute, but never propose zero for real time spent —
+    // the entry is stored in whole minutes, so 40 seconds of work is worth 1.
     $minutes = $seconds > 0 ? max(1, (int)round($seconds / 60)) : 0;
-    $min = viewTimeSettings($conn)['time_auto_min_minutes'];
+
+    // Compare SECONDS against the floor, not the rounded minutes. Rounding up to
+    // a minimum of 1 means every non-zero session clears a 1-minute floor, so a
+    // minute-based test could never have expressed a sub-minute threshold.
+    $min = viewTimeSettings($conn)['time_auto_min_seconds'];
 
     return [
         'seconds'     => $seconds,
         'minutes'     => $minutes,
         'session_ids' => $ids,
-        'proposable'  => $minutes >= $min,
+        'proposable'  => $seconds >= $min,
     ];
 }
 

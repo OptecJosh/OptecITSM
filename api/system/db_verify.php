@@ -3496,13 +3496,17 @@ try {
         } catch (Exception $e) {}
     }
 
-    // 12b settings. Defaults are deliberately conservative: the timer observes and
-    // proposes, so it is on, but nothing is logged under 2 minutes and 5 minutes
-    // without interaction ends the session.
+    // 12b settings. The timer observes and proposes, so it is on; a session is
+    // offered from 30 seconds up, and 5 minutes without interaction ends it.
+    // time_auto_min_seconds replaces the original time_auto_min_minutes, which
+    // could not express a sub-minute floor. The old key is left in place rather
+    // than deleted — viewTimeSettings() reads it as a fallback for installs that
+    // had tuned it, and removing a setting is not something a verify pass should
+    // do behind an operator's back.
     foreach ([
         'time_auto_track_enabled' => '1',
         'time_auto_idle_seconds'  => '300',
-        'time_auto_min_minutes'   => '2',
+        'time_auto_min_seconds'   => '30',
     ] as $key => $default) {
         try {
             $conn->prepare("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES (?, ?)")->execute([$key, $default]);

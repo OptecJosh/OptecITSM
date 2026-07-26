@@ -54,7 +54,20 @@ $settings = viewTimeSettings($conn);
 echo "\n";
 printf("  %-34s %s\n", 'time_auto_track_enabled', $settings['time_auto_track_enabled'] ? '1 (on)' : '0 (OFF)');
 printf("  %-34s %ds\n", 'time_auto_idle_seconds', $settings['time_auto_idle_seconds']);
-printf("  %-34s %dm\n", 'time_auto_min_minutes', $settings['time_auto_min_minutes']);
+printf("  %-34s %ds\n", 'time_auto_min_seconds', $settings['time_auto_min_seconds']);
+
+// Reading the old key as a fallback is transitional. Say so, otherwise the
+// number above looks unrelated to anything in system_settings.
+try {
+    $legacy = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'time_auto_min_minutes'")->fetchColumn();
+    $current = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'time_auto_min_seconds'")->fetchColumn();
+    if ($legacy !== false && $current === false) {
+        echo "\n  time_auto_min_seconds is not seeded yet, so the floor above is carried\n";
+        echo "  over from the old time_auto_min_minutes ({$legacy}m). Run Database Verify\n";
+        echo "  to seed the new key and get the 30-second default.\n";
+        $problems[] = "time_auto_min_seconds is not seeded — run Database Verify.";
+    }
+} catch (Exception $e) { /* no system_settings table; already reported above */ }
 
 if (empty($settings['time_auto_track_enabled'])) {
     $problems[] = "time_auto_track_enabled is 0 — every heartbeat is discarded before it is written.";
@@ -107,14 +120,14 @@ if ($hasSessions) {
 
         // A session below the minimum is invisible in the pane, which reads as
         // "not working" but is the feature behaving as configured.
-        $minSeconds = $settings['time_auto_min_minutes'] * 60;
+        $minSeconds = $settings['time_auto_min_seconds'];
         $belowMin = 0;
         foreach ($rows as $r) {
             if (!$r['converted_entry_id'] && !$r['dismissed_at'] && (int)$r['focused_seconds'] < $minSeconds) $belowMin++;
         }
         if ($belowMin > 0) {
-            echo "\n  Note: {$belowMin} unclaimed session(s) above are under time_auto_min_minutes\n";
-            echo "  ({$settings['time_auto_min_minutes']}m), so the pane deliberately stays quiet about them.\n";
+            echo "\n  Note: {$belowMin} unclaimed session(s) above are under time_auto_min_seconds\n";
+            echo "  ({$minSeconds}s), so the pane deliberately stays quiet about them.\n";
         }
     }
 }
@@ -138,4 +151,4 @@ if ($problems) {
 
 echo "No configuration problems found.\n";
 echo "If the pane still offers nothing, the analyst has not yet accrued\n";
-echo "{$settings['time_auto_min_minutes']} minute(s) of focused time on that ticket in one sitting.\n\n";
+echo "{$settings['time_auto_min_seconds']} seconds of focused time on that ticket in one sitting.\n\n";

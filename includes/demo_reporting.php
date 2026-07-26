@@ -37,6 +37,7 @@
  */
 
 require_once __DIR__ . '/tenancy.php';
+require_once __DIR__ . '/ticket_seed_email.php';
 
 /** Ticket-number prefix that marks a row as generated demo data. */
 function demoReportingPrefix(): string { return 'DMO'; }
@@ -261,7 +262,9 @@ function demoReportingLookups(PDO $conn): array {
         'departments'     => $q("SELECT id, name FROM departments ORDER BY id"),
         'analysts'        => $q("SELECT id, full_name, tier, loaded_rate FROM analysts WHERE is_active = 1 OR is_active IS NULL"),
         'customers'       => $q("SELECT id, name FROM customers WHERE is_active = 1"),
-        'users'           => $q("SELECT id FROM users LIMIT 500"),
+        // email + display_name so the seeded initial email has a real sender —
+        // that address is what the ticket list shows in the From column.
+        'users'           => $q("SELECT id, email, display_name FROM users LIMIT 500"),
     ];
     // Cycle times are generated relative to these, so they must be read before
     // any ticket is built.
@@ -613,8 +616,9 @@ function demoReportingOneTicket(PDO $conn, array $stmts, array &$counts, array $
     $number = sprintf('%s-%02d%02d-%04d', demoReportingPrefix(),
         (int)substr((string)$ctx['year'], 2), $ctx['month'], $ctx['seq']);
 
+    $subjectText = demoReportingSubject($category['name'] ?? null);
     $stmts['ticket']->execute([
-        $ctx['tenantId'], $number, demoReportingSubject($category['name'] ?? null),
+        $ctx['tenantId'], $number, $subjectText,
         $status['id'], $priority['id'], $dept['id'] ?? null,
         $type['id'] ?? null, $category['id'] ?? null,
         $owner['id'], $owner['id'], $user['id'] ?? null, $customer['id'] ?? null,
@@ -623,6 +627,23 @@ function demoReportingOneTicket(PDO $conn, array $stmts, array &$counts, array $
         $ackAt, $createdAt, $closedAt ?? $ackAt, $closedAt,
     ]);
     $ticketId = (int)$conn->lastInsertId();
+
+    // Without an initial email the ticket never appears in the ticket list - the
+    // list is built from the emails table. Generated tickets used to skip this,
+    // so a reporting demo produced hundreds of tickets that every folder badge
+    // counted and no folder could show. See includes/ticket_seed_email.php.
+    ticketSeedInitialEmail(
+        $conn,
+        $ticketId,
+        $subjectText,
+        $subjectText . "
+
+Reported by the customer and logged by the service desk.",
+        $user['email'] ?? null,
+        $user['display_name'] ?? null,
+        $createdAt,
+        'Demo'
+    );
 
     $endTs = $closedAt ? strtotime($closedAt . ' UTC') : time();
 

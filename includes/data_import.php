@@ -848,57 +848,36 @@ function data_import_post_insert(PDO $conn, string $hook, int $newId, array $val
 /**
  * Give an imported ticket its opening email.
  *
- * THE REASON THIS EXISTS: the ticket list is built FROM the emails table
- * (get_emails.php starts at "latest email per ticket" and joins tickets to it),
- * exactly as TicketsService::createTicket assumes when it writes an initial email
- * alongside every ticket it creates. A ticket with no email row is real, counted
- * in every folder badge, reportable and exportable - and invisible in the inbox.
- * An importer that produced those was worse than useless for testing, because
- * everything said the data was there.
- *
- * The requester's address is used where the CSV named one, since that is what the
- * list shows as the sender; otherwise a neutral placeholder, because from_address
- * is NOT NULL.
+ * The reason this matters is in includes/ticket_seed_email.php: a ticket with no
+ * email row is invisible in the inbox, however real it is everywhere else. An
+ * importer that produced those was worse than useless for testing, because
+ * everything else insisted the data was there.
  */
 function ticket_import_seed_email(PDO $conn, int $ticketId, array $values, array $virtual): void {
-    $subject = (string)($values['subject'] ?? '(no subject)');
-    $body    = trim((string)($virtual['body'] ?? ''));
-    if ($body === '') {
-        $body = 'Imported ticket — no message body was supplied.';
-    }
+    require_once __DIR__ . '/ticket_seed_email.php';
 
-    // Sender: the linked portal user if the CSV resolved one.
-    $from = 'imported@localhost';
-    $fromName = 'Imported';
+    $from = null;
+    $fromName = null;
     if (!empty($values['user_id'])) {
         try {
             $u = $conn->prepare("SELECT email, display_name FROM users WHERE id = ?");
             $u->execute([(int)$values['user_id']]);
             if ($row = $u->fetch(PDO::FETCH_ASSOC)) {
-                $from = $row['email'] ?: $from;
+                $from = $row['email'] ?: null;
                 $fromName = $row['display_name'] ?: $row['email'];
             }
-        } catch (Exception $e) { /* fall back to the placeholder */ }
+        } catch (Exception $e) { /* placeholder sender it is */ }
     }
 
-    // Date the email to the ticket, not to now, or an imported back-dated ticket
-    // sorts to the top of the list.
-    $received = !empty($values['created_datetime']) ? $values['created_datetime'] : gmdate('Y-m-d H:i:s');
-
-    $conn->prepare(
-        "INSERT INTO emails
-            (mailbox_id, subject, from_address, from_name, to_recipients, received_datetime,
-             body_preview, body_content, body_type, has_attachments, importance,
-             is_read, ticket_id, is_initial, direction)
-         VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, 'html', 0, 'normal', 1, ?, 1, 'Imported')"
-    )->execute([
-        mb_substr($subject, 0, 500),
-        $from,
-        mb_substr($fromName, 0, 255),
-        $from,
-        $received,
-        mb_substr(strip_tags($body), 0, 200),
-        nl2br(htmlspecialchars($body)),
+    ticketSeedInitialEmail(
+        $conn,
         $ticketId,
-    ]);
+        (string)($values['subject'] ?? '(no subject)'),
+        (string)($virtual['body'] ?? ''),
+        $from,
+        $fromName,
+        // Date it to the ticket, not to now, or a back-dated import sorts to the top.
+        !empty($values['created_datetime']) ? $values['created_datetime'] : null,
+        'Imported'
+    );
 }

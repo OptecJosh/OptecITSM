@@ -147,15 +147,25 @@ class TicketsService
 
             $ticketNumber = self::generateTicketNumber($conn);
 
+            // 13b: this is the reason to link portal users to customers at all.
+            // A ticket from a linked requester already knows which customer it
+            // concerns, so nobody has to set it by hand. An explicit customer_id
+            // in the request still wins — the inference only fills a gap.
+            require_once __DIR__ . '/../customer_users.php';
+            $customerId = isset($in['customer_id']) && $in['customer_id'] !== ''
+                ? (int)$in['customer_id']
+                : customerForUser($conn, (int)$userId);
+
             $conn->prepare(
                 "INSERT INTO tickets (
                     tenant_id, ticket_number, subject, status_id, priority_id, department_id,
                     ticket_type_id, category_id, subcategory_id, origin_id, assigned_analyst_id, owner_id, user_id,
-                    created_datetime, updated_datetime
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())"
+                    customer_id, created_datetime, updated_datetime
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())"
             )->execute([
                 $tenantId, $ticketNumber, $subject, $statusRes[0], $priorityRes[0], $departmentId,
                 $typeId, $categoryId, $subcategoryId, $originId, $analystId, $analystId, $userId,
+                $customerId,
             ]);
             $ticketId = (int)$conn->lastInsertId();
 

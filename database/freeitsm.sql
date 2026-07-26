@@ -336,9 +336,16 @@ CREATE TABLE IF NOT EXISTS `users` (
     `totp_secret`     VARCHAR(500) NULL,
     `totp_enabled`    TINYINT(1) NOT NULL DEFAULT 0,
     `auth_provider_id` INT NULL,
+    -- 13b: which customer this portal user belongs to. One user, one customer.
+    -- SET NULL on delete, because losing a customer account must never delete
+    -- the people who can log in. NULL = an unattached user, which is what every
+    -- self-registered portal user is until somebody links them.
+    `customer_id`     INT NULL,
     `created_at`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uq_users_email` (`email`)
+    UNIQUE KEY `uq_users_email` (`email`),
+    KEY `ix_users_customer_id` (`customer_id`),
+    CONSTRAINT `fk_users_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Links a self-service requester to their identity at a given provider (the IdP

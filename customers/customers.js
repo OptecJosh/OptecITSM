@@ -61,8 +61,119 @@ function cuRenderForm(c){
         </div>
         <div class="cu-err" id="cuErr"></div>
         ${isNew ? '' : cuContactsSection()}
+        ${isNew ? '' : cuUsersSection()}
         ${isNew ? '' : cuCiSection()}`;
-    if (!isNew) { cuLoadContacts(); cuLoadCis(); }
+    if (!isNew) { cuLoadContacts(); cuLoadUsers(); cuLoadCis(); }
+}
+
+// ---- 13b: portal users ---------------------------------------------------
+// A linked user's tickets arrive already attributed to this customer, which is
+// the whole reason to link them.
+function cuUsersSection(){
+    return `
+        <div class="cu-ci">
+            <h4>Portal users</h4>
+            <div id="cuUsersList"></div>
+            <div class="cu-actions" style="margin-top:10px;">
+                <button class="btn btn-secondary" onclick="cuUserForm('link')">Link existing user</button>
+                <button class="btn btn-secondary" onclick="cuUserForm('create')">Create user</button>
+            </div>
+            <div id="cuUserForm"></div>
+        </div>`;
+}
+
+let cuUsers = [];
+
+async function cuLoadUsers(){
+    if(!cuCurrent || !cuCurrent.id) return;
+    try {
+        const d = await (await fetch(CU_API + 'get_users.php?customer_id=' + cuCurrent.id)).json();
+        cuUsers = (d.success && d.users) ? d.users : [];
+        cuRenderUsers(d.success ? d.available !== false : true);
+    } catch(e){ cuUsers = []; cuRenderUsers(true); }
+}
+
+function cuRenderUsers(available){
+    const el = document.getElementById('cuUsersList');
+    if(!el) return;
+    if(!available){
+        el.innerHTML = '<div style="color:var(--text-dim,#6b7280);font-size:13px;margin-top:10px;">Run Database Verify to enable portal user links.</div>';
+        return;
+    }
+    if(!cuUsers.length){
+        el.innerHTML = '<div style="color:var(--text-dim,#6b7280);font-size:13px;margin-top:10px;">No portal users linked. Tickets from a linked user are attributed to this customer automatically.</div>';
+        return;
+    }
+    el.innerHTML = '<table class="cu-ci-tbl"><tbody>' + cuUsers.map(u => `
+        <tr>
+            <td>
+                <strong>${cuEsc(u.display_name || u.email)}</strong>
+                ${u.registered ? '' : ' <span class="cu-badge" style="background:#fef3c7;color:#92400e;">Not signed up</span>'}
+                ${u.preferred_name ? `<div class="cu-hint">Prefers ${cuEsc(u.preferred_name)}</div>` : ''}
+            </td>
+            <td>${cuEsc(u.email)}</td>
+            <td style="text-align:right;white-space:nowrap;">
+                <button class="btn btn-link" onclick="cuUserUnlink(${u.id})">Unlink</button>
+            </td>
+        </tr>`).join('') + '</tbody></table>';
+}
+
+function cuUserForm(mode){
+    const el = document.getElementById('cuUserForm');
+    if(!el) return;
+    const creating = mode === 'create';
+    el.innerHTML = `
+        <div class="cu-grid" style="margin-top:12px;">
+            <div class="cu-field${creating?'':' full'}"><label>Email *</label><input type="email" id="cuUEmail" placeholder="name@company.com"></div>
+            ${creating ? `
+            <div class="cu-field"><label>Display name</label><input type="text" id="cuUName"></div>
+            <div class="cu-field"><label>Preferred name</label><input type="text" id="cuUPref"></div>` : ''}
+        </div>
+        ${creating ? `<div class="cu-hint" style="margin-top:6px;">The account is created without a password. They set their own by signing up on the portal with this address — nobody here handles a password.</div>` : ''}
+        <div class="cu-actions">
+            <button class="btn btn-primary" onclick="${creating ? 'cuUserCreate()' : 'cuUserLink()'}">${creating ? 'Create user' : 'Link user'}</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('cuUserForm').innerHTML=''">Cancel</button>
+        </div>
+        <div class="cu-err" id="cuUErr"></div>`;
+}
+
+async function cuUserLink(){
+    if(!cuCurrent || !cuCurrent.id) return;
+    const email = document.getElementById('cuUEmail').value.trim();
+    if(!email){ document.getElementById('cuUErr').textContent = 'Email is required.'; return; }
+    try {
+        const d = await (await fetch(CU_API + 'link_user.php', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({customer_id:cuCurrent.id, email:email})})).json();
+        if(!d.success){ document.getElementById('cuUErr').textContent = d.error || 'Link failed'; return; }
+        document.getElementById('cuUserForm').innerHTML = '';
+        cuLoadUsers();
+    } catch(e){ document.getElementById('cuUErr').textContent = 'Network error'; }
+}
+
+async function cuUserCreate(){
+    if(!cuCurrent || !cuCurrent.id) return;
+    const payload = {
+        customer_id: cuCurrent.id,
+        email: document.getElementById('cuUEmail').value.trim(),
+        display_name: document.getElementById('cuUName').value.trim(),
+        preferred_name: document.getElementById('cuUPref').value.trim(),
+    };
+    if(!payload.email){ document.getElementById('cuUErr').textContent = 'Email is required.'; return; }
+    try {
+        const d = await (await fetch(CU_API + 'create_user.php', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})).json();
+        if(!d.success){ document.getElementById('cuUErr').textContent = d.error || 'Create failed'; return; }
+        document.getElementById('cuUserForm').innerHTML = '';
+        cuLoadUsers();
+    } catch(e){ document.getElementById('cuUErr').textContent = 'Network error'; }
+}
+
+async function cuUserUnlink(id){
+    const u = cuUsers.find(x => x.id === id);
+    if(!confirm('Unlink "' + (u?(u.display_name||u.email):'') + '" from this customer? The account itself is kept.')) return;
+    try {
+        const d = await (await fetch(CU_API + 'link_user.php', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:id, unlink:true})})).json();
+        if(!d.success){ alert(d.error||'Unlink failed'); return; }
+        cuLoadUsers();
+    } catch(e){ alert('Network error'); }
 }
 
 // ---- 13a: contacts -------------------------------------------------------

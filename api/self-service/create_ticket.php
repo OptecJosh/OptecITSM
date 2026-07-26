@@ -150,16 +150,22 @@ try {
     // Generate unique ticket number
     $ticketNumber = generateTicketNumber($conn);
 
+    // 13b: a portal user linked to a customer raises tickets FOR that customer,
+    // so the ticket arrives already attributed instead of waiting for an analyst
+    // to work out whose it is. This is the payoff for linking them.
+    require_once '../../includes/customer_users.php';
+    $linkedCustomerId = customerForUser($conn, (int)$userId);
+
     // Create ticket. Resolve status/priority names to ids via subselects.
     $ticketSql = "INSERT INTO tickets (
         ticket_number, subject, status_id, priority_id, department_id, category_id, catalog_item_id,
-        user_id, created_datetime, updated_datetime
+        user_id, customer_id, created_datetime, updated_datetime
     ) VALUES (
         ?, ?,
         (SELECT id FROM ticket_statuses   WHERE name = 'Open' LIMIT 1),
         (SELECT id FROM ticket_priorities WHERE name = ? LIMIT 1),
         ?, ?, ?,
-        ?, UTC_TIMESTAMP(), UTC_TIMESTAMP()
+        ?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP()
     )";
 
     $ticketStmt = $conn->prepare($ticketSql);
@@ -171,6 +177,7 @@ try {
         $catCategoryId,
         $catalogItemId,
         $userId,
+        $linkedCustomerId,
     ]);
 
     $ticketId = $conn->lastInsertId();

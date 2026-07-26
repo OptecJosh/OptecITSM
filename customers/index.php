@@ -87,6 +87,6 @@ $translationNamespaces = ['common'];
             </div>
         </div>
     </div>
-    <script src="customers.js?v=2"></script>
+    <script src="customers.js?v=3"></script>
 </body>
 </html>

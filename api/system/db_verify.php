@@ -280,6 +280,9 @@ $schema = [
         'totp_secret'     => 'VARCHAR(500) NULL',
         'totp_enabled'    => 'TINYINT(1) NOT NULL DEFAULT 0',
         'auth_provider_id' => 'INT NULL',
+        // 13b: which customer this portal user belongs to. NULL = unattached,
+        // which every self-registered user is until somebody links them.
+        'customer_id'     => 'INT NULL',
         'created_at'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
     ],
 
@@ -4292,6 +4295,17 @@ try {
             try { $conn->exec("ALTER TABLE customers ADD CONSTRAINT fk_customers_creator FOREIGN KEY (created_by_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
         }
     }
+    // 13b: portal users belong to a customer. SET NULL on delete — losing a
+    // customer account must never delete the people who can log in.
+    if ($tableExists('users') && $tableExists('customers') && $colExists('users', 'customer_id')) {
+        if (!$idxExists('users', 'ix_users_customer_id')) {
+            try { $conn->exec("ALTER TABLE users ADD INDEX ix_users_customer_id (customer_id)"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('users', 'fk_users_customer')) {
+            try { $conn->exec("ALTER TABLE users ADD CONSTRAINT fk_users_customer FOREIGN KEY (customer_id) REFERENCES customers (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+    }
+
     // 13a: customer contacts, plus the one-off migration of each customer's
     // inline contact in as its default.
     if ($tableExists('customer_contacts')) {

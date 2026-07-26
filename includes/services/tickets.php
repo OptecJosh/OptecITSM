@@ -324,6 +324,37 @@ class TicketsService
             }
         }
 
+        // 13a: a contact belongs to exactly one customer, so moving a ticket to a
+        // different customer strands whichever contact it named. Same shape as
+        // the category rule above and for the same reason: an explicitly named
+        // mismatch is a refusal, a link broken underneath by another change is
+        // cleared and reported.
+        $contactCleared = null;
+        if (array_key_exists('customer_id', $in) || array_key_exists('customer_contact_id', $in)) {
+            require_once __DIR__ . '/../customer_contacts.php';
+
+            $effectiveCustomerId = array_key_exists('customer_id', $in)
+                ? (($in['customer_id'] === '' || $in['customer_id'] === null) ? null : (int)$in['customer_id'])
+                : ($current['customer_id'] !== null ? (int)$current['customer_id'] : null);
+
+            $contactSent = array_key_exists('customer_contact_id', $in)
+                && $in['customer_contact_id'] !== '' && $in['customer_contact_id'] !== null;
+            $effectiveContactId = array_key_exists('customer_contact_id', $in)
+                ? (($in['customer_contact_id'] === '' || $in['customer_contact_id'] === null) ? null : (int)$in['customer_contact_id'])
+                : (isset($current['customer_contact_id']) && $current['customer_contact_id'] !== null ? (int)$current['customer_contact_id'] : null);
+
+            if ($effectiveContactId !== null
+                && !customerContactBelongsTo($conn, $effectiveContactId, $effectiveCustomerId)) {
+
+                if ($contactSent) {
+                    throw new ServiceError('validation', 'invalid_field',
+                        'That contact does not belong to the selected customer.');
+                }
+                $contactCleared = ['customer_contact_id' => $effectiveContactId];
+                $in['customer_contact_id'] = null;
+            }
+        }
+
         foreach ([
             'department_id'  => ['departments',    'department',  'Department',  'department_name'],
             'ticket_type_id' => ['ticket_types',   'ticket type', 'Ticket Type', 'type_name'],
@@ -371,6 +402,34 @@ class TicketsService
                 $updates[] = 'subcategory_id = ?';
                 $args[]    = $newSubcatId;
                 $audits[]  = ['Subcategory', $current['subcategory_name'], $newSubcatName];
+            }
+        }
+
+        // 13a: which of the customer's contacts this ticket concerns. Handled on
+        // its own rather than in the independent-field loop above, because that
+        // loop reads the old value's display name from a column loadTicket joins,
+        // and there is no such join for contacts — the names are looked up here.
+        require_once __DIR__ . '/../customer_contacts.php';
+        if (array_key_exists('customer_contact_id', $in) && ticketCustomerContactColumnExists($conn)) {
+            $newContactId = ($in['customer_contact_id'] === '' || $in['customer_contact_id'] === null)
+                ? null : (int)$in['customer_contact_id'];
+            $oldContactId = isset($current['customer_contact_id']) && $current['customer_contact_id'] !== null
+                ? (int)$current['customer_contact_id'] : null;
+
+            if ($newContactId !== $oldContactId) {
+                $contactName = function (?int $cid) use ($conn): ?string {
+                    if (!$cid) return null;
+                    $s = $conn->prepare("SELECT name FROM customer_contacts WHERE id = ?");
+                    $s->execute([$cid]);
+                    $n = $s->fetchColumn();
+                    return $n === false ? null : (string)$n;
+                };
+                if ($newContactId !== null && $contactName($newContactId) === null) {
+                    throw new ServiceError('validation', 'invalid_field', "Unknown contact id: {$newContactId}");
+                }
+                $updates[] = 'customer_contact_id = ?';
+                $args[]    = $newContactId;
+                $audits[]  = ['Contact', $contactName($oldContactId), $contactName($newContactId)];
             }
         }
 
@@ -453,6 +512,9 @@ class TicketsService
         // analyst about something that did not happen.
         if ($categoryCleared !== null) {
             $outcome['category_cleared'] = $categoryCleared;
+        }
+        if ($contactCleared !== null) {
+            $outcome['contact_cleared'] = $contactCleared;
         }
 
         if ($writeAudit) {

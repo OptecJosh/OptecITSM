@@ -7,6 +7,7 @@
 session_start(['read_and_close' => true]);
 require_once '../../config.php';
 require_once '../../includes/functions.php';
+require_once '../../includes/customer_contacts.php';
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['analyst_id'])) {
@@ -56,6 +57,11 @@ try {
                     $fields['contact_phone'], $fields['tenant_id'], $fields['notes'], $fields['is_active'], $analystId]);
         $newId = (int)$conn->lastInsertId();
     }
+
+    // 13a: the contact fields on this form ARE the customer's default contact.
+    // Push them into the contacts table, or the two would drift apart the first
+    // time somebody edited a customer here instead of in the contacts panel.
+    customerContactsAdoptInline($conn, $newId, $analystId);
 
     echo json_encode(['success' => true, 'id' => $newId]);
 

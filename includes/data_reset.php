@@ -120,8 +120,10 @@ function data_reset_groups(): array {
         ],
         'customers' => [
             'label'       => 'Customers',
-            'description' => 'Customer accounts and their CI links. Tickets keep working — the link is set to NULL.',
-            'tables'      => ['customer_cmdb_objects', 'customers'],
+            'description' => 'Customer accounts, their contacts and their CI links. Tickets keep working — the links are set to NULL.',
+            // Contacts first: they cascade from customers anyway, but naming them
+            // keeps the wipe explicit rather than relying on the constraint.
+            'tables'      => ['customer_contacts', 'customer_cmdb_objects', 'customers'],
         ],
         'knowledge' => [
             'label'       => 'Knowledge articles & announcements',

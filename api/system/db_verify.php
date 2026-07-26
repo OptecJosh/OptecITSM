@@ -600,6 +600,10 @@ $schema = [
         'playbook_eligible'     => 'TINYINT(1) NULL',     // NULL=unknown, 1=yes, 0=no
         'acknowledged_datetime' => 'DATETIME NULL',       // first human ack (MTTA anchor)
         'customer_id'           => 'INT NULL',            // Customers module link
+        // 13a: which of the customer's contacts this ticket concerns. NULL means
+        // "the customer's default", not "nobody", so existing tickets are
+        // unaffected. Cleared when the ticket moves to another customer.
+        'customer_contact_id'   => 'INT NULL',
         'external_ref'          => 'VARCHAR(200) NULL',   // sender's own id, for inbound webhook correlation
     ],
 
@@ -613,6 +617,25 @@ $schema = [
         'contact_email'         => 'VARCHAR(255) NULL',
         'contact_phone'         => 'VARCHAR(50) NULL',
         'tenant_id'             => 'INT NULL',
+        'notes'                 => 'TEXT NULL',
+        'is_active'             => 'TINYINT(1) NOT NULL DEFAULT 1',
+        'created_by_analyst_id' => 'INT NULL',
+        'created_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+        'updated_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+    // 13a: a customer's contacts, exactly one of which is its default. The
+    // customers.contact_* columns above stay as a MIRROR of that default, so
+    // every surface already reading them keeps working untouched. "One default"
+    // is enforced in the service layer — MySQL has no partial unique index, and
+    // UNIQUE (customer_id, is_default) would cap NON-defaults at one instead.
+    'customer_contacts' => [
+        'id'                    => 'INT NOT NULL AUTO_INCREMENT',
+        'customer_id'           => 'INT NOT NULL',
+        'name'                  => 'VARCHAR(150) NOT NULL',
+        'email'                 => 'VARCHAR(255) NULL',
+        'phone'                 => 'VARCHAR(50) NULL',
+        'job_title'             => 'VARCHAR(150) NULL',
+        'is_default'            => 'TINYINT(1) NOT NULL DEFAULT 0',
         'notes'                 => 'TEXT NULL',
         'is_active'             => 'TINYINT(1) NOT NULL DEFAULT 1',
         'created_by_analyst_id' => 'INT NULL',
@@ -4267,6 +4290,57 @@ try {
         }
         if ($tableExists('analysts') && !$fkExists('customers', 'fk_customers_creator')) {
             try { $conn->exec("ALTER TABLE customers ADD CONSTRAINT fk_customers_creator FOREIGN KEY (created_by_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+    }
+    // 13a: customer contacts, plus the one-off migration of each customer's
+    // inline contact in as its default.
+    if ($tableExists('customer_contacts')) {
+        foreach ([['ix_customer_contacts_customer', '(customer_id, is_default)'],
+                  ['ix_customer_contacts_email', '(email)']] as [$idx, $cols]) {
+            if (!$idxExists('customer_contacts', $idx)) {
+                try { $conn->exec("ALTER TABLE customer_contacts ADD INDEX $idx $cols"); } catch (Exception $e) {}
+            }
+        }
+        if ($tableExists('customers') && !$fkExists('customer_contacts', 'fk_customer_contacts_customer')) {
+            try { $conn->exec("ALTER TABLE customer_contacts ADD CONSTRAINT fk_customer_contacts_customer FOREIGN KEY (customer_id) REFERENCES customers (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if ($tableExists('analysts') && !$fkExists('customer_contacts', 'fk_customer_contacts_creator')) {
+            try { $conn->exec("ALTER TABLE customer_contacts ADD CONSTRAINT fk_customer_contacts_creator FOREIGN KEY (created_by_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+
+        // Bring each customer's existing inline contact across as its default.
+        // Naturally idempotent — it only ever touches a customer that has NO
+        // contacts at all, so re-running adds nothing and a contact deliberately
+        // deleted afterwards is not resurrected. A customer with no contact
+        // details to migrate is skipped rather than given a nameless row.
+        if ($tableExists('customers')) {
+            try {
+                $migrated = $conn->exec(
+                    "INSERT INTO customer_contacts (customer_id, name, email, phone, is_default, is_active, created_datetime, updated_datetime)
+                     SELECT c.id,
+                            COALESCE(NULLIF(TRIM(c.contact_name), ''), c.name),
+                            NULLIF(TRIM(COALESCE(c.contact_email, '')), ''),
+                            NULLIF(TRIM(COALESCE(c.contact_phone, '')), ''),
+                            1, 1, UTC_TIMESTAMP(), UTC_TIMESTAMP()
+                       FROM customers c
+                      WHERE NOT EXISTS (SELECT 1 FROM customer_contacts cc WHERE cc.customer_id = c.id)
+                        AND ( NULLIF(TRIM(COALESCE(c.contact_name,  '')), '') IS NOT NULL
+                           OR NULLIF(TRIM(COALESCE(c.contact_email, '')), '') IS NOT NULL
+                           OR NULLIF(TRIM(COALESCE(c.contact_phone, '')), '') IS NOT NULL )"
+                );
+                if ($migrated > 0) {
+                    $results[] = ['table' => 'customer_contacts', 'status' => 'seeded',
+                                  'details' => ["Migrated $migrated customer contact(s) in as defaults"]];
+                }
+            } catch (Exception $e) {}
+        }
+    }
+    if ($tableExists('tickets') && $tableExists('customer_contacts') && $colExists('tickets', 'customer_contact_id')) {
+        if (!$idxExists('tickets', 'ix_tickets_customer_contact_id')) {
+            try { $conn->exec("ALTER TABLE tickets ADD INDEX ix_tickets_customer_contact_id (customer_contact_id)"); } catch (Exception $e) {}
+        }
+        if (!$fkExists('tickets', 'fk_tickets_customer_contact')) {
+            try { $conn->exec("ALTER TABLE tickets ADD CONSTRAINT fk_tickets_customer_contact FOREIGN KEY (customer_contact_id) REFERENCES customer_contacts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
         }
     }
     if ($tableExists('customer_cmdb_objects')) {

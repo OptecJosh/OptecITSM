@@ -772,6 +772,12 @@ CREATE TABLE IF NOT EXISTS `tickets` (
     `playbook_eligible`     TINYINT(1) NULL,
     `acknowledged_datetime` DATETIME NULL,
     `customer_id`           INT NULL,
+    -- 13a: which of the customer's contacts this ticket actually concerns.
+    -- NULL means "whoever the customer's default contact is" rather than "no
+    -- contact", so every existing ticket keeps behaving exactly as before.
+    -- Cleared if the ticket moves to a different customer, since a contact
+    -- belongs to one customer.
+    `customer_contact_id`   INT NULL,
     `external_ref`          VARCHAR(200) NULL,   -- sender's own id, for inbound webhook correlation
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_tickets_number` (`ticket_number`),
@@ -784,6 +790,8 @@ CREATE TABLE IF NOT EXISTS `tickets` (
     KEY `ix_tickets_deleted_datetime` (`deleted_datetime`),
     KEY `ix_tickets_category_id` (`category_id`),
     KEY `ix_tickets_subcategory_id` (`subcategory_id`),
+    KEY `ix_tickets_customer_contact_id` (`customer_contact_id`),
+    CONSTRAINT `fk_tickets_customer_contact` FOREIGN KEY (`customer_contact_id`) REFERENCES `customer_contacts` (`id`) ON DELETE SET NULL,
     CONSTRAINT `fk_tickets_analysts` FOREIGN KEY (`assigned_analyst_id`) REFERENCES `analysts` (`id`),
     CONSTRAINT `fk_tickets_departments` FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`),
     CONSTRAINT `fk_tickets_origin` FOREIGN KEY (`origin_id`) REFERENCES `ticket_origins` (`id`),
@@ -4439,6 +4447,38 @@ CREATE TABLE IF NOT EXISTS `customers` (
     KEY `ix_customers_name` (`name`),
     CONSTRAINT `fk_customers_tenant`  FOREIGN KEY (`tenant_id`)             REFERENCES `tenants` (`id`) ON DELETE SET NULL,
     CONSTRAINT `fk_customers_creator` FOREIGN KEY (`created_by_analyst_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 13a: a customer may have many contacts, exactly one of which is its default.
+--
+-- customers.contact_name / contact_email / contact_phone above are NOT retired.
+-- They are kept as a MIRROR of whichever contact is default, rewritten whenever
+-- the default changes, so the ticket picker, the exports, the demo CSVs and the
+-- v1 API all keep reading the column they already read. Nothing outside this
+-- module had to learn about the new table.
+--
+-- "Exactly one default" is enforced in the service layer, not by a unique key:
+-- MySQL has no partial index, and a UNIQUE (customer_id, is_default) would
+-- permit only one NON-default contact per customer, which is the opposite of
+-- what is wanted.
+CREATE TABLE IF NOT EXISTS `customer_contacts` (
+    `id`                    INT NOT NULL AUTO_INCREMENT,
+    `customer_id`           INT NOT NULL,
+    `name`                  VARCHAR(150) NOT NULL,
+    `email`                 VARCHAR(255) NULL,
+    `phone`                 VARCHAR(50) NULL,
+    `job_title`             VARCHAR(150) NULL,
+    `is_default`            TINYINT(1) NOT NULL DEFAULT 0,
+    `notes`                 TEXT NULL,
+    `is_active`             TINYINT(1) NOT NULL DEFAULT 1,
+    `created_by_analyst_id` INT NULL,
+    `created_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `ix_customer_contacts_customer` (`customer_id`, `is_default`),
+    KEY `ix_customer_contacts_email` (`email`),
+    CONSTRAINT `fk_customer_contacts_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_customer_contacts_creator`  FOREIGN KEY (`created_by_analyst_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `customer_cmdb_objects` (

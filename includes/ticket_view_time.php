@@ -17,7 +17,9 @@
  * reportable and exportable, but it no longer changes what the metrics count.
  *
  * What is deliberately NOT counted:
- *   - a hidden or unfocused tab (the client only beats while visible)
+ *   - a hidden or unfocused tab (the client only beats while visible; the one
+ *     exception is the flush sent as the tab hides or the analyst leaves the
+ *     ticket, which carries the tail earned while it was still on screen)
  *   - idle time past time_auto_idle_seconds (a new session starts instead, so a
  *     ticket left open overnight proposes nothing for the night)
  *   - anything under time_auto_min_minutes, so opening a ticket to read it does

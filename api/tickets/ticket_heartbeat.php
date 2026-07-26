@@ -37,8 +37,17 @@ try {
         exit;
     }
 
-    viewTimeHeartbeat($conn, $ticketId, $analystId, $seconds);
-    echo json_encode(['success' => true, 'pending' => viewTimePending($conn, $ticketId, $analystId)]);
+    // `tracked` says whether the beat actually became seconds, and `enabled`
+    // whether the feature is switched on at all. Together they separate the two
+    // silent failures that otherwise look identical from the pane: the timer is
+    // off, versus Database Verify has not yet created ticket_view_sessions.
+    $total = viewTimeHeartbeat($conn, $ticketId, $analystId, $seconds);
+    echo json_encode([
+        'success' => true,
+        'tracked' => $total !== null,
+        'enabled' => viewTimeEnabled($conn),
+        'pending' => viewTimePending($conn, $ticketId, $analystId),
+    ]);
 
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);

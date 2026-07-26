@@ -1568,12 +1568,14 @@ async function selectEmail(emailId) {
             displayEmail(data.email, data.recordings || []);
         } else {
             readingPane.innerHTML = '<div class="reading-pane-empty">Error loading email</div>';
+            stopViewTimer();
             syncPopoutToTicketState(false);
         }
     } catch (error) {
         if (spinnerTimer) clearTimeout(spinnerTimer);
         console.error('Error:', error);
         readingPane.innerHTML = '<div class="reading-pane-empty">Failed to load email</div>';
+        stopViewTimer();
         syncPopoutToTicketState(false);
     }
 }
@@ -1593,11 +1595,13 @@ async function loadTicketById(ticketId) {
             displayEmail(data.email, data.recordings || []);
         } else {
             readingPane.innerHTML = '<div class="reading-pane-empty">Ticket not found</div>';
+            stopViewTimer();
             syncPopoutToTicketState(false);
         }
     } catch (error) {
         console.error('Error:', error);
         readingPane.innerHTML = '<div class="reading-pane-empty">Failed to load ticket</div>';
+        stopViewTimer();
         syncPopoutToTicketState(false);
     }
 }
@@ -3266,6 +3270,7 @@ async function deleteTicket() {
             // Clear current selection
             currentEmail = null;
             selectedEmailId = null;
+            stopViewTimer();
 
             // Clear reading pane
             document.getElementById('readingPane').innerHTML = '<div class="reading-pane-empty">Select an email to read</div>';
@@ -3307,6 +3312,7 @@ function clearReadingPaneIfTicket(ticketId) {
     if (currentEmail && currentEmail.ticket_id == ticketId) {
         currentEmail = null;
         selectedEmailId = null;
+        stopViewTimer();
         document.getElementById('readingPane').innerHTML = '<div class="reading-pane-empty">Select an email to read</div>';
     }
 }
@@ -5446,6 +5452,7 @@ function selectEmailFullScreen(emailId) {
  */
 let currentTimeEntries = [];
 let currentPendingAuto = null;   // 12b: unclaimed view time for this analyst
+let currentTimeTotalMinutes = 0; // 12b: remembered so a heartbeat can re-render
 
 async function loadTimeEntries(ticketId) {
     try {
@@ -5453,11 +5460,13 @@ async function loadTimeEntries(ticketId) {
         const data = await response.json();
         currentTimeEntries = data.success ? data.entries : [];
         currentPendingAuto = data.success ? (data.pending_auto || null) : null;
-        renderTimeEntries(data.success ? data.total_minutes : 0);
+        currentTimeTotalMinutes = data.success ? data.total_minutes : 0;
+        renderTimeEntries(currentTimeTotalMinutes);
     } catch (e) {
         console.error('Time entries load failed:', e);
         currentTimeEntries = [];
         currentPendingAuto = null;
+        currentTimeTotalMinutes = 0;
         renderTimeEntries(0);
     }
 }
@@ -5468,6 +5477,11 @@ async function loadTimeEntries(ticketId) {
  * a background tab does not. The server clamps each beat, ends a session after
  * its idle threshold, and never turns any of it into billable time on its own —
  * the analyst accepts it from the Time section.
+ *
+ * The tail between the last beat and leaving is flushed rather than dropped —
+ * when the tab hides, when the analyst moves to another ticket, and on unload.
+ * That flush is the one beat allowed to run while the tab is already hidden,
+ * because the time it carries was earned before it got there.
  */
 const VIEW_BEAT_MS = 30000;
 const VIEW_ACTIVE_WINDOW_MS = 120000;
@@ -5475,9 +5489,14 @@ let viewBeatTimer = null;
 let viewBeatTicketId = null;
 let viewLastInteraction = Date.now();
 let viewLastBeatAt = 0;
+let viewPromptRevealed = false;   // has this ticket's proposal been opened once?
+let viewBeatWarned = false;       // only complain about a dead timer once
 
+// Capture, because `focus` does not bubble — without it that listener never
+// fires and keyboard-only activity looks like idleness.
 ['mousemove', 'keydown', 'click', 'scroll', 'focus'].forEach(evt =>
-    document.addEventListener(evt, () => { viewLastInteraction = Date.now(); }, { passive: true }));
+    document.addEventListener(evt, () => { viewLastInteraction = Date.now(); },
+        { passive: true, capture: true }));
 
 function startViewTimer(ticketId) {
     stopViewTimer();
@@ -5485,34 +5504,62 @@ function startViewTimer(ticketId) {
     viewBeatTicketId = ticketId;
     viewLastBeatAt = Date.now();
     viewLastInteraction = Date.now();
-    viewBeatTimer = setInterval(sendViewBeat, VIEW_BEAT_MS);
+    viewPromptRevealed = false;
+    viewBeatTimer = setInterval(() => sendViewBeat(false), VIEW_BEAT_MS);
 }
 
-function stopViewTimer() {
+/**
+ * Stop beating. Flushes the tail by default: without it every ticket switch
+ * silently discarded up to a full beat, so a run of short visits recorded
+ * nothing at all. Pass flush = false when the ticket itself has just gone (a
+ * permanent delete), where there is nothing left to attach the time to.
+ */
+function stopViewTimer(flush = true) {
     if (viewBeatTimer) clearInterval(viewBeatTimer);
     viewBeatTimer = null;
+    if (viewBeatTicketId && flush) sendViewBeat(true, viewBeatTicketId);
     viewBeatTicketId = null;
 }
 
-async function sendViewBeat(final) {
-    if (!viewBeatTicketId) return;
-    if (document.visibilityState !== 'visible') { viewLastBeatAt = Date.now(); return; }
+/**
+ * Send the time accrued since the last beat.
+ *
+ * `final` marks a flush — the tab is hiding, the analyst has moved to another
+ * ticket, or the page is going away. Those MUST bypass the visibility guard:
+ * by the time visibilitychange or pagehide fires, visibilityState is already
+ * 'hidden', so the guard would throw away time that was genuinely spent looking
+ * at the ticket. The idle guard still applies to them.
+ */
+async function sendViewBeat(final, ticketId) {
+    const id = ticketId || viewBeatTicketId;
+    if (!id) return;
+    if (!final && document.visibilityState !== 'visible') { viewLastBeatAt = Date.now(); return; }
     if (Date.now() - viewLastInteraction > VIEW_ACTIVE_WINDOW_MS) { viewLastBeatAt = Date.now(); return; }
 
     const seconds = Math.round((Date.now() - viewLastBeatAt) / 1000);
     viewLastBeatAt = Date.now();
     if (seconds <= 0) return;
 
-    const body = JSON.stringify({ ticket_id: viewBeatTicketId, seconds: seconds });
+    const body = JSON.stringify({ ticket_id: id, seconds: seconds });
     try {
         // keepalive so the last beat still lands when the tab is closing.
         const r = await fetch(API_BASE + 'ticket_heartbeat.php', {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body, keepalive: !!final,
         });
         const d = await r.json();
-        if (d.success && d.pending) {
+        // Say so once when beats are landing but nothing is being recorded,
+        // rather than looking broken for no stated reason.
+        if (d.success && d.tracked === false && !viewBeatWarned) {
+            viewBeatWarned = true;
+            console.warn(d.enabled
+                ? '[view-time] beats are reaching the server but recording nothing — run Database Verify to create ticket_view_sessions.'
+                : '[view-time] automatic time tracking is switched off (time_auto_track_enabled).');
+        }
+        // Only paint if this beat still belongs to the ticket on screen — a
+        // flush for the ticket we just left resolves after the next one loads.
+        if (d.success && d.pending && id === viewBeatTicketId) {
             currentPendingAuto = d.pending;
-            updateTimeSectionSummary();
+            refreshTrackedTimePrompt();
         }
     } catch (e) { /* a missed beat is only ever a missed beat */ }
 }
@@ -5527,14 +5574,32 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('pagehide', () => sendViewBeat(true));
 
-/** Live-update the Time header while the timer runs, without a full re-render. */
-function updateTimeSectionSummary() {
-    const el = document.querySelector('.ticket-section[data-section="time"] .ticket-section-summary');
-    if (!el || !currentPendingAuto || !currentPendingAuto.proposable) return;
-    const tracked = ' &middot; <span class="ticket-section-warn">' +
-        escapeHtml(formatMinutes(currentPendingAuto.minutes)) + ' tracked, not logged</span>';
-    if (el.dataset.base === undefined) el.dataset.base = el.innerHTML;
-    el.innerHTML = el.dataset.base + tracked;
+/**
+ * Show the running total while the timer is still running.
+ *
+ * The proposal used to be rendered only by loadTimeEntries, i.e. once, when the
+ * ticket opened — so the offer to log time never appeared during the sitting
+ * that earned it. You had to leave the ticket and come back to see it, which
+ * read as the feature not working at all.
+ */
+function refreshTrackedTimePrompt() {
+    const pending = currentPendingAuto && currentPendingAuto.proposable ? currentPendingAuto : null;
+    const promptEl = document.querySelector('.tracked-time-prompt');
+
+    // Appearing or disappearing changes the section's shape — re-render it.
+    if (!!pending !== !!promptEl) { renderTimeEntries(currentTimeTotalMinutes); return; }
+    if (!pending) return;
+
+    // Already on screen: update the figures in place, so a re-render never
+    // clobbers a number the analyst is in the middle of typing.
+    const label = promptEl.querySelector('.tracked-time-minutes');
+    if (label) label.textContent = formatMinutes(pending.minutes);
+
+    const input = document.getElementById('trackedMinutes');
+    if (input && input.dataset.edited !== '1') input.value = pending.minutes;
+
+    const warn = document.querySelector('.ticket-section[data-section="time"] .tracked-time-warn');
+    if (warn) warn.textContent = formatMinutes(pending.minutes) + ' tracked, not logged';
 }
 
 async function logTrackedTime() {
@@ -5619,7 +5684,8 @@ function renderTimeEntries(totalMinutes) {
     }
     const pending = currentPendingAuto && currentPendingAuto.proposable ? currentPendingAuto : null;
     if (pending) {
-        summaryBits.push('<span class="ticket-section-warn">' + escapeHtml(formatMinutes(pending.minutes)) + ' tracked, not logged</span>');
+        summaryBits.push('<span class="ticket-section-warn tracked-time-warn">' +
+            escapeHtml(formatMinutes(pending.minutes)) + ' tracked, not logged</span>');
     }
     const timeSummary = summaryBits.join(' &middot; ');
 
@@ -5628,9 +5694,10 @@ function renderTimeEntries(totalMinutes) {
     const pendingHtml = pending ? `
         <div class="tracked-time-prompt">
             <span class="tracked-time-text">You have had this ticket open for
-                <strong>${escapeHtml(formatMinutes(pending.minutes))}</strong>.</span>
+                <strong class="tracked-time-minutes">${escapeHtml(formatMinutes(pending.minutes))}</strong>.</span>
             <input type="number" id="trackedMinutes" class="time-entry-input-minutes" min="1" step="1"
-                   value="${pending.minutes}" title="Adjust before logging">
+                   value="${pending.minutes}" title="Adjust before logging"
+                   oninput="this.dataset.edited = '1'">
             <button type="button" class="time-entry-add-btn" onclick="logTrackedTime()">Log it</button>
             <button type="button" class="btn-link" onclick="dismissTrackedTime()">Discard</button>
         </div>` : '';
@@ -5652,6 +5719,16 @@ function renderTimeEntries(totalMinutes) {
             <div class="time-entry-list">${rowsHtml}</div>
         </div>`
     );
+
+    // A proposal is a question, and a question inside a collapsed section is a
+    // question nobody answers. Open the section the first time one appears for
+    // this ticket — directly, not through toggleTicketSection, so we never
+    // rewrite the analyst's stored preference for every other ticket.
+    if (pending && !viewPromptRevealed) {
+        viewPromptRevealed = true;
+        const section = container.querySelector('.ticket-section[data-section="time"]');
+        if (section) section.classList.add('expanded');
+    }
 }
 
 async function saveTimeEntry() {
@@ -6244,6 +6321,7 @@ async function emptyTrash() {
         showToast(`Trash emptied — ${data.deleted} ticket(s) permanently deleted`, 'success');
         currentEmail = null;
         selectedEmailId = null;
+        stopViewTimer(false);   // the tickets are gone — nothing to attach time to
         document.getElementById('readingPane').innerHTML = '<div class="reading-pane-empty">Select an email to read</div>';
         loadFolderCounts();
         if (currentFilter.type === 'trash') loadEmails();

@@ -67,7 +67,7 @@ function data_import_datasets(): array {
         // ---- Tickets ------------------------------------------------------
         'tickets' => [
             'module' => 'tickets', 'label' => 'Tickets', 'table' => 'tickets',
-            'match' => 'ticket_number', 'tenant' => true,
+            'match' => 'ticket_number', 'match_alt' => 'external_ref', 'tenant' => true,
             'generate' => ['ticket_number' => 'ticket'],
             'defaults' => ['created_datetime' => 'now'],
             'notes' => 'Leave ticket_number blank to create new tickets (one is generated); supply it to update. Names must already exist — statuses, priorities and the rest are matched by name. `body` is the opening message: it becomes the ticket\'s first email, which is what makes it show up in the ticket list. A category restricted to one ticket type can only be used on tickets of that type.',
@@ -77,6 +77,10 @@ function data_import_datasets(): array {
             'row_checks'  => ['ticket_category_type'],
             'columns' => [
                 'ticket_number'         => ['type' => 'string', 'max' => 50],
+                // The sending system's own id. Set by inbound webhooks for alert
+                // correlation, and by a migration so re-running it UPDATES the
+                // tickets it already created instead of duplicating 16,000 rows.
+                'external_ref'          => ['type' => 'string', 'max' => 200],
                 'subject'               => ['type' => 'string', 'max' => 255, 'required' => true],
                 // Not a tickets column: the opening message, which becomes the
                 // ticket's initial email so it appears in the inbox at all.
@@ -674,8 +678,8 @@ function data_import_plan(PDO $conn, array $spec, int $analystId, string $csv): 
     $tenantScoped  = !empty($spec['tenant']);
 
     /** Find an existing row by the dataset's natural key, honouring tenancy. */
-    $findByMatch = function (string $value) use ($conn, $spec, $multi, $activeTenant, $defaultTenant, $tenantScoped): ?int {
-        $col = $spec['match'];
+    $findByMatch = function (string $value, ?string $column = null) use ($conn, $spec, $multi, $activeTenant, $defaultTenant, $tenantScoped): ?int {
+        $col = $column ?: $spec['match'];
         if ($tenantScoped && $multi) {
             if ($activeTenant === $defaultTenant) {
                 $s = $conn->prepare("SELECT id FROM `{$spec['table']}` WHERE LOWER(`$col`) = LOWER(?) AND (tenant_id = ? OR tenant_id IS NULL) LIMIT 1");
@@ -769,6 +773,10 @@ function data_import_plan(PDO $conn, array $spec, int $analystId, string $csv): 
                 if (!array_key_exists($c, $values)) { $ready = false; break; }
             }
             if ($ready) $existingId = $findByComposite($values);
+        } elseif (!empty($spec['match_alt']) && !empty($values[$spec['match_alt']])) {
+            // A migration keys on the source system's id, not on ours: the ticket
+            // number is ours to generate, so it can never identify their row.
+            $existingId = $findByMatch((string)$values[$spec['match_alt']], $spec['match_alt']);
         } elseif (!empty($spec['match']) && !empty($values[$spec['match']])) {
             $existingId = $findByMatch((string)$values[$spec['match']]);
         }
@@ -811,6 +819,7 @@ function data_import_commit(PDO $conn, array $spec, int $analystId, array $plan)
                 $args = [];
                 foreach ($vals as $col => $v) {
                     if (!empty($spec['match']) && $col === $spec['match']) continue;    // never rewrite the key
+                    if (!empty($spec['match_alt']) && $col === $spec['match_alt']) continue;
                     if (isset($spec['generate'][$col])) continue;                       // nor a generated one
                     $set[]  = "`$col` = ?";
                     $args[] = $v;

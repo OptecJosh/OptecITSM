@@ -1,0 +1,107 @@
+{
+  "_comment": [
+    "Zoho -> freeitsm value mapping. Edit this, re-run the transform, re-import.",
+    "Left side = exactly what Zoho exports. Right side = the NAME as it exists in",
+    "freeitsm; the importer matches by name, so spelling matters. An empty value",
+    "means 'leave the field unset'. '__default__' catches anything not listed.",
+    "",
+    "agents: keys are Zoho Ticket Owner ids, values the analyst's FULL NAME in",
+    "System > Analysts. The surnames in the comments were recovered from this",
+    "export's own Created By / Modified By columns. Fill in the full names of the",
+    "matching staff; leave a value blank to import those tickets unassigned."
+  ],
+
+  "agents": {
+    "124504000007183074": "",
+    "124504000015592001": "",
+    "124504000030992335": "",
+    "124504000032819163": "",
+    "124504000000604009": "",
+    "124504000000601001": "",
+    "124504000031003313": "",
+    "124504000007938001": "",
+    "124504000028843448": "",
+    "124504000000599017": "",
+    "124504000000928001": "",
+    "124504000000176001": "",
+    "124504000006838067": "",
+    "124504000000607004": "",
+    "124504000002023035": ""
+  },
+  "_agent_hints": {
+    "124504000007183074": "Miah — 2013 tickets",
+    "124504000015592001": "Jones — 1510",
+    "124504000030992335": "John — 1467",
+    "124504000032819163": "Huckle — 524",
+    "124504000000604009": "Pearce — 137",
+    "124504000000601001": "Scorer — 106",
+    "124504000031003313": "Huckle — 94 (second account with this surname)",
+    "124504000007938001": "Ioannidis — 75",
+    "124504000028843448": "Phillips — 28",
+    "124504000000599017": "Barnett — 9",
+    "124504000000928001": "Thomas — 7",
+    "124504000000176001": "Golding — 7",
+    "124504000006838067": "Powell — 4",
+    "124504000000607004": "Akhtar — 1",
+    "124504000002023035": "no name in export — 1"
+  },
+
+  "statuses": {
+    "Closed": "Closed",
+    "Auto-Closed": "Closed",
+    "Closed Completed": "Closed",
+    "Closed Incomplete": "Closed",
+    "Resolved": "Closed",
+    "Open": "Open",
+    "Created": "Open",
+    "On Hold": "On Hold",
+    "Awaiting Customer": "Awaiting Response",
+    "Awaiting Engineer": "In Progress",
+    "Awaiting Deployment": "In Progress",
+    "Awaiting Vendor": "On Hold",
+    "CAB Approved": "In Progress",
+    "Customer Review Complete": "In Progress",
+    "__default__": "Open"
+  },
+
+  "priorities": {
+    "P1 - Critical": "Critical",
+    "P2 - High": "High",
+    "P3 - Medium": "Normal",
+    "P4 - Event": "Low",
+    "P4 - Service Request": "Low",
+    "N/A": "Low",
+    "__default__": "Normal"
+  },
+
+  "types": {
+    "Event": "Event",
+    "Service Request": "Service Request",
+    "Incident": "Incident",
+    "Change": "Change",
+    "__default__": ""
+  },
+
+  "channels": {
+    "Email": "Email",
+    "Phone": "Phone",
+    "Web": "Portal",
+    "Chat": "Web chat",
+    "Automation": "Automation",
+    "Security Logging": "Security Logging",
+    "__default__": ""
+  },
+
+  "departments": {
+    "NOC 1ST": "NOC 1st Line",
+    "NOC 2ND": "NOC 2nd Line",
+    "NOC 3RD": "NOC 3rd Line",
+    "Technical Director": "Technical Director",
+    "__default__": ""
+  },
+
+  "options": {
+    "fallback_requester_email": "zoho-import@localhost",
+    "max_time_minutes": 1440
+  }
+}

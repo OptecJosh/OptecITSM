@@ -764,6 +764,7 @@ CREATE TABLE IF NOT EXISTS `tickets` (
     `playbook_eligible`     TINYINT(1) NULL,
     `acknowledged_datetime` DATETIME NULL,
     `customer_id`           INT NULL,
+    `external_ref`          VARCHAR(200) NULL,   -- sender's own id, for inbound webhook correlation
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_tickets_number` (`ticket_number`),
     KEY `ix_tickets_status_id` (`status_id`),
@@ -830,6 +831,58 @@ CREATE TABLE IF NOT EXISTS `ticket_time_entries` (
     KEY `ix_time_entries_analyst_date` (`analyst_id`, `entry_datetime`),
     CONSTRAINT `fk_time_entries_tickets` FOREIGN KEY (`ticket_id`) REFERENCES `tickets` (`id`),
     CONSTRAINT `fk_time_entries_analysts` FOREIGN KEY (`analyst_id`) REFERENCES `analysts` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------
+-- Inbound webhooks: an external system POSTs to a per-source URL and we turn
+-- the payload into a ticket. A new integration is a ROW, not a deploy.
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `inbound_webhooks` (
+    `id`                  INT NOT NULL AUTO_INCREMENT,
+    `name`                VARCHAR(120) NOT NULL,
+    `slug`                VARCHAR(64) NOT NULL,
+    `description`         VARCHAR(500) NULL,
+    `is_active`           TINYINT(1) NOT NULL DEFAULT 1,
+    `auth_type`           ENUM('hmac_sha256','header_secret','token') NOT NULL DEFAULT 'header_secret',
+    `secret`              VARCHAR(255) NULL,
+    `signature_header`    VARCHAR(80) NULL,
+    `signature_prefix`    VARCHAR(20) NULL,
+    `signature_encoding`  ENUM('hex','base64') NOT NULL DEFAULT 'hex',
+    `tenant_id`           INT NULL,
+    `act_as_analyst_id`   INT NULL,
+    `field_map`           LONGTEXT NULL,
+    `dedupe_path`         VARCHAR(200) NULL,
+    `resolve_path`        VARCHAR(200) NULL,
+    `resolve_value`       VARCHAR(120) NULL,
+    `resolve_status`      VARCHAR(80) NULL,
+    `created_by_id`       INT NULL,
+    `last_received_at`    DATETIME NULL,
+    `created_datetime`    DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_datetime`    DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_inbound_slug` (`slug`),
+    CONSTRAINT `fk_inbound_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE SET NULL,
+    CONSTRAINT `fk_inbound_actor` FOREIGN KEY (`act_as_analyst_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Every delivery, accepted or not, with the raw payload: when an integration
+-- misbehaves the argument is always about what was actually sent.
+CREATE TABLE IF NOT EXISTS `inbound_webhook_events` (
+    `id`                  INT NOT NULL AUTO_INCREMENT,
+    `webhook_id`          INT NULL,
+    `received_at`         DATETIME NOT NULL,
+    `remote_ip`           VARCHAR(45) NULL,
+    `outcome`             ENUM('created','appended','resolved','ignored','auth_failed','invalid','error') NOT NULL,
+    `ticket_id`           INT NULL,
+    `dedupe_key`          VARCHAR(200) NULL,
+    `message`             VARCHAR(500) NULL,
+    `payload`             LONGTEXT NULL,
+    `created_datetime`    DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `ix_iwe_hook` (`webhook_id`, `received_at`),
+    KEY `ix_iwe_dedupe` (`dedupe_key`),
+    CONSTRAINT `fk_iwe_hook` FOREIGN KEY (`webhook_id`) REFERENCES `inbound_webhooks` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_iwe_ticket` FOREIGN KEY (`ticket_id`) REFERENCES `tickets` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- How long an analyst actually had a ticket open and focused (12b). Sessions are

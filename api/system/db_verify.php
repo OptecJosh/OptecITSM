@@ -595,6 +595,7 @@ $schema = [
         'playbook_eligible'     => 'TINYINT(1) NULL',     // NULL=unknown, 1=yes, 0=no
         'acknowledged_datetime' => 'DATETIME NULL',       // first human ack (MTTA anchor)
         'customer_id'           => 'INT NULL',            // Customers module link
+        'external_ref'          => 'VARCHAR(200) NULL',   // sender's own id, for inbound webhook correlation
     ],
 
     // Customers module: a client account with a primary contact, optionally
@@ -699,6 +700,59 @@ $schema = [
         'source'              => "ENUM('manual','auto') NOT NULL DEFAULT 'manual'",
         'created_datetime'    => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
         'updated_datetime'    => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+    ],
+
+    // Inbound webhooks — the receiving half of the integration story. A source
+    // (monitoring, alerting, a form, a script) POSTs to a per-source URL and we
+    // turn the payload into a ticket. Config here is deliberately data, not code:
+    // a new source is a row, not a deploy.
+    'inbound_webhooks' => [
+        'id'                  => 'INT NOT NULL AUTO_INCREMENT',
+        'name'                => 'VARCHAR(120) NOT NULL',
+        'slug'                => 'VARCHAR(64) NOT NULL',        // the URL segment; opaque + unguessable
+        'description'         => 'VARCHAR(500) NULL',
+        'is_active'           => 'TINYINT(1) NOT NULL DEFAULT 1',
+        // How we prove the sender is who it claims to be:
+        //   hmac_sha256   signature header over the RAW body, hex or base64
+        //   header_secret a shared secret in a named header
+        //   token         the secret in the URL query (weakest; some tools offer nothing else)
+        'auth_type'           => "ENUM('hmac_sha256','header_secret','token') NOT NULL DEFAULT 'header_secret'",
+        'secret'              => 'VARCHAR(255) NULL',
+        'signature_header'    => 'VARCHAR(80) NULL',            // e.g. X-Hub-Signature-256
+        'signature_prefix'    => 'VARCHAR(20) NULL',            // e.g. "sha256=" stripped before compare
+        'signature_encoding'  => "ENUM('hex','base64') NOT NULL DEFAULT 'hex'",
+        // Where the resulting ticket lands.
+        'tenant_id'           => 'INT NULL',
+        'act_as_analyst_id'   => 'INT NULL',                    // audit attribution; the creator by default
+        // field => literal or {{dot.path}} template, as JSON.
+        'field_map'           => 'LONGTEXT NULL',
+        // Correlation: the payload path holding the sender's own id for this
+        // alert. Repeat deliveries append to the open ticket instead of piling up
+        // duplicates - the difference between useful alerting and noise.
+        'dedupe_path'         => 'VARCHAR(200) NULL',
+        'resolve_path'        => 'VARCHAR(200) NULL',           // path whose value signals "resolved"
+        'resolve_value'       => 'VARCHAR(120) NULL',
+        'resolve_status'      => 'VARCHAR(80) NULL',            // status name to set when it does
+        'created_by_id'       => 'INT NULL',
+        'last_received_at'    => 'DATETIME NULL',
+        'created_datetime'    => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+        'updated_datetime'    => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+    ],
+
+    // Every delivery, accepted or not. The outbound queue has a delivery log and
+    // replay for exactly this reason: when an integration misbehaves the argument
+    // is always about what was actually sent.
+    'inbound_webhook_events' => [
+        'id'                  => 'INT NOT NULL AUTO_INCREMENT',
+        'webhook_id'          => 'INT NULL',
+        'received_at'         => 'DATETIME NOT NULL',
+        'remote_ip'           => 'VARCHAR(45) NULL',
+        'outcome'             => "ENUM('created','appended','resolved','ignored','auth_failed','invalid','error') NOT NULL",
+        'ticket_id'           => 'INT NULL',
+        'dedupe_key'          => 'VARCHAR(200) NULL',
+        'message'             => 'VARCHAR(500) NULL',
+        'payload'             => 'LONGTEXT NULL',
+        'created_datetime'    => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
     ],
 
     // 12b: how long an analyst actually had a ticket open and focused. One open
@@ -3464,6 +3518,37 @@ try {
         if (!$fkExists('lms_answers', 'fk_lms_answers_question')) {
             try { $conn->exec("ALTER TABLE lms_answers ADD CONSTRAINT fk_lms_answers_question FOREIGN KEY (question_id) REFERENCES lms_questions (id) ON DELETE CASCADE"); } catch (Exception $e) {}
         }
+    }
+
+    // Inbound webhooks: the config survives a ticket being deleted, the event log
+    // keeps its row but forgets the ticket, and a deleted webhook takes its own
+    // history with it.
+    if ($tableExists('inbound_webhooks')) {
+        if (!$idxExists('inbound_webhooks', 'uq_inbound_slug')) {
+            try { $conn->exec("ALTER TABLE inbound_webhooks ADD UNIQUE KEY uq_inbound_slug (slug)"); } catch (Exception $e) {}
+        }
+        if ($tableExists('tenants') && !$fkExists('inbound_webhooks', 'fk_inbound_tenant')) {
+            try { $conn->exec("ALTER TABLE inbound_webhooks ADD CONSTRAINT fk_inbound_tenant FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+        if ($tableExists('analysts') && !$fkExists('inbound_webhooks', 'fk_inbound_actor')) {
+            try { $conn->exec("ALTER TABLE inbound_webhooks ADD CONSTRAINT fk_inbound_actor FOREIGN KEY (act_as_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+    }
+    if ($tableExists('inbound_webhook_events')) {
+        foreach ([['ix_iwe_hook', '(webhook_id, received_at)'], ['ix_iwe_dedupe', '(dedupe_key)']] as [$idx, $cols]) {
+            if (!$idxExists('inbound_webhook_events', $idx)) {
+                try { $conn->exec("ALTER TABLE inbound_webhook_events ADD INDEX $idx $cols"); } catch (Exception $e) {}
+            }
+        }
+        if ($tableExists('inbound_webhooks') && !$fkExists('inbound_webhook_events', 'fk_iwe_hook')) {
+            try { $conn->exec("ALTER TABLE inbound_webhook_events ADD CONSTRAINT fk_iwe_hook FOREIGN KEY (webhook_id) REFERENCES inbound_webhooks (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if ($tableExists('tickets') && !$fkExists('inbound_webhook_events', 'fk_iwe_ticket')) {
+            try { $conn->exec("ALTER TABLE inbound_webhook_events ADD CONSTRAINT fk_iwe_ticket FOREIGN KEY (ticket_id) REFERENCES tickets (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+    }
+    if ($tableExists('tickets') && $colExists('tickets', 'external_ref') && !$idxExists('tickets', 'ix_tickets_external_ref')) {
+        try { $conn->exec("ALTER TABLE tickets ADD INDEX ix_tickets_external_ref (external_ref)"); } catch (Exception $e) {}
     }
 
     // 12b: view sessions hang off a ticket and an analyst and die with either.

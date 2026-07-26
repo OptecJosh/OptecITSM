@@ -180,7 +180,7 @@ function data_reset_groups(): array {
             'tables'      => [
                 'system_logs', 'sla_cron_runs', 'sla_notifications_sent',
                 'workflow_executions', 'workflow_scheduled_emissions', 'webhook_deliveries',
-                'mailbox_activity_log', 'ip_login_bans', 'password_reset_tokens', 'trusted_devices',
+                'mailbox_activity_log', 'inbound_webhook_events', 'ip_login_bans', 'password_reset_tokens', 'trusted_devices',
                 'api_rate_limits', 'api_key_rate_limits',
                 'wiki_function_calls', 'wiki_db_references', 'wiki_dependencies', 'wiki_session_vars',
                 'wiki_functions', 'wiki_classes', 'wiki_files', 'wiki_scan_runs',

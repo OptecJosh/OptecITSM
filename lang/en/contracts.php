@@ -139,6 +139,16 @@ return [
         'related_events'            => 'Related calendar events',
         'no_related_tasks'          => 'No related tasks',
         'no_related_events'         => 'No related events',
+        // Covered configuration items (Phase 15a). Separate from covered assets:
+        // an asset is the purchase, a CI is the service it provides.
+        'covered_cis'               => 'Covered configuration items',
+        'covered_cis_placeholder'   => 'Search configuration items to add coverage…',
+        'covered_cis_empty'         => 'No configuration items covered by this contract yet.',
+        'covered_cis_load_failed'   => 'Failed to load covered configuration items.',
+        'covered_cis_no_matches'    => 'No matching configuration items',
+        'covered_cis_search_failed' => 'Search failed',
+        'covered_cis_remove'        => 'Remove',
+        'covered_cis_planned'       => 'Planned',
         'tasks_load_failed'         => 'Failed to load tasks',
         'events_load_failed'        => 'Failed to load events',
         'unassigned'                => 'Unassigned',

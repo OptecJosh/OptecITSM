@@ -108,9 +108,9 @@ function data_reset_groups(): array {
         ],
         'contracts' => [
             'label'       => 'Contracts, suppliers & RFPs',
-            'description' => 'Contracts with their term values and asset coverage, suppliers and their contacts, and the RFP builder\'s documents and scoring. Statuses, types and payment schedules are kept.',
+            'description' => 'Contracts with their term values, asset and CI coverage, suppliers and their contacts, and the RFP builder\'s documents and scoring. Statuses, types and payment schedules are kept.',
             'tables'      => [
-                'contract_term_values', 'contract_assets',
+                'contract_term_values', 'contract_assets', 'contract_cmdb_objects',
                 'rfp_scores', 'rfp_conflicts', 'rfp_consolidated_sources', 'rfp_consolidated_requirements',
                 'rfp_extracted_requirements', 'rfp_output_sections', 'rfp_section_history',
                 'rfp_document_sections', 'rfp_documents', 'rfp_processing_log', 'rfp_invited_suppliers',

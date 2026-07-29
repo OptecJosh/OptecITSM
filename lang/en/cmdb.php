@@ -171,6 +171,23 @@ return [
         'updated'        => 'updated',
     ],
 
+    // Contract coverage panel (Phase 15a). Read-only on this page — the panel
+    // explains where to edit rather than offering an editor that would then be a
+    // second place coverage could be changed from.
+    'contracts' => [
+        'heading'    => 'Contract coverage',
+        'empty'      => 'No contract covers this configuration item yet. Coverage is added from the contract: Contracts → open a contract → Covered configuration items.',
+        'hint'       => 'Coverage is managed from the contract. Open one to change what it covers.',
+        'untitled'   => '(untitled contract)',
+        'inactive'   => 'Inactive',
+        'expires'    => 'Expires {date}',
+        'expired'    => 'Expired {date}',
+        'no_end'     => 'No end date',
+        'hours'      => 'Hours: {value}',
+        'response'   => 'Response: {value}',
+        'resolution' => 'Resolution: {value}',
+    ],
+
     'map' => [
         'outgoing'       => 'Outgoing — this …',
         'incoming'       => 'Incoming — other objects …',

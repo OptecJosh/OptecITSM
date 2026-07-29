@@ -3145,6 +3145,31 @@ CREATE TABLE IF NOT EXISTS `contract_assets` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------
+-- Contract → CMDB coverage (Phase 15a): which configuration items a contract
+-- covers. Deliberately separate from `contract_assets`: an asset is a physical
+-- thing you bought (serial, warranty), a CI is the service model. A support
+-- contract covers "the payroll application", not four server serial numbers, so
+-- the two coverage lists answer different questions and both are kept.
+--
+-- Not company-scoped, because neither contracts nor CMDB objects are.
+-- ----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `contract_cmdb_objects` (
+    `id`                    INT NOT NULL AUTO_INCREMENT,
+    `contract_id`           INT NOT NULL,
+    `cmdb_object_id`        INT NOT NULL,
+    `created_datetime`      DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+    `created_by_analyst_id` INT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_contract_cmdb` (`contract_id`, `cmdb_object_id`),
+    -- The reverse lookup ("which contracts cover this CI") is a first-class view
+    -- on the CMDB object page, so it gets its own index rather than scanning.
+    KEY `ix_ccmdb_object` (`cmdb_object_id`),
+    CONSTRAINT `fk_contract_cmdb_contract` FOREIGN KEY (`contract_id`)           REFERENCES `contracts` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_contract_cmdb_object`   FOREIGN KEY (`cmdb_object_id`)        REFERENCES `cmdb_objects` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_contract_cmdb_creator`  FOREIGN KEY (`created_by_analyst_id`) REFERENCES `analysts` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------
 -- RFP Builder (feature of the Contracts module)
 -- ----------------------------------------------------------
 

@@ -2739,6 +2739,17 @@ $schema = [
         'created_by_analyst_id' => 'INT NULL',
     ],
 
+    // Phase 15a: contract → CMDB coverage. Separate from contract_assets — an
+    // asset is the physical purchase, a CI is the service model, and a contract
+    // legitimately covers one, the other, or both.
+    'contract_cmdb_objects' => [
+        'id'                    => 'INT NOT NULL AUTO_INCREMENT',
+        'contract_id'           => 'INT NOT NULL',
+        'cmdb_object_id'        => 'INT NOT NULL',
+        'created_datetime'      => 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP',
+        'created_by_analyst_id' => 'INT NULL',
+    ],
+
     // RFP Builder (feature of the Contracts module)
     'rfps' => [
         'id'                       => 'INT NOT NULL AUTO_INCREMENT',
@@ -4223,6 +4234,26 @@ try {
         }
         if ($tableExists('analysts') && !$fkExists('contract_assets', 'fk_contract_assets_creator')) {
             try { $conn->exec("ALTER TABLE contract_assets ADD CONSTRAINT fk_contract_assets_creator FOREIGN KEY (created_by_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
+        }
+    }
+
+    // Contract → CMDB coverage (Phase 15a) — unique link, reverse index + FKs.
+    if ($tableExists('contract_cmdb_objects')) {
+        if (!$idxExists('contract_cmdb_objects', 'uq_contract_cmdb')) {
+            try { $conn->exec("ALTER TABLE contract_cmdb_objects ADD UNIQUE KEY uq_contract_cmdb (contract_id, cmdb_object_id)"); } catch (Exception $e) {}
+        }
+        // "Which contracts cover this CI" is a panel on the CMDB object page.
+        if (!$idxExists('contract_cmdb_objects', 'ix_ccmdb_object')) {
+            try { $conn->exec("ALTER TABLE contract_cmdb_objects ADD KEY ix_ccmdb_object (cmdb_object_id)"); } catch (Exception $e) {}
+        }
+        if ($tableExists('contracts') && !$fkExists('contract_cmdb_objects', 'fk_contract_cmdb_contract')) {
+            try { $conn->exec("ALTER TABLE contract_cmdb_objects ADD CONSTRAINT fk_contract_cmdb_contract FOREIGN KEY (contract_id) REFERENCES contracts (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if ($tableExists('cmdb_objects') && !$fkExists('contract_cmdb_objects', 'fk_contract_cmdb_object')) {
+            try { $conn->exec("ALTER TABLE contract_cmdb_objects ADD CONSTRAINT fk_contract_cmdb_object FOREIGN KEY (cmdb_object_id) REFERENCES cmdb_objects (id) ON DELETE CASCADE"); } catch (Exception $e) {}
+        }
+        if ($tableExists('analysts') && !$fkExists('contract_cmdb_objects', 'fk_contract_cmdb_creator')) {
+            try { $conn->exec("ALTER TABLE contract_cmdb_objects ADD CONSTRAINT fk_contract_cmdb_creator FOREIGN KEY (created_by_analyst_id) REFERENCES analysts (id) ON DELETE SET NULL"); } catch (Exception $e) {}
         }
     }
 

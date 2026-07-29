@@ -547,6 +547,15 @@ if (!$contract_id) {
                         </div>
                         <div id="coveredAssetsList" class="related-empty">${escapeHtml(window.t('common.loading'))}</div>
                     </div>
+                    <div class="related-section" id="coveredCisSection">
+                        <h3>${escapeHtml(window.t('contracts.detail.covered_cis'))}</h3>
+                        <div style="position:relative;max-width:420px;margin-bottom:8px;">
+                            <input type="text" id="ciLinkSearch" class="form-input" autocomplete="off"
+                                   placeholder="${escapeHtml(window.t('contracts.detail.covered_cis_placeholder'))}" oninput="ciSearchDebounced()">
+                            <div id="ciSearchResults" class="ci-search-results"></div>
+                        </div>
+                        <div id="coveredCisList" class="related-empty">${escapeHtml(window.t('common.loading'))}</div>
+                    </div>
                     <div class="related-section" id="relatedTasksSection">
                         <h3>${escapeHtml(window.t('contracts.detail.related_tasks'))}</h3>
                         <div id="relatedTasksList" class="related-empty">${escapeHtml(window.t('common.loading'))}</div>
@@ -661,6 +670,7 @@ if (!$contract_id) {
         // Related items
         async function loadRelatedItems() {
             loadCoveredAssets();
+            loadCoveredCis();
             loadRelatedTasks();
             loadRelatedEvents();
         }
@@ -751,6 +761,95 @@ if (!$contract_id) {
                 const data = await resp.json();
                 if (!data.success) { alert(data.error || 'Remove failed'); return; }
                 loadCoveredAssets();
+            } catch (e) { alert('Remove failed'); }
+        }
+
+        // ---- Covered configuration items (Phase 15a) ----
+        // Deliberately a separate list from covered assets rather than a merged
+        // one: a contract can cover the service ("Payroll application") without
+        // naming the four servers under it, and vice versa.
+        let ciSearchTimer = null;
+
+        async function loadCoveredCis() {
+            const list = document.getElementById('coveredCisList');
+            if (!list) return;
+            try {
+                const resp = await fetch(API_BASE + 'get_contract_cmdb_objects.php?contract_id=' + contractId);
+                const data = await resp.json();
+                if (!data.success) { list.className = 'related-empty'; list.innerHTML = escapeHtml(data.error || 'Failed to load'); return; }
+                const objects = data.objects || [];
+                if (!objects.length) {
+                    list.className = 'related-empty';
+                    list.innerHTML = escapeHtml(window.t('contracts.detail.covered_cis_empty'));
+                    return;
+                }
+                list.className = '';
+                list.innerHTML = objects.map(o => `<div class="related-item">
+                    <a href="../cmdb/object.php?id=${o.object_id}">${escapeHtml(o.name)}</a>
+                    <span class="related-pill">${escapeHtml(o.class_name)}</span>
+                    ${o.is_planned ? `<span class="related-pill">${escapeHtml(window.t('contracts.detail.covered_cis_planned'))}</span>` : ''}
+                    <span class="meta">${o.parent_name ? escapeHtml(o.parent_name) : ''}</span>
+                    <button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="unlinkContractCi(${o.object_id})">${escapeHtml(window.t('contracts.detail.covered_cis_remove'))}</button>
+                </div>`).join('');
+            } catch (e) {
+                list.className = 'related-empty';
+                list.innerHTML = escapeHtml(window.t('contracts.detail.covered_cis_load_failed'));
+            }
+        }
+
+        function ciSearchDebounced() {
+            clearTimeout(ciSearchTimer);
+            ciSearchTimer = setTimeout(runCiSearch, 250);
+        }
+        async function runCiSearch() {
+            const input = document.getElementById('ciLinkSearch');
+            const box = document.getElementById('ciSearchResults');
+            if (!input || !box) return;
+            const q = input.value.trim();
+            if (q === '') { box.innerHTML = ''; box.classList.remove('active'); return; }
+            try {
+                const resp = await fetch('../api/cmdb/search_objects.php?q=' + encodeURIComponent(q));
+                const data = await resp.json();
+                const results = (data.results || []).slice(0, 10);
+                if (!results.length) {
+                    box.innerHTML = `<div class="ci-search-empty">${escapeHtml(window.t('contracts.detail.covered_cis_no_matches'))}</div>`;
+                    box.classList.add('active');
+                    return;
+                }
+                box.innerHTML = results.map(o => `<button type="button" class="ci-search-row" onclick="linkContractCi(${o.id})">
+                    <span>${escapeHtml(o.name)}</span>
+                    <span class="ci-search-class">${escapeHtml(o.class_name)}</span>
+                </button>`).join('');
+                box.classList.add('active');
+            } catch (e) {
+                box.innerHTML = `<div class="ci-search-empty">${escapeHtml(window.t('contracts.detail.covered_cis_search_failed'))}</div>`;
+                box.classList.add('active');
+            }
+        }
+        async function linkContractCi(objectId) {
+            try {
+                const resp = await fetch(API_BASE + 'save_contract_cmdb_object.php', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contract_id: contractId, cmdb_object_id: objectId }),
+                });
+                const data = await resp.json();
+                if (!data.success) { alert(data.error || 'Link failed'); return; }
+                const input = document.getElementById('ciLinkSearch');
+                const box = document.getElementById('ciSearchResults');
+                if (input) input.value = '';
+                if (box) { box.innerHTML = ''; box.classList.remove('active'); }
+                loadCoveredCis();
+            } catch (e) { alert('Link failed'); }
+        }
+        async function unlinkContractCi(objectId) {
+            try {
+                const resp = await fetch(API_BASE + 'delete_contract_cmdb_object.php', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contract_id: contractId, cmdb_object_id: objectId }),
+                });
+                const data = await resp.json();
+                if (!data.success) { alert(data.error || 'Remove failed'); return; }
+                loadCoveredCis();
             } catch (e) { alert('Remove failed'); }
         }
 

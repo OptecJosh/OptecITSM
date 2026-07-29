@@ -354,6 +354,99 @@ $translationNamespaces = ['common', 'cmdb'];
             text-align: center;
         }
 
+        /* Contract coverage panel (Phase 15a) — read-only; coverage is edited
+           from the contract itself. Fully tokenised so dark mode works. */
+
+        /* The other two count badges are scoped to their own bucket wrappers, so
+           this panel's badge (which sits directly in the section heading) needs
+           its own rule rather than inheriting one. */
+        .obj-section h3 .count-badge {
+            background: var(--surface, #ffffff);
+            color: var(--cmdb-accent, #be185d);
+            padding: 1px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            border: 1px solid #fbcfe8;
+            font-weight: 600;
+        }
+        .cov-hint {
+            font-size: 12px;
+            color: var(--text-muted, #6b7280);
+            margin-bottom: 10px;
+        }
+        .cov-card {
+            display: block;
+            padding: 10px 12px;
+            background: var(--surface-2, #fafafa);
+            border: 1px solid var(--border, #e5e7eb);
+            border-radius: 6px;
+            margin-bottom: 6px;
+            text-decoration: none;
+            color: inherit;
+            transition: background 0.12s, box-shadow 0.12s, transform 0.12s ease-out;
+        }
+        .cov-card:last-child { margin-bottom: 0; }
+        .cov-card:hover {
+            background: var(--surface-hover, #f0f0f0);
+            box-shadow: 0 4px 12px var(--shadow, rgba(0,0,0,0.08));
+            transform: translateY(-2px);
+        }
+        .cov-card.is-inactive { opacity: 0.65; }
+        .cov-card-line1 {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+            flex-wrap: wrap;
+        }
+        .cov-number {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 11px;
+            color: var(--text-dim, #9ca3af);
+            font-weight: 500;
+        }
+        .cov-title {
+            color: var(--text, #111827);
+            font-weight: 500;
+            font-size: 14px;
+        }
+        .cov-card-meta {
+            display: flex;
+            gap: 10px;
+            color: var(--text-muted, #6b7280);
+            font-size: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .cov-pill {
+            display: inline-block;
+            padding: 1px 8px;
+            font-size: 11px;
+            border-radius: 999px;
+            border: 1px solid transparent;
+            font-weight: 500;
+        }
+        .cov-pill.cov-ok {
+            background: var(--success-bg, #dcfce7);
+            color: var(--success-text, #166534);
+            border-color: var(--success-border, #b7e1c4);
+        }
+        .cov-pill.cov-soon {
+            background: var(--warning-bg, #fef3c7);
+            color: var(--warning-text, #92400e);
+            border-color: var(--warning-border, #f0d9a8);
+        }
+        .cov-pill.cov-expired {
+            background: var(--danger-bg, #fee2e2);
+            color: var(--danger-text, #991b1b);
+            border-color: var(--danger-border, #f0c2c2);
+        }
+        .cov-pill.cov-none {
+            background: var(--surface-3, #f8f8f8);
+            color: var(--text-muted, #6b7280);
+            border-color: var(--border, #e5e7eb);
+        }
+
         /* Inline mini-graph — parent / this / children + related */
         .mini-graph {
             background: var(--surface, #ffffff);
@@ -653,8 +746,12 @@ $translationNamespaces = ['common', 'cmdb'];
             border-color: #5a2a40;
         }
         [data-theme-mode="dark"] .impact-bucket .count-badge,
-        [data-theme-mode="dark"] .activity-bucket-head .count-badge {
+        [data-theme-mode="dark"] .activity-bucket-head .count-badge,
+        [data-theme-mode="dark"] .obj-section h3 .count-badge {
             border-color: #5a2a40;
+        }
+        [data-theme-mode="dark"] .cov-card:hover {
+            background: var(--cmdb-accent-soft, #3a1826);
         }
         [data-theme-mode="dark"] .ticket-card:hover,
         [data-theme-mode="dark"] .mg-node:hover,
@@ -807,6 +904,6 @@ $translationNamespaces = ['common', 'cmdb'];
         window.OBJECT_ID = <?php echo isset($_GET['id']) ? (int)$_GET['id'] : 0; ?>;
     </script>
     <script src="options-editor.js?v=3"></script>
-    <script src="object.js?v=7"></script>
+    <script src="object.js?v=8"></script>
 </body>
 </html>

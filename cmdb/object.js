@@ -20,6 +20,10 @@ let acTimer = null;
 let acHighlightedIdx = -1;
 let summaryGenerating = false;
 let slaPolicy = null; // { assigned_policy_id, policies:[{id,name,is_default}], default_policy_name }
+// Phase 15a: contracts covering this CI. null = not loaded or no contracts-module
+// access (the panel is then omitted entirely rather than shown empty, because
+// "no coverage" and "you may not see coverage" are different statements).
+let objContracts = null;
 
 // SLA policy assignment lives under the tickets API (the SLA engine's home),
 // not the CMDB API — this device→policy link is what the ticket SLA resolves.
@@ -53,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('objPage').innerHTML = `<div style="padding:40px;text-align:center;color:#b91c1c;">${escapeHtml(window.t('cmdb.object.missing_id'))}</div>`;
         return;
     }
-    Promise.all([loadObject(), loadImpact(), loadActivity(), loadRelationshipTypes(), loadAllClasses(), loadSlaPolicy()]).then(() => {
+    Promise.all([loadObject(), loadImpact(), loadActivity(), loadRelationshipTypes(), loadAllClasses(), loadSlaPolicy(), loadObjectContracts()]).then(() => {
         if (obj) render();
     });
     initPropDefModalDrag();
@@ -100,6 +104,18 @@ async function loadRelationshipTypes() {
         const data = await res.json();
         if (data.success) relationshipTypes = (data.relationship_types || []).filter(r => r.is_active);
     } catch (e) { /* ignore */ }
+}
+
+// Phase 15a: which contracts cover this CI. Read-only here — coverage is edited
+// from the contract, matching how an asset shows its contract coverage. The
+// endpoint gates on the contracts module, so a CMDB-only analyst gets nothing
+// back and the panel never renders.
+async function loadObjectContracts() {
+    try {
+        const res = await fetch('../api/contracts/get_cmdb_object_contracts.php?cmdb_object_id=' + OBJECT_ID);
+        const data = await res.json();
+        if (data.success) objContracts = data.contracts || [];
+    } catch (e) { /* no contracts access, or offline — panel is omitted */ }
 }
 
 async function loadSlaPolicy() {
@@ -197,6 +213,8 @@ function render() {
         ${renderActivityPanel()}
 
         ${renderSlaPolicyCard()}
+
+        ${renderContractsPanel()}
 
         <div class="obj-section">
             <h3>${escapeHtml(window.t('cmdb.object.map'))}</h3>
@@ -380,6 +398,72 @@ function renderActivityPanel() {
     return `<div class="obj-section">
         <h3>${escapeHtml(window.t('cmdb.activity.heading'))}</h3>
         ${html}
+    </div>`;
+}
+
+// Panel: contracts covering this CI (Phase 15a).
+//
+// Omitted entirely when objContracts is null — that means the analyst has no
+// contracts module access, and an empty "Contract coverage" heading would read
+// as "nothing covers this" rather than "you cannot see this".
+//
+// Expiry is coloured on the same thresholds the rest of the platform uses for
+// renewals: red once past, amber inside 90 days.
+function renderContractsPanel() {
+    if (objContracts === null) return '';
+
+    if (objContracts.length === 0) {
+        return `<div class="obj-section">
+            <h3>${escapeHtml(window.t('cmdb.contracts.heading'))}</h3>
+            <div class="activity-empty">${escapeHtml(window.t('cmdb.contracts.empty'))}</div>
+        </div>`;
+    }
+
+    const dayMs = 86400000;
+    const rows = objContracts.map(c => {
+        let endPill = '';
+        if (c.contract_end) {
+            // Date-only string, so compare at day granularity in local time.
+            const end = new Date(c.contract_end + 'T00:00:00');
+            const days = Math.floor((end - new Date()) / dayMs);
+            let cls = 'cov-ok';
+            if (days < 0)        cls = 'cov-expired';
+            else if (days <= 90) cls = 'cov-soon';
+            const label = days < 0
+                ? window.t('cmdb.contracts.expired', { date: c.contract_end })
+                : window.t('cmdb.contracts.expires', { date: c.contract_end });
+            endPill = `<span class="cov-pill ${cls}">${escapeHtml(label)}</span>`;
+        } else {
+            endPill = `<span class="cov-pill cov-none">${escapeHtml(window.t('cmdb.contracts.no_end'))}</span>`;
+        }
+
+        const terms = [
+            c.service_hours  ? window.t('cmdb.contracts.hours',      { value: c.service_hours })  : '',
+            c.response_sla   ? window.t('cmdb.contracts.response',   { value: c.response_sla })   : '',
+            c.resolution_sla ? window.t('cmdb.contracts.resolution', { value: c.resolution_sla }) : '',
+        ].filter(Boolean);
+
+        return `<a class="cov-card${c.is_active ? '' : ' is-inactive'}" href="../contracts/view.php?id=${c.id}">
+            <div class="cov-card-line1">
+                ${c.contract_number ? `<span class="cov-number">${escapeHtml(c.contract_number)}</span>` : ''}
+                <span class="cov-title">${escapeHtml(c.title || window.t('cmdb.contracts.untitled'))}</span>
+                ${c.is_active ? '' : `<span class="cov-pill cov-none">${escapeHtml(window.t('cmdb.contracts.inactive'))}</span>`}
+            </div>
+            <div class="cov-card-meta">
+                ${c.supplier_name ? `<span>${escapeHtml(c.supplier_name)}</span>` : ''}
+                ${endPill}
+                ${terms.map(x => `<span>${escapeHtml(x)}</span>`).join('')}
+            </div>
+        </a>`;
+    }).join('');
+
+    return `<div class="obj-section">
+        <h3>
+            <span>${escapeHtml(window.t('cmdb.contracts.heading'))}</span>
+            <span class="count-badge">${objContracts.length}</span>
+        </h3>
+        <div class="cov-hint">${escapeHtml(window.t('cmdb.contracts.hint'))}</div>
+        ${rows}
     </div>`;
 }
 

@@ -24,6 +24,14 @@ let slaPolicy = null; // { assigned_policy_id, policies:[{id,name,is_default}], 
 // access (the panel is then omitted entirely rather than shown empty, because
 // "no coverage" and "you may not see coverage" are different statements).
 let objContracts = null;
+// Phase 15b: customers this CI belongs to. Same null-means-no-access rule.
+//
+// Editable from here, unlike the contracts panel, and the asymmetry is deliberate:
+// the ticket CI picker (15c) only offers CIs linked to the ticket's customer, so
+// this link decides whether a CI can be attached to a ticket at all. A
+// load-bearing link needs to be settable from wherever the analyst already is.
+let objCustomers = null;
+let custAcTimer = null;
 
 // SLA policy assignment lives under the tickets API (the SLA engine's home),
 // not the CMDB API — this device→policy link is what the ticket SLA resolves.
@@ -57,7 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('objPage').innerHTML = `<div style="padding:40px;text-align:center;color:#b91c1c;">${escapeHtml(window.t('cmdb.object.missing_id'))}</div>`;
         return;
     }
-    Promise.all([loadObject(), loadImpact(), loadActivity(), loadRelationshipTypes(), loadAllClasses(), loadSlaPolicy(), loadObjectContracts()]).then(() => {
+    Promise.all([loadObject(), loadImpact(), loadActivity(), loadRelationshipTypes(), loadAllClasses(), loadSlaPolicy(), loadObjectContracts(), loadObjectCustomers()]).then(() => {
         if (obj) render();
     });
     initPropDefModalDrag();
@@ -116,6 +124,15 @@ async function loadObjectContracts() {
         const data = await res.json();
         if (data.success) objContracts = data.contracts || [];
     } catch (e) { /* no contracts access, or offline — panel is omitted */ }
+}
+
+// Phase 15b: which customers this CI belongs to.
+async function loadObjectCustomers() {
+    try {
+        const res = await fetch('../api/customers/get_cmdb_object_customers.php?cmdb_object_id=' + OBJECT_ID);
+        const data = await res.json();
+        if (data.success) objCustomers = data.customers || [];
+    } catch (e) { /* no customers access, or offline — panel is omitted */ }
 }
 
 async function loadSlaPolicy() {
@@ -213,6 +230,8 @@ function render() {
         ${renderActivityPanel()}
 
         ${renderSlaPolicyCard()}
+
+        ${renderCustomersPanel()}
 
         ${renderContractsPanel()}
 
@@ -399,6 +418,117 @@ function renderActivityPanel() {
         <h3>${escapeHtml(window.t('cmdb.activity.heading'))}</h3>
         ${html}
     </div>`;
+}
+
+// Panel: customers this CI belongs to (Phase 15b).
+//
+// Editable here (see objCustomers' comment for why). The empty state spells out
+// the consequence rather than just saying "none", because an unlinked CI is
+// invisible to the ticket CI picker and that is not guessable from a blank list.
+function renderCustomersPanel() {
+    if (objCustomers === null) return '';
+
+    const rows = objCustomers.map(c => `<div class="cust-row${c.is_active ? '' : ' is-inactive'}">
+        <a class="cust-name" href="../customers/?customer=${c.id}">${escapeHtml(c.name)}</a>
+        ${c.account_ref ? `<span class="cust-ref">${escapeHtml(c.account_ref)}</span>` : ''}
+        ${c.company_name ? `<span class="cust-company">${escapeHtml(c.company_name)}</span>` : ''}
+        ${c.is_active ? '' : `<span class="cov-pill cov-none">${escapeHtml(window.t('cmdb.customers.inactive'))}</span>`}
+        <button class="btn-mini cust-unlink" title="${escapeHtml(window.t('cmdb.customers.unlink_title'))}"
+                onclick="unlinkObjectCustomer(${c.id}, this)">${escapeHtml(window.t('cmdb.customers.unlink'))}</button>
+    </div>`).join('');
+
+    return `<div class="obj-section">
+        <h3>
+            <span>${escapeHtml(window.t('cmdb.customers.heading'))}</span>
+            <button class="btn-mini" onclick="toggleCustomerPicker()">${escapeHtml(window.t('cmdb.customers.link_btn'))}</button>
+        </h3>
+        <div class="cust-picker" id="custPicker" style="display:none;">
+            <input type="text" id="custPickerInput" autocomplete="off"
+                   placeholder="${escapeHtml(window.t('cmdb.customers.search_placeholder'))}">
+            <div class="autocomplete-results" id="custPickerResults"></div>
+        </div>
+        ${objCustomers.length
+            ? rows
+            : `<div class="activity-empty">${escapeHtml(window.t('cmdb.customers.empty'))}</div>`}
+    </div>`;
+}
+
+function toggleCustomerPicker() {
+    const picker = document.getElementById('custPicker');
+    const input  = document.getElementById('custPickerInput');
+    if (!picker || !input) return;
+    const showing = picker.style.display !== 'none';
+    picker.style.display = showing ? 'none' : 'block';
+    if (showing) return;
+    input.value = '';
+    const results = document.getElementById('custPickerResults');
+    if (results) { results.innerHTML = ''; results.classList.remove('active'); }
+    input.focus();
+
+    input.oninput = () => {
+        clearTimeout(custAcTimer);
+        custAcTimer = setTimeout(runCustomerSearch, 250);
+    };
+    input.onkeydown = e => { if (e.key === 'Escape') picker.style.display = 'none'; };
+}
+
+async function runCustomerSearch() {
+    const input = document.getElementById('custPickerInput');
+    const box   = document.getElementById('custPickerResults');
+    if (!input || !box) return;
+    const q = input.value.trim();
+    if (q === '') { box.innerHTML = ''; box.classList.remove('active'); return; }
+    try {
+        const res = await fetch('../api/customers/get_customers.php?q=' + encodeURIComponent(q));
+        const data = await res.json();
+        // Already-linked customers are filtered out — offering them would just
+        // produce an "already linked" no-op.
+        const linked = new Set((objCustomers || []).map(c => c.id));
+        const results = (data.customers || []).filter(c => !linked.has(c.id)).slice(0, 10);
+        if (!results.length) {
+            box.innerHTML = `<div class="ac-empty">${escapeHtml(window.t('cmdb.customers.no_matches'))}</div>`;
+            box.classList.add('active');
+            return;
+        }
+        box.innerHTML = results.map(c => `<div class="ac-result" onmousedown="event.preventDefault(); linkObjectCustomer(${c.id})">
+            <span>${escapeHtml(c.name)}</span>
+            <span class="ac-class">${escapeHtml(c.account_ref || '')}</span>
+        </div>`).join('');
+        box.classList.add('active');
+    } catch (e) {
+        box.innerHTML = `<div class="ac-empty">${escapeHtml(window.t('cmdb.customers.search_failed'))}</div>`;
+        box.classList.add('active');
+    }
+}
+
+async function linkObjectCustomer(customerId) {
+    try {
+        const data = await postJson('../api/customers/link_cmdb.php',
+            { customer_id: customerId, cmdb_object_id: OBJECT_ID, action: 'link' });
+        if (!data.success) { showInlineToast(data.error || window.t('cmdb.customers.link_failed'), true); return; }
+        showInlineToast(window.t('cmdb.customers.linked'));
+        const picker = document.getElementById('custPicker');
+        if (picker) picker.style.display = 'none';
+        await loadObjectCustomers();
+        render();
+    } catch (e) {
+        showInlineToast(window.t('cmdb.customers.link_failed'), true);
+    }
+}
+
+async function unlinkObjectCustomer(customerId, btn) {
+    if (btn) btn.disabled = true;
+    try {
+        const data = await postJson('../api/customers/link_cmdb.php',
+            { customer_id: customerId, cmdb_object_id: OBJECT_ID, action: 'unlink' });
+        if (!data.success) { showInlineToast(data.error || window.t('cmdb.customers.unlink_failed'), true); if (btn) btn.disabled = false; return; }
+        showInlineToast(window.t('cmdb.customers.unlinked'));
+        await loadObjectCustomers();
+        render();
+    } catch (e) {
+        showInlineToast(window.t('cmdb.customers.unlink_failed'), true);
+        if (btn) btn.disabled = false;
+    }
 }
 
 // Panel: contracts covering this CI (Phase 15a).

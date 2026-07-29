@@ -171,6 +171,25 @@ return [
         'updated'        => 'updated',
     ],
 
+    // Customers panel (Phase 15b). Editable here, because an unlinked CI cannot
+    // be attached to a ticket at all once 15c's picker is in — so the empty
+    // state states that consequence instead of just saying "none".
+    'customers' => [
+        'heading'            => 'Customers',
+        'empty'              => 'This configuration item is not linked to a customer, so it cannot be attached to a ticket. Link a customer to make it selectable.',
+        'link_btn'           => '+ Link customer',
+        'search_placeholder' => 'Search customers by name or account reference…',
+        'no_matches'         => 'No matching customers',
+        'search_failed'      => 'Search failed',
+        'inactive'           => 'Inactive',
+        'unlink'             => 'Remove',
+        'unlink_title'       => 'Unlink this customer — the CI will no longer be selectable on their tickets',
+        'linked'             => 'Customer linked',
+        'unlinked'           => 'Customer unlinked',
+        'link_failed'        => 'Could not link that customer',
+        'unlink_failed'      => 'Could not unlink that customer',
+    ],
+
     // Contract coverage panel (Phase 15a). Read-only on this page — the panel
     // explains where to edit rather than offering an editor that would then be a
     // second place coverage could be changed from.

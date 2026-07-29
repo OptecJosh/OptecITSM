@@ -354,6 +354,52 @@ $translationNamespaces = ['common', 'cmdb'];
             text-align: center;
         }
 
+        /* Customers panel (Phase 15b) — editable here, because this link decides
+           whether the CI can be attached to a ticket at all (15c). */
+        .cust-picker {
+            position: relative;
+            max-width: 420px;
+            margin-bottom: 12px;
+        }
+        .cust-picker input {
+            width: 100%;
+            padding: 7px 10px;
+            font-size: 13px;
+            border: 1px solid var(--border, #e5e7eb);
+            border-radius: 4px;
+            background: var(--surface, #ffffff);
+            color: var(--text, #111827);
+            box-sizing: border-box;
+        }
+        .cust-picker input:focus {
+            outline: none;
+            border-color: var(--cmdb-accent, #be185d);
+        }
+        .cust-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-soft, #f3f4f6);
+            font-size: 13px;
+            flex-wrap: wrap;
+        }
+        .cust-row:last-child { border-bottom: none; }
+        .cust-row.is-inactive { opacity: 0.65; }
+        .cust-name {
+            color: var(--cmdb-accent, #be185d);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .cust-name:hover { text-decoration: underline; }
+        .cust-ref {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 11px;
+            color: var(--text-dim, #9ca3af);
+        }
+        .cust-company { color: var(--text-muted, #6b7280); font-size: 12px; }
+        .cust-unlink { margin-left: auto; }
+
         /* Contract coverage panel (Phase 15a) — read-only; coverage is edited
            from the contract itself. Fully tokenised so dark mode works. */
 
@@ -904,6 +950,6 @@ $translationNamespaces = ['common', 'cmdb'];
         window.OBJECT_ID = <?php echo isset($_GET['id']) ? (int)$_GET['id'] : 0; ?>;
     </script>
     <script src="options-editor.js?v=3"></script>
-    <script src="object.js?v=8"></script>
+    <script src="object.js?v=9"></script>
 </body>
 </html>

@@ -404,5 +404,15 @@ async function cuUnlinkCi(objectId){
 
 document.addEventListener('DOMContentLoaded', async () => {
     await cuLoadTenants();
-    cuLoadList();
+
+    // Deep link (Phase 15b): ?customer=<id> opens that customer straight away.
+    // The CMDB object page links here, and without this the link landed on the
+    // list with nothing selected, which read as a broken link.
+    //
+    // Awaited rather than fired alongside cuOpen: cuOpen re-renders the list to
+    // apply the active highlight, so an unawaited list load can land afterwards
+    // and paint the highlight away.
+    const wanted = parseInt(new URLSearchParams(window.location.search).get('customer') || '', 10);
+    await cuLoadList();
+    if (wanted > 0) cuOpen(wanted);
 });

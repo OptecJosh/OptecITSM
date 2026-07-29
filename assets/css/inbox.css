@@ -2109,7 +2109,6 @@ body.ticket-popout .ticket-toolbar {
         transform: scale(1) translateY(0);
     }
 }
-}
 
 .audit-modal {
     background: var(--surface, #fff);

@@ -9,6 +9,7 @@ require_once '../includes/functions.php';
 require_once '../includes/i18n.php';
 require_once '../includes/theme.php';
 require_once '../includes/timezone.php';
+require_once '../includes/icons.php';
 I18n::initFromSession();
 Tz::init();
 
@@ -29,10 +30,13 @@ $translationNamespaces = ['common', 'tickets'];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars(t('tickets.title')); ?> - <?php echo htmlspecialchars(t('tickets.nav.inbox')); ?></title>
     <link rel="stylesheet" href="../assets/css/theme.css?v=22">
-    <link rel="stylesheet" href="../assets/css/inbox.css?v=50">
+    <link rel="stylesheet" href="../assets/css/inbox.css?v=51">
     <link rel="stylesheet" href="../assets/css/mobile.css?v=29">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <?php echo Tz::scriptTag(); ?>
+    <?php /* Phase 16a: the icon registry, inline. Must precede icons.js and any
+             script that renders icons. */ echo iconsBootstrapScript(); ?>
+    <script src="../assets/js/icons.js?v=1"></script>
     <script src="../assets/js/i18n.js?v=2"></script>
     <script src="../assets/js/tinymce/tinymce.min.js"></script>
 </head>
@@ -138,7 +142,7 @@ $translationNamespaces = ['common', 'tickets'];
                     <div class="attachment-dropzone" id="attachmentDropzone">
                         <input type="file" id="attachmentInput" multiple style="display: none;">
                         <div class="dropzone-content">
-                            <span class="dropzone-icon">📎</span>
+                            <span class="dropzone-icon"><?php echo icon('paperclip'); ?></span>
                             <span><?php echo htmlspecialchars(t('tickets.reply_modal.drop_files')); ?> <a href="#" onclick="document.getElementById('attachmentInput').click(); return false;"><?php echo htmlspecialchars(t('tickets.reply_modal.browse')); ?></a></span>
                         </div>
                     </div>
@@ -146,7 +150,7 @@ $translationNamespaces = ['common', 'tickets'];
                 </div>
             </div>
             <div id="replyCleanupUndoBar" style="display:none; padding: 8px 0; color: #555; font-size: 13px;">
-                ✨ <?php echo htmlspecialchars(t('tickets.reply_modal.cleaned_up')); ?> — <a href="#" id="replyCleanupUndoLink" style="color: #0078d4;"><?php echo htmlspecialchars(t('tickets.reply_modal.undo')); ?></a> <span id="replyCleanupUndoTimer" style="color: #999;"></span>
+                <?php echo icon('sparkles'); ?> <?php echo htmlspecialchars(t('tickets.reply_modal.cleaned_up')); ?> — <a href="#" id="replyCleanupUndoLink" style="color: #0078d4;"><?php echo htmlspecialchars(t('tickets.reply_modal.undo')); ?></a> <span id="replyCleanupUndoTimer" style="color: #999;"></span>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeEmailModal()"><?php echo htmlspecialchars(t('common.cancel')); ?></button>
@@ -512,7 +516,7 @@ $translationNamespaces = ['common', 'tickets'];
         window.API_BASE = '../api/tickets/';
         window.CURRENT_ANALYST_ID = <?php echo (int)($_SESSION['analyst_id'] ?? 0); ?>;
     </script>
-    <script src="../assets/js/inbox.js?v=76"></script>
+    <script src="../assets/js/inbox.js?v=77"></script>
     <script src="../assets/js/mobile.js?v=12"></script>
     <script>
     // Auto-check mailboxes every 60 seconds

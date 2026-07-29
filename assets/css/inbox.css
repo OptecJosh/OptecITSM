@@ -262,12 +262,20 @@ body {
     font-weight: 600;
 }
 
-.folder-item.expanded .folder-icon::before {
-    content: '📂';
-}
+/* Phase 16a: these two rules used to prepend 📁 / 📂 to EVERY folder row via
+   ::before, on top of the row's own emoji — so "All tickets" rendered as 📁📬.
+   The row's own icon now identifies it, and open/closed state is carried by the
+   caret below, which is the affordance that was actually missing.
 
-.folder-item:not(.expanded) .folder-icon::before {
-    content: '📁';
+   Note the department row had an EMPTY .folder-icon span and relied entirely on
+   this pseudo-element for its glyph; it now renders a real folder icon. */
+.folder-caret {
+    color: var(--text-faint, #9ca3af);
+    transition: transform 0.15s ease;
+    flex: none;
+}
+.folder-item.expanded .folder-caret {
+    transform: rotate(90deg);
 }
 
 .folder-name {

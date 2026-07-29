@@ -92,7 +92,7 @@
     bar.className = 'mobile-subbar';
     bar.innerHTML =
         '<button type="button" class="msb-back" aria-label="Back">‹ Back</button>' +
-        '<button type="button" class="msb-folders" aria-label="Folders">☰ Folders</button>' +
+        '<button type="button" class="msb-folders" aria-label="Folders">' + icon('menu') + ' Folders</button>' +
         '<span class="msb-ref" aria-label="Ticket reference"></span>';
     mc.parentNode.insertBefore(bar, mc);
 
@@ -116,7 +116,8 @@
         vBtn.type = 'button';
         vBtn.className = 'mobile-views-btn';
         vBtn.setAttribute('aria-label', 'Views');
-        vBtn.textContent = '☰';           // ☰
+        // innerHTML, not textContent: this is SVG markup now, not a character.
+        vBtn.innerHTML = icon('menu');
         headerEl.appendChild(vBtn);
 
         var vOverlay = document.createElement('div');
@@ -159,11 +160,14 @@
     // full-screen sheet, each opened by a button added to the action toolbar.
     // Each sheet lives in the DOM (display:none until opened); on desktop nothing
     // is relocated or shown (relocateSections is mq-gated), so desktop is intact.
+    // `icon` is a name in the shared registry (includes/icons.php), resolved via
+    // window.icon() at render time — Phase 16a. Previously emoji, which on Android
+    // rendered at a different size per glyph and broke the toolbar's rhythm.
     var SECTIONS = [
-        { cls: 'links', title: 'Links',            icon: '🔗', label: 'Links',      sel: '.problem-strip',             all: true  },
-        { cls: 'props', title: 'Properties',       icon: '⚙',  label: 'Properties', sel: '#ticketPropertiesContainer', all: false },
-        { cls: 'time',  title: 'Time',             icon: '⏱',  label: 'Time',       sel: '#timeEntriesContainer',      all: false },
-        { cls: 'cmdb',  title: 'Objects',          icon: '🖥', label: 'Objects',    sel: '#cmdbObjectsContainer',      all: false }
+        { cls: 'links', title: 'Links',            icon: 'link',     label: 'Links',      sel: '.problem-strip',             all: true  },
+        { cls: 'props', title: 'Properties',       icon: 'settings', label: 'Properties', sel: '#ticketPropertiesContainer', all: false },
+        { cls: 'time',  title: 'Time',             icon: 'clock',    label: 'Time',       sel: '#timeEntriesContainer',      all: false },
+        { cls: 'cmdb',  title: 'Objects',          icon: 'monitor',  label: 'Objects',    sel: '#cmdbObjectsContainer',      all: false }
     ];
     SECTIONS.forEach(function (def) {
         var sheet = document.createElement('div');
@@ -199,7 +203,7 @@
                 var btn = document.createElement('button');
                 btn.type = 'button';
                 btn.className = 'action-btn mobile-sheet-btn mobile-sheet-btn-' + def.cls;
-                btn.innerHTML = '<span class="action-btn-icon">' + def.icon + '</span><span>' + def.label + '</span>';
+                btn.innerHTML = '<span class="action-btn-icon">' + icon(def.icon) + '</span><span>' + def.label + '</span>';
                 btn.addEventListener('click', function () { def.sheet.style.display = 'flex'; });
                 toolbar.appendChild(btn);
             }
@@ -265,7 +269,7 @@
             line.appendChild(badge);          // last real child → rides on the right
         }
         badge.style.display = 'inline-flex';
-        badge.innerHTML = '<span class="mab-clip">📎</span><span class="mab-count">' + count + '</span>';
+        badge.innerHTML = '<span class="mab-clip">' + icon('paperclip') + '</span><span class="mab-count">' + count + '</span>';
         badge.setAttribute('aria-label', count + ' attachment' + (count === 1 ? '' : 's'));
         badge.title = count + ' attachment' + (count === 1 ? '' : 's');
     }

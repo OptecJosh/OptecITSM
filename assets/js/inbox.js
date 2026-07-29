@@ -352,22 +352,24 @@ function removeAttachment(index) {
     renderAttachments();
 }
 
-// Get file icon based on extension
+// Get file icon based on extension. Returns SVG markup (Phase 16a) — these used to
+// be emoji, which rendered at a different size per platform and could not take the
+// row's text colour.
 function getFileIcon(filename) {
-    const ext = filename.split('.').pop().toLowerCase();
-    const icons = {
-        'pdf': '📄',
-        'doc': '📝', 'docx': '📝',
-        'xls': '📊', 'xlsx': '📊',
-        'ppt': '📽️', 'pptx': '📽️',
-        'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'gif': '🖼️', 'bmp': '🖼️',
-        'zip': '📦', 'rar': '📦', '7z': '📦',
-        'txt': '📃',
-        'html': '🌐', 'htm': '🌐',
-        'mp3': '🎵', 'wav': '🎵',
-        'mp4': '🎬', 'avi': '🎬', 'mov': '🎬'
+    const ext = String(filename || '').split('.').pop().toLowerCase();
+    const byExt = {
+        'pdf': 'file-text',
+        'doc': 'file-text', 'docx': 'file-text',
+        'xls': 'file-spreadsheet', 'xlsx': 'file-spreadsheet', 'csv': 'file-spreadsheet',
+        'ppt': 'presentation', 'pptx': 'presentation',
+        'jpg': 'image', 'jpeg': 'image', 'png': 'image', 'gif': 'image', 'bmp': 'image', 'webp': 'image', 'svg': 'image',
+        'zip': 'package', 'rar': 'package', '7z': 'package', 'gz': 'package',
+        'txt': 'file-text',
+        'html': 'globe', 'htm': 'globe',
+        'mp3': 'music', 'wav': 'music', 'm4a': 'music',
+        'mp4': 'film', 'avi': 'film', 'mov': 'film', 'mkv': 'film'
     };
-    return icons[ext] || '📎';
+    return icon(byExt[ext] || 'paperclip');
 }
 
 // Format file size
@@ -623,7 +625,7 @@ function renderFolders() {
     html += `
         <div class="folder-item ${currentFilter.type === 'all' ? 'active' : ''}" data-folder-key="all" onclick="selectFolder('all')">
             <div class="folder-name">
-                <span class="folder-icon">📬</span>
+                <span class="folder-icon">${icon('inbox')}</span>
                 <span>${escapeHtml(t('tickets.list.all_tickets'))}</span>
             </div>
             <span class="folder-count">${folderCounts.total_count || 0}</span>
@@ -638,7 +640,7 @@ function renderFolders() {
         <div class="folder-item drop-zone ${currentFilter.type === 'unassigned' ? 'active' : ''}"
              data-drop-type="unassigned" onclick="selectFolder('unassigned')">
             <div class="folder-name">
-                <span class="folder-icon">⚠️</span>
+                <span class="folder-icon">${icon('alert-triangle')}</span>
                 <span>${escapeHtml(t('tickets.list.unassigned'))}</span>
             </div>
             <span class="folder-count">${unassignedCount}</span>
@@ -659,7 +661,8 @@ function renderFolders() {
                      data-drop-type="analyst" data-analyst-id="${an.id}"
                      onclick="toggleFolder('${folderKey}', ${an.id}, { kind: 'analyst' })">
                     <div class="folder-name">
-                        <span class="folder-icon">👤</span>
+                        ${icon('chevron-right', { class: 'folder-caret' })}
+                        <span class="folder-icon">${icon('user')}</span>
                         <span>${escapeHtml(an.name)}</span>
                     </div>
                     <span class="folder-count">${an.count}</span>
@@ -692,7 +695,8 @@ function renderFolders() {
                      data-drop-type="department" data-dept-id="${dept.id}"
                      onclick="toggleFolder('${folderKey}', ${dept.id}, { kind: 'department' })">
                     <div class="folder-name">
-                        <span class="folder-icon"></span>
+                        ${icon('chevron-right', { class: 'folder-caret' })}
+                        <span class="folder-icon">${icon('folder')}</span>
                         <span>${escapeHtml(dept.name)}</span>
                     </div>
                     <span class="folder-count">${dept.count}</span>
@@ -731,13 +735,13 @@ function renderFolders() {
             const isActive = activeQueueId === q.id;
             const canManage = q.is_own || (q.is_shared && queueCanManageShared);
             const actions = canManage
-                ? `<span class="queue-action" title="Edit queue" onclick="event.stopPropagation();editQueue(${q.id})">✎</span>
-                   <span class="queue-action" title="Delete queue" onclick="event.stopPropagation();deleteQueue(${q.id})">🗑</span>`
+                ? `<span class="queue-action" title="Edit queue" onclick="event.stopPropagation();editQueue(${q.id})">${icon('pencil')}</span>
+                   <span class="queue-action" title="Delete queue" onclick="event.stopPropagation();deleteQueue(${q.id})">${icon('trash')}</span>`
                 : '';
             html += `
                 <div class="folder-item queue-item ${isActive ? 'active' : ''}" data-queue-id="${q.id}" onclick="selectQueue(${q.id})">
                     <div class="folder-name">
-                        <span class="folder-icon">${q.is_shared ? '👥' : '🔖'}</span>
+                        <span class="folder-icon">${icon(q.is_shared ? 'users' : 'bookmark')}</span>
                         <span>${escapeHtml(q.name)}</span>
                     </div>
                     <span class="queue-item-right">${actions}<span class="folder-count">${q.count}</span></span>
@@ -754,7 +758,7 @@ function renderFolders() {
         <div class="folder-item drop-zone ${currentFilter.type === 'trash' ? 'active' : ''}" data-folder-key="trash" data-drop-type="trash"
              onclick="selectFolder('trash')" oncontextmenu="openTrashContextMenu(event)">
             <div class="folder-name">
-                <span class="folder-icon">🗑️</span>
+                <span class="folder-icon">${icon('trash')}</span>
                 <span>${escapeHtml(t('tickets.list.trash'))}</span>
             </div>
             <span class="folder-count">${folderCounts.trash_count || 0}</span>
@@ -1423,7 +1427,7 @@ function renderEmailList() {
         const trashActions = inTrash ? `
                 <div style="display:flex;gap:8px;margin-top:7px;">
                     <button onclick="event.stopPropagation(); restoreTicketFromTrash(${ticketId})" style="font-size:11px;padding:3px 9px;border:1px solid #c8d6cf;background:#eefaf2;color:#1b7a43;border-radius:4px;cursor:pointer;">↩ Restore</button>
-                    <button onclick="event.stopPropagation(); permanentlyDeleteFromTrash(${ticketId}, '${escapeHtml(email.ticket_number || '')}')" style="font-size:11px;padding:3px 9px;border:1px solid #e6c4c4;background:#fdeceb;color:#b71c1c;border-radius:4px;cursor:pointer;">✕ Delete forever</button>
+                    <button onclick="event.stopPropagation(); permanentlyDeleteFromTrash(${ticketId}, '${escapeHtml(email.ticket_number || '')}')" style="font-size:11px;padding:3px 9px;border:1px solid #e6c4c4;background:#fdeceb;color:#b71c1c;border-radius:4px;cursor:pointer;">${icon('x')} Delete forever</button>
                 </div>` : '';
         // Reserve a slot for the SLA dot; populated asynchronously by loadInboxSlaIndicators()
         // once the batch endpoint responds. Stays empty (and invisible) for tickets without SLA.
@@ -1638,7 +1642,7 @@ function displayEmail(email, recordings) {
             const w = email.company_warning;
             companyWarningBanner = `
                 <div class="wrong-company-banner">
-                    <span class="wrong-company-text">⚠ Filed under <strong>${escapeHtml(email.company_name || '')}</strong>, but the requester (${escapeHtml(w.requester)}) looks like <strong>${escapeHtml(w.suggested_name)}</strong>.</span>
+                    <span class="wrong-company-text">${icon('alert-triangle')} Filed under <strong>${escapeHtml(email.company_name || '')}</strong>, but the requester (${escapeHtml(w.requester)}) looks like <strong>${escapeHtml(w.suggested_name)}</strong>.</span>
                     <span class="wrong-company-actions">
                         <button class="action-btn action-btn-primary" onclick="moveTicketCompany(${w.suggested_id})">Move to ${escapeHtml(w.suggested_name)}</button>
                         <button class="action-btn" onclick="this.closest('.wrong-company-banner').remove()">Dismiss</button>
@@ -1733,16 +1737,16 @@ function displayEmail(email, recordings) {
     const isTrashed = !!email.deleted_datetime;
     const trashBanner = isTrashed ? `
         <div style="background:#fdeceb;border:1px solid #e6c4c4;border-radius:8px;padding:12px 16px;margin:0 0 14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-            <span style="font-size:18px;">🗑️</span>
+            ${icon('trash', { size: 18 })}
             <span style="color:#b71c1c;font-weight:600;flex:1;min-width:180px;">This ticket is in the trash — its actions are disabled until you restore it.</span>
             <button onclick="restoreTicketFromTrash(${email.ticket_id})" style="font-size:12.5px;padding:6px 14px;border:1px solid #c8d6cf;background:#eefaf2;color:#1b7a43;border-radius:5px;cursor:pointer;font-weight:600;">↩ Restore</button>
-            <button onclick="permanentlyDeleteFromTrash(${email.ticket_id}, '${escapeHtml(email.ticket_number || '')}')" style="font-size:12.5px;padding:6px 14px;border:1px solid #e6c4c4;background:#fff;color:#b71c1c;border-radius:5px;cursor:pointer;font-weight:600;">✕ Delete forever</button>
+            <button onclick="permanentlyDeleteFromTrash(${email.ticket_id}, '${escapeHtml(email.ticket_number || '')}')" style="font-size:12.5px;padding:6px 14px;border:1px solid #e6c4c4;background:#fff;color:#b71c1c;border-radius:5px;cursor:pointer;font-weight:600;">${icon('x')} Delete forever</button>
         </div>` : '';
 
     // Phase 6e: a merged ticket shows where its conversation went.
     const mergedBanner = (email.merged_into_ticket_id && email.merged_into_number) ? `
         <div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;padding:12px 16px;margin:0 0 14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-            <span style="font-size:18px;">🔀</span>
+            ${icon('shuffle', { size: 18 })}
             <span style="color:#3730a3;font-weight:600;flex:1;min-width:180px;">This ticket was merged into ${escapeHtml(email.merged_into_number)} — its conversation now lives there.</span>
             <button onclick="loadTicketById(${email.merged_into_ticket_id})" style="font-size:12.5px;padding:6px 14px;border:1px solid #c7d2fe;background:#fff;color:#3730a3;border-radius:5px;cursor:pointer;font-weight:600;">Open ${escapeHtml(email.merged_into_number)}</button>
         </div>` : '';
@@ -1920,7 +1924,7 @@ function displayEmail(email, recordings) {
         ${buildRecordingsStrip(currentRecordings)}
         <div class="action-toolbar">
             <button class="action-btn" onclick="openNoteModal()">
-                <span class="action-btn-icon">📝</span>
+                <span class="action-btn-icon">${icon('file-text')}</span>
                 <span>${escapeHtml(t('tickets.actions.add_note'))}</span>
             </button>
             <button class="action-btn" onclick="openReplyModal()">
@@ -1928,31 +1932,31 @@ function displayEmail(email, recordings) {
                 <span>${escapeHtml(t('tickets.actions.reply'))}</span>
             </button>
             <button class="action-btn" onclick="openForwardModal()">
-                <span class="action-btn-icon">➡️</span>
+                <span class="action-btn-icon">${icon('arrow-right')}</span>
                 <span>${escapeHtml(t('tickets.actions.forward'))}</span>
             </button>
             <button class="action-btn" onclick="openScheduleModal()">
-                <span class="action-btn-icon">📅</span>
+                <span class="action-btn-icon">${icon('calendar')}</span>
                 <span>${escapeHtml(t('tickets.actions.schedule'))}</span>
             </button>
             <button class="action-btn" onclick="openTicketAiChat()">
-                <span class="action-btn-icon">🤖</span>
+                <span class="action-btn-icon">${icon('sparkles')}</span>
                 <span>${escapeHtml(t('tickets.actions.ask_ai'))}</span>
             </button>
             <button class="action-btn" onclick="showAuditHistory()">
-                <span class="action-btn-icon">📋</span>
+                <span class="action-btn-icon">${icon('clipboard')}</span>
                 <span>${escapeHtml(t('tickets.actions.audit'))}</span>
             </button>
             <button class="action-btn" onclick="openMergeModal()" title="Merge this ticket into another">
-                <span class="action-btn-icon">🔀</span>
+                <span class="action-btn-icon">${icon('shuffle')}</span>
                 <span>Merge</span>
             </button>
             <button class="action-btn" onclick="requestCsatSurvey()" title="Send a satisfaction survey to the requester">
-                <span class="action-btn-icon">⭐</span>
+                <span class="action-btn-icon">${icon('star')}</span>
                 <span>${escapeHtml(t('tickets.actions.request_feedback'))}</span>
             </button>
             <button class="action-btn action-btn-danger" onclick="deleteTicket()">
-                <span class="action-btn-icon">🗑️</span>
+                <span class="action-btn-icon">${icon('trash')}</span>
                 <span>${escapeHtml(t('tickets.actions.delete'))}</span>
             </button>
         </div>
@@ -2183,8 +2187,8 @@ function buildLinksSection(email) {
     // Problems (⚠) — open in the Problem module.
     (email.problems || []).forEach(p => {
         pills.push(`<a class="pm-ticket-badge" href="../problem-management/index.php?id=${p.id}" target="_blank" title="Problem: ${escapeHtml(p.title || '')}">
-            ⚠ ${escapeHtml(p.problem_number || ('#' + p.id))}${p.status ? ' · ' + escapeHtml(p.status) : ''}
-            <span class="pm-ticket-unlink" onclick="event.preventDefault();event.stopPropagation();unlinkTicketFromProblem(${p.id});">✕</span>
+            ${icon('alert-triangle')} ${escapeHtml(p.problem_number || ('#' + p.id))}${p.status ? ' · ' + escapeHtml(p.status) : ''}
+            <span class="pm-ticket-unlink" onclick="event.preventDefault();event.stopPropagation();unlinkTicketFromProblem(${p.id});">${icon('x')}</span>
         </a>`);
     });
 
@@ -2192,16 +2196,16 @@ function buildLinksSection(email) {
     (email.changes || []).forEach(c => {
         const ref = 'CHG-' + String(c.id).padStart(4, '0');
         pills.push(`<a class="pm-ticket-badge" href="../change-management/index.php?id=${c.id}" target="_blank" title="Change: ${escapeHtml(c.title || '')}">
-            🔁 ${escapeHtml(ref)}${c.status ? ' · ' + escapeHtml(c.status) : ''}
-            <span class="pm-ticket-unlink" onclick="event.preventDefault();event.stopPropagation();unlinkTicketFromChange(${c.id});">✕</span>
+            ${icon('repeat')} ${escapeHtml(ref)}${c.status ? ' · ' + escapeHtml(c.status) : ''}
+            <span class="pm-ticket-unlink" onclick="event.preventDefault();event.stopPropagation();unlinkTicketFromChange(${c.id});">${icon('x')}</span>
         </a>`);
     });
 
     // Linked tickets (🔗) — grouped by relation, open in-place.
     const L = email.linked_tickets || {};
     const tp = (item, prefix) => `<a class="pm-ticket-badge" href="#" onclick="event.preventDefault();loadTicketById(${item.ticket_id});" title="${escapeHtml(item.subject || '')}">
-        🔗 ${escapeHtml(prefix)} ${escapeHtml(item.ticket_number || ('#' + item.ticket_id))}${item.status ? ' · ' + escapeHtml(item.status) : ''}
-        <span class="pm-ticket-unlink" onclick="event.preventDefault();event.stopPropagation();unlinkTicketLink(${item.link_id});">✕</span>
+        ${icon('link')} ${escapeHtml(prefix)} ${escapeHtml(item.ticket_number || ('#' + item.ticket_id))}${item.status ? ' · ' + escapeHtml(item.status) : ''}
+        <span class="pm-ticket-unlink" onclick="event.preventDefault();event.stopPropagation();unlinkTicketLink(${item.link_id});">${icon('x')}</span>
     </a>`;
     if (L.parent) pills.push(tp(L.parent, 'Parent:'));
     (L.children || []).forEach(c => pills.push(tp(c, 'Child:')));
@@ -2386,7 +2390,7 @@ function buildRecordingsStrip(recordings) {
     }).join('');
     return `
         <div class="recordings-strip">
-            <div class="recordings-strip-header">🎥 Screen recordings (${recordings.length})</div>
+            <div class="recordings-strip-header">${icon('video')} Screen recordings (${recordings.length})</div>
             ${cards}
         </div>`;
 }
@@ -2481,13 +2485,13 @@ function renderChannelComposer(ticketId) {
             <textarea id="channelComposerText" class="channel-composer-text" rows="3" placeholder="Type your reply…"></textarea>
             <div class="channel-composer-actions">
                 <button class="action-btn" onclick="aiSuggestChannelReply(${ticketId})" title="Draft a reply with AI">
-                    <span class="action-btn-icon">🤖</span><span>Suggest</span>
+                    <span class="action-btn-icon">${icon('sparkles')}</span><span>Suggest</span>
                 </button>
                 <button class="action-btn" onclick="aiSummariseChannel(${ticketId})" title="Summarise this conversation into the ticket">
-                    <span class="action-btn-icon">📝</span><span>Summarise</span>
+                    <span class="action-btn-icon">${icon('file-text')}</span><span>Summarise</span>
                 </button>
                 <button class="action-btn action-btn-primary" id="channelSendBtn" onclick="sendChannelMessage(${ticketId})">
-                    <span class="action-btn-icon">📤</span><span>Send</span>
+                    <span class="action-btn-icon">${icon('send')}</span><span>Send</span>
                 </button>
             </div>`;
     } else {
@@ -2501,10 +2505,10 @@ function renderChannelComposer(ticketId) {
             <div id="channelTemplateVars"></div>
             <div class="channel-composer-actions">
                 <button class="action-btn" onclick="aiSummariseChannel(${ticketId})" title="Summarise this conversation into the ticket">
-                    <span class="action-btn-icon">📝</span><span>Summarise</span>
+                    <span class="action-btn-icon">${icon('file-text')}</span><span>Summarise</span>
                 </button>
                 <button class="action-btn action-btn-primary" id="channelSendTplBtn" onclick="sendChannelTemplate(${ticketId})" disabled>
-                    <span class="action-btn-icon">📤</span><span>Send template</span>
+                    <span class="action-btn-icon">${icon('send')}</span><span>Send template</span>
                 </button>
             </div>`;
     }
@@ -3723,7 +3727,7 @@ function renderCmdbObjects(ticketId) {
     const cards = cmdbObjectsForTicket.map(link => `
         <a class="cmdb-link-card${link.is_primary ? ' is-primary' : ''}" href="../cmdb/object.php?id=${link.object_id}" title="Open in CMDB">
             <div class="cmdb-link-card-body">
-                <div class="cmdb-link-card-name">${link.is_primary ? '<span class="cmdb-primary-star" title="Primary CI — drives this ticket\'s SLA">★</span>' : ''}${escapeHtml(link.name)}</div>
+                <div class="cmdb-link-card-name">${link.is_primary ? `<span class="cmdb-primary-star" title="Primary CI — drives this ticket's SLA">${icon('star', { fill: true })}</span>` : ''}${escapeHtml(link.name)}</div>
                 <div class="cmdb-link-card-meta">
                     <span class="cmdb-class-badge">${escapeHtml(link.class_name)}</span>
                     ${link.parent_name ? `<span class="cmdb-parent">in <strong>${escapeHtml(link.parent_name)}</strong> (${escapeHtml(link.parent_class_name || '')})</span>` : ''}
@@ -4273,7 +4277,7 @@ function renderWatchersBar(ticketId) {
     ).join('');
     c.innerHTML = `
         <span class="tag-bar-label">Watchers</span>
-        <button class="watch-toggle ${youAreWatching ? 'on' : ''}" onclick="toggleWatchSelf(${ticketId})">${youAreWatching ? '★ Watching' : '☆ Watch'}</button>
+        <button class="watch-toggle ${youAreWatching ? 'on' : ''}" onclick="toggleWatchSelf(${ticketId})">${icon('star', { fill: youAreWatching })} ${youAreWatching ? 'Watching' : 'Watch'}</button>
         <span class="watcher-chips">${chips || '<span class="tag-bar-empty">none</span>'}</span>
         <span class="watcher-add-wrap">
             <button class="tag-add-btn" onclick="openWatcherPicker(event, ${ticketId})">+ Add</button>
@@ -4585,8 +4589,8 @@ function renderCannedPicker(filter) {
         <div class="canned-item" onclick="insertCanned(${r.id})">
             <span class="canned-item-name">${escapeHtml(r.name)}${r.folder ? ` <span class="canned-folder">${escapeHtml(r.folder)}</span>` : ''}</span>
             <span class="canned-item-right">
-                <span class="canned-icon" title="${r.is_shared ? 'Shared' : 'Personal'}">${r.is_shared ? '👥' : '🔖'}</span>
-                ${(r.is_own || (r.is_shared && cannedCanManageShared)) ? `<span class="canned-del" title="Delete" onclick="event.stopPropagation();deleteCanned(${r.id})">🗑</span>` : ''}
+                <span class="canned-icon" title="${r.is_shared ? 'Shared' : 'Personal'}">${icon(r.is_shared ? 'users' : 'bookmark')}</span>
+                ${(r.is_own || (r.is_shared && cannedCanManageShared)) ? `<span class="canned-del" title="Delete" onclick="event.stopPropagation();deleteCanned(${r.id})">${icon('trash')}</span>` : ''}
             </span>
         </div>`).join('');
     picker.innerHTML = `
@@ -6623,7 +6627,7 @@ async function linkContextCmdbObject(objectId, objectName) {
         } else {
             showToast('Linked ' + objectName, 'success');
             const line = document.createElement('div');
-            line.textContent = '✓ ' + objectName;
+            line.innerHTML = icon('check', { class: 'ficon-ok' }) + ' ' + escapeHtml(objectName);
             line.style.color = '#16a34a';
             if (ctxCmdbSessionCount === 1) logEl.innerHTML = '';
             logEl.appendChild(line);

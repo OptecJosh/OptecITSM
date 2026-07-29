@@ -590,6 +590,30 @@ rate-limit each other.
 **New UI strings** are English-only (`t()` falls back to `en`); add keys to
 `lang/en/<ns>.php`.
 
+**Icons, never emoji** (Phase 16a). The set lives in `includes/icons.php` — stroked
+SVG on a 24×24 grid, drawn with `currentColor` so an icon takes the colour and
+weight of its surrounding text and dark mode needs no special case.
+
+```php
+echo icon('trash');                       // PHP
+echo icon('star', ['fill' => true]);      // filled variant
+echo icon('alert-triangle', ['title' => 'Warning']);   // labelled for a11y
+```
+```js
+icon('trash')                             // JS, same names
+```
+
+The registry is defined **once**, in PHP. A page whose JavaScript renders icons
+emits it with `iconsBootstrapScript()` in the `<head>` (before `assets/js/icons.js`),
+which also carries the base `.ficon` CSS. Two reasons it works this way: there is no
+build step to generate a JS copy from the PHP one, and putting the base CSS in
+`theme.css` would need a cache-bust bump in all 162 files that pin
+`theme.css?v=22`.
+
+Pass `title` only when the icon is a control's *only* label — otherwise a screen
+reader reads the label twice. Add a new icon to `iconRegistry()`, not inline in a
+template.
+
 ---
 
 ## 16. Deploy and verify

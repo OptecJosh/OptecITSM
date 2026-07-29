@@ -490,6 +490,15 @@ function apiCmdbObjectTicketsLink(PDO $conn, array $apiKey, array $params, array
     if (!apiKeyCanAccessTicket($conn, $apiKey, $ticketId)) {
         apiError(404, 'not_found', 'Ticket not found.');
     }
+    // Phase 15c: a ticket may only be linked to CIs belonging to its customer.
+    // The same helper the UI picker and its endpoint use, so the API cannot be a
+    // way around the rule. 422 because it is a well-formed request the state of
+    // the data does not permit.
+    require_once __DIR__ . '/../../../includes/ticket_ci_scope.php';
+    $ciScope = ticketCiCanLink($conn, $ticketId, (int)$params[0]);
+    if (!$ciScope['ok']) {
+        apiError(422, 'not_in_customer_scope', $ciScope['message']);
+    }
     try {
         $conn->prepare(
             "INSERT INTO ticket_cmdb_objects (ticket_id, cmdb_object_id, created_datetime, created_by_analyst_id)

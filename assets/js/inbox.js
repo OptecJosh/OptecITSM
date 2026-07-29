@@ -3779,15 +3779,39 @@ function openLinkCmdbPicker(ticketId) {
     input.focus();
 
     let current = [];
+    // Phase 15c: the scope block from the endpoint — why the list is what it is.
+    // { state: 'no_customer' | 'no_cis' | 'ok', customer_name, ci_count }
+    let scope = null;
+    let allInScopeLinked = false;
     cmdbAcHighlightedIdx = -1;
 
     const renderResults = () => {
         if (current.length === 0) {
-            results.innerHTML = `<div class="cmdb-picker-empty">${escapeHtml(t('tickets.cmdb.no_matches'))}</div>`;
+            // A strictly scoped picker is empty for three different reasons and
+            // an analyst cannot act on "No matches" when the real problem is
+            // that the ticket has no customer. Say which it is.
+            let msg;
+            if (allInScopeLinked) {
+                msg = t('tickets.cmdb.scope_all_linked');
+            } else if (scope && scope.state === 'no_customer') {
+                msg = t('tickets.cmdb.scope_no_customer');
+            } else if (scope && scope.state === 'no_cis') {
+                msg = scope.customer_name
+                    ? t('tickets.cmdb.scope_no_cis_named', { customer: scope.customer_name })
+                    : t('tickets.cmdb.scope_no_cis');
+            } else if (scope && scope.customer_name) {
+                msg = t('tickets.cmdb.scope_no_matches_named', { customer: scope.customer_name });
+            } else {
+                msg = t('tickets.cmdb.no_matches');
+            }
+            results.innerHTML = `<div class="cmdb-picker-empty">${escapeHtml(msg)}</div>`;
             results.classList.add('active');
             return;
         }
-        results.innerHTML = current.map((r, i) => `
+        const header = scope && scope.customer_name
+            ? `<div class="cmdb-picker-scope">${escapeHtml(t('tickets.cmdb.scope_header', { customer: scope.customer_name }))}</div>`
+            : '';
+        results.innerHTML = header + current.map((r, i) => `
             <div class="cmdb-picker-result ${i === cmdbAcHighlightedIdx ? 'highlighted' : ''}" data-idx="${i}">
                 <span>${escapeHtml(r.name)}</span>
                 <span class="cmdb-picker-class">${escapeHtml(r.class_name)}</span>
@@ -3799,6 +3823,28 @@ function openLinkCmdbPicker(ticketId) {
                 pick(current[parseInt(el.dataset.idx, 10)]);
             });
         });
+    };
+
+    // Scoped to the ticket's customer, resolved server-side from ticket_id — the
+    // client never says which customer, so it cannot widen the scope.
+    const runSearch = async (q) => {
+        try {
+            const url = '../api/tickets/search_ticket_cmdb_objects.php?ticket_id=' + ticketId
+                      + '&q=' + encodeURIComponent(q);
+            const res = await fetch(url);
+            const data = await res.json();
+            const all = data.success ? (data.results || []) : [];
+            scope     = data.success ? (data.scope || null) : null;
+            // Drop what this ticket already has — offering it would only produce
+            // an "already linked" no-op.
+            const linked = new Set((cmdbObjectsForTicket || []).map(l => l.object_id));
+            current = all.filter(r => !linked.has(r.id));
+            // Distinguish "nothing matched" from "everything in scope is already
+            // on this ticket", which are opposite problems.
+            allInScopeLinked = all.length > 0 && current.length === 0;
+            cmdbAcHighlightedIdx = -1;
+            renderResults();
+        } catch (e) { /* silent — the picker just shows nothing */ }
     };
 
     const pick = async (r) => {
@@ -3828,17 +3874,9 @@ function openLinkCmdbPicker(ticketId) {
     input.oninput = () => {
         const q = input.value.trim();
         if (cmdbAcTimer) clearTimeout(cmdbAcTimer);
-        if (q === '') { results.classList.remove('active'); return; }
-        cmdbAcTimer = setTimeout(async () => {
-            try {
-                const url = '../api/cmdb/search_objects.php?q=' + encodeURIComponent(q);
-                const res = await fetch(url);
-                const data = await res.json();
-                current = data.success ? (data.results || []) : [];
-                cmdbAcHighlightedIdx = -1;
-                renderResults();
-            } catch (e) { /* silent */ }
-        }, 200);
+        // Clearing the box goes back to the full in-scope list rather than closing
+        // the dropdown — with a strict scope that list IS the useful default.
+        cmdbAcTimer = setTimeout(() => runSearch(q), 200);
     };
 
     input.onkeydown = e => {
@@ -3848,6 +3886,11 @@ function openLinkCmdbPicker(ticketId) {
         else if (e.key === 'Enter' && cmdbAcHighlightedIdx >= 0) { e.preventDefault(); pick(current[cmdbAcHighlightedIdx]); }
         else if (e.key === 'Escape') { picker.style.display = 'none'; }
     };
+
+    // Show what is available as soon as the picker opens. With a strict scope the
+    // list is short, so browsing beats making the analyst guess a search term.
+    // Last, so everything it can reach (pick, renderResults) is already defined.
+    runSearch('');
 }
 
 async function removeCmdbObject(ev, linkId, ticketId) {
@@ -6489,6 +6532,10 @@ function openContextLinkCmdb() {
     document.getElementById('ctxCmdbSessionLog').textContent = 'None yet — pick from the search results above.';
     document.getElementById('ctxCmdbModal').classList.add('active');
     setTimeout(() => document.getElementById('ctxCmdbSearchInput').focus(), 50);
+    // Show what this ticket's customer actually has, straight away — and say so
+    // when the answer is "nothing", which is the case this modal used to present
+    // as an empty search box.
+    runCtxCmdbSearch('');
 }
 
 function closeContextCmdbModal() {
@@ -6500,37 +6547,61 @@ function closeContextCmdbModal() {
     }
 }
 
+// Phase 15c: this modal is the OTHER way a CI gets linked to a ticket (right-click
+// in the list), and it writes through the same endpoint the reading-pane picker
+// does. That endpoint now enforces the customer scope, so searching every object
+// here would have offered items that fail on click. It uses the same scoped
+// search, for the same reasons and with the same explanatory empty states.
+async function runCtxCmdbSearch(q) {
+    const results = document.getElementById('ctxCmdbResults');
+    if (!results || !ctxTargetTicketId) return;
+    try {
+        const url = '../api/tickets/search_ticket_cmdb_objects.php?ticket_id=' + ctxTargetTicketId
+                  + '&q=' + encodeURIComponent(q || '');
+        const res = await fetch(url);
+        const data = await res.json();
+        const rows  = data.success ? (data.results || []) : [];
+        const scope = data.success ? (data.scope || null) : null;
+
+        if (rows.length === 0) {
+            let msg;
+            if (scope && scope.state === 'no_customer')  msg = t('tickets.cmdb.scope_no_customer');
+            else if (scope && scope.state === 'no_cis')  msg = scope.customer_name
+                ? t('tickets.cmdb.scope_no_cis_named', { customer: scope.customer_name })
+                : t('tickets.cmdb.scope_no_cis');
+            else if (scope && scope.customer_name)       msg = t('tickets.cmdb.scope_no_matches_named', { customer: scope.customer_name });
+            else                                        msg = t('tickets.cmdb.no_matches');
+            results.innerHTML = `<div class="ctx-cmdb-result" style="cursor:default;color:var(--text-muted,#999);font-style:italic;text-align:left;line-height:1.5;">${escapeHtml(msg)}</div>`;
+            return;
+        }
+
+        const header = scope && scope.customer_name
+            ? `<div class="cmdb-picker-scope">${escapeHtml(t('tickets.cmdb.scope_header', { customer: scope.customer_name }))}</div>`
+            : '';
+        results.innerHTML = header + rows.map(r => `
+            <div class="ctx-cmdb-result" data-id="${r.id}" data-name="${escapeHtml(r.name)}">
+                <span class="ctx-cmdb-result-name">${escapeHtml(r.name)}</span>
+                <span class="ctx-cmdb-result-class">${escapeHtml(r.class_name)}</span>
+            </div>
+        `).join('');
+        results.querySelectorAll('.ctx-cmdb-result[data-id]').forEach(el => {
+            el.addEventListener('click', () => linkContextCmdbObject(parseInt(el.dataset.id, 10), el.dataset.name));
+        });
+    } catch (e) {
+        results.innerHTML = '<div class="ctx-cmdb-result" style="cursor:default;color:#c62828;">Search failed.</div>';
+    }
+}
+
 // Wire search-as-you-type once
 document.addEventListener('DOMContentLoaded', function () {
     const input = document.getElementById('ctxCmdbSearchInput');
     if (!input) return;
     input.addEventListener('input', function () {
         const q = input.value.trim();
-        const results = document.getElementById('ctxCmdbResults');
         if (ctxCmdbAcTimer) clearTimeout(ctxCmdbAcTimer);
-        if (q === '') { results.innerHTML = ''; return; }
-        ctxCmdbAcTimer = setTimeout(async () => {
-            try {
-                const res = await fetch('../api/cmdb/search_objects.php?q=' + encodeURIComponent(q));
-                const data = await res.json();
-                const rows = data.success ? (data.results || []) : [];
-                if (rows.length === 0) {
-                    results.innerHTML = '<div class="ctx-cmdb-result" style="cursor:default;color:#999;font-style:italic;">No matches.</div>';
-                    return;
-                }
-                results.innerHTML = rows.map(r => `
-                    <div class="ctx-cmdb-result" data-id="${r.id}" data-name="${escapeHtml(r.name)}">
-                        <span class="ctx-cmdb-result-name">${escapeHtml(r.name)}</span>
-                        <span class="ctx-cmdb-result-class">${escapeHtml(r.class_name)}</span>
-                    </div>
-                `).join('');
-                results.querySelectorAll('.ctx-cmdb-result[data-id]').forEach(el => {
-                    el.addEventListener('click', () => linkContextCmdbObject(parseInt(el.dataset.id, 10), el.dataset.name));
-                });
-            } catch (e) {
-                results.innerHTML = '<div class="ctx-cmdb-result" style="cursor:default;color:#c62828;">Search failed.</div>';
-            }
-        }, 200);
+        // Empty box shows the whole in-scope list rather than clearing, matching
+        // the reading-pane picker.
+        ctxCmdbAcTimer = setTimeout(() => runCtxCmdbSearch(q), 200);
     });
 });
 

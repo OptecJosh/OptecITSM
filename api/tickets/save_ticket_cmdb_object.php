@@ -8,6 +8,7 @@ session_start(['read_and_close' => true]);
 require_once '../../config.php';
 require_once '../../includes/functions.php';
 require_once '../../includes/tenancy.php';
+require_once '../../includes/ticket_ci_scope.php';
 
 header('Content-Type: application/json');
 
@@ -40,6 +41,12 @@ try {
     $check = $conn->prepare("SELECT 1 FROM cmdb_objects WHERE id = ?");
     $check->execute([$objectId]);
     if (!$check->fetchColumn()) throw new Exception('CMDB object not found');
+
+    // Phase 15c: a ticket may only be linked to CIs belonging to its customer.
+    // Enforced here rather than only in the picker — hiding an option is not a
+    // rule. Existing links are untouched; this gates new ones only.
+    $scope = ticketCiCanLink($conn, $ticketId, $objectId);
+    if (!$scope['ok']) throw new Exception($scope['message']);
 
     try {
         $conn->beginTransaction();

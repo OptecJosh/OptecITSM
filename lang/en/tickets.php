@@ -334,13 +334,24 @@ return [
         'section_title'      => 'Affected CMDB Objects',
         'link_btn'           => '+ Link object',
         'empty'              => 'No CMDB objects linked yet.',
-        'search_placeholder' => 'Type to search any CMDB object…',
+        // Phase 15c: the picker is scoped to the ticket's customer, so it no
+        // longer searches "any" object.
+        'search_placeholder' => 'Search this customer\'s configuration items…',
         'no_matches'         => 'No matches.',
         'unlink_title'       => 'Unlink',
         'unlink_confirm'     => 'Unlink this CMDB object from the ticket?',
         'unlinked_toast'     => 'Unlinked',
         'linked_toast'       => 'Linked {name}',
         'already_linked'     => '{name} is already linked',
+
+        // Why the strictly-scoped picker is empty. Three different causes need
+        // three different actions, so they get three different messages.
+        'scope_header'          => 'Configuration items for {customer}',
+        'scope_no_customer'     => 'This ticket has no customer set, so no configuration items are available. Set the ticket\'s customer first.',
+        'scope_no_cis'          => 'This ticket\'s customer has no configuration items linked yet. Link them in CMDB → the item → Customers.',
+        'scope_no_cis_named'    => '{customer} has no configuration items linked yet. Link them in CMDB → the item → Customers.',
+        'scope_no_matches_named'=> 'No configuration items of {customer} match that search.',
+        'scope_all_linked'      => 'Every configuration item available to this ticket is already linked.',
     ],
 
     // Time-tracking section in the reading pane.

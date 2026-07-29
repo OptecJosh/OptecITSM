@@ -191,7 +191,7 @@ or it is silently dropped — no error, the value just never arrives. If a field
 | Ticket links | `ticket_links` | `related` (symmetric), `duplicate`, `parent`; informational only, same-company |
 | Approvals | `ticket_approvals` | raised by a catalogue item that `requires_approval` |
 | Custom fields | `custom_field_*` | the shared typed-attribute engine, `entity_type = 'ticket'` |
-| Affected CIs | `ticket_cmdb_objects` | one may be `is_primary` — this drives SLA policy |
+| Affected CIs | `ticket_cmdb_objects` | one may be `is_primary` — this drives SLA policy. Only CIs linked to the ticket's customer may be added (§7) |
 | Customer | `tickets.customer_id` | the account the work is *for* |
 | Stream / playbook / QA | `ticket_streams`, `ticket_qa_reviews` | KPI instrumentation |
 
@@ -279,14 +279,48 @@ buckets, and this one function is reused everywhere impact is shown:
 
 | Link | Table | What it actually does |
 |---|---|---|
-| Ticket → CI | `ticket_cmdb_objects` (`is_primary`) | the primary CI can **override the SLA policy** (§6) |
+| Ticket → CI | `ticket_cmdb_objects` (`is_primary`) | the primary CI can **override the SLA policy** (§6). Restricted to the ticket customer's CIs — see below |
+| Contract → CI | `contract_cmdb_objects` | which CIs a support contract covers. Separate from `contract_assets`: the asset is the purchase, the CI is the service |
 | Change → CI | `change_cmdb_objects` | union of blast radii → a **suggested** impact score 1–5 |
-| Customer → CI | `customer_cmdb_objects` | which CIs belong to a customer account |
+| Customer → CI | `customer_cmdb_objects` | which CIs belong to a customer account. Many-to-many: shared infrastructure serves several accounts. **Gates what a ticket may link** |
 | CI → SLA policy | `cmdb_object_sla_policies` | device-level policy, the most specific tier |
 | Network mapper | `network_diagram_*` | visual diagrams over the CMDB graph |
 
 Note the change case carefully: the impact **suggests**, the analyst still owns the
 final `likelihood × impact`. Risk is never auto-written.
+
+### The ticket → CI rule (Phase 15c)
+
+A ticket may only be linked to CIs belonging to **its customer**. A ticket with no
+customer set has nothing available to it. There is no "search everything" escape
+hatch — that is the point of the rule.
+
+The rule lives in `includes/ticket_ci_scope.php` and is enforced on **every** write
+path, because a rule enforced in one of several paths is not a rule:
+
+- `api/tickets/save_ticket_cmdb_object.php` — the reading-pane picker *and* the
+  ticket-list right-click modal both post here
+- `api/v1/resources/cmdb.php` — the public REST API, which returns
+  `422 not_in_customer_scope`
+
+`api/tickets/search_ticket_cmdb_objects.php` reads from the same helpers, so what
+the pickers offer and what the writers accept cannot drift apart. It resolves the
+customer from `ticket_id` server-side, so a caller cannot widen the scope by
+naming a different customer.
+
+Two deliberate exemptions:
+
+- **Existing links are never re-validated.** This gates new links only. Retro-
+  validating would silently detach data on deploy — including anything a migration
+  brought in.
+- **Merging is exempt** (`api/tickets/merge_tickets.php`). It moves links that
+  already exist; if the two tickets have different customers, the alternatives are
+  blocking the merge or dropping the links, and both lose real data.
+
+The practical consequence: **an unlinked CI is invisible to tickets.** So the
+Customers panel on the CMDB object page is editable (unlike the read-only contract
+coverage panel next to it) — the link is load-bearing and has to be settable from
+wherever the analyst already is.
 
 **Assets are not CIs.** `assets` is the physical inventory (serial numbers,
 warranty, purchase cost, discovery data from the agent, Intune and vCenter).
@@ -592,6 +626,9 @@ part; load `database/demo-csv/` first so there is data to test against.
    counter.
 3. **A ticket's tier is its owner's tier.** An analyst with no tier keeps their
    tickets out of every tier scorecard. That is expected, not a bug.
+3a. **A CI not linked to a customer cannot be attached to any ticket** (§7). If a
+   CI "won't appear" in the ticket picker, it is almost always missing its customer
+   link, or the ticket has no customer set — not a broken picker.
 4. **Tracked time is only ever a proposal.** The view timer accumulates focused
    seconds into `ticket_view_sessions`; nothing becomes a time entry until the
    analyst accepts it, and what lands is stamped `source = 'auto'`. Once accepted

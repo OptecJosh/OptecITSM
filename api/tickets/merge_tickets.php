@@ -79,6 +79,12 @@ try {
         $conn->prepare("DELETE FROM ticket_watchers WHERE ticket_id = ?")->execute([$sid]);
 
         // Moved CIs are demoted to non-primary so the target keeps its own primary.
+        //
+        // Deliberately NOT subject to 15c's customer scope. That rule governs
+        // choosing a new CI for a ticket; this moves links that already exist. If
+        // the two tickets have different customers the alternatives are blocking
+        // the merge or silently dropping the links, and both lose real data that
+        // an analyst recorded on purpose.
         $conn->prepare("INSERT IGNORE INTO ticket_cmdb_objects (ticket_id, cmdb_object_id, is_primary, created_datetime, created_by_analyst_id) SELECT ?, cmdb_object_id, 0, created_datetime, created_by_analyst_id FROM ticket_cmdb_objects WHERE ticket_id = ?")->execute([$targetId, $sid]);
         $conn->prepare("DELETE FROM ticket_cmdb_objects WHERE ticket_id = ?")->execute([$sid]);
 

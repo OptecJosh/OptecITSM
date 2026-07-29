@@ -3493,6 +3493,27 @@ body.ticket-popout .ticket-toolbar {
 .cmdb-picker-result:hover, .cmdb-picker-result.highlighted { background: #fdf2f8; color: #be185d; }
 .cmdb-picker-result .cmdb-picker-class { color: var(--text-faint, #9ca3af); font-size: 11px; }
 .cmdb-picker-empty { padding: 10px; color: var(--text-faint, #9ca3af); font-size: 12px; text-align: center; }
+/* Phase 15c: names the customer the list is scoped to. A strictly scoped picker
+   that doesn't say what it is scoped to just looks like it is missing items. The
+   empty-state message is deliberately left-aligned and wraps — it is a sentence
+   telling the analyst what to do, not a "no results" stub. */
+.cmdb-picker-scope {
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    color: var(--text-muted, #6b7280);
+    background: var(--surface-2, #fafafa);
+    border-bottom: 1px solid var(--border-soft, #eee);
+    position: sticky;
+    top: 0;
+}
+.cmdb-picker-empty {
+    text-align: left;
+    line-height: 1.5;
+    padding: 10px 12px;
+}
 
 /* =========================================================
    Webhook transport-failure diagnosis — shown in the workflow editor's

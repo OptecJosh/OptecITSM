@@ -31,7 +31,7 @@ $translationNamespaces = ['common', 'tickets'];
     <title><?php echo htmlspecialchars(t('tickets.title')); ?> - <?php echo htmlspecialchars(t('tickets.nav.inbox')); ?></title>
     <link rel="stylesheet" href="../assets/css/theme.css?v=22">
     <link rel="stylesheet" href="../assets/css/ui-scale.css?v=1">
-    <link rel="stylesheet" href="../assets/css/inbox.css?v=54">
+    <link rel="stylesheet" href="../assets/css/inbox.css?v=55">
     <link rel="stylesheet" href="../assets/css/mobile.css?v=29">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <?php echo Tz::scriptTag(); ?>
@@ -177,6 +177,23 @@ $translationNamespaces = ['common', 'tickets'];
                     <div class="form-group">
                         <label class="form-label"><?php echo htmlspecialchars(t('tickets.new_ticket_modal.requester_email')); ?> *</label>
                         <input type="email" class="form-input" id="newTicketFromEmail" placeholder="<?php echo htmlspecialchars(t('tickets.new_ticket_modal.email_placeholder')); ?>" required>
+                    </div>
+                </div>
+                <!-- Customer. Sits with the requester because it answers the same
+                     question — who is this for. A search box rather than a <select>
+                     to match the reading pane's picker and because the list grows
+                     (a migration can bring in dozens at once). -->
+                <div class="form-group">
+                    <label class="form-label"><?php echo htmlspecialchars(t('tickets.new_ticket_modal.customer')); ?></label>
+                    <div style="position: relative;">
+                        <input type="text" class="form-input" id="newTicketCustomerSearch" autocomplete="off"
+                               placeholder="<?php echo htmlspecialchars(t('tickets.new_ticket_modal.customer_placeholder')); ?>"
+                               oninput="newTicketCustomerSearchDebounced()">
+                        <input type="hidden" id="newTicketCustomerId" value="">
+                        <div id="newTicketCustomerResults" class="cust-results"></div>
+                    </div>
+                    <div style="font-size:12px;color:var(--text-dim,#999);margin-top:4px;">
+                        <?php echo htmlspecialchars(t('tickets.new_ticket_modal.customer_hint')); ?>
                     </div>
                 </div>
                 <div class="form-group">
@@ -517,7 +534,7 @@ $translationNamespaces = ['common', 'tickets'];
         window.API_BASE = '../api/tickets/';
         window.CURRENT_ANALYST_ID = <?php echo (int)($_SESSION['analyst_id'] ?? 0); ?>;
     </script>
-    <script src="../assets/js/inbox.js?v=80"></script>
+    <script src="../assets/js/inbox.js?v=81"></script>
     <script src="../assets/js/mobile.js?v=12"></script>
     <script>
     // Auto-check mailboxes every 60 seconds

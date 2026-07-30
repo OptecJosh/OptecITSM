@@ -271,6 +271,13 @@ return [
         'requester_name'          => 'Requester Name',
         'requester_email'         => 'Requester Email',
         'subject'                 => 'Subject',
+        // Phase 16h. Optional because createTicket infers the customer from the
+        // requester's linked portal user when none is given, and the hint says so —
+        // otherwise a blank field looks like something forgotten.
+        'customer'                => 'Customer',
+        'customer_placeholder'    => 'Search customers by name or account reference…',
+        'customer_hint'           => 'Leave blank to use the requester\'s customer, if they are linked to one. Affected CMDB items can only be chosen from this customer\'s configuration items.',
+        'customer_no_matches'     => 'No matching customers',
         'mailbox'                 => 'Send replies from',
         'department'              => 'Department',
         'type'                    => 'Type',

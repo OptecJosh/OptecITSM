@@ -810,6 +810,50 @@ body {
 }
 
 /* ============================================================
+   Customer picker dropdown (Phase 16h)
+
+   Used by the reading pane's Customer field and the Create-ticket modal's. Both
+   previously carried the same block of inline styles; defined once here so they
+   cannot drift, and tokenised so it works in dark mode (the inline version had a
+   hardcoded rgba shadow).
+
+   The parent needs position: relative.
+   ============================================================ */
+.cust-results {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 60;
+    margin-top: 2px;
+    max-height: 220px;
+    overflow: auto;
+    background: var(--surface, #fff);
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: var(--r-md, 8px);
+    box-shadow: var(--elev-2, 0 4px 14px rgba(0, 0, 0, 0.18));
+}
+.cust-results.active { display: block; }
+
+.cust-results button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 8px 10px;
+    border: 0;
+    border-bottom: 1px solid var(--border-soft, #f0f0f0);
+    background: none;
+    cursor: pointer;
+    font-size: var(--fs-base, 13px);
+    font-family: inherit;
+    color: var(--text, #222);
+}
+.cust-results button:last-child { border-bottom: 0; }
+.cust-results button:hover { background: var(--surface-hover, #f0f0f0); }
+.cust-results .cust-result-meta { color: var(--text-dim, #6b7280); }
+
+/* ============================================================
    Ranked actions (Phase 16c)
 
    Replaces nine identically-weighted bordered buttons. `.action-btn` is kept

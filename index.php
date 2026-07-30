@@ -25,7 +25,7 @@ $allowed_modules = $_SESSION['allowed_modules'] ?? null;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars(t('common.home.browser_title')); ?></title>
     <link rel="stylesheet" href="assets/css/theme.css?v=22">
-    <link rel="stylesheet" href="assets/css/inbox.css?v=54">
+    <link rel="stylesheet" href="assets/css/inbox.css?v=55">
     <style>
         body {
             background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);

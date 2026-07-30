@@ -27,7 +27,7 @@ $translationNamespaces = ['common', 'system'];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('system.routing_test.title')); ?></title>
     <link rel="stylesheet" href="../../assets/css/theme.css?v=22">
-    <link rel="stylesheet" href="../../assets/css/inbox.css?v=54">
+    <link rel="stylesheet" href="../../assets/css/inbox.css?v=55">
     <style>
         /* inbox.css gives body height:100vh + overflow:hidden but no flex
            column, so flex:1 children can't bound their height. Make body a

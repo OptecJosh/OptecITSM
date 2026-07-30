@@ -30,7 +30,7 @@ $translationNamespaces = ['common', 'lms'];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LMS - Development journal</title>
     <link rel="stylesheet" href="../assets/css/theme.css?v=22">
-    <link rel="stylesheet" href="../assets/css/inbox.css?v=54">
+    <link rel="stylesheet" href="../assets/css/inbox.css?v=55">
     <link rel="stylesheet" href="../assets/css/lms.css?v=4">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <?php echo Tz::scriptTag(); ?>

@@ -1875,7 +1875,7 @@ function displayEmail(email, recordings) {
                     <div class="toolbar-field" style="position:relative;">
                         <label class="toolbar-label">Customer</label>
                         <input type="text" class="toolbar-select" id="customerSearch" autocomplete="off" placeholder="Search customer…" value="${escapeHtml(email.customer_name || '')}" oninput="customerSearchDebounced()">
-                        <div id="customerResults" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:60;background:var(--surface,#fff);border:1px solid var(--border,#e5e7eb);border-radius:6px;margin-top:2px;max-height:220px;overflow:auto;box-shadow:0 4px 14px rgba(0,0,0,.18);"></div>
+                        <div id="customerResults" class="cust-results"></div>
                         <div id="customerContact" style="font-size:11px;color:var(--text-dim,#6b7280);margin-top:3px;">${escapeHtml([email.customer_contact_name, email.customer_contact_email, email.customer_contact_phone].filter(Boolean).join(' · '))}</div>
                         <select class="toolbar-select" id="ticketContactSelect" style="display:none;margin-top:4px;font-size:11px;" onchange="assignTicketContact()"></select>
                     </div>
@@ -3233,6 +3233,69 @@ async function assignItTraining() {
 
 // Customer picker (search + set on ticket)
 const CUSTOMERS_API = API_BASE.replace('tickets/', 'customers/');
+/* --- Customer picker on the Create-ticket modal (Phase 16h) ------------------
+ * Separate state from the reading-pane picker below: both can be on the page at
+ * once, and the modal writes a hidden field for the create payload rather than
+ * PATCHing an existing ticket.
+ *
+ * Leaving it blank is legitimate — TicketsService::createTicket infers the customer
+ * from the requester's linked portal user (13b) when none is supplied — which is
+ * why the field carries a hint saying so rather than being marked required.
+ */
+let newTicketCustomerTimer = null;
+let _newTicketCustResults = [];
+
+function newTicketCustomerSearchDebounced() {
+    clearTimeout(newTicketCustomerTimer);
+    // Typing after a pick invalidates it: the id must never disagree with the text
+    // in the box, or you would create a ticket against a customer you had edited away.
+    document.getElementById('newTicketCustomerId').value = '';
+    newTicketCustomerTimer = setTimeout(runNewTicketCustomerSearch, 250);
+}
+
+async function runNewTicketCustomerSearch() {
+    const input = document.getElementById('newTicketCustomerSearch');
+    const box   = document.getElementById('newTicketCustomerResults');
+    if (!input || !box) return;
+    const q = input.value.trim();
+    if (q === '') { box.innerHTML = ''; box.classList.remove('active'); return; }
+    try {
+        const d = await (await fetch(CUSTOMERS_API + 'get_customers.php?active=1&q=' + encodeURIComponent(q))).json();
+        _newTicketCustResults = (d.customers || []).slice(0, 10);
+        if (!_newTicketCustResults.length) {
+            box.innerHTML = `<button type="button" class="cust-result-meta" disabled>${escapeHtml(t('tickets.new_ticket_modal.customer_no_matches'))}</button>`;
+            box.classList.add('active');
+            return;
+        }
+        box.innerHTML = _newTicketCustResults.map(c =>
+            `<button type="button" onclick="pickNewTicketCustomer(${c.id})">${escapeHtml(c.name)}` +
+            (c.account_ref ? ` <span class="cust-result-meta">· ${escapeHtml(c.account_ref)}</span>` : '') +
+            `</button>`
+        ).join('');
+        box.classList.add('active');
+    } catch (e) { box.classList.remove('active'); }
+}
+
+function pickNewTicketCustomer(id) {
+    const chosen = _newTicketCustResults.find(c => c.id === id);
+    if (!chosen) return;
+    document.getElementById('newTicketCustomerId').value = String(id);
+    document.getElementById('newTicketCustomerSearch').value = chosen.name;
+    const box = document.getElementById('newTicketCustomerResults');
+    if (box) { box.innerHTML = ''; box.classList.remove('active'); }
+}
+
+/** Clear the picker — called when the modal opens so it never reopens pre-filled. */
+function resetNewTicketCustomer() {
+    const input = document.getElementById('newTicketCustomerSearch');
+    const hidden = document.getElementById('newTicketCustomerId');
+    const box = document.getElementById('newTicketCustomerResults');
+    if (input) input.value = '';
+    if (hidden) hidden.value = '';
+    if (box) { box.innerHTML = ''; box.classList.remove('active'); }
+    _newTicketCustResults = [];
+}
+
 let customerSearchTimer = null;
 let _custResults = [];
 function customerSearchDebounced() { clearTimeout(customerSearchTimer); customerSearchTimer = setTimeout(runCustomerSearch, 250); }
@@ -3241,7 +3304,7 @@ async function runCustomerSearch() {
     const box = document.getElementById('customerResults');
     if (!input || !box) return;
     const q = input.value.trim();
-    if (q === '') { box.innerHTML = ''; box.style.display = 'none'; return; }
+    if (q === '') { box.innerHTML = ''; box.classList.remove('active'); return; }
     try {
         const d = await (await fetch(CUSTOMERS_API + 'get_customers.php?active=1&q=' + encodeURIComponent(q))).json();
         _custResults = (d.customers || []).slice(0, 10);
@@ -3251,8 +3314,8 @@ async function runCustomerSearch() {
         ).join('');
         html += `<button type="button" style="${rowStyle}color:var(--text-dim,#6b7280);" onclick="assignCustomer(0)">— Clear customer —</button>`;
         box.innerHTML = html;
-        box.style.display = 'block';
-    } catch (e) { box.style.display = 'none'; }
+        box.classList.add('active');
+    } catch (e) { box.classList.remove('active'); }
 }
 /* --- 13a: which contact this ticket concerns -------------------------------
  * The line under the customer shows the customer's DEFAULT contact. When the
@@ -3349,7 +3412,7 @@ async function assignCustomer(id) {
             showToast('Error assigning customer: ' + data.error, 'error');
         }
     } catch (error) { console.error('Error:', error); showToast('Failed to assign customer', 'error'); }
-    if (box) box.style.display = 'none';
+    if (box) box.classList.remove('active');
 }
 
 // Assign work stream (KPI: NOC/SOC)
@@ -5112,6 +5175,9 @@ function openNewTicketModal() {
     document.getElementById('newTicketFromEmail').value = '';
     document.getElementById('newTicketSubject').value = '';
     document.getElementById('newTicketBody').value = '';
+    // Both the text and the hidden id, so the modal never reopens carrying the last
+    // ticket's customer.
+    resetNewTicketCustomer();
 
     // Populate department dropdown
     const deptSelect = document.getElementById('newTicketDepartment');
@@ -5240,6 +5306,9 @@ async function createNewTicket() {
     const subcategoryId = document.getElementById('newTicketSubcategory').value;
     const priority = document.getElementById('newTicketPriority').value;
     const mailboxId = document.getElementById('newTicketMailbox').value;
+    // Only ever the id of something actually picked from the list — typing in the box
+    // clears it, so free text can never be mistaken for a customer.
+    const customerId = document.getElementById('newTicketCustomerId').value;
 
     // Validate required fields
     if (!fromName) {
@@ -5275,7 +5344,8 @@ async function createNewTicket() {
                 category_id: categoryId || null,
                 subcategory_id: subcategoryId || null,
                 priority: priority,
-                mailbox_id: mailboxId || null
+                mailbox_id: mailboxId || null,
+                customer_id: customerId || null
             })
         });
 

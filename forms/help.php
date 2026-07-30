@@ -32,7 +32,7 @@ $translationNamespaces = ['common', 'forms'];
     <?php echo Tz::scriptTag(); ?>
     <script src="../assets/js/tz.js?v=1"></script>
     <link rel="stylesheet" href="../assets/css/theme.css?v=22">
-    <link rel="stylesheet" href="../assets/css/inbox.css?v=54">
+    <link rel="stylesheet" href="../assets/css/inbox.css?v=55">
     <style>
         /* Module accent (teal). */
         body { --accent: var(--forms-accent, #00897b); --accent-hover: var(--forms-accent-hover, #00695c); }

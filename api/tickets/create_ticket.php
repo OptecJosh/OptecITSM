@@ -49,6 +49,12 @@ try {
         'subcategory_id'      => $input['subcategory_id'] ?? null,
         'mailbox_id'          => $input['mailbox_id'] ?? null,
     ];
+    // Customer. Only forwarded when actually supplied: createTicket() infers it from
+    // the requester's linked portal user (13b) when the key is absent, and passing an
+    // explicit null would look like a deliberate "no customer" and suppress that.
+    if (isset($input['customer_id']) && $input['customer_id'] !== '' && $input['customer_id'] !== null) {
+        $in['customer_id'] = (int)$input['customer_id'];
+    }
     if (!empty($input['assigned_analyst_id'])) {
         $in['assigned_analyst_id'] = (int)$input['assigned_analyst_id'];
     }

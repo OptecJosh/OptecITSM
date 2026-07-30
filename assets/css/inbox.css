@@ -428,11 +428,25 @@ body {
     overflow-y: auto;
 }
 
+/* ============================================================
+   Ticket list row (Phase 16c)
+
+   Three lines: identity + time, subject, then requester / status / SLA. The
+   fourth line (body preview) was removed because body_preview almost always
+   opens with the subject, so the row said the same sentence twice and spent
+   ~37px doing it. The space went to status and priority instead — the two
+   things the list needed to be triageable and never showed.
+
+   The subject is now the strongest text in the row: it is what an analyst
+   actually scans for. The ticket number, which was previously the boldest
+   thing on screen, is demoted to monospace meta.
+   ============================================================ */
 .email-item {
-    padding: 16px 20px;
+    position: relative;
+    padding: 10px 20px 10px 22px;   /* left room for the priority rail */
     border-bottom: 1px solid var(--border-soft, #f0f0f0);
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background var(--dur-base, 0.2s) var(--ease, ease);
 }
 
 .email-item:hover {
@@ -441,54 +455,111 @@ body {
 
 .email-item.selected {
     background: var(--accent-soft, #e8f4fd);
-    border-left: 3px solid var(--accent, #0078d4);
+    box-shadow: inset 3px 0 0 var(--accent, #0078d4);
 }
 
 .email-item.unread {
     background: var(--row-unread, #f0f8ff);
 }
-
-.email-from {
-    font-weight: 600;
-    color: var(--text, #333);
-    margin-bottom: 4px;
-    font-size: 14px;
+.email-item.unread .ei-subject {
+    font-weight: 700;
 }
 
-.email-subject {
-    color: var(--text-muted, #666);
-    margin-bottom: 4px;
-    font-size: 13px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+/* Priority as a full-height rail on the leading edge: readable at a glance down
+   a long queue without adding a column or competing with the status pill. */
+.ei-prio-bar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
 }
 
-.email-preview {
-    color: var(--text-faint, #999);
-    font-size: 12px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.email-time {
-    color: var(--text-faint, #999);
-    font-size: 11px;
-}
-
-.email-footer-row {
+.ei-line1 {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-top: 4px;
-    gap: 8px;
+    gap: var(--sp-2, 8px);
+    margin-bottom: 3px;
 }
 
-.email-sla-slot {
-    flex: 0 0 auto;
-    min-height: 16px;
+.ei-prio {
+    font-size: var(--fs-label, 11px);
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    flex: none;
 }
+
+.ei-number {
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: var(--fs-sm, 12px);
+    color: var(--text-dim, #888);
+    flex: none;
+}
+
+/* Pushed right; the checkbox follows it so the row has one trailing cluster
+   rather than a checkbox floating over the text as before. */
+.ei-time {
+    margin-left: auto;
+    font-size: var(--fs-label, 11px);
+    color: var(--text-faint, #999);
+    white-space: nowrap;
+    flex: none;
+}
+
+.ei-subject {
+    font-size: var(--fs-md, 14px);
+    font-weight: 500;
+    color: var(--text, #333);
+    line-height: var(--lh-tight, 1.25);
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ei-line3 {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2, 8px);
+    min-height: 18px;
+}
+
+.ei-requester {
+    font-size: var(--fs-sm, 12px);
+    color: var(--text-muted, #666);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+/* Inline colour comes from the status's own configured colour, so a site that
+   recolours its statuses gets it here for free. These are the fallbacks. */
+.ei-status {
+    flex: none;
+    font-size: var(--fs-label, 11px);
+    font-weight: 600;
+    padding: 1px 8px;
+    border-radius: var(--r-full, 999px);
+    border: 1px solid var(--border, #e0e0e0);
+    background: var(--surface-3, #f8f8f8);
+    color: var(--text-muted, #666);
+    white-space: nowrap;
+}
+.ei-status.is-closed {
+    opacity: 0.75;
+}
+
+/* Kept: the old class name so loadInboxSlaIndicators() and
+   renderInboxSlaIndicator() need no changes. */
+.email-sla-slot {
+    margin-left: auto;
+    flex: 0 0 auto;
+}
+
+/* (The .email-sla-slot rule that used to sit here duplicated the one defined with
+   the row layout above and, being later in the file, silently overrode its
+   margin-left:auto. Folded into that one rule.) */
 
 .email-sla-pill {
     display: inline-flex;
@@ -548,6 +619,210 @@ body {
     color: var(--text-faint, #999);
     font-size: 16px;
 }
+
+/* ============================================================
+   Reading pane: conversation + properties rail (Phase 16c)
+
+   The pane used to be one column carrying nine stacked full-width bands — links,
+   properties, tags, watchers, actions, then CMDB / custom fields / SLA / time —
+   with the customer's message as a thin slice in the middle. Everything that
+   DESCRIBES the ticket now lives in a right-hand rail; the main column is the
+   conversation and nothing else.
+
+   Two consequences worth stating: properties are permanently visible instead of
+   hidden behind a collapsed bar, and the message finally gets a readable measure
+   rather than the full width of a 1900px monitor.
+   ============================================================ */
+.rp-layout {
+    flex: 1;
+    display: flex;
+    align-items: stretch;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* A trashed ticket is shown read-only inside this wrapper. It has to pass the
+   pane's height through to .rp-layout, hence the flex chain rather than the inline
+   styles it used to carry. */
+.rp-trashed {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    pointer-events: none;
+    opacity: 0.55;
+}
+
+.rp-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.rp-rail {
+    flex: 0 0 300px;
+    width: 300px;
+    border-left: 1px solid var(--border, #e0e0e0);
+    background: var(--surface-2, #fafafa);
+    overflow-y: auto;
+    padding: var(--sp-3, 12px);
+}
+
+/* Below this the rail would squeeze the conversation rather than help it, so it
+   drops under the message instead of beside it. mobile.js takes over entirely at
+   phone widths, moving these panels into full-screen sheets. */
+@media (max-width: 1200px) {
+    .rp-layout { flex-direction: column; overflow-y: auto; }
+    .rp-main { overflow: visible; }
+    .rp-rail {
+        flex: none;
+        width: auto;
+        border-left: 0;
+        border-top: 1px solid var(--border, #e0e0e0);
+        overflow: visible;
+    }
+}
+
+/* ---- Panels behave differently once they are in the rail ----
+   Same nodes, same ids, same handlers — only the presentation changes. */
+
+/* Properties: an absolutely-positioned slide-down overlay in the old layout.
+   In the rail it is simply always open and in flow. */
+.rp-rail .ticket-properties-container { position: static; }
+.rp-rail .ticket-properties-header { display: none; }
+.rp-rail .ticket-properties-panel {
+    position: static;
+    max-height: none;
+    opacity: 1;
+    overflow: visible;
+    background: transparent;
+    border-bottom: 0;
+    box-shadow: none;
+    transition: none;
+}
+/* One field per line: the rail is 300px, so the auto-fill grid would otherwise
+   produce two cramped columns. */
+.rp-rail .ticket-toolbar {
+    display: block;
+    padding: 0;
+}
+.rp-rail .ticket-toolbar > * { margin-bottom: var(--sp-3, 12px); }
+.rp-rail .ticket-toolbar > *:last-child { margin-bottom: 0; }
+
+/* Sections become rail cards: flush to the rail's gutter, tighter inside. */
+.rp-rail .ticket-section {
+    margin: 0 0 var(--sp-2, 8px);
+    background: var(--surface, #fff);
+}
+.rp-rail .ticket-section-head { padding: 8px 10px; }
+.rp-rail .ticket-section-title { font-size: var(--fs-label, 11px); }
+.rp-rail .ticket-section-body { padding: 10px; }
+
+/* Tags and watchers each took a full-width row to say "none". In the rail they
+   are cards like everything else. */
+.rp-rail .ticket-tags-bar,
+.rp-rail .ticket-watchers-bar {
+    padding: 8px 10px;
+    margin-bottom: var(--sp-2, 8px);
+    background: var(--surface, #fff);
+    border: 1px solid var(--border-soft, #e3e8ea);
+    border-radius: var(--r-md, 8px);
+}
+
+/* ============================================================
+   Ranked actions (Phase 16c)
+
+   Replaces nine identically-weighted bordered buttons. `.action-btn` is kept
+   because the wrong-company and merged banners still use it.
+   ============================================================ */
+.action-toolbar {
+    padding: var(--sp-3, 12px) var(--sp-5, 24px);
+    background: var(--surface, #fff);
+    border-bottom: 1px solid var(--border, #e0e0e0);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2, 8px);
+}
+
+.act {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: var(--r-sm, 4px);
+    cursor: pointer;
+    font-size: var(--fs-base, 13px);
+    font-family: inherit;
+    color: var(--text-muted, #666);
+    transition: background var(--dur-fast, 0.12s) var(--ease, ease),
+                color var(--dur-fast, 0.12s) var(--ease, ease);
+}
+.act:hover {
+    background: var(--surface-hover, #f0f0f0);
+    color: var(--text, #333);
+}
+.act .ficon { font-size: 15px; }
+
+/* The one action an analyst reaches for most, and the only filled control here. */
+.act-primary {
+    background: var(--accent, #0078d4);
+    border-color: var(--accent, #0078d4);
+    color: var(--on-accent, #fff);
+    font-weight: 600;
+}
+.act-primary:hover {
+    background: var(--accent-hover, #005a9e);
+    border-color: var(--accent-hover, #005a9e);
+    color: var(--on-accent, #fff);
+}
+
+/* Pushed to the far right so Delete is never adjacent to something you meant. */
+.act-danger {
+    margin-left: auto;
+    color: var(--danger-accent, #d13438);
+}
+.act-danger:hover {
+    background: var(--danger-bg, #fee2e2);
+    color: var(--danger-text, #991b1b);
+}
+
+.act-more { position: relative; }
+
+.act-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 60;
+    min-width: 200px;
+    padding: 4px;
+    background: var(--surface, #fff);
+    border: 1px solid var(--border, #e0e0e0);
+    border-radius: var(--r-md, 8px);
+    box-shadow: var(--elev-2, 0 4px 12px rgba(0, 0, 0, 0.12));
+}
+.act-more.open .act-menu { display: block; }
+
+.act-menu button {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2, 8px);
+    width: 100%;
+    padding: 8px 10px;
+    background: none;
+    border: 0;
+    border-radius: var(--r-sm, 4px);
+    cursor: pointer;
+    font-size: var(--fs-base, 13px);
+    font-family: inherit;
+    text-align: left;
+    color: var(--text, #333);
+}
+.act-menu button:hover { background: var(--surface-hover, #f0f0f0); }
 
 .email-header {
     padding: 20px 30px;
@@ -634,45 +909,72 @@ body.ticket-popout .ticket-toolbar {
     gap: 14px;
 }
 
+/* Phase 16c: one line, not a label/value table. The old .email-meta-row /
+   -label / -value / -date rules are gone with the markup that used them. */
 .email-meta {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
 }
 
-.email-meta-row {
+.email-meta-line {
     display: flex;
-    font-size: 13px;
-}
-
-.email-meta-label {
-    font-weight: 600;
+    align-items: center;
+    gap: var(--sp-2, 8px);
+    font-size: var(--fs-base, 13px);
     color: var(--text-muted, #666);
-    width: 80px;
+    min-width: 0;
 }
 
-.email-meta-value {
-    color: var(--text, #333);
+/* The ticket number, now that it is no longer duplicated into the heading. */
+.em-ref {
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: var(--fs-sm, 12px);
+    color: var(--text-dim, #888);
+    flex: none;
 }
 
-/* Date sits on the To: row, pushed to the right edge */
-.email-meta-date {
-    margin-left: auto;
-    padding-left: 16px;
-    color: var(--text, #333);
+.em-people {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
 }
+.em-people strong { color: var(--text, #333); font-weight: 600; }
+.em-arrow { color: var(--text-faint, #999); flex: none; display: inline-flex; }
 
-.email-meta-date-label {
-    font-weight: 600;
-    color: var(--text-muted, #666);
+.em-date {
+    margin-left: auto;
+    padding-left: var(--sp-4, 16px);
+    color: var(--text-dim, #888);
+    font-size: var(--fs-sm, 12px);
+    white-space: nowrap;
+    flex: none;
 }
 
+.em-cc { font-size: var(--fs-sm, 12px); }
+.em-label { font-weight: 600; color: var(--text-muted, #666); flex: none; }
+
+/* Phase 16c: .rp-main owns the scrolling now, so this no longer scrolls
+   independently — two nested scrollbars in one pane is how you lose your place
+   in a long thread. Background dropped to white: with the rail carrying the grey,
+   a grey message area made the conversation look like the secondary content. */
 .email-body {
     flex: 1;
-    padding: 30px;
-    overflow-y: auto;
-    background: var(--surface-2, #fafafa);
+    padding: var(--sp-5, 24px);
+    overflow: visible;
+    background: var(--surface, #fff);
+}
+
+/* A readable measure. Previously the body ran the full width of the pane, so on a
+   wide monitor a line of an email could be 160 characters — technically fine,
+   genuinely hard to read. */
+.email-body > #threadContainer,
+.email-body > #notesContainer {
+    max-width: 820px;
 }
 
 .email-body-content {
@@ -953,8 +1255,10 @@ body.ticket-popout .ticket-toolbar {
 .tag-picker-create:hover { background: var(--surface-2, #f3f4f6); }
 
 /* Phase 6c: bulk list actions */
-.email-item { position: relative; }
-.bulk-cb { position: absolute; top: 8px; right: 10px; margin: 0; cursor: pointer; z-index: 2; }
+/* Phase 16c: the bulk checkbox is now the last item in the row's first line
+   rather than absolutely positioned over the text, so it lines up with the
+   timestamp instead of floating in the corner. */
+.bulk-cb { flex: none; margin: 0; cursor: pointer; }
 .bulk-bar {
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
     padding: 8px 12px; background: var(--surface-2, #f3f4f6);
@@ -1052,13 +1356,9 @@ body.ticket-popout .ticket-toolbar {
 }
 
 /* Action Toolbar */
-.action-toolbar {
-    padding: 10px 30px;
-    background: var(--surface-3, #f8f9fa);
-    border-bottom: 1px solid var(--border, #e0e0e0);
-    display: flex;
-    gap: 8px;
-}
+/* (.action-toolbar is defined once, with the reading-pane layout above. The copy
+   that used to sit here was identical apart from its grey background and, being
+   later in the file, would have silently won.) */
 
 .action-btn {
     display: flex;

@@ -23,7 +23,7 @@ $translationNamespaces = ['common', 'tickets'];
     <title><?php echo htmlspecialchars(t('tickets.dashboard.library.page_title')); ?></title>
     <link rel="stylesheet" href="../../assets/css/theme.css?v=22">
     <link rel="stylesheet" href="../../assets/css/ui-scale.css?v=1">
-    <link rel="stylesheet" href="../../assets/css/inbox.css?v=37">
+    <link rel="stylesheet" href="../../assets/css/inbox.css?v=52">
     <style>
         .dashboard-page {
             height: calc(100vh - 48px);

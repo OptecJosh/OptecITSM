@@ -1431,18 +1431,45 @@ function renderEmailList() {
                 </div>` : '';
         // Reserve a slot for the SLA dot; populated asynchronously by loadInboxSlaIndicators()
         // once the batch endpoint responds. Stays empty (and invisible) for tickets without SLA.
+        // Phase 16c: three lines, not four. The preview line was dropped because in
+        // practice body_preview opens with the subject text, so it read as the same
+        // sentence twice and cost 37px a row for nothing. What replaced it is what
+        // the list never had: status and priority, so a queue can be triaged
+        // without opening tickets one at a time.
+        const prio = email.priority || '';
+        const prioColour = email.priority_colour || '';
+        // The priority rail is the row's only strong colour, so it stays out of the
+        // way when a priority has no configured colour rather than inventing one.
+        const prioBar = prioColour
+            ? `<span class="ei-prio-bar" style="background:${escapeHtml(prioColour)}"></span>`
+            : '';
+        const prioChip = prio
+            ? `<span class="ei-prio"${prioColour ? ` style="color:${escapeHtml(prioColour)}"` : ''}>${escapeHtml(prio)}</span>`
+            : '';
+        const statusColour = email.status_colour || '';
+        const statusPill = email.status
+            ? `<span class="ei-status${email.status_is_closed ? ' is-closed' : ''}"${statusColour
+                ? ` style="background:${escapeHtml(statusColour)}1f;color:${escapeHtml(statusColour)};border-color:${escapeHtml(statusColour)}55"` : ''}>${escapeHtml(email.status)}</span>`
+            : '';
+
         return `
             <div class="email-item ${email.id === selectedEmailId ? 'selected' : ''} ${!email.is_read ? 'unread' : ''}"
                  draggable="true" data-email-id="${email.id}" data-ticket-id="${ticketId}" data-ticket-number="${escapeHtml(email.ticket_number || '')}"
                  onclick="selectEmail(${email.id})" ondblclick="selectEmailFullScreen(${email.id})"
                  oncontextmenu="openTicketContextMenu(event, ${ticketId}, '${escapeHtml(email.ticket_number || '')}')">
-                <input type="checkbox" class="bulk-cb" title="Select" onclick="event.stopPropagation(); toggleBulkSelect(${ticketId}, this.checked)" ${bulkSelected.has(ticketId) ? 'checked' : ''}>
-                <div class="email-from">${escapeHtml(email.ticket_number || '')} - ${escapeHtml(email.from_name || email.from_address)} ${countBadge}</div>
-                <div class="email-subject">${escapeHtml(email.subject)}</div>
-                <div class="email-preview">${escapeHtml(email.body_preview || '')}</div>
-                <div class="email-footer-row">
-                    <div class="email-time">${formatDateTime(email.received_datetime)}</div>
-                    <div class="email-sla-slot" data-sla-slot="${ticketId}"></div>
+                ${prioBar}
+                <div class="ei-line1">
+                    ${prioChip}
+                    <span class="ei-number">${escapeHtml(email.ticket_number || '')}</span>
+                    ${countBadge}
+                    <span class="ei-time">${formatDateTime(email.received_datetime)}</span>
+                    <input type="checkbox" class="bulk-cb" title="Select" onclick="event.stopPropagation(); toggleBulkSelect(${ticketId}, this.checked)" ${bulkSelected.has(ticketId) ? 'checked' : ''}>
+                </div>
+                <div class="ei-subject">${escapeHtml(email.subject)}</div>
+                <div class="ei-line3">
+                    <span class="ei-requester">${escapeHtml(email.from_name || email.from_address || '')}</span>
+                    ${statusPill}
+                    <span class="email-sla-slot" data-sla-slot="${ticketId}"></span>
                 </div>${trashActions}
             </div>
         `;
@@ -1751,7 +1778,13 @@ function displayEmail(email, recordings) {
             <button onclick="loadTicketById(${email.merged_into_ticket_id})" style="font-size:12.5px;padding:6px 14px;border:1px solid #c7d2fe;background:#fff;color:#3730a3;border-radius:5px;cursor:pointer;font-weight:600;">Open ${escapeHtml(email.merged_into_number)}</button>
         </div>` : '';
 
-    readingPane.innerHTML = trashBanner + mergedBanner + (isTrashed ? '<div style="pointer-events:none;opacity:0.55;">' : '') + `
+    // The trashed wrapper carries a class rather than inline styles because it now
+    // sits in the middle of the pane's flex chain: .rp-layout needs a parent that
+    // grows and allows shrinking, or the rail and conversation lose their height
+    // and stop scrolling.
+    readingPane.innerHTML = trashBanner + mergedBanner + (isTrashed ? '<div class="rp-trashed">' : '') + `
+        <div class="rp-layout">
+        <div class="rp-main">
         <div class="ticket-properties-container" id="ticketPropertiesContainer">
             <div class="ticket-properties-header" onclick="toggleTicketProperties(event)">
                 <div class="ticket-properties-title">
@@ -1891,26 +1924,35 @@ function displayEmail(email, recordings) {
         ${companyWarningBanner}
         <div class="email-header">
             <div class="email-subject-line">
-                <span class="email-subject-text">${escapeHtml(t('tickets.reading_pane.ticket_label'))} ${escapeHtml(email.ticket_number || '')} - ${escapeHtml(email.subject)}</span>
+                <!-- Phase 16c: the subject alone. "Ticket DMO-…" used to be baked
+                     into this heading AND printed again in the properties strip;
+                     the number now appears once, as meta below. -->
+                <span class="email-subject-text">${escapeHtml(email.subject)}</span>
                 <button class="icon-btn ticket-popout-toggle" onclick="toggleTicketPopout()" title="${escapeHtml(t('tickets.reading_pane.toggle_fullscreen'))}" aria-label="${escapeHtml(t('tickets.reading_pane.toggle_fullscreen'))}">
                     <svg class="popout-icon-expand" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
                     <svg class="popout-icon-contract" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
                 </button>
             </div>
+            <!-- Phase 16c: one meta line instead of a three-row label/value table.
+                 "From:" and "To:" were carrying almost no information for the width
+                 they took — an arrow between two addresses says the same thing. The
+                 ticket number moves here, since it is now absent from the heading.
+                 CC still gets its own line, because it is the one that is genuinely
+                 sometimes long. -->
             <div class="email-meta">
-                <div class="email-meta-row">
-                    <div class="email-meta-label">${escapeHtml(t('tickets.reading_pane.meta_from'))}</div>
-                    <div class="email-meta-value">${escapeHtml(email.from_name)} &lt;${escapeHtml(email.from_address)}&gt;</div>
-                </div>
-                <div class="email-meta-row">
-                    <div class="email-meta-label">${escapeHtml(t('tickets.reading_pane.meta_to'))}</div>
-                    <div class="email-meta-value">${escapeHtml(email.to_recipients)}</div>
-                    <div class="email-meta-date"><span class="email-meta-date-label">${escapeHtml(t('tickets.reading_pane.meta_date'))}</span> ${formatFullDateTime(email.received_datetime)}</div>
+                <div class="email-meta-line">
+                    <span class="em-ref">${escapeHtml(email.ticket_number || '')}</span>
+                    <span class="em-people">
+                        <strong>${escapeHtml(email.from_name || email.from_address || '')}</strong>
+                        <span class="em-arrow">${icon('arrow-right')}</span>
+                        ${escapeHtml(email.to_recipients || '')}
+                    </span>
+                    <span class="em-date">${formatFullDateTime(email.received_datetime)}</span>
                 </div>
                 ${email.cc_recipients ? `
-                <div class="email-meta-row">
-                    <div class="email-meta-label">${escapeHtml(t('tickets.reading_pane.meta_cc'))}</div>
-                    <div class="email-meta-value">${escapeHtml(email.cc_recipients)}</div>
+                <div class="email-meta-line em-cc">
+                    <span class="em-label">${escapeHtml(t('tickets.reading_pane.meta_cc'))}</span>
+                    <span>${escapeHtml(email.cc_recipients)}</span>
                 </div>
                 ` : ''}
             </div>
@@ -1922,42 +1964,51 @@ function displayEmail(email, recordings) {
         <div class="ticket-tags-bar" id="ticketTagsContainer"></div>
         <div class="ticket-watchers-bar" id="ticketWatchersContainer"></div>
         ${buildRecordingsStrip(currentRecordings)}
+        <!--
+          Phase 16c: ranked actions.
+
+          These were nine identically-weighted bordered buttons, so Reply — far and
+          away the most-used — looked exactly like Merge. Now: Reply is the primary,
+          Add note and Forward are plain secondaries, the five occasional actions
+          live behind More, and Delete sits apart on the right so it is never
+          adjacent to something you meant to click.
+        -->
         <div class="action-toolbar">
-            <button class="action-btn" onclick="openNoteModal()">
-                <span class="action-btn-icon">${icon('file-text')}</span>
-                <span>${escapeHtml(t('tickets.actions.add_note'))}</span>
+            <button class="act act-primary" onclick="openReplyModal()">
+                ${icon('reply')}<span>${escapeHtml(t('tickets.actions.reply'))}</span>
             </button>
-            <button class="action-btn" onclick="openReplyModal()">
-                <span class="action-btn-icon">↩️</span>
-                <span>${escapeHtml(t('tickets.actions.reply'))}</span>
+            <button class="act" onclick="openNoteModal()">
+                ${icon('file-text')}<span>${escapeHtml(t('tickets.actions.add_note'))}</span>
             </button>
-            <button class="action-btn" onclick="openForwardModal()">
-                <span class="action-btn-icon">${icon('arrow-right')}</span>
-                <span>${escapeHtml(t('tickets.actions.forward'))}</span>
+            <button class="act" onclick="openForwardModal()">
+                ${icon('arrow-right')}<span>${escapeHtml(t('tickets.actions.forward'))}</span>
             </button>
-            <button class="action-btn" onclick="openScheduleModal()">
-                <span class="action-btn-icon">${icon('calendar')}</span>
-                <span>${escapeHtml(t('tickets.actions.schedule'))}</span>
-            </button>
-            <button class="action-btn" onclick="openTicketAiChat()">
-                <span class="action-btn-icon">${icon('sparkles')}</span>
-                <span>${escapeHtml(t('tickets.actions.ask_ai'))}</span>
-            </button>
-            <button class="action-btn" onclick="showAuditHistory()">
-                <span class="action-btn-icon">${icon('clipboard')}</span>
-                <span>${escapeHtml(t('tickets.actions.audit'))}</span>
-            </button>
-            <button class="action-btn" onclick="openMergeModal()" title="Merge this ticket into another">
-                <span class="action-btn-icon">${icon('shuffle')}</span>
-                <span>Merge</span>
-            </button>
-            <button class="action-btn" onclick="requestCsatSurvey()" title="Send a satisfaction survey to the requester">
-                <span class="action-btn-icon">${icon('star')}</span>
-                <span>${escapeHtml(t('tickets.actions.request_feedback'))}</span>
-            </button>
-            <button class="action-btn action-btn-danger" onclick="deleteTicket()">
-                <span class="action-btn-icon">${icon('trash')}</span>
-                <span>${escapeHtml(t('tickets.actions.delete'))}</span>
+
+            <div class="act-more" id="actMore">
+                <button class="act" onclick="toggleActionMore(event)" aria-haspopup="true" aria-expanded="false">
+                    ${icon('more-horizontal')}<span>${escapeHtml(t('tickets.actions.more'))}</span>
+                </button>
+                <div class="act-menu" role="menu">
+                    <button role="menuitem" onclick="closeActionMore(); openScheduleModal()">
+                        ${icon('calendar')}<span>${escapeHtml(t('tickets.actions.schedule'))}</span>
+                    </button>
+                    <button role="menuitem" onclick="closeActionMore(); openTicketAiChat()">
+                        ${icon('sparkles')}<span>${escapeHtml(t('tickets.actions.ask_ai'))}</span>
+                    </button>
+                    <button role="menuitem" onclick="closeActionMore(); showAuditHistory()">
+                        ${icon('clipboard')}<span>${escapeHtml(t('tickets.actions.audit'))}</span>
+                    </button>
+                    <button role="menuitem" onclick="closeActionMore(); openMergeModal()">
+                        ${icon('shuffle')}<span>${escapeHtml(t('tickets.actions.merge'))}</span>
+                    </button>
+                    <button role="menuitem" onclick="closeActionMore(); requestCsatSurvey()">
+                        ${icon('star')}<span>${escapeHtml(t('tickets.actions.request_feedback'))}</span>
+                    </button>
+                </div>
+            </div>
+
+            <button class="act act-danger" onclick="deleteTicket()" title="${escapeHtml(t('tickets.actions.delete'))}">
+                ${icon('trash')}<span>${escapeHtml(t('tickets.actions.delete'))}</span>
             </button>
         </div>
         <div class="email-body">
@@ -1970,17 +2021,41 @@ function displayEmail(email, recordings) {
             <div id="timeEntriesContainer"></div>
             <div id="notesContainer"></div>
         </div>
+        </div><!-- /.rp-main -->
+        <aside class="rp-rail" id="ticketRail"></aside>
+        </div><!-- /.rp-layout -->
     ` + (isTrashed ? '</div>' : '');
 
     // Isolate the just-rendered email body in a shadow root (see emailBodyHost).
     hydrateEmailBodies(readingPane);
 
-    // Phase 4B: relocate the Properties/info panel to sit directly under the
-    // links bar (it's authored at the top of the template for variable scope,
-    // but reads better below the email header + links).
-    const propsPanelEl = readingPane.querySelector('#ticketPropertiesContainer');
-    const linksStripEl = readingPane.querySelector('.links-strip');
-    if (propsPanelEl && linksStripEl) linksStripEl.after(propsPanelEl);
+    // Phase 16c: build the properties rail.
+    //
+    // Everything that describes the ticket moves into a right-hand rail, leaving
+    // .rp-main as a single conversation column. Before this, nine full-width bands
+    // (links, properties, tags, watchers, actions, CMDB, custom fields, SLA, time)
+    // stacked between the subject and the message, so the customer's actual words
+    // were a thin slice in the middle and the chrome was the page.
+    //
+    // Done as DOM moves rather than by authoring the nodes in the rail directly,
+    // because these ids are contracts: async loaders fill them by id after render
+    // (loadTicketTags, loadCmdbObjects, loadSlaState, …) and mobile.js RELOCATES
+    // #ticketPropertiesContainer, #timeEntriesContainer and #cmdbObjectsContainer
+    // into full-screen sheets on small viewports. Moving existing nodes keeps every
+    // one of those contracts intact; re-authoring them would have quietly broken
+    // the mobile sheets.
+    //
+    // Order is deliberate: what you check most often is highest. Properties first
+    // (status/priority/owner), then SLA, then the things that are usually empty.
+    const railEl = readingPane.querySelector('#ticketRail');
+    if (railEl) {
+        ['#ticketPropertiesContainer', '#slaContainer', '#ticketTagsContainer',
+         '#ticketWatchersContainer', '#cmdbObjectsContainer', '#customFieldsContainer',
+         '#timeEntriesContainer'].forEach(sel => {
+            const node = readingPane.querySelector(sel);
+            if (node) railEl.appendChild(node);
+        });
+    }
 
     // Load full correspondence thread, notes, attachments and linked CMDB objects after rendering
     loadCorrespondenceThread(email.ticket_id);
@@ -3647,6 +3722,34 @@ function ticketSectionIsOpen(key) {
     } catch (e) { /* private mode — fall back to the default */ }
     return !!TICKET_SECTION_DEFAULT_OPEN[key];
 }
+
+// ---- Action bar "More" menu (Phase 16c) ----
+// A plain click-outside menu rather than a component: it holds five items and is
+// the only menu on this surface.
+function toggleActionMore(ev) {
+    if (ev) ev.stopPropagation();
+    const wrap = document.getElementById('actMore');
+    if (!wrap) return;
+    const open = wrap.classList.toggle('open');
+    const btn = wrap.querySelector('button[aria-haspopup]');
+    if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+function closeActionMore() {
+    const wrap = document.getElementById('actMore');
+    if (!wrap) return;
+    wrap.classList.remove('open');
+    const btn = wrap.querySelector('button[aria-haspopup]');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+
+document.addEventListener('click', e => {
+    const wrap = document.getElementById('actMore');
+    if (wrap && wrap.classList.contains('open') && !wrap.contains(e.target)) closeActionMore();
+});
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeActionMore();
+});
 
 function toggleTicketSection(key) {
     const el = document.querySelector('.ticket-section[data-section="' + key + '"]');

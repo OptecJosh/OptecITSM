@@ -28,7 +28,7 @@ $translationNamespaces = ['common', 'tickets'];
     <link rel="stylesheet" href="../../assets/css/theme.css?v=22">
     <link rel="stylesheet" href="../../assets/css/ui-scale.css?v=1">
     <?php /* Also requested unversioned — same stale-cache trap as activity.php. */ ?>
-    <link rel="stylesheet" href="../../assets/css/inbox.css?v=51">
+    <link rel="stylesheet" href="../../assets/css/inbox.css?v=52">
     <style>
         .triage-container { flex: 1; overflow-y: auto; padding: 30px 20px; }
         .page-title { font-size: 22px; font-weight: 600; color: var(--text, #333); margin: 0 0 6px 0; }

@@ -327,6 +327,9 @@ return [
         'request_feedback'     => 'Request feedback',
         'delete'               => 'Delete',
         'loading_attachments'  => 'Loading attachments...',
+        // Phase 16c: the occasional actions moved behind one menu.
+        'more'                 => 'More',
+        'merge'                => 'Merge',
     ],
 
     // CMDB-linked-objects section in the reading pane (below the email body).

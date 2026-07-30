@@ -57,6 +57,12 @@ try {
                 t.department_id,
                 t.assigned_analyst_id,
                 tp.name AS priority,
+                -- Phase 16c: the list row shows a status pill and a priority
+                -- colour bar, so it needs the configured colours. Both columns
+                -- already existed; the list simply never asked for them.
+                ts.colour AS status_colour,
+                ts.is_closed AS status_is_closed,
+                tp.colour AS priority_colour,
                 (SELECT COUNT(*) FROM emails WHERE ticket_id = t.id) as email_count
             FROM LatestEmails le
             INNER JOIN tickets t ON le.ticket_id = t.id
@@ -128,6 +134,7 @@ try {
         // Convert bit fields to boolean
         $email['is_read'] = (bool)$email['is_read'];
         $email['has_attachments'] = (bool)$email['has_attachments'];
+        $email['status_is_closed'] = (bool)($email['status_is_closed'] ?? false);
     }
 
     echo json_encode([

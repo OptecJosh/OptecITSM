@@ -34,7 +34,7 @@ $translationNamespaces = ['common', 'lms'];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('lms.settings.heading')); ?></title>
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/theme.css?v=22">
-    <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/inbox.css?v=53">
+    <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/inbox.css?v=54">
     <style>
         /* Pin the shared accent to the LMS blue so the tabs, buttons and focus
            rings read on-brand, as every other settings page does. */

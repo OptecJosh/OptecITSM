@@ -29,7 +29,7 @@ $translationNamespaces = ['common', 'system-wiki'];
     <script src="../assets/js/tz.js?v=1"></script>
     <script src="../assets/js/i18n.js?v=2"></script>
     <link rel="stylesheet" href="../assets/css/theme.css?v=22">
-    <link rel="stylesheet" href="../assets/css/inbox.css?v=53">
+    <link rel="stylesheet" href="../assets/css/inbox.css?v=54">
     <style>
         /* Module accent (red) — pinned so shared components pick it up */
         body { --accent: var(--wiki-accent, #c62828); }

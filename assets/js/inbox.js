@@ -1792,31 +1792,31 @@ function displayEmail(email, recordings) {
                     ${escapeHtml(t('tickets.reading_pane.properties_title'))}
                 </div>
                 <div class="ticket-properties-summary">
-                    <span class="ticket-properties-summary-item">
+                    <span class="ticket-properties-summary-item" data-sum="number">
                         <span class="ticket-properties-summary-label">${escapeHtml(t('tickets.reading_pane.ticket_label'))}</span>
                         <span class="ticket-properties-summary-value" id="summaryNumber">${escapeHtml(summaryNumber)}</span>
                     </span>
-                    <span class="ticket-properties-summary-item">
+                    <span class="ticket-properties-summary-item" data-sum="status">
                         <span class="ticket-properties-summary-label">${escapeHtml(t('tickets.reading_pane.summary_status'))}</span>
                         <span class="ticket-properties-summary-value" id="summaryStatus">${escapeHtml(summaryStatus)}</span>
                     </span>
-                    <span class="ticket-properties-summary-item">
+                    <span class="ticket-properties-summary-item" data-sum="priority">
                         <span class="ticket-properties-summary-label">${escapeHtml(t('tickets.reading_pane.field_priority'))}</span>
                         <span class="ticket-properties-summary-value" id="summaryPriority">${escapeHtml(summaryPriority)}</span>
                     </span>
-                    <span class="ticket-properties-summary-item">
+                    <span class="ticket-properties-summary-item" data-sum="type">
                         <span class="ticket-properties-summary-label">${escapeHtml(t('tickets.reading_pane.field_type'))}</span>
                         <span class="ticket-properties-summary-value" id="summaryType">${escapeHtml(summaryType)}</span>
                     </span>
-                    <span class="ticket-properties-summary-item">
+                    <span class="ticket-properties-summary-item" data-sum="category">
                         <span class="ticket-properties-summary-label">${escapeHtml(t('tickets.reading_pane.field_category'))}</span>
                         <span class="ticket-properties-summary-value" id="summaryCategory">${escapeHtml(summaryCategory)}</span>
                     </span>
-                    <span class="ticket-properties-summary-item">
+                    <span class="ticket-properties-summary-item" data-sum="company">
                         <span class="ticket-properties-summary-label">${escapeHtml(t('tickets.reading_pane.field_company'))}</span>
                         <span class="ticket-properties-summary-value" id="summaryCustomer">${escapeHtml(summaryCustomer)}</span>
                     </span>
-                    <span class="ticket-properties-summary-item">
+                    <span class="ticket-properties-summary-item" data-sum="owner">
                         <span class="ticket-properties-summary-label">${escapeHtml(t('tickets.reading_pane.summary_owner'))}</span>
                         <span class="ticket-properties-summary-value" id="summaryOwner">${escapeHtml(summaryOwner)}</span>
                     </span>
@@ -1961,8 +1961,12 @@ function displayEmail(email, recordings) {
             <span>${escapeHtml(t('tickets.actions.loading_attachments'))}</span>
         </div>
         ${buildLinksSection(email)}
-        <div class="ticket-tags-bar" id="ticketTagsContainer"></div>
-        <div class="ticket-watchers-bar" id="ticketWatchersContainer"></div>
+        <!-- Tags and watchers share one row rather than taking a full-width band
+             each. Empty, they used to cost two rows to say "none" twice. -->
+        <div class="ticket-meta-row">
+            <div class="ticket-tags-bar" id="ticketTagsContainer"></div>
+            <div class="ticket-watchers-bar" id="ticketWatchersContainer"></div>
+        </div>
         ${buildRecordingsStrip(currentRecordings)}
         <!--
           Phase 16c: ranked actions.
@@ -2047,14 +2051,23 @@ function displayEmail(email, recordings) {
     //
     // Order is deliberate: what you check most often is highest. Properties first
     // (status/priority/owner), then SLA, then the things that are usually empty.
+    //
+    // Tags and watchers are NOT here — they live beside the action bar in the main
+    // column, because they are things you DO to a ticket rather than facts about
+    // it, and they belong next to Add note.
     const railEl = readingPane.querySelector('#ticketRail');
     if (railEl) {
-        ['#ticketPropertiesContainer', '#slaContainer', '#ticketTagsContainer',
-         '#ticketWatchersContainer', '#cmdbObjectsContainer', '#customFieldsContainer',
-         '#timeEntriesContainer'].forEach(sel => {
+        ['#ticketPropertiesContainer', '#slaContainer', '#cmdbObjectsContainer',
+         '#customFieldsContainer', '#timeEntriesContainer'].forEach(sel => {
             const node = readingPane.querySelector(sel);
             if (node) railEl.appendChild(node);
         });
+
+        // Properties is a collapsible section in the rail, same as its siblings, so
+        // it opens according to the remembered choice rather than always sitting
+        // open at fifteen fields tall.
+        const props = railEl.querySelector('#ticketPropertiesContainer');
+        if (props && ticketPropsStartOpen()) props.classList.add('expanded');
     }
 
     // Load full correspondence thread, notes, attachments and linked CMDB objects after rendering
@@ -3691,11 +3704,28 @@ function formatNaiveFullDateTime(dateStr) {
 
 // Toggle ticket properties panel
 function toggleTicketProperties(event) {
-    event.stopPropagation();
+    if (event) event.stopPropagation();
     const container = document.getElementById('ticketPropertiesContainer');
-    if (container) {
-        container.classList.toggle('expanded');
+    if (!container) return;
+    const open = container.classList.toggle('expanded');
+    // In the rail this behaves like its sibling sections: the choice sticks across
+    // tickets and page loads. Outside the rail it is a transient dropdown, so
+    // there is nothing worth remembering.
+    if (container.closest('.rp-rail')) {
+        try { localStorage.setItem('ticketSection.props', open ? '1' : '0'); } catch (e) { /* private mode */ }
     }
+}
+
+/** Whether the rail's properties section should start open. Collapsed by default:
+ *  fifteen stacked selects is not an at-a-glance summary, which is what the head
+ *  is now for. */
+function ticketPropsStartOpen() {
+    try {
+        const v = localStorage.getItem('ticketSection.props');
+        if (v === '1') return true;
+        if (v === '0') return false;
+    } catch (e) { /* private mode */ }
+    return false;
 }
 
 /* ===== Collapsible reading-pane sections =====================================
@@ -3776,14 +3806,18 @@ function ticketSection(key, title, summary, actions, body) {
         </div>`;
 }
 
-// Close ticket properties panel when clicking outside
+// Close ticket properties panel when clicking outside.
+//
+// Only when it is genuinely a floating dropdown. Inside the rail it is a section
+// like SLA or Affected CIs, and collapsing it because the analyst clicked the
+// message would be maddening — you would lose the fields every time you looked
+// away from them.
 document.addEventListener('click', function(event) {
     const container = document.getElementById('ticketPropertiesContainer');
-    if (container && container.classList.contains('expanded')) {
-        // Check if click is outside the properties container
-        if (!container.contains(event.target)) {
-            container.classList.remove('expanded');
-        }
+    if (!container || !container.classList.contains('expanded')) return;
+    if (container.closest('.rp-rail')) return;
+    if (!container.contains(event.target)) {
+        container.classList.remove('expanded');
     }
 });
 

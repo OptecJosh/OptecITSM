@@ -39,7 +39,7 @@ try {
     <title><?php echo htmlspecialchars(t('tickets.help.page_title')); ?></title>
     <link rel="stylesheet" href="../assets/css/theme.css?v=22">
     <link rel="stylesheet" href="../assets/css/ui-scale.css?v=1">
-    <link rel="stylesheet" href="../assets/css/inbox.css?v=53">
+    <link rel="stylesheet" href="../assets/css/inbox.css?v=54">
     <style>
         .tk-help-container {
             display: flex;

@@ -689,18 +689,87 @@ body {
    Same nodes, same ids, same handlers — only the presentation changes. */
 
 /* Properties: an absolutely-positioned slide-down overlay in the old layout.
-   In the rail it is simply always open and in flow. */
-.rp-rail .ticket-properties-container { position: static; }
-.rp-rail .ticket-properties-header { display: none; }
+   In the rail it is a collapsible card exactly like SLA and Affected CIs beneath
+   it — fifteen always-open selects is a form, not a summary.
+
+   Collapsed, the head carries Status / Priority / Owner so the three values worth
+   glancing at are still there. Expanded, you get the full field set. The choice
+   sticks in localStorage, as its sibling sections' do. */
+.rp-rail .ticket-properties-container {
+    position: static;
+    margin: 0 0 var(--sp-2, 8px);
+    border: 1px solid var(--border-soft, #e3e8ea);
+    border-radius: var(--r-md, 8px);
+    background: var(--surface, #fff);
+    overflow: hidden;
+}
+
+.rp-rail .ticket-properties-header {
+    display: block;
+    padding: 8px 10px;
+    cursor: pointer;
+    background: none;
+    border: 0;
+}
+.rp-rail .ticket-properties-header:hover { background: var(--surface-hover, #f0f2f4); }
+
+.rp-rail .ticket-properties-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--fs-label, 11px);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-muted, #6b7280);
+}
+.rp-rail .ticket-properties-chevron {
+    font-size: 9px;
+    color: var(--text-faint, #9ca3af);
+    transition: transform var(--dur-fast, 0.12s) var(--ease, ease);
+}
+.rp-rail .ticket-properties-container.expanded .ticket-properties-chevron {
+    transform: rotate(180deg);
+}
+
+/* Collapsed summary: only the three that matter at a glance. The rest are one
+   click away and would wrap badly at 300px. */
+.rp-rail .ticket-properties-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    margin-top: 5px;
+    font-size: var(--fs-sm, 12px);
+}
+.rp-rail .ticket-properties-summary-item { display: inline-flex; gap: 4px; }
+.rp-rail .ticket-properties-summary-item:not([data-sum="status"]):not([data-sum="priority"]):not([data-sum="owner"]) {
+    display: none;
+}
+.rp-rail .ticket-properties-summary-label { display: none; }
+/* The SLA chip is redundant here — SLA has its own card immediately below. */
+.rp-rail .ticket-properties-summary .sla-chip { display: none !important; }
+.rp-rail .ticket-properties-summary-value {
+    color: var(--text, #333);
+    font-weight: 500;
+}
+/* Expanded, the head's job is done by the fields themselves. */
+.rp-rail .ticket-properties-container.expanded .ticket-properties-summary { display: none; }
+
 .rp-rail .ticket-properties-panel {
     position: static;
-    max-height: none;
-    opacity: 1;
-    overflow: visible;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
     background: transparent;
     border-bottom: 0;
     box-shadow: none;
     transition: none;
+}
+.rp-rail .ticket-properties-container.expanded .ticket-properties-panel {
+    max-height: none;
+    opacity: 1;
+    overflow: visible;
+    padding: 0 10px 10px;
 }
 /* One field per line: the rail is 300px, so the auto-fill grid would otherwise
    produce two cramped columns. */
@@ -720,15 +789,24 @@ body {
 .rp-rail .ticket-section-title { font-size: var(--fs-label, 11px); }
 .rp-rail .ticket-section-body { padding: 10px; }
 
-/* Tags and watchers each took a full-width row to say "none". In the rail they
-   are cards like everything else. */
-.rp-rail .ticket-tags-bar,
-.rp-rail .ticket-watchers-bar {
-    padding: 8px 10px;
-    margin-bottom: var(--sp-2, 8px);
-    background: var(--surface, #fff);
-    border: 1px solid var(--border-soft, #e3e8ea);
-    border-radius: var(--r-md, 8px);
+/* Tags + watchers: one shared row in the MAIN column, next to the action bar.
+   They are things you do to a ticket, not facts about it, so they belong beside
+   Add note rather than in the properties rail. Previously a full-width band each,
+   which cost two rows to say "none" twice. */
+.ticket-meta-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-4, 16px);
+    flex-wrap: wrap;
+    padding: 0 var(--sp-5, 24px);
+}
+/* The two bars manage their own inner layout; here they just stop being blocks.
+   24px horizontal padding matches .action-toolbar and .email-body, so tags line up
+   with Add note and with the message rather than sitting flush to the pane edge. */
+.ticket-meta-row > .ticket-tags-bar,
+.ticket-meta-row > .ticket-watchers-bar {
+    padding: 6px 0;
+    min-width: 0;
 }
 
 /* ============================================================

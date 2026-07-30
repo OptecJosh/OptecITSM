@@ -252,8 +252,8 @@ function sla_get_state(PDO $conn, int $ticket_id): array {
     // --- 6. Build status timeline from audit log ---
     // Initial state: default status when ticket was created (audit only records changes,
     // not the initial state). If we can't find a default status, fall back to "not pausing".
-    $defStatusStmt = $conn->query("SELECT name, pauses_sla FROM ticket_statuses WHERE is_default = 1 LIMIT 1");
-    $defStatus = $defStatusStmt->fetch(PDO::FETCH_ASSOC) ?: ['name' => null, 'pauses_sla' => 0];
+    $defStatusStmt = $conn->query("SELECT name, pauses_sla, is_closed FROM ticket_statuses WHERE is_default = 1 LIMIT 1");
+    $defStatus = $defStatusStmt->fetch(PDO::FETCH_ASSOC) ?: ['name' => null, 'pauses_sla' => 0, 'is_closed' => 0];
 
     $auditStmt = $conn->prepare("SELECT new_value, created_datetime
                                  FROM ticket_audit
@@ -269,13 +269,32 @@ function sla_get_state(PDO $conn, int $ticket_id): array {
         $statusFlags[strtolower($s['name'])] = ['pauses_sla' => (bool)$s['pauses_sla'], 'is_closed' => (bool)$s['is_closed']];
     }
 
-    // Timeline: array of { start: DateTimeImmutable UTC, status: name, pauses: bool }
-    $timeline = [['start' => $createdAt, 'status' => $defStatus['name'], 'pauses' => (bool)$defStatus['pauses_sla']]];
+    // Timeline: array of { start: DateTimeImmutable UTC, status: name, pauses: bool,
+    //                      _is_closed: bool }
+    //
+    // _is_closed was read by sla_compute_resolution() as its fallback for finding a
+    // close time, but never actually written here — the flag was looked up into
+    // $flags and then dropped. So that fallback was dead code and resolution depended
+    // entirely on tickets.closed_datetime being stamped. Now populated, which makes
+    // the fallback do its job: a ticket sitting in a closed status with no
+    // closed_datetime (a legacy row, or an import that carried the status but not the
+    // date) resolves off its status history instead of counting up forever.
+    $timeline = [[
+        'start'      => $createdAt,
+        'status'     => $defStatus['name'],
+        'pauses'     => (bool)$defStatus['pauses_sla'],
+        '_is_closed' => (bool)($defStatus['is_closed'] ?? false),
+    ]];
     foreach ($statusChanges as $sc) {
         $changedAt = new DateTimeImmutable($sc['created_datetime'], new DateTimeZone('UTC'));
         $newStatus = $sc['new_value'];
         $flags = $statusFlags[strtolower($newStatus)] ?? ['pauses_sla' => false, 'is_closed' => false];
-        $timeline[] = ['start' => $changedAt, 'status' => $newStatus, 'pauses' => $flags['pauses_sla']];
+        $timeline[] = [
+            'start'      => $changedAt,
+            'status'     => $newStatus,
+            'pauses'     => $flags['pauses_sla'],
+            '_is_closed' => $flags['is_closed'],
+        ];
     }
 
     // --- 7. Response SLA ---

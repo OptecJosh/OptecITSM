@@ -145,6 +145,26 @@ exists to prevent. `kpi_ticket_first_reply()` is called only from human send pat
 `api/tickets/send_email.php`, `api/messaging/send_message.php`,
 `api/messaging/send_template.php`.
 
+### Resolution: how the close time is found
+
+1. `tickets.closed_datetime`, stamped by `TicketsService::updateTicket` when the new
+   status has `is_closed = 1`.
+2. Failing that, the first timeline segment whose status is closed.
+
+Step 2 was dead until Phase 16g — the timeline builder looked up each status's
+`is_closed` flag and then dropped it instead of putting it on the segment, so
+resolution depended entirely on step 1. It now works, which matters for a ticket
+sitting in a closed status with no `closed_datetime`: a legacy row, or an import that
+carried the status but not the date. Without it, such a ticket counts up forever.
+
+**The panel is compute-on-read, so it has to be told to re-read.** Changing status or
+priority does not recompute anything server-side — nothing is stored — but the SLA
+panel already on screen keeps its old values until something calls `loadSlaState()`.
+Until 16g only opening a ticket and the CMDB link handlers did, so closing a ticket
+left "Resolution: On track" on screen and looked like the target had not been met.
+Any control that changes status, priority, the primary CI or the company must
+refresh it.
+
 ⚠️ **Do not detect this by scanning `emails` for `direction = 'Outbound'`.** Automated
 mail goes out through `includes/template_email.php` with exactly that direction, and
 the `new_ticket_email` template fires on creation — so counting any outbound row

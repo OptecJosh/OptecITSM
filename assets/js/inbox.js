@@ -3083,6 +3083,16 @@ async function assignStatus() {
             await logAudit(currentEmail.ticket_id, 'Status', oldValue, status);
             currentEmail.status = status;
             updatePropertiesSummary();
+            // A status change can settle or restart the SLA clock — closing satisfies
+            // the resolution target, and a pauses_sla status stops it — but the panel
+            // only ever re-read when a ticket was opened. So closing a ticket left
+            // "Resolution: On track" on screen, which read as the resolution target
+            // not being met when in fact the state was simply stale.
+            //
+            // The engine is compute-on-read, so nothing needs recomputing; the panel
+            // just has to ask again. Awaited after logAudit because the audit row IS
+            // the status history the timeline is rebuilt from.
+            if (typeof loadSlaState === 'function') loadSlaState(currentEmail.ticket_id);
             loadFolderCounts();
             loadEmails();
         } else {
@@ -3120,6 +3130,10 @@ async function assignPriority() {
             currentEmail.priority_id = priorityId === '' ? null : Number(priorityId);
             currentEmail.priority    = newLabel;
             updatePropertiesSummary();
+            // Priority selects which sla_policy_targets row applies, so changing it
+            // changes both targets outright. The panel has to re-read for the same
+            // reason as a status change.
+            if (typeof loadSlaState === 'function') loadSlaState(currentEmail.ticket_id);
             loadEmails();
         } else {
             showToast('Error assigning priority: ' + data.error, 'error');
@@ -6259,6 +6273,8 @@ async function setPriorityFromContext(priorityId) {
             const sel = document.getElementById('prioritySelect');
             if (sel) sel.value = priorityId === '' ? '' : String(priorityId);
             updatePropertiesSummary();
+            // Priority picks the targets, so the panel is stale until it re-reads.
+            if (typeof loadSlaState === 'function') loadSlaState(targetId);
         }
         loadEmails();
     } catch (error) {
@@ -6572,6 +6588,9 @@ async function setStatusFromContext(statusName) {
             const sel = document.getElementById('statusSelect');
             if (sel) sel.value = statusName;
             updatePropertiesSummary();
+            // Same reason as assignStatus(): closing settles the resolution target and
+            // a pausing status stops the clock, so the panel has to re-read.
+            if (typeof loadSlaState === 'function') loadSlaState(targetId);
         }
         loadFolderCounts();
         loadEmails();

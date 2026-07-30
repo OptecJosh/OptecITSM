@@ -116,6 +116,27 @@ Radio button, one of:
 - **Status change away from default** (e.g. ticket moves from *New*/*Open* to *In Progress* counts; outbound email alone doesn't)
 - **Either, whichever first** (default — analyst-acknowledgement of any kind stops the response clock)
 
+**How each is detected** (all three are live; until Phase 16e all three behaved as
+*status change*, so replying to a ticket never stopped the response clock):
+
+| Option | Signal |
+|---|---|
+| `status_change` | first `ticket_audit` row moving status away from the default |
+| `outbound_email` | `tickets.acknowledged_datetime` |
+| `either` | whichever of the two is earlier |
+
+`acknowledged_datetime` is stamped once, by a **human** send only:
+`api/tickets/send_email.php` (reply/forward), `api/messaging/send_message.php` and
+`send_template.php` (a channel reply), and the ticket-update path via
+`kpi_ticket_ack()`. It is the same field the KPI layer uses as its MTTA anchor, so
+the response SLA and MTTA cannot disagree about when a human first responded.
+
+⚠️ **Do not detect this by scanning `emails` for `direction = 'Outbound'`.** Automated
+mail goes out through `includes/template_email.php` with exactly that direction, and
+the `new_ticket_email` template fires on creation — so counting any outbound row
+marks practically every response SLA "met in 0 minutes". `webchatInsertOutbound()`
+is outbound too and posts the *AI's* answers, which is also not a first response.
+
 ---
 
 ## Out of scope for v1

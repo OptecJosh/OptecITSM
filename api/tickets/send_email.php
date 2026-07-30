@@ -146,6 +146,21 @@ try {
     // Save only the analyst's new content to DB (not the assembled thread)
     saveSentEmail($conn, $ticketId, $mailbox, $to, $cc, $subject, $body);
 
+    // Stamp the first-response time. This is what satisfies the response SLA under
+    // the 'outbound_email' and 'either' definitions, and it is the same field the
+    // KPI layer uses as its MTTA anchor — so replying now moves both, and they
+    // cannot disagree about when a human first responded.
+    //
+    // Only ever set once (the UPDATE is guarded on IS NULL), and best-effort: a
+    // failure here must not make a successfully sent email look like a failure to
+    // the analyst.
+    try {
+        require_once dirname(dirname(__DIR__)) . '/includes/kpi_instrument.php';
+        kpi_ticket_ack($conn, $ticketId);
+    } catch (Throwable $e) {
+        error_log('[sla] first-response stamp failed for ticket ' . $ticketId . ': ' . $e->getMessage());
+    }
+
     echo json_encode([
         'success' => true,
         'message' => 'Email sent successfully'

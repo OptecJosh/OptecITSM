@@ -163,7 +163,8 @@ function sla_get_state(PDO $conn, int $ticket_id): array {
 
     // --- 1. Load ticket ---
     $stmt = $conn->prepare("SELECT t.id, t.ticket_number, t.created_datetime, t.priority_id, t.status_id,
-                                   t.closed_datetime, t.tenant_id, ts.name AS current_status_name
+                                   t.closed_datetime, t.acknowledged_datetime, t.tenant_id,
+                                   ts.name AS current_status_name
                             FROM tickets t
                             LEFT JOIN ticket_statuses ts ON ts.id = t.status_id
                             WHERE t.id = ?");
@@ -363,24 +364,66 @@ function sla_write_snapshot(PDO $conn, int $ticketId, array $state, ?float $warn
 }
 
 /**
- * Compute response-time SLA state. The clock stops at the first response,
- * where "first response" is defined per the sla_first_response_definition
- * setting. v1 supports 'status_change' (first audit row that moves status
- * away from the default) for all three options — outbound-email detection
- * is deferred to a follow-up (see docs/sla.md).
+ * Compute response-time SLA state. The clock stops at the first response, where
+ * "first response" means whatever `sla_first_response_definition` says:
+ *
+ *   status_change   — the first audit row that moves status away from the default
+ *   outbound_email  — the first human reply/forward, i.e. tickets.acknowledged_datetime
+ *   either          — whichever of those happened first (the shipped default)
+ *
+ * Until now all three options behaved as `status_change`, so with the default
+ * setting of `either` an analyst could reply to a ticket repeatedly and the
+ * response SLA would keep counting down. The setting existed, the UI offered all
+ * three, and two of them did nothing.
+ *
+ * Why acknowledged_datetime rather than scanning `emails` for direction='Outbound':
+ * automated mail goes out through includes/template_email.php with exactly that
+ * direction, and `new_ticket_email` fires on creation. Counting any outbound row
+ * would mark practically every response SLA "met in 0 minutes" — quieter, and far
+ * worse, than the bug being fixed. acknowledged_datetime is only ever stamped by a
+ * human action (an analyst reply, or the ticket update path via kpi_ticket_ack), so
+ * it cannot be tripped by an auto-acknowledgement.
+ *
+ * Reading a stored timestamp does not break the compute-on-read rule: this is an
+ * event time, not a counter, and sla_compute_resolution already reads
+ * tickets.closed_datetime the same way.
  */
 function sla_compute_response(PDO $conn, array $ticket, array $priority, array $calendar, array $timeline, array $settings): array {
     $target = (int)$priority['sla_response_minutes'];
     $createdAt = $timeline[0]['start'];
 
-    // Find first response time. For v1: first non-default status change.
-    // 'outbound_email' and 'either' fall through to this same detection in v1.
-    $firstResponseAt = null;
-    foreach ($timeline as $i => $segment) {
-        if ($i === 0) continue; // skip the implicit initial segment
-        $firstResponseAt = $segment['start'];
-        break;
+    $definition = $settings['sla_first_response_definition'] ?? 'either';
+    if (!in_array($definition, ['status_change', 'outbound_email', 'either'], true)) {
+        $definition = 'either';
     }
+
+    // Candidate 1: the first status change away from the default.
+    $statusChangeAt = null;
+    if ($definition === 'status_change' || $definition === 'either') {
+        foreach ($timeline as $i => $segment) {
+            if ($i === 0) continue; // skip the implicit initial segment
+            $statusChangeAt = $segment['start'];
+            break;
+        }
+    }
+
+    // Candidate 2: the first human outbound reply.
+    $replyAt = null;
+    if (($definition === 'outbound_email' || $definition === 'either')
+        && !empty($ticket['acknowledged_datetime'])) {
+        try {
+            $replyAt = new DateTimeImmutable($ticket['acknowledged_datetime'], new DateTimeZone('UTC'));
+        } catch (Exception $e) { $replyAt = null; }
+    }
+
+    // Whichever came first. An ack stamped before the ticket's own creation time
+    // (clock skew, or a back-dated import) is ignored rather than producing a
+    // negative elapsed time.
+    $candidates = [];
+    foreach ([$statusChangeAt, $replyAt] as $c) {
+        if ($c !== null && $c >= $createdAt) $candidates[] = $c;
+    }
+    $firstResponseAt = $candidates ? min($candidates) : null;
 
     // Clock end = first response if it happened, else now
     $clockEnd = $firstResponseAt ?: new DateTimeImmutable('now', new DateTimeZone('UTC'));

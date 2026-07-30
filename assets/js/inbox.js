@@ -6990,6 +6990,7 @@ function renderSlaPanel(sla) {
                 <div class="sla-bar"><div class="sla-bar-fill" style="width: ${Math.min(100, target.percent)}%;"></div></div>
                 <div class="sla-row-meta">
                     Target ${fmt(target.target_minutes)} &middot; Elapsed ${fmt(target.elapsed_minutes)} &middot; ${remainingLabel}
+                    ${target.restarted_at ? `<span class="sla-restarted" title="This ticket was reopened, so the resolution target restarted from that point. Time accrued before the reopen is not counted.">&middot; restarted on reopen</span>` : ''}
                 </div>
             </div>
         `;

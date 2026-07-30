@@ -1978,6 +1978,15 @@ body.ticket-popout .ticket-toolbar {
     line-height: 1.4;
 }
 
+/* Phase 16i: says why a reopened ticket's resolution numbers went back to zero.
+   Dotted underline because it carries a title explaining the rule. */
+.sla-restarted {
+    color: var(--text-dim, #888);
+    font-style: italic;
+    border-bottom: 1px dotted var(--border, #d1d5db);
+    cursor: help;
+}
+
 /* --- Right-click context menu for email rows --- */
 .ticket-context-menu {
     position: fixed;

@@ -33,7 +33,7 @@ $translationNamespaces = ['common', 'network-mapper'];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars(t('network-mapper.index.browser_title')); ?></title>
     <link rel="stylesheet" href="../assets/css/theme.css?v=22">
-    <link rel="stylesheet" href="../assets/css/inbox.css?v=55">
+    <link rel="stylesheet" href="../assets/css/inbox.css?v=56">
     <style>
         body { --accent: var(--nm-accent, #06b6d4); background: var(--app-bg, #f5f5f5); height: 100vh; overflow: hidden; }
 

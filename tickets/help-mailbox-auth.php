@@ -30,7 +30,7 @@ $translationNamespaces = ['common', 'tickets'];
     <title>Mailbox Authentication — Admin Guide</title>
     <link rel="stylesheet" href="../assets/css/theme.css?v=22">
     <link rel="stylesheet" href="../assets/css/ui-scale.css?v=1">
-    <link rel="stylesheet" href="../assets/css/inbox.css?v=55">
+    <link rel="stylesheet" href="../assets/css/inbox.css?v=56">
     <style>
         .tk-help-container {
             display: flex;

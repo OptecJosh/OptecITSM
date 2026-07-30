@@ -96,6 +96,30 @@ Radio button, one of:
 ### 5. Reopened-ticket behaviour
 When a closed ticket is reopened, does the SLA continue from where it paused, or start fresh? Toggle. Default: *start fresh* (most desks).
 
+**Live since Phase 16i.** Before that the setting was validated on save and loaded
+into `$settings`, but no compute function read it, so every ticket behaved as
+`continue` — a ticket closed after 3h of a 4h target and then reopened had 1h left to
+solve a problem it had only just been told about again, and one closed after 5h came
+back already breached.
+
+| Value | Resolution clock |
+|---|---|
+| `reset` *(default)* | restarts from the moment of reopen; time accrued before the close is discarded |
+| `continue` | runs from ticket creation, so pre-close time still counts |
+
+The reopen point is the **most recent** closed → not-closed transition in the status
+history, so a ticket reopened repeatedly gets a fresh target each time rather than
+being measured from the first reopen forever. It depends on the `_is_closed` flag on
+timeline segments, which was only populated in 16g — before that there was nothing to
+detect a reopen from.
+
+**Only resolution resets.** The response target is untouched: the requester did hear
+back the first time, and un-achieving that would be rewriting history.
+
+When a reset is in effect the computed state carries `restarted_at`, and the reading
+pane appends "restarted on reopen" to the resolution row — otherwise a clock that has
+gone back to zero reads as a bug.
+
 ### 6. Breach warning
 - **Warning threshold** — at what % of the SLA elapsed should the ticket flag visually in the inbox (default 80%)
 - **Notify assignee at warning** — toggle, sends email

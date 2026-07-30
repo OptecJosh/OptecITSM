@@ -29,7 +29,7 @@ $translationNamespaces = ['common', 'tasks'];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('tasks.title') . ' ' . t('tasks.nav.table')); ?></title>
     <link rel="stylesheet" href="../../assets/css/theme.css?v=22">
-    <link rel="stylesheet" href="../../assets/css/inbox.css?v=55">
+    <link rel="stylesheet" href="../../assets/css/inbox.css?v=56">
     <link rel="stylesheet" href="../../assets/css/tasks.css?v=15">
     <link rel="stylesheet" href="../../assets/css/data-table.css?v=2">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>

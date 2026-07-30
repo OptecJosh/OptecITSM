@@ -186,7 +186,7 @@ function whAgo($s) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - Webhooks</title>
     <link rel="stylesheet" href="../../assets/css/theme.css?v=22">
-    <link rel="stylesheet" href="../../assets/css/inbox.css?v=55">
+    <link rel="stylesheet" href="../../assets/css/inbox.css?v=56">
     <style>
         /* Module accent: System = blue-grey. Pinned so shared components pick it up. */
         body {

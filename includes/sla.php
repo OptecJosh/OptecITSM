@@ -304,7 +304,7 @@ function sla_get_state(PDO $conn, int $ticket_id): array {
 
     // --- 8. Resolution SLA ---
     if (!empty($priority['sla_resolution_minutes'])) {
-        $state['resolution'] = sla_compute_resolution($ticket, $priority, $calendar, $timeline);
+        $state['resolution'] = sla_compute_resolution($ticket, $priority, $calendar, $timeline, $settings);
     }
 
     $state['enabled'] = true;
@@ -471,18 +471,57 @@ function sla_compute_response(PDO $conn, array $ticket, array $priority, array $
  * Compute resolution-time SLA state. The clock stops at ticket close time
  * (read from tickets.closed_datetime or the first audit row that lands on a
  * status with is_closed = 1).
+ *
+ * REOPENING (`sla_reopen_behaviour`, Phase 16i):
+ *
+ *   reset     — a reopened ticket gets a fresh resolution target, timed from the
+ *               moment it was reopened. Accrued time is discarded. The default, and
+ *               what most desks mean: the customer is waiting again from now.
+ *   continue  — the clock picks up where it left off, so time spent before the
+ *               close still counts against the target.
+ *
+ * The setting has existed since the engine shipped and was validated on save, but no
+ * compute function ever read it — so every ticket behaved as `continue`. A ticket
+ * closed after 3h of a 4h target and then reopened had 1h left to solve a problem it
+ * had only just been told about again, and one closed after 5h reopened already
+ * breached.
+ *
+ * Only RESOLUTION resets. The response target is not touched: the requester did hear
+ * back the first time round, and un-achieving that would be rewriting history.
  */
-function sla_compute_resolution(array $ticket, array $priority, array $calendar, array $timeline): array {
+function sla_compute_resolution(array $ticket, array $priority, array $calendar, array $timeline, array $settings): array {
     $target = (int)$priority['sla_resolution_minutes'];
     $createdAt = $timeline[0]['start'];
+
+    $reopenBehaviour = ($settings['sla_reopen_behaviour'] ?? 'reset') === 'continue' ? 'continue' : 'reset';
+
+    // The most recent closed -> not-closed transition. Latest, not first, so a ticket
+    // reopened repeatedly gets a fresh target each time rather than being measured
+    // from the first reopen forever.
+    $reopenedAt = null;
+    if ($reopenBehaviour === 'reset') {
+        $prevClosed = false;
+        foreach ($timeline as $segment) {
+            $isClosed = !empty($segment['_is_closed']);
+            if ($prevClosed && !$isClosed) $reopenedAt = $segment['start'];
+            $prevClosed = $isClosed;
+        }
+    }
+    $clockStart = $reopenedAt ?: $createdAt;
 
     $closedAt = null;
     if (!empty($ticket['closed_datetime'])) {
         $closedAt = new DateTimeImmutable($ticket['closed_datetime'], new DateTimeZone('UTC'));
-    } else {
-        // Walk the timeline for the first transition into a closed status
+        // A stored close that predates the current cycle belongs to a previous one.
+        // updateTicket NULLs closed_datetime on reopen so this should not arise, but
+        // a stale value would otherwise produce a negative elapsed time.
+        if ($closedAt < $clockStart) $closedAt = null;
+    }
+    if ($closedAt === null) {
+        // Walk the timeline for the first transition into a closed status within the
+        // current cycle.
         foreach ($timeline as $segment) {
-            if (!empty($segment['_is_closed'])) {
+            if (!empty($segment['_is_closed']) && $segment['start'] >= $clockStart) {
                 $closedAt = $segment['start'];
                 break;
             }
@@ -490,7 +529,8 @@ function sla_compute_resolution(array $ticket, array $priority, array $calendar,
     }
 
     $clockEnd = $closedAt ?: new DateTimeImmutable('now', new DateTimeZone('UTC'));
-    $elapsed = sla_elapsed_business_minutes($timeline, $createdAt, $clockEnd, $calendar);
+    // From $clockStart, not $createdAt — that is the whole of the reset.
+    $elapsed = sla_elapsed_business_minutes($timeline, $clockStart, $clockEnd, $calendar);
 
     $remaining = $target - $elapsed;
     $percent   = $target > 0 ? min(100, max(0, ($elapsed / $target) * 100)) : 0;
@@ -504,6 +544,9 @@ function sla_compute_resolution(array $ticket, array $priority, array $calendar,
         'breached'           => $breached,
         'achieved_at'        => $closedAt ? $closedAt->format('Y-m-d H:i:s') : null,
         'achieved_minutes'   => $closedAt ? $elapsed : null,
+        // Set only when this is a post-reopen cycle, so the panel can say why the
+        // numbers restarted. Without it, a reset clock looks like a bug.
+        'restarted_at'       => $reopenedAt ? $reopenedAt->format('Y-m-d H:i:s') : null,
     ];
 }
 

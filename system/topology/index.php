@@ -33,7 +33,7 @@ if (!isset($_SESSION['analyst_id'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - Topology</title>
     <link rel="stylesheet" href="<?php echo $path_prefix; ?>assets/css/theme.css?v=22">
-    <link rel="stylesheet" href="<?php echo $path_prefix; ?>assets/css/inbox.css">
+    <link rel="stylesheet" href="<?php echo $path_prefix; ?>assets/css/inbox.css?v=53">
     <style>
         body {
             /* System is the FIRST module whose DARK accent is a LIGHT colour (#90a4ae).

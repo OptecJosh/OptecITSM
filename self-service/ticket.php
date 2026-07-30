@@ -22,7 +22,7 @@ $translationNamespaces = ['common', 'self-service'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars(t('self-service.ticket.title')); ?></title>
-    <link rel="stylesheet" href="../assets/css/inbox.css">
+    <link rel="stylesheet" href="../assets/css/inbox.css?v=53">
     <style>
         body { overflow: auto; height: auto; background: #f5f5f5; }
 

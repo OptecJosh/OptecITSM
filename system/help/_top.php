@@ -18,7 +18,7 @@ $helpNav   = $helpNav  ?? ($helpTopic['sections'] ?? []);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>System Help — <?php echo htmlspecialchars($helpHero); ?></title>
     <link rel="stylesheet" href="../../assets/css/theme.css?v=22">
-    <link rel="stylesheet" href="../../assets/css/inbox.css">
+    <link rel="stylesheet" href="../../assets/css/inbox.css?v=53">
     <style>
         /* Pin the shared --accent (header/inbox.css primitives) to the System accent. */
         body {

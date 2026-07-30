@@ -31,7 +31,7 @@ $translationNamespaces = ['common', 'tickets'];
     <title><?php echo htmlspecialchars(t('tickets.title')); ?> - <?php echo htmlspecialchars(t('tickets.nav.inbox')); ?></title>
     <link rel="stylesheet" href="../assets/css/theme.css?v=22">
     <link rel="stylesheet" href="../assets/css/ui-scale.css?v=1">
-    <link rel="stylesheet" href="../assets/css/inbox.css?v=52">
+    <link rel="stylesheet" href="../assets/css/inbox.css?v=53">
     <link rel="stylesheet" href="../assets/css/mobile.css?v=29">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <?php echo Tz::scriptTag(); ?>

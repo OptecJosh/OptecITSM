@@ -37,7 +37,7 @@ $translationNamespaces = ['common', 'tickets'];
     <?php /* inbox.css was requested here WITHOUT a ?v=, so this page kept its own
              cache entry of a file every other page fetches as ?v=NN — it could serve
              an arbitrarily old copy indefinitely. */ ?>
-    <link rel="stylesheet" href="../assets/css/inbox.css?v=52">
+    <link rel="stylesheet" href="../assets/css/inbox.css?v=53">
     <style>
         .activity-container {
             display: flex;

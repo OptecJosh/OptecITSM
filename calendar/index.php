@@ -23,7 +23,7 @@ $translationNamespaces = ['common', 'calendar'];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('calendar.title')); ?></title>
     <link rel="stylesheet" href="../assets/css/theme.css?v=22">
-    <link rel="stylesheet" href="../assets/css/inbox.css?v=37">
+    <link rel="stylesheet" href="../assets/css/inbox.css?v=53">
     <link rel="stylesheet" href="../assets/css/calendar-grid.css?v=1">
     <link rel="stylesheet" href="../assets/css/itsm_calendar.css?v=6">
     <style>

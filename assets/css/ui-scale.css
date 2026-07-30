@@ -1,0 +1,80 @@
+/**
+ * Phase 16b — the scale layer: spacing, radius, elevation and type.
+ *
+ * theme.css already covers COLOUR comprehensively (surfaces, text, borders, the
+ * accent ramp, semantic pairs, and a per-module accent for all 24 modules). What it
+ * has never had is a scale for the other half of a design system, so every panel
+ * picked its own padding, every card its own radius and every shadow its own alpha.
+ * That is why the UI reads as slightly different software from screen to screen even
+ * when the colours match — the rhythm is ad hoc, not the palette.
+ *
+ * ── Why this is a separate file and not theme.css ────────────────────────────────
+ * 162 files pin `theme.css?v=22`. Adding tokens there means 162 cache-bust bumps in
+ * one commit, and any file missed silently gets the old stylesheet — a token that
+ * resolves to nothing, which in CSS fails to the fallback rather than erroring, so
+ * the breakage would be invisible in review.
+ *
+ * So the scale ships as its own stylesheet, loaded by the module being piloted
+ * (Tickets). When the rollout reaches the other modules, either add this <link>
+ * alongside theme.css per module, or fold it into theme.css and bump the version
+ * everywhere in a single mechanical commit that does nothing else.
+ *
+ * ── The scales ───────────────────────────────────────────────────────────────────
+ * Spacing is a 4px base. 4/8/12/16/24/32 covers every gap in this app; the point of
+ * a scale is that it EXCLUDES 5, 7, 13 and 18, which is where the drift came from.
+ *
+ * Radius is three steps, not seven: controls, panels, pills.
+ *
+ * Elevation is three steps built on --shadow (which theme.css already defines per
+ * palette, so shadows go from "black at 10%" in light to "black at 45%" in dark
+ * without any per-component dark-mode override).
+ */
+
+:root {
+    /* ---- Spacing: 4px base ------------------------------------------------ */
+    --sp-1: 4px;
+    --sp-2: 8px;
+    --sp-3: 12px;
+    --sp-4: 16px;
+    --sp-5: 24px;
+    --sp-6: 32px;
+
+    /* ---- Radius: controls / panels / pills -------------------------------- */
+    --r-sm: 4px;    /* inputs, buttons, small chips        */
+    --r-md: 8px;    /* cards, panels, modals               */
+    --r-full: 999px; /* pills, count badges, avatars       */
+
+    /* ---- Elevation -------------------------------------------------------- */
+    /* Built on --shadow so each palette's own alpha applies. */
+    --elev-1: 0 1px 3px var(--shadow, rgba(0, 0, 0, 0.1));
+    --elev-2: 0 4px 12px var(--shadow, rgba(0, 0, 0, 0.1));
+    --elev-3: 0 12px 32px var(--shadow, rgba(0, 0, 0, 0.1));
+
+    /* ---- Type ------------------------------------------------------------- */
+    /* The sizes already in use, named. 13px is the app's body size for dense
+       data views; 14px is comfortable text; 11px is the uppercase label. */
+    --fs-label: 11px;   /* uppercase section labels, meta  */
+    --fs-sm: 12px;      /* secondary meta                   */
+    --fs-base: 13px;    /* body in dense views              */
+    --fs-md: 14px;      /* comfortable body, row titles     */
+    --fs-lg: 16px;      /* panel headings                   */
+    --fs-xl: 20px;      /* page headings                    */
+
+    --lh-tight: 1.25;
+    --lh-base: 1.5;
+
+    /* ---- Motion ----------------------------------------------------------- */
+    /* One duration and one easing, so hovers and expands feel like one product. */
+    --dur-fast: 0.12s;
+    --dur-base: 0.2s;
+    --ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Respect the OS setting. Anything that animates below uses these tokens, so this
+   one block disables motion app-wide rather than per component. */
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --dur-fast: 0s;
+        --dur-base: 0s;
+    }
+}

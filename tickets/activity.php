@@ -6,6 +6,7 @@ session_start();
 require_once '../config.php';
 require_once '../includes/functions.php';
 require_once '../includes/i18n.php';
+require_once '../includes/theme.php';
 require_once '../includes/timezone.php';
 I18n::initFromSession();
 Tz::init();
@@ -19,27 +20,36 @@ requireModuleAccess('tickets');
 $analyst_name = $_SESSION['analyst_name'] ?? 'Analyst';
 $current_page = 'settings';
 $path_prefix = '../';
+// Phase 16b: this page sat outside the theming system entirely — no theme.php, no
+// data-theme attributes, no theme.css — so it stayed light however the analyst had
+// their theme set, and its tokens had nothing to resolve against.
+$theme_module = 'tickets';
 $translationNamespaces = ['common', 'tickets'];
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>" data-theme="<?php echo htmlspecialchars(Theme::active($theme_module)); ?>" data-theme-mode="<?php echo htmlspecialchars(Theme::mode($theme_module)); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars(t('tickets.activity.page_title')); ?></title>
-    <link rel="stylesheet" href="../assets/css/inbox.css">
+    <link rel="stylesheet" href="../assets/css/theme.css?v=22">
+    <link rel="stylesheet" href="../assets/css/ui-scale.css?v=1">
+    <?php /* inbox.css was requested here WITHOUT a ?v=, so this page kept its own
+             cache entry of a file every other page fetches as ?v=NN — it could serve
+             an arbitrarily old copy indefinitely. */ ?>
+    <link rel="stylesheet" href="../assets/css/inbox.css?v=51">
     <style>
         .activity-container {
             display: flex;
             height: calc(100vh - 48px);
-            background: #f5f5f5;
+            background: var(--app-bg, #f5f5f5);
         }
 
         /* Sidebar */
         .activity-sidebar {
             width: 280px;
-            background: white;
-            border-right: 1px solid #ddd;
+            background: var(--surface, white);
+            border-right: 1px solid var(--border, #ddd);
             display: flex;
             flex-direction: column;
             overflow-y: auto;
@@ -47,13 +57,13 @@ $translationNamespaces = ['common', 'tickets'];
 
         .sidebar-header {
             padding: 20px;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border-soft, #eee);
         }
 
         .sidebar-header h3 {
             font-size: 14px;
             font-weight: 600;
-            color: #333;
+            color: var(--text, #333);
             margin: 0 0 12px 0;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -62,7 +72,7 @@ $translationNamespaces = ['common', 'tickets'];
         .sidebar-header .search-box input {
             width: 100%;
             padding: 8px 12px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border, #ddd);
             border-radius: 4px;
             font-size: 13px;
             box-sizing: border-box;
@@ -70,7 +80,7 @@ $translationNamespaces = ['common', 'tickets'];
 
         .sidebar-header .search-box input:focus {
             outline: none;
-            border-color: #0078d4;
+            border-color: var(--accent, #0078d4);
         }
 
         .mailbox-list {
@@ -85,17 +95,17 @@ $translationNamespaces = ['common', 'tickets'];
             padding: 10px 20px;
             cursor: pointer;
             font-size: 14px;
-            color: #333;
+            color: var(--text, #333);
             transition: all 0.15s;
         }
 
         .mailbox-item:hover {
-            background: #e8f4fd;
+            background: var(--accent-soft, #e8f4fd);
         }
 
         .mailbox-item.active {
-            background: #0078d4;
-            color: white;
+            background: var(--accent, #0078d4);
+            color: var(--on-accent, white);
         }
 
         .mailbox-item .mailbox-name {
@@ -122,14 +132,14 @@ $translationNamespaces = ['common', 'tickets'];
 
         .sidebar-footer {
             padding: 15px 20px;
-            border-top: 1px solid #eee;
+            border-top: 1px solid var(--border-soft, #eee);
         }
 
         .back-link {
             display: flex;
             align-items: center;
             gap: 6px;
-            color: #0078d4;
+            color: var(--accent, #0078d4);
             text-decoration: none;
             font-size: 13px;
         }
@@ -148,13 +158,13 @@ $translationNamespaces = ['common', 'tickets'];
 
         .activity-header {
             padding: 20px 30px 0;
-            background: #f5f5f5;
+            background: var(--app-bg, #f5f5f5);
         }
 
         .activity-header h2 {
             margin: 0 0 15px 0;
             font-size: 20px;
-            color: #333;
+            color: var(--text, #333);
         }
 
         .activity-header .search-row {
@@ -166,14 +176,14 @@ $translationNamespaces = ['common', 'tickets'];
         .activity-header .search-row input {
             flex: 1;
             padding: 8px 12px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border, #ddd);
             border-radius: 4px;
             font-size: 13px;
         }
 
         .activity-header .search-row input:focus {
             outline: none;
-            border-color: #0078d4;
+            border-color: var(--accent, #0078d4);
         }
 
         .activity-table-wrap {
@@ -191,12 +201,12 @@ $translationNamespaces = ['common', 'tickets'];
         .activity-table-wrap thead th {
             position: sticky;
             top: 0;
-            background: #f5f5f5;
+            background: var(--app-bg, #f5f5f5);
             padding: 10px 12px;
             text-align: left;
             font-weight: 600;
-            color: #555;
-            border-bottom: 2px solid #ddd;
+            color: var(--text-muted, #555);
+            border-bottom: 2px solid var(--border, #ddd);
             white-space: nowrap;
         }
 
@@ -206,16 +216,19 @@ $translationNamespaces = ['common', 'tickets'];
         }
 
         .activity-table-wrap tbody tr:hover {
-            background: #e8f4fd;
+            background: var(--accent-soft, #e8f4fd);
         }
 
         .activity-table-wrap tbody tr.selected {
-            background: #d0e8f7;
+            /* A shade deeper than the hover tint above, plus a left rule, so
+               "selected" survives in a palette where the two tints converge. */
+            background: var(--accent-soft, #d0e8f7);
+            box-shadow: inset 3px 0 0 var(--accent, #0078d4);
         }
 
         .activity-table-wrap tbody td {
             padding: 10px 12px;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border-soft, #eee);
         }
 
         .activity-footer {
@@ -224,15 +237,15 @@ $translationNamespaces = ['common', 'tickets'];
             justify-content: space-between;
             align-items: center;
             font-size: 13px;
-            color: #666;
-            border-top: 1px solid #ddd;
-            background: white;
+            color: var(--text-muted, #666);
+            border-top: 1px solid var(--border, #ddd);
+            background: var(--surface, white);
         }
 
         /* Processing log panel */
         .log-panel {
-            border-top: 1px solid #ddd;
-            background: white;
+            border-top: 1px solid var(--border, #ddd);
+            background: var(--surface, white);
             max-height: 280px;
             display: flex;
             flex-direction: column;
@@ -243,7 +256,7 @@ $translationNamespaces = ['common', 'tickets'];
             justify-content: space-between;
             align-items: center;
             padding: 10px 30px;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border-soft, #eee);
         }
 
         .log-panel-header strong {
@@ -257,8 +270,8 @@ $translationNamespaces = ['common', 'tickets'];
         }
 
         .log-panel-body pre {
-            background: #f5f5f5;
-            border: 1px solid #ddd;
+            background: var(--app-bg, #f5f5f5);
+            border: 1px solid var(--border, #ddd);
             border-radius: 4px;
             padding: 12px;
             font-size: 12px;
@@ -270,8 +283,8 @@ $translationNamespaces = ['common', 'tickets'];
         .badge-imported {
             display: inline-block;
             padding: 2px 8px;
-            background: #d4edda;
-            color: #155724;
+            background: var(--success-bg, #d4edda);
+            color: var(--success-text, #155724);
             border-radius: 10px;
             font-size: 11px;
         }
@@ -279,8 +292,8 @@ $translationNamespaces = ['common', 'tickets'];
         .badge-rejected {
             display: inline-block;
             padding: 2px 8px;
-            background: #f8d7da;
-            color: #721c24;
+            background: var(--danger-bg, #f8d7da);
+            color: var(--danger-text, #721c24);
             border-radius: 10px;
             font-size: 11px;
         }
@@ -288,14 +301,14 @@ $translationNamespaces = ['common', 'tickets'];
         .empty-state {
             text-align: center;
             padding: 60px 20px;
-            color: #999;
+            color: var(--text-faint, #999);
         }
 
         .empty-state svg {
             width: 48px;
             height: 48px;
             margin-bottom: 15px;
-            stroke: #ccc;
+            stroke: var(--border, #ccc);
         }
     </style>
 </head>

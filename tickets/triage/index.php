@@ -7,70 +7,77 @@
 session_start();
 require_once '../../config.php';
 require_once '../../includes/i18n.php';
+require_once '../../includes/theme.php';
 require_once '../../includes/timezone.php';
 I18n::initFromSession();
 Tz::init();
 
 $current_page = 'triage';
 $path_prefix = '../../';
+// Phase 16b: as with activity.php, this page had no theme.php, no data-theme
+// attributes and no theme.css, so it ignored the analyst's theme entirely.
+$theme_module = 'tickets';
 $translationNamespaces = ['common', 'tickets'];
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>">
+<html lang="<?php echo htmlspecialchars(I18n::getLocale()); ?>" data-theme="<?php echo htmlspecialchars(Theme::active($theme_module)); ?>" data-theme-mode="<?php echo htmlspecialchars(Theme::mode($theme_module)); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Desk - <?php echo htmlspecialchars(t('tickets.triage.title')); ?></title>
-    <link rel="stylesheet" href="../../assets/css/inbox.css">
+    <link rel="stylesheet" href="../../assets/css/theme.css?v=22">
+    <link rel="stylesheet" href="../../assets/css/ui-scale.css?v=1">
+    <?php /* Also requested unversioned — same stale-cache trap as activity.php. */ ?>
+    <link rel="stylesheet" href="../../assets/css/inbox.css?v=51">
     <style>
         .triage-container { flex: 1; overflow-y: auto; padding: 30px 20px; }
-        .page-title { font-size: 22px; font-weight: 600; color: #333; margin: 0 0 6px 0; }
-        .page-subtitle { font-size: 13px; color: #888; margin: 0 0 24px 0; max-width: 760px; }
-        .settings-card { background: #fff; border-radius: 8px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 24px; }
+        .page-title { font-size: 22px; font-weight: 600; color: var(--text, #333); margin: 0 0 6px 0; }
+        .page-subtitle { font-size: 13px; color: var(--text-dim, #888); margin: 0 0 24px 0; max-width: 760px; }
+        .settings-card { background: var(--surface, #fff); border-radius: var(--r-md, 8px); padding: var(--sp-5, 24px); box-shadow: var(--elev-1, 0 1px 4px rgba(0,0,0,0.08)); margin-bottom: 24px; }
 
-        .triage-info { display: flex; gap: 12px; align-items: flex-start; background: #eef4f8; border: 1px solid #d5e3ec; border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; max-width: 860px; }
-        .triage-info svg { flex-shrink: 0; color: #4a7a96; margin-top: 1px; }
-        .triage-info .ti-text { font-size: 12.5px; color: #38596b; line-height: 1.5; }
-        .triage-info .ti-text strong { color: #1f3d4d; }
-        .triage-info .ti-title { display: block; font-weight: 600; color: #1f3d4d; margin-bottom: 3px; font-size: 13px; }
+        .triage-info { display: flex; gap: 12px; align-items: flex-start; background: var(--accent-soft, #eef4f8); border: 1px solid var(--border, #d5e3ec); border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; max-width: 860px; }
+        .triage-info svg { flex-shrink: 0; color: var(--accent, #0078d4); margin-top: 1px; }
+        .triage-info .ti-text { font-size: 12.5px; color: var(--text-muted, #38596b); line-height: 1.5; }
+        .triage-info .ti-text strong { color: var(--text, #333); }
+        .triage-info .ti-title { display: block; font-weight: 600; color: var(--text, #333); margin-bottom: 3px; font-size: 13px; }
 
         .btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; border-radius: 6px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; transition: all 0.15s; }
-        .btn-primary { background: #546e7a; color: #fff; }
-        .btn-primary:hover { background: #455a64; }
-        .btn-secondary { background: #eceff1; color: #455a64; }
-        .btn-secondary:hover { background: #cfd8dc; }
+        .btn-primary { background: var(--accent, #0078d4); color: var(--on-accent, #fff); }
+        .btn-primary:hover { background: var(--accent-hover, #005a9e); }
+        .btn-secondary { background: var(--surface-3, #f3f4f6); color: var(--text, #333); }
+        .btn-secondary:hover { background: var(--surface-hover, #e5e7eb); }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         table.triage { width: 100%; border-collapse: collapse; font-size: 13px; }
-        table.triage th { text-align: left; color: #888; font-weight: 600; font-size: 12px; padding: 8px 10px; border-bottom: 1px solid #eee; }
-        table.triage td { padding: 10px; border-bottom: 1px solid #f2f2f2; color: #444; vertical-align: middle; }
+        table.triage th { text-align: left; color: var(--text-dim, #888); font-weight: 600; font-size: 12px; padding: 8px 10px; border-bottom: 1px solid var(--border-soft, #eee); }
+        table.triage td { padding: 10px; border-bottom: 1px solid var(--border-soft, #eee); color: var(--text, #333); vertical-align: middle; }
         table.triage tr:last-child td { border-bottom: none; }
-        .sender-name { font-weight: 600; color: #333; }
-        .sender-addr { color: #888; font-size: 12px; }
-        .domain-chip { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; background: #ede7f6; color: #5e35b1; }
-        .domain-chip.freemail { background: #fff3e0; color: #ef6c00; }
+        .sender-name { font-weight: 600; color: var(--text, #333); }
+        .sender-addr { color: var(--text-dim, #888); font-size: 12px; }
+        .domain-chip { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; background: var(--accent-soft, #e8f4fd); color: var(--accent, #0078d4); }
+        .domain-chip.freemail { background: var(--warning-bg, #fff3e0); color: var(--warning-text, #92400e); }
         .subject-cell { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .table-action-btn { background: #546e7a; color: #fff; border: none; cursor: pointer; padding: 6px 14px; font-size: 12px; font-weight: 600; border-radius: 5px; }
-        .table-action-btn:hover { background: #455a64; }
-        .empty-row td { text-align: center; color: #aaa; padding: 36px; font-style: italic; }
+        .table-action-btn { background: var(--accent, #0078d4); color: var(--on-accent, #fff); border: none; cursor: pointer; padding: 6px 14px; font-size: 12px; font-weight: 600; border-radius: 5px; }
+        .table-action-btn:hover { background: var(--accent-hover, #005a9e); }
+        .empty-row td { text-align: center; color: var(--text-faint, #999); padding: 36px; font-style: italic; }
 
         /* Modal — namespaced (tr-) so it doesn't inherit inbox.css's global .modal. */
         .tr-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 2100; align-items: center; justify-content: center; }
         .tr-modal-overlay.open { display: flex; }
-        .tr-modal { background: #fff; border-radius: 10px; width: 480px; max-width: 92vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
-        .tr-modal-header { padding: 20px 24px; border-bottom: 1px solid #eee; font-size: 16px; font-weight: 600; color: #333; }
+        .tr-modal { background: var(--surface, #fff); border-radius: 10px; width: 480px; max-width: 92vw; max-height: 90vh; overflow-y: auto; box-shadow: var(--elev-3, 0 10px 40px rgba(0,0,0,0.2)); }
+        .tr-modal-header { padding: 20px 24px; border-bottom: 1px solid var(--border-soft, #eee); font-size: 16px; font-weight: 600; color: var(--text, #333); }
         .tr-modal-body { padding: 20px 24px; }
-        .tr-modal-footer { padding: 16px 24px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 10px; }
+        .tr-modal-footer { padding: 16px 24px; border-top: 1px solid var(--border-soft, #eee); display: flex; justify-content: flex-end; gap: 10px; }
         .form-field { margin-bottom: 16px; }
-        .form-field label { display: block; font-size: 13px; font-weight: 600; color: #444; margin-bottom: 4px; }
-        .form-field select, .form-field input[type=text] { width: 100%; padding: 9px 11px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px; font-family: inherit; box-sizing: border-box; }
-        .form-field select:focus, .form-field input:focus { outline: none; border-color: #546e7a; }
+        .form-field label { display: block; font-size: 13px; font-weight: 600; color: var(--text, #333); margin-bottom: 4px; }
+        .form-field select, .form-field input[type=text] { width: 100%; padding: 9px 11px; border: 1px solid var(--border, #ddd); border-radius: 5px; font-size: 13px; font-family: inherit; box-sizing: border-box; }
+        .form-field select:focus, .form-field input:focus { outline: none; border-color: var(--accent, #0078d4); }
         .checkbox-field { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 6px; }
         .checkbox-field input { margin-top: 3px; }
-        .checkbox-field .cb-label { font-size: 13px; color: #444; }
-        .checkbox-field .cb-label span { display: block; color: #999; font-size: 12px; }
-        .triage-email-summary { font-size: 12px; color: #777; background: #f7f8f9; border-radius: 6px; padding: 10px 12px; margin-bottom: 16px; }
-        .freemail-note { font-size: 12px; color: #ef6c00; margin-bottom: 12px; }
+        .checkbox-field .cb-label { font-size: 13px; color: var(--text, #333); }
+        .checkbox-field .cb-label span { display: block; color: var(--text-faint, #999); font-size: 12px; }
+        .triage-email-summary { font-size: 12px; color: var(--text-muted, #666); background: var(--surface-2, #fafafa); border-radius: 6px; padding: 10px 12px; margin-bottom: 16px; }
+        .freemail-note { font-size: 12px; color: var(--warning-text, #92400e); margin-bottom: 12px; }
     </style>
 </head>
 <body>

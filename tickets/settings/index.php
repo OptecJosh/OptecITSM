@@ -5684,7 +5684,8 @@ $translationNamespaces = ['common', 'tickets'];
             };
             setRadio('slaPriorityChange', s.sla_priority_change_behaviour || 'forward');
             setRadio('slaReopen', s.sla_reopen_behaviour || 'reset');
-            setRadio('slaFirstResponse', s.sla_first_response_definition || 'either');
+            // 16f: matches the seeded default. Only a reply satisfies a response target.
+            setRadio('slaFirstResponse', s.sla_first_response_definition || 'outbound_email');
         }
 
         async function saveSlaGlobalSettings() {

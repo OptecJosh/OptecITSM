@@ -114,28 +114,42 @@ Equivalent to ServiceNow's "Effective from" pattern.
 Radio button, one of:
 - **Outbound email only** (Reply or Forward to the requester counts; nothing else does)
 - **Status change away from default** (e.g. ticket moves from *New*/*Open* to *In Progress* counts; outbound email alone doesn't)
-- **Either, whichever first** (default — analyst-acknowledgement of any kind stops the response clock)
+- **Either, whichever first** (analyst-acknowledgement of any kind stops the response clock)
 
-**How each is detected** (all three are live; until Phase 16e all three behaved as
-*status change*, so replying to a ticket never stopped the response clock):
+**Outbound email only is the default** (Phase 16f). A response target measures how
+long the requester waited to *hear back*; moving a ticket to *In Progress* is not
+hearing back.
+
+**How each is detected.** All three are live — until 16e all three behaved as *status
+change*, so replying never stopped the response clock:
 
 | Option | Signal |
 |---|---|
 | `status_change` | first `ticket_audit` row moving status away from the default |
-| `outbound_email` | `tickets.acknowledged_datetime` |
+| `outbound_email` | `tickets.first_reply_datetime` |
 | `either` | whichever of the two is earlier |
 
-`acknowledged_datetime` is stamped once, by a **human** send only:
-`api/tickets/send_email.php` (reply/forward), `api/messaging/send_message.php` and
-`send_template.php` (a channel reply), and the ticket-update path via
-`kpi_ticket_ack()`. It is the same field the KPI layer uses as its MTTA anchor, so
-the response SLA and MTTA cannot disagree about when a human first responded.
+### Two timestamps, not one
+
+These look interchangeable and are not. Keeping them apart is what makes
+*outbound email only* actually mean it:
+
+| Column | Means | Stamped by | Used for |
+|---|---|---|---|
+| `acknowledged_datetime` | someone picked this up | status change, owner change, **or** a reply | KPI **MTTA** |
+| `first_reply_datetime` | someone answered the requester | a reply, only | **response SLA** |
+
+`kpi_ticket_ack()` fires on any status or owner change, so pointing the response SLA
+at it would let a status change satisfy `outbound_email` — precisely what that option
+exists to prevent. `kpi_ticket_first_reply()` is called only from human send paths:
+`api/tickets/send_email.php`, `api/messaging/send_message.php`,
+`api/messaging/send_template.php`.
 
 ⚠️ **Do not detect this by scanning `emails` for `direction = 'Outbound'`.** Automated
 mail goes out through `includes/template_email.php` with exactly that direction, and
 the `new_ticket_email` template fires on creation — so counting any outbound row
 marks practically every response SLA "met in 0 minutes". `webchatInsertOutbound()`
-is outbound too and posts the *AI's* answers, which is also not a first response.
+is outbound too and posts the *AI's* answers, which is also not a reply.
 
 ---
 

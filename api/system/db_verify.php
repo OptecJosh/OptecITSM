@@ -602,6 +602,10 @@ $schema = [
         'stream_id'             => 'INT NULL',            // NOC / SOC
         'playbook_eligible'     => 'TINYINT(1) NULL',     // NULL=unknown, 1=yes, 0=no
         'acknowledged_datetime' => 'DATETIME NULL',       // first human ack (MTTA anchor)
+        // Phase 16f: first human REPLY to the requester. Distinct from the ack above
+        // — acknowledging is picking the ticket up, replying is answering. The
+        // response SLA reads this one.
+        'first_reply_datetime'  => 'DATETIME NULL',
         'customer_id'           => 'INT NULL',            // Customers module link
         // 13a: which of the customer's contacts this ticket concerns. NULL means
         // "the customer's default", not "nobody", so existing tickets are
@@ -4877,6 +4881,31 @@ try {
         }
     }
 
+    // Phase 16f: promote the first-response definition off 'either'.
+    //
+    // Existing installs hold 'either' because that was the seeded default and,
+    // until 16e, every option behaved as 'status_change' anyway — so no one could
+    // have chosen 'either' on its merits; the value is an artefact, not a decision.
+    // Response targets are meant to measure how long the requester waited to hear
+    // back, so only a reply should satisfy one.
+    //
+    // Runs BEFORE the seed block below (which is INSERT IGNORE and would not touch
+    // an existing row), and only ever rewrites the exact old default — an admin who
+    // has since chosen 'status_change', or who picks 'either' deliberately from now
+    // on, is left alone.
+    if ($tableExists('system_settings')) {
+        try {
+            $st = $conn->prepare("UPDATE system_settings SET setting_value = 'outbound_email'
+                                   WHERE setting_key = 'sla_first_response_definition'
+                                     AND setting_value = 'either'");
+            $st->execute();
+            if ($st->rowCount() > 0) {
+                $results[] = ['table' => 'system_settings', 'status' => 'updated',
+                              'details' => ["sla_first_response_definition: 'either' -> 'outbound_email' (only a reply satisfies the response SLA)"]];
+            }
+        } catch (Exception $e) { /* setting absent — the seed below plants it */ }
+    }
+
     // Seed default system_settings rows for the SLA toggles. INSERT IGNORE
     // so they only land on first run; existing values aren't overwritten.
     if ($tableExists('system_settings')) {
@@ -4887,7 +4916,10 @@ try {
             'sla_warning_threshold_percent'   => '80',
             'sla_notify_assignee_at_warning'  => '1',
             'sla_notify_lead_at_breach'       => '1',
-            'sla_first_response_definition'   => 'either',
+            // Phase 16f: a response target measures how long the requester waited to
+            // hear back, so only a reply satisfies it. Was 'either', which let a
+            // status change stop the response clock without anyone answering.
+            'sla_first_response_definition'   => 'outbound_email',
             // Shared secret for HTTP-triggered cron worker; random per install
             'sla_cron_token'                  => bin2hex(random_bytes(16)),
             // Min seconds between successful cron runs — protects against

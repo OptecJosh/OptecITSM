@@ -778,6 +778,13 @@ CREATE TABLE IF NOT EXISTS `tickets` (
     `stream_id`             INT NULL,
     `playbook_eligible`     TINYINT(1) NULL,
     `acknowledged_datetime` DATETIME NULL,
+    -- Phase 16f: when a human first REPLIED to the requester, which is a different
+    -- fact from acknowledged_datetime above. Acknowledging is picking the ticket up
+    -- (a status or owner change); replying is answering the customer. MTTA measures
+    -- the first, the response SLA measures the second, and conflating them let a
+    -- status change satisfy a response target nobody had responded to.
+    -- Stamped once, only by a human send path (email reply/forward, channel reply).
+    `first_reply_datetime`  DATETIME NULL,
     `customer_id`           INT NULL,
     -- 13a: which of the customer's contacts this ticket actually concerns.
     -- NULL means "whoever the customer's default contact is" rather than "no

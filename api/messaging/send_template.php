@@ -95,14 +95,15 @@ try {
 
     $conn->prepare("UPDATE tickets SET updated_datetime = UTC_TIMESTAMP() WHERE id = ?")->execute([$ticketId]);
 
-    // Same as send_message.php: an analyst chose to send this, so it counts as the
-    // first response. (Contrast webchatInsertOutbound, which posts the AI's answers
-    // and deliberately does not stamp.)
+    // Same as send_message.php: an analyst chose to send this, so it is a reply.
+    // (Contrast webchatInsertOutbound, which posts the AI's answers, and
+    // template_email.php, which sends automated notices — neither stamps.)
     try {
         require_once dirname(dirname(__DIR__)) . '/includes/kpi_instrument.php';
+        kpi_ticket_first_reply($conn, $ticketId);
         kpi_ticket_ack($conn, $ticketId);
     } catch (Throwable $e) {
-        error_log('[sla] first-response stamp failed for ticket ' . $ticketId . ': ' . $e->getMessage());
+        error_log('[sla] first-reply stamp failed for ticket ' . $ticketId . ': ' . $e->getMessage());
     }
 
     echo json_encode(['success' => true, 'message' => 'Template sent']);

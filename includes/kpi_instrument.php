@@ -15,12 +15,42 @@ function kpi_tier_rank(?string $tier): int {
     return ['L1' => 1, 'L2' => 2, 'L3' => 3][$tier ?? ''] ?? 0;
 }
 
-/** Stamp the first-acknowledged time if not already set. */
+/**
+ * Stamp the first-acknowledged time if not already set.
+ *
+ * "Acknowledged" = a human picked this ticket up. Called on a status change, an
+ * owner change, or a reply — any of those means someone has it. This is the MTTA
+ * anchor and NOT what the response SLA measures; see kpi_ticket_first_reply().
+ */
 function kpi_ticket_ack(PDO $conn, int $ticketId): void {
     try {
         $conn->prepare("UPDATE tickets SET acknowledged_datetime = UTC_TIMESTAMP() WHERE id = ? AND acknowledged_datetime IS NULL")
              ->execute([$ticketId]);
     } catch (Exception $e) { error_log('[kpi] ack stamp: ' . $e->getMessage()); }
+}
+
+/**
+ * Stamp the first-reply time if not already set — Phase 16f.
+ *
+ * Deliberately separate from acknowledged_datetime, because the two answer
+ * different questions and a desk cares about both:
+ *
+ *   acknowledged_datetime  someone picked this up   (status/owner change, or a reply)
+ *   first_reply_datetime   someone answered the customer      (a reply, only)
+ *
+ * The response SLA reads THIS one. Moving a ticket to In Progress is not a response
+ * to the person waiting for one, and treating it as one made the response target
+ * satisfiable without ever contacting them.
+ *
+ * Only ever called from a human send path — never from includes/template_email.php
+ * (automated acknowledgements, assignment and closure notices) and never from
+ * webchatInsertOutbound() (posts the AI's answers in assist mode). Set once.
+ */
+function kpi_ticket_first_reply(PDO $conn, int $ticketId): void {
+    try {
+        $conn->prepare("UPDATE tickets SET first_reply_datetime = UTC_TIMESTAMP() WHERE id = ? AND first_reply_datetime IS NULL")
+             ->execute([$ticketId]);
+    } catch (Exception $e) { error_log('[kpi] first-reply stamp: ' . $e->getMessage()); }
 }
 
 /**

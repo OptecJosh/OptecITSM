@@ -163,7 +163,7 @@ function sla_get_state(PDO $conn, int $ticket_id): array {
 
     // --- 1. Load ticket ---
     $stmt = $conn->prepare("SELECT t.id, t.ticket_number, t.created_datetime, t.priority_id, t.status_id,
-                                   t.closed_datetime, t.acknowledged_datetime, t.tenant_id,
+                                   t.closed_datetime, t.first_reply_datetime, t.tenant_id,
                                    ts.name AS current_status_name
                             FROM tickets t
                             LEFT JOIN ticket_statuses ts ON ts.id = t.status_id
@@ -368,21 +368,24 @@ function sla_write_snapshot(PDO $conn, int $ticketId, array $state, ?float $warn
  * "first response" means whatever `sla_first_response_definition` says:
  *
  *   status_change   — the first audit row that moves status away from the default
- *   outbound_email  — the first human reply/forward, i.e. tickets.acknowledged_datetime
- *   either          — whichever of those happened first (the shipped default)
+ *   outbound_email  — the first human reply, i.e. tickets.first_reply_datetime
+ *   either          — whichever of those happened first
  *
- * Until now all three options behaved as `status_change`, so with the default
- * setting of `either` an analyst could reply to a ticket repeatedly and the
- * response SLA would keep counting down. The setting existed, the UI offered all
- * three, and two of them did nothing.
+ * The shipped default is `outbound_email`: a response target measures how long the
+ * requester waited to hear back, and moving a ticket to In Progress is not hearing
+ * back. `either` remains available for desks that count picking a ticket up as an
+ * acknowledgement.
  *
- * Why acknowledged_datetime rather than scanning `emails` for direction='Outbound':
- * automated mail goes out through includes/template_email.php with exactly that
- * direction, and `new_ticket_email` fires on creation. Counting any outbound row
- * would mark practically every response SLA "met in 0 minutes" — quieter, and far
- * worse, than the bug being fixed. acknowledged_datetime is only ever stamped by a
- * human action (an analyst reply, or the ticket update path via kpi_ticket_ack), so
- * it cannot be tripped by an auto-acknowledgement.
+ * It reads first_reply_datetime and NOT acknowledged_datetime, even though the two
+ * look interchangeable. They are not: acknowledged_datetime is the MTTA anchor and
+ * is stamped on any status or owner change, so using it would have let a status
+ * change satisfy `outbound_email` — the very thing that setting exists to prevent.
+ *
+ * It also does not scan `emails` for direction='Outbound', which is the obvious
+ * implementation and a trap: automated mail goes out through
+ * includes/template_email.php with exactly that direction and `new_ticket_email`
+ * fires on creation, so counting any outbound row marks practically every response
+ * SLA "met in 0 minutes". first_reply_datetime is stamped only by a human send.
  *
  * Reading a stored timestamp does not break the compute-on-read rule: this is an
  * event time, not a counter, and sla_compute_resolution already reads
@@ -392,9 +395,9 @@ function sla_compute_response(PDO $conn, array $ticket, array $priority, array $
     $target = (int)$priority['sla_response_minutes'];
     $createdAt = $timeline[0]['start'];
 
-    $definition = $settings['sla_first_response_definition'] ?? 'either';
+    $definition = $settings['sla_first_response_definition'] ?? 'outbound_email';
     if (!in_array($definition, ['status_change', 'outbound_email', 'either'], true)) {
-        $definition = 'either';
+        $definition = 'outbound_email';
     }
 
     // Candidate 1: the first status change away from the default.
@@ -407,12 +410,12 @@ function sla_compute_response(PDO $conn, array $ticket, array $priority, array $
         }
     }
 
-    // Candidate 2: the first human outbound reply.
+    // Candidate 2: the first human reply to the requester.
     $replyAt = null;
     if (($definition === 'outbound_email' || $definition === 'either')
-        && !empty($ticket['acknowledged_datetime'])) {
+        && !empty($ticket['first_reply_datetime'])) {
         try {
-            $replyAt = new DateTimeImmutable($ticket['acknowledged_datetime'], new DateTimeZone('UTC'));
+            $replyAt = new DateTimeImmutable($ticket['first_reply_datetime'], new DateTimeZone('UTC'));
         } catch (Exception $e) { $replyAt = null; }
     }
 

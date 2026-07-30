@@ -105,14 +105,15 @@ try {
 
     $conn->prepare("UPDATE tickets SET updated_datetime = UTC_TIMESTAMP() WHERE id = ?")->execute([$ticketId]);
 
-    // An analyst replying on a channel is a first response just as much as an email
-    // reply is, so it satisfies the response SLA and anchors MTTA. Set once, and
-    // best-effort — the message has already gone out.
+    // An analyst replying on a channel answers the customer just as an email reply
+    // does, so it stamps the first-reply time (which satisfies the response SLA) and
+    // the ack time. Set once, best-effort — the message has already gone out.
     try {
         require_once dirname(dirname(__DIR__)) . '/includes/kpi_instrument.php';
+        kpi_ticket_first_reply($conn, $ticketId);
         kpi_ticket_ack($conn, $ticketId);
     } catch (Throwable $e) {
-        error_log('[sla] first-response stamp failed for ticket ' . $ticketId . ': ' . $e->getMessage());
+        error_log('[sla] first-reply stamp failed for ticket ' . $ticketId . ': ' . $e->getMessage());
     }
 
     echo json_encode(['success' => true, 'message' => 'Message sent']);

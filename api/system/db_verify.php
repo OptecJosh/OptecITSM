@@ -4623,6 +4623,25 @@ try {
         } catch (Exception $e) {}
     }
 
+    // --- Repair: the default SLA policy must be active ------------------------
+    // sla_resolve_policy() looks the fallback up with `is_default = 1 AND
+    // is_active = 1`, so a default that has been switched off matches nothing and
+    // every company without its own assignment silently gets no SLA at all — no
+    // targets, no breach warnings, no error. save_sla_policy.php now forces the
+    // default active, but installs that reached this state before that fix need
+    // putting right, and it is invisible from the settings screen (the row just
+    // reads "(inactive)" next to the Default badge).
+    if ($tableExists('sla_policies')) {
+        try {
+            $stranded = (int) $conn->query("SELECT COUNT(*) FROM sla_policies WHERE is_default = 1 AND is_active = 0")->fetchColumn();
+            if ($stranded > 0) {
+                $conn->exec("UPDATE sla_policies SET is_active = 1 WHERE is_default = 1 AND is_active = 0");
+                $results[] = ['table' => 'sla_policies', 'status' => 'updated',
+                              'details' => ['Reactivated the default SLA policy — while it was inactive, every company without its own assignment had no SLA']];
+            }
+        } catch (Exception $e) { /* non-fatal */ }
+    }
+
     // --- One-time SLA policy backfill ----------------------------------------
     // Seeds the Default policy and copies each priority's existing sla_* targets
     // into it, so the engine (which now reads sla_policy_targets) computes exactly

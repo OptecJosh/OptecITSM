@@ -1342,6 +1342,7 @@ $translationNamespaces = ['common', 'tickets'];
                         <?php echo htmlspecialchars(t('tickets.sla.policies.field_default')); ?>
                     </label>
                     <p style="color:var(--text-muted,#666);font-size:12px;margin-top:6px;"><?php echo htmlspecialchars(t('tickets.sla.policies.default_hint')); ?></p>
+                    <p id="spDefaultNote" style="color:var(--text-muted,#666);font-size:12px;margin-top:6px;display:none;"></p>
                 </div>
                 <div class="form-group">
                     <label class="toggle-label">
@@ -1351,6 +1352,7 @@ $translationNamespaces = ['common', 'tickets'];
                         </span>
                         <?php echo htmlspecialchars(t('tickets.settings.modals.lookup.active_label')); ?>
                     </label>
+                    <p id="spActiveNote" style="color:var(--text-muted,#666);font-size:12px;margin-top:6px;display:none;"></p>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeSlaPolicyModal()"><?php echo htmlspecialchars(t('common.cancel')); ?></button>
@@ -5565,6 +5567,8 @@ $translationNamespaces = ['common', 'tickets'];
             document.getElementById('spDescription').value = '';
             document.getElementById('spDefault').checked = false;
             document.getElementById('spActive').checked = true;
+            document.getElementById('spDefault').dataset.currentDefault = '0';
+            syncSlaPolicyToggles();
             document.getElementById('slaPolicyModal').classList.add('active');
         }
 
@@ -5577,8 +5581,56 @@ $translationNamespaces = ['common', 'tickets'];
             document.getElementById('spDescription').value = p.description || '';
             document.getElementById('spDefault').checked = !!p.is_default;
             document.getElementById('spActive').checked = !!p.is_active;
+            document.getElementById('spDefault').dataset.currentDefault = p.is_default ? '1' : '0';
+            syncSlaPolicyToggles();
             document.getElementById('slaPolicyModal').classList.add('active');
         }
+
+        // Both toggles are constrained, and saying so up front beats failing on
+        // save. The current default can't switch itself off — one policy must
+        // always be the fallback, so the default moves by promoting a different
+        // policy. And whatever holds the default has to stay active, because
+        // sla_resolve_policy() looks for `is_default = 1 AND is_active = 1`; an
+        // inactive default matches nothing and every company without its own
+        // assignment quietly loses SLA.
+        function syncSlaPolicyToggles() {
+            const def       = document.getElementById('spDefault');
+            const act       = document.getElementById('spActive');
+            const defNote   = document.getElementById('spDefaultNote');
+            const actNote   = document.getElementById('spActiveNote');
+            const isCurrentDefault = def.dataset.currentDefault === '1';
+
+            // Dimming is done here rather than in inbox.css, which has no
+            // disabled state for .toggle-slider — adding one means bumping the
+            // shared ?v= on all 170 files that pin that stylesheet, which does
+            // not belong in a bug fix.
+            const dim = (input, off) => {
+                const sw = input.closest('.toggle-switch');
+                if (sw) sw.style.opacity = off ? '0.5' : '';
+                const lbl = input.closest('.toggle-label');
+                if (lbl) lbl.style.cursor = off ? 'not-allowed' : '';
+            };
+
+            def.disabled = isCurrentDefault;
+            dim(def, isCurrentDefault);
+            defNote.textContent = isCurrentDefault
+                ? 'This is the current default. To move it, edit the policy you want instead and turn its Default policy on.'
+                : '';
+            defNote.style.display = isCurrentDefault ? '' : 'none';
+
+            if (def.checked) {
+                act.checked = true;
+                act.disabled = true;
+                actNote.textContent = 'The default policy is always active — the SLA engine falls back to it.';
+                actNote.style.display = '';
+            } else {
+                act.disabled = false;
+                actNote.style.display = 'none';
+            }
+            dim(act, act.disabled);
+        }
+
+        document.getElementById('spDefault').addEventListener('change', syncSlaPolicyToggles);
 
         function closeSlaPolicyModal() {
             document.getElementById('slaPolicyModal').classList.remove('active');

@@ -6,8 +6,12 @@
  *
  * Exactly one policy is the default (the fallback for companies with no
  * assignment), so setting is_default here clears it on every other policy.
- * The default policy can't be deactivated — it's the safety net the engine
- * falls back to.
+ *
+ * Two invariants, both because sla_resolve_policy() reads the default with
+ * `is_default = 1 AND is_active = 1`:
+ *   - the default is always active (is_default = 1 forces is_active = 1);
+ *   - there is always exactly one, so the default moves by promoting another
+ *     policy rather than by switching this one off.
  */
 session_start(['read_and_close' => true]);
 require_once '../../config.php';
@@ -40,15 +44,24 @@ try {
     $cs->execute($id ? [$name, $id] : [$name]);
     if ($cs->fetch()) throw new Exception('An SLA policy with that name already exists');
 
-    // The default policy must stay active and stay the default.
+    // The default has to be active, because sla_resolve_policy() looks it up with
+    // `is_default = 1 AND is_active = 1`. An inactive default matches nothing, so
+    // every company without its own assignment silently loses SLA entirely — no
+    // targets, no breach warnings, no error anywhere. This used to be reachable:
+    // the "must stay active" rule below only fired for a policy that was ALREADY
+    // the default, so promoting an inactive policy (or adding one with Default on
+    // and Active off) produced exactly that dead install.
+    if ($isDefault) $isActive = 1;
+
+    // The default policy must stay the default — it can only move by promoting
+    // another policy, never by switching this one off and leaving none.
     if ($id) {
         $cur = $conn->prepare("SELECT is_default FROM sla_policies WHERE id = ?");
         $cur->execute([$id]);
         $row = $cur->fetch(PDO::FETCH_ASSOC);
         if (!$row) throw new Exception('SLA policy not found');
-        if ((int)$row['is_default'] === 1) {
-            if (!$isDefault) throw new Exception('Make another policy the default first — one policy must always be the fallback.');
-            $isActive = 1;
+        if ((int)$row['is_default'] === 1 && !$isDefault) {
+            throw new Exception('Make another policy the default first — one policy must always be the fallback.');
         }
     }
 

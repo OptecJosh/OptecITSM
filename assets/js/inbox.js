@@ -4548,18 +4548,29 @@ function watcherPickerOutside(e) {
     if (picker && !e.target.closest('.watcher-add-wrap')) { picker.hidden = true; document.removeEventListener('click', watcherPickerOutside); }
 }
 
+// Search box built once, results redrawn on their own — see renderTagPicker for
+// why re-rendering an input from its own oninput costs you the focus.
 function renderWatcherPicker(ticketId, filter) {
     const picker = document.getElementById('watcherPicker');
     if (!picker) return;
-    const q = (filter || '').toLowerCase();
+    picker.innerHTML = `
+        <div class="tag-picker-head"><input type="text" id="watcherSearch" placeholder="Add analyst…" oninput="renderWatcherPickerList(${ticketId}, this.value)" value="${escapeHtml(filter || '')}"></div>
+        <div class="tag-picker-list"></div>`;
+    renderWatcherPickerList(ticketId, filter);
+}
+
+function renderWatcherPickerList(ticketId, filter) {
+    const picker = document.getElementById('watcherPicker');
+    if (!picker) return;
+    const listEl = picker.querySelector('.tag-picker-list');
+    if (!listEl) return;
+    const q = (filter || '').trim().toLowerCase();
     const watchingIds = ticketWatchers.map(w => w.analyst_id);
     const list = (analysts || []).filter(a => !watchingIds.includes(a.id) && (!q || (a.full_name || '').toLowerCase().includes(q)));
     const items = list.slice(0, 50).map(a =>
         `<div class="watcher-opt" onclick="addWatcher(${ticketId}, ${a.id})">${escapeHtml(a.full_name)}</div>`
     ).join('');
-    picker.innerHTML = `
-        <div class="tag-picker-head"><input type="text" id="watcherSearch" placeholder="Add analyst…" oninput="renderWatcherPicker(${ticketId}, this.value)" value="${escapeHtml(filter || '')}"></div>
-        <div class="tag-picker-list">${items || '<div class="tag-picker-empty">No matching analysts</div>'}</div>`;
+    listEl.innerHTML = items || '<div class="tag-picker-empty">No matching analysts</div>';
 }
 
 async function addWatcher(ticketId, analystId) {
@@ -4567,8 +4578,18 @@ async function addWatcher(ticketId, analystId) {
         const res = await fetch(API_BASE + 'add_ticket_watcher.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ticket_id: ticketId, analyst_id: analystId }) });
         const data = await res.json();
         if (!data.success) throw new Error(data.error || 'Failed');
+        // loadTicketWatchers redraws the bar, and #watcherPicker sits inside it,
+        // so the element this re-render targets is a fresh hidden one — the
+        // picker closed on every pick and had to be reopened to add a second
+        // watcher. Reopen it, cleared and focused, ready for the next name.
         await loadTicketWatchers(ticketId);
-        renderWatcherPicker(ticketId, '');
+        const picker = document.getElementById('watcherPicker');
+        if (picker) {
+            renderWatcherPicker(ticketId, '');
+            picker.hidden = false;
+            const s = document.getElementById('watcherSearch');
+            if (s) s.focus();
+        }
     } catch (err) { showToast('Error: ' + err.message, 'error'); }
 }
 
@@ -4723,22 +4744,43 @@ function tagPickerOutside(e) {
     }
 }
 
+// The search box is built once, here, and never again while the picker is open.
+// It used to be rendered by the same innerHTML assignment as the results, and
+// its own oninput triggered that assignment — so every keystroke destroyed the
+// element being typed into and replaced it with a fresh one. Focus went with the
+// old node, which is why you got one letter per click back into the box.
+// Everything that changes as you type is redrawn by renderTagPickerList below,
+// leaving the input node itself untouched along with its focus and caret.
 function renderTagPicker(ticketId, filter) {
     const picker = document.getElementById('tagPicker');
     if (!picker) return;
-    const q = (filter || '').toLowerCase();
+    picker.innerHTML = `
+        <div class="tag-picker-head"><input type="text" id="tagPickerSearch" placeholder="Filter or create…" oninput="renderTagPickerList(${ticketId}, this.value)" value="${escapeHtml(filter || '')}"></div>
+        <div class="tag-picker-list"></div>
+        <div class="tag-picker-create-wrap"></div>`;
+    renderTagPickerList(ticketId, filter);
+}
+
+function renderTagPickerList(ticketId, filter) {
+    const picker = document.getElementById('tagPicker');
+    if (!picker) return;
+    const listEl = picker.querySelector('.tag-picker-list');
+    const createEl = picker.querySelector('.tag-picker-create-wrap');
+    if (!listEl || !createEl) return;
+
+    // Trimmed, so trailing whitespace neither hides a matching tag nor offers to
+    // create a duplicate of one that already exists.
+    const q = (filter || '').trim().toLowerCase();
     const list = ticketTagsAll.filter(t => !q || t.name.toLowerCase().includes(q));
     const items = list.map(t => {
         const on = currentTicketTagIds.includes(t.id);
         return `<label class="tag-opt"><input type="checkbox" ${on ? 'checked' : ''} onchange="toggleTicketTag(${ticketId}, ${t.id})"><span class="tag-dot" style="background:${escapeHtml(t.colour || '#6b7280')}"></span>${escapeHtml(t.name)}</label>`;
     }).join('');
-    const exact = ticketTagsAll.some(t => t.name.toLowerCase() === q);
-    const create = (filter && filter.trim() && !exact)
-        ? `<div class="tag-picker-create" onclick="createAndAddTag(${ticketId})">+ Create &ldquo;${escapeHtml(filter.trim())}&rdquo;</div>` : '';
-    picker.innerHTML = `
-        <div class="tag-picker-head"><input type="text" id="tagPickerSearch" placeholder="Filter or create…" oninput="renderTagPicker(${ticketId}, this.value)" value="${escapeHtml(filter || '')}"></div>
-        <div class="tag-picker-list">${items || '<div class="tag-picker-empty">No matching tags</div>'}</div>
-        ${create}`;
+    listEl.innerHTML = items || '<div class="tag-picker-empty">No matching tags</div>';
+
+    const exact = ticketTagsAll.some(t => t.name.trim().toLowerCase() === q);
+    createEl.innerHTML = (q && !exact)
+        ? `<div class="tag-picker-create" onclick="createAndAddTag(${ticketId})">+ Create &ldquo;${escapeHtml((filter || '').trim())}&rdquo;</div>` : '';
 }
 
 async function toggleTicketTag(ticketId, tagId) {
@@ -4760,7 +4802,12 @@ async function createAndAddTag(ticketId) {
         await loadAllTicketTags();
         if (!currentTicketTagIds.includes(data.id)) currentTicketTagIds.push(data.id);
         await saveTicketTags(ticketId);
+        // The tag exists and is applied now, so the search term has stopped being
+        // a "create" candidate — clear it and hand focus back so the next tag can
+        // be typed straight away.
         renderTagPicker(ticketId, '');
+        const search = document.getElementById('tagPickerSearch');
+        if (search) search.focus();
     } catch (err) { showToast('Error: ' + err.message, 'error'); }
 }
 
@@ -4773,11 +4820,28 @@ async function saveTicketTags(ticketId) {
         const data = await res.json();
         if (!data.success) throw new Error(data.error || 'Failed to save tags');
         currentTicketTagIds = (data.tags || []).map(t => t.id);
+
+        // renderTicketTagsBar rewrites the whole bar, and #tagPicker lives inside
+        // it — so the open dropdown is replaced by a fresh hidden one. The old
+        // code then asked the NEW element whether it was open, which it never is,
+        // so ticking a tag silently closed the picker and you had to reopen it for
+        // every single tag. Carry the open state and the search text across the
+        // rebuild instead.
+        const openPicker = document.getElementById('tagPicker');
+        const wasOpen = !!openPicker && !openPicker.hidden;
+        const searchEl = document.getElementById('tagPickerSearch');
+        const searchVal = searchEl ? searchEl.value : '';
+
         renderTicketTagsBar(ticketId);
-        const picker = document.getElementById('tagPicker');
-        if (picker && !picker.hidden) {
-            const s = document.getElementById('tagPickerSearch');
-            renderTagPicker(ticketId, s ? s.value : '');
+
+        if (wasOpen) {
+            const picker = document.getElementById('tagPicker');
+            if (picker) {
+                renderTagPicker(ticketId, searchVal);
+                picker.hidden = false;
+                const s = document.getElementById('tagPickerSearch');
+                if (s) { s.focus(); s.setSelectionRange(s.value.length, s.value.length); }
+            }
         }
     } catch (err) { showToast('Error: ' + err.message, 'error'); }
 }
@@ -4817,10 +4881,32 @@ async function loadCannedResponses() {
     } catch (e) { /* picker will show empty */ }
 }
 
+// Shell built once; only the results list is redrawn as you type. The old
+// version rebuilt the whole picker from the search box's own oninput, which cost
+// the focus after every character — and quietly wiped whatever had been typed
+// into "Save current message as…" and the Shared checkbox along with it.
 function renderCannedPicker(filter) {
     const picker = document.getElementById('cannedPicker');
     if (!picker) return;
-    const q = (filter || '').toLowerCase();
+    picker.innerHTML = `
+        <div class="canned-head">
+            <input type="text" id="cannedSearch" placeholder="Search responses…" oninput="renderCannedList(this.value)" value="${escapeHtml(filter || '')}">
+        </div>
+        <div class="canned-list"></div>
+        <div class="canned-save">
+            <input type="text" id="cannedNewName" placeholder="Save current message as…">
+            ${cannedCanManageShared ? '<label class="canned-shared"><input type="checkbox" id="cannedNewShared"> Shared</label>' : ''}
+            <button class="btn btn-secondary" onclick="saveCannedFromEditor()">Save</button>
+        </div>`;
+    renderCannedList(filter);
+}
+
+function renderCannedList(filter) {
+    const picker = document.getElementById('cannedPicker');
+    if (!picker) return;
+    const listEl = picker.querySelector('.canned-list');
+    if (!listEl) return;
+    const q = (filter || '').trim().toLowerCase();
     const list = cannedResponses.filter(r => !q || r.name.toLowerCase().includes(q) || (r.folder || '').toLowerCase().includes(q));
     const items = list.map(r => `
         <div class="canned-item" onclick="insertCanned(${r.id})">
@@ -4830,16 +4916,7 @@ function renderCannedPicker(filter) {
                 ${(r.is_own || (r.is_shared && cannedCanManageShared)) ? `<span class="canned-del" title="Delete" onclick="event.stopPropagation();deleteCanned(${r.id})">${icon('trash')}</span>` : ''}
             </span>
         </div>`).join('');
-    picker.innerHTML = `
-        <div class="canned-head">
-            <input type="text" id="cannedSearch" placeholder="Search responses…" oninput="renderCannedPicker(this.value)" value="${escapeHtml(filter || '')}">
-        </div>
-        <div class="canned-list">${items || '<div class="canned-empty">No responses yet — save the current message below.</div>'}</div>
-        <div class="canned-save">
-            <input type="text" id="cannedNewName" placeholder="Save current message as…">
-            ${cannedCanManageShared ? '<label class="canned-shared"><input type="checkbox" id="cannedNewShared"> Shared</label>' : ''}
-            <button class="btn btn-secondary" onclick="saveCannedFromEditor()">Save</button>
-        </div>`;
+    listEl.innerHTML = items || '<div class="canned-empty">No responses yet — save the current message below.</div>';
 }
 
 // Insert the rendered body (placeholders resolved for the open ticket) at the cursor.
@@ -4886,9 +4963,11 @@ async function deleteCanned(id) {
         const data = await res.json();
         if (!data.success) throw new Error(data.error || 'Delete failed');
         showToast('Response deleted', 'success');
+        // List only — a full rebuild here would discard anything half-typed into
+        // the save row just because a different response was deleted.
         await loadCannedResponses();
         const s = document.getElementById('cannedSearch');
-        renderCannedPicker(s ? s.value : '');
+        renderCannedList(s ? s.value : '');
     } catch (err) { showToast('Error: ' + err.message, 'error'); }
 }
 

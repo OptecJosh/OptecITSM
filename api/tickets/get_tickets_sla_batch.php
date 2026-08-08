@@ -38,11 +38,13 @@ $ids = array_slice($ids, 0, 200);
 try {
     $conn = connectToDatabase();
     $out = [];
+    $states = [];
     $analystId = (int)$_SESSION['analyst_id'];
     foreach ($ids as $id) {
         // Multi-tenancy: silently skip ids in companies this analyst can't access.
         if (!analystCanAccessTicket($conn, $analystId, $id)) continue;
         $state = sla_get_state($conn, $id);
+        $states[$id] = $state;
         if ($state['enabled']) {
             // Slim the payload: callers only need the response/resolution data + the
             // priority-name for the inbox indicator. Drop the heavy nested calendar.
@@ -56,6 +58,15 @@ try {
             ];
         }
     }
+
+    // The rows on screen have just had their live SLA computed, so correct the
+    // snapshot cache for any that have changed state since it was last stamped.
+    // Without this the list pill (live, from the states above) and a saved SLA
+    // queue (cached) can disagree about the very same row — a ticket showing
+    // "breached" here while still sitting in a "met" queue, until the breach cron
+    // next runs. Usually writes nothing; never affects this response.
+    sla_sync_snapshots($conn, $states);
+
     echo json_encode(['success' => true, 'sla' => $out]);
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);

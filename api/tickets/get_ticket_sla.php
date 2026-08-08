@@ -36,6 +36,13 @@ try {
         exit;
     }
     $state = sla_get_state($conn, $ticketId);
+
+    // Opening the ticket is the moment its live SLA and the cached snapshot are
+    // most likely to be seen side by side — this panel says Breached while a
+    // saved queue built on the cache still lists the ticket as met. The state is
+    // already computed, so reconcile the cache when it has actually moved.
+    sla_sync_snapshots($conn, [$ticketId => $state]);
+
     echo json_encode(['success' => true, 'sla' => $state]);
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);

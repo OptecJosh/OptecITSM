@@ -334,6 +334,62 @@ function sla_snapshot_state_for(?array $target, float $warnThreshold): array {
 }
 
 /**
+ * Reconcile the snapshot cache for tickets whose live state has just been
+ * computed for some other reason, writing only the ones that have actually
+ * changed state.
+ *
+ * SLA is computed on read, but queues, list filters and reports read the
+ * ticket_sla_snapshot cache instead — it exists precisely so those can filter
+ * and group without an O(N) recompute. The cache is stamped on status change
+ * and by the breach cron, which means that between cron passes a ticket can
+ * cross into 'breached' with nothing to record it. The ticket screen (live) then
+ * says Breached while a saved queue (cached) still lists it as met, and if the
+ * cron is not actually scheduled the two never reconcile at all.
+ *
+ * Anywhere the live state is already in hand, correcting the cache costs one
+ * SELECT and usually zero writes, so the two stop disagreeing about whatever the
+ * analyst is looking at. The cron remains the backstop for tickets nobody opens.
+ *
+ * Compares the state STRINGS only. Remaining-minutes ticks down continuously and
+ * comparing on it would write every row on every page load for no benefit —
+ * filters and reports key off the state, not the countdown.
+ *
+ * @param array<int,array> $statesByTicket  ticket_id => sla_get_state() result
+ * @return int  number of rows rewritten
+ */
+function sla_sync_snapshots(PDO $conn, array $statesByTicket, ?float $warnThreshold = null): int {
+    if (!$statesByTicket) return 0;
+    try {
+        if ($warnThreshold === null) {
+            $settings = sla_load_settings($conn);
+            $warnThreshold = (float)($settings['sla_warning_threshold_percent'] ?? 80);
+        }
+
+        $ids = array_map('intval', array_keys($statesByTicket));
+        $ph  = implode(',', array_fill(0, count($ids), '?'));
+        $cur = $conn->prepare("SELECT ticket_id, response_state, resolution_state FROM ticket_sla_snapshot WHERE ticket_id IN ($ph)");
+        $cur->execute($ids);
+        $stored = [];
+        foreach ($cur->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $stored[(int)$r['ticket_id']] = [$r['response_state'], $r['resolution_state']];
+        }
+
+        $written = 0;
+        foreach ($statesByTicket as $ticketId => $state) {
+            [$respState] = sla_snapshot_state_for($state['response'] ?? null, $warnThreshold);
+            [$resoState] = sla_snapshot_state_for($state['resolution'] ?? null, $warnThreshold);
+            $was = $stored[(int)$ticketId] ?? null;
+            if ($was !== null && $was[0] === $respState && $was[1] === $resoState) continue;
+            if (sla_write_snapshot($conn, (int)$ticketId, $state, $warnThreshold)) $written++;
+        }
+        return $written;
+    } catch (Exception $e) {
+        error_log('[sla_sync_snapshots] ' . $e->getMessage());
+        return 0;   // a cache reconcile must never break the read that triggered it
+    }
+}
+
+/**
  * Upsert a ticket's SLA snapshot row (Phase 8a) from an already-computed
  * sla_get_state() result. The whole point is that the caller is *already*
  * holding the state, so stamping is near-free and drift-free by construction.

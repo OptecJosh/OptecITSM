@@ -64,7 +64,7 @@ async function kLoad(){
           + '<td class="num"><button class="k-val-btn'+(disp!==null?' has':'')+'" onclick="kEditVal('+k.id+')">'+(disp!==null?kEsc(disp):'+ add')+'</button></td>'
           + '<td><span class="k-rag rag-'+kEsc(k.status)+'" title="'+kEsc(k.status)+'"></span></td>'
           + '<td>'+kSparkline(k.trend)+'</td>'
-          + '<td><span class="k-src">'+kEsc(k.source||'-')+'</span></td>'
+          + '<td><span class="k-src" title="'+kEsc(k.source_hint||'')+'">'+kEsc(k.source||'-')+'</span></td>'
           + '</tr>';
       });
       html += '</tbody></table>';

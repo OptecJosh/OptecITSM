@@ -9,6 +9,7 @@ session_start(['read_and_close' => true]);
 require_once '../../config.php';
 require_once '../../includes/functions.php';
 require_once '../../includes/kpi.php';
+require_once '../../includes/kpi_engine.php';
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['analyst_id'])) {
@@ -66,6 +67,21 @@ try {
             $trend[] = ($row && $row['value'] !== null) ? (float)$row['value'] : null;
         }
 
+        // Where this number comes from, asked of the engine rather than read off
+        // the seeded source_status text. The seed claimed `Ready` — "computed for
+        // you" — on 14 metrics kpi_engine.php has no branch for, so those cells
+        // stayed blank under a badge promising they would fill themselves. The
+        // engine is the only thing that actually knows, so it is what we ask.
+        // source_status now only survives to tell Feed (an outside system owes us
+        // this) apart from Manual (somebody types it in).
+        $canCompute = kpi_engine_can_compute($d['name']);
+        $source = $canCompute ? 'Auto' : ($d['source_status'] === 'Feed' ? 'Feed' : 'Manual');
+        $sourceHint = $canCompute
+            ? 'Computed from freeitsm data by the nightly KPI engine. A typed value is overwritten on the next run.'
+            : ($source === 'Feed'
+                ? 'Fed from a system outside freeitsm. Nothing fills this in automatically — import it or type it.'
+                : 'Recorded by hand. Nothing fills this in automatically.');
+
         $sc = $d['scorecard'];
         $sec = $d['section'] ?: '';
         $scorecards[$sc][$sec][] = [
@@ -73,7 +89,9 @@ try {
             'name'        => $d['name'],
             'description' => $d['description'],
             'target_text' => $d['target_text'],
-            'source'      => $d['source_status'],
+            'source'      => $source,
+            'source_hint' => $sourceHint,
+            'computed'    => $canCompute,
             'cadence'     => $d['cadence'],
             'unit'        => $d['unit'],
             'direction'   => $d['direction'],

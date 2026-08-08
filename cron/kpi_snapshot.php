@@ -159,13 +159,20 @@ try {
          ON DUPLICATE KEY UPDATE value = VALUES(value), status = VALUES(status), note = VALUES(note), updated_at = UTC_TIMESTAMP()"
     );
 
-    $computed = 0; $skipped = 0; $errors = 0;
+    // Three outcomes, not two. A metric the engine has no branch for is manual or
+    // fed from outside and will never fill itself; a metric that HAS a branch but
+    // returns null just had no qualifying rows this month. Both used to land in
+    // one "Skipped (manual/feed)" bucket, which is how 14 metrics badged as
+    // auto-computed sat permanently blank without anything in the run log
+    // suggesting they were missing an implementation.
+    $computed = 0; $skipped = 0; $noData = 0; $errors = 0;
     foreach ($periods as $period) {
-        $pComputed = 0; $pSkipped = 0;
+        $pComputed = 0; $pSkipped = 0; $pNoData = 0;
         foreach ($defs as $d) {
             try {
+                if (!kpi_engine_can_compute($d['name'])) { $pSkipped++; continue; }
                 $val = kpi_engine_compute($conn, $d['scorecard'], $d['name'], $period);
-                if ($val === null) { $pSkipped++; continue; }
+                if ($val === null) { $pNoData++; continue; }
                 $status = kpi_compute_status($d['direction'], $d['green_threshold'], $d['amber_threshold'], $val);
                 $upsert->execute([(int)$d['id'], $period, $val, $status]);
                 $pComputed++;
@@ -173,18 +180,21 @@ try {
         }
         $computed += $pComputed;
         $skipped  += $pSkipped;
+        $noData   += $pNoData;
         // Per-period line, so a backfill shows its progress rather than going
         // quiet for a minute and then printing one total.
-        if (count($periods) > 1) echo "  {$period}: computed {$pComputed}, skipped {$pSkipped}\n";
+        if (count($periods) > 1) echo "  {$period}: computed {$pComputed}, no data {$pNoData}, manual/feed {$pSkipped}\n";
     }
 
     $elapsed = round((microtime(true) - $startedAt) * 1000);
     $outcome = ($errors > 0 && $computed === 0) ? 'error' : 'ok';
     $periodNote = count($periods) === 1 ? "period={$periods[0]}"
         : 'periods=' . $periods[0] . '..' . end($periods) . ' (' . count($periods) . ')';
-    kpicron_log_finish($conn, $runId, $outcome, ['computed' => $computed, 'skipped' => $skipped, 'errors' => $errors], $periodNote);
+    kpicron_log_finish($conn, $runId, $outcome,
+        ['computed' => $computed, 'skipped' => $skipped + $noData, 'errors' => $errors],
+        $periodNote . " no_data={$noData} manual_or_feed={$skipped}");
 
-    echo "KPI snapshot ({$periodNote}) done in {$elapsed}ms\n  Computed: $computed\n  Skipped (manual/feed): $skipped\n  Errors: $errors\n";
+    echo "KPI snapshot ({$periodNote}) done in {$elapsed}ms\n  Computed: $computed\n  No data this period: $noData\n  Manual or fed externally: $skipped\n  Errors: $errors\n";
 
 } catch (Exception $e) {
     http_response_code(500);

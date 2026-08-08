@@ -483,7 +483,11 @@ parallel spreadsheet.
 - **K0 — the catalogue.** `kpi_definitions` (~69 seeded metrics across five
   scorecards: L1, L2, L3, L3-BAU, Combined) and `kpi_measurements`, one value per
   KPI per month. The scorecard page shows target, value, RAG, a six-month sparkline
-  and a source badge, with manual entry and CSV import/export.
+  and a source badge, with manual entry and CSV import/export. The badge reads
+  **Auto**, **Manual** or **Feed**, and it is derived from the engine's dispatch
+  map at request time rather than from the seeded `source_status` text — that
+  column had claimed `Ready` on 14 metrics the engine has no branch for, so the
+  badge promised a number that was never going to arrive.
 - **K1 — instrumentation.** A ticket's **tier is its owner's tier**
   (`analysts.tier`). `TicketsService::updateTicket` hooks
   `includes/kpi_instrument.php` to capture what can only be captured at the moment
@@ -494,8 +498,13 @@ parallel spreadsheet.
 - **K2 — the engine.** `includes/kpi_engine.php` + `cron/kpi_snapshot.php` compute
   around thirty metrics per tier per month — SLA attainment, MTTR, MTTA, throughput,
   reopen rate, bounce, escalation rate and time, on-hold time, QA pass rates.
-  Anything it cannot compute is skipped, so hand-entered and imported values survive
-  every run.
+  `kpi_engine_dispatch_map()` is the single list of which metric names have an
+  implementation; `kpi_engine_compute()` switches on the key it returns and
+  `kpi_engine_can_compute()` answers the same question for the badge and the cron,
+  so the three cannot drift apart. Anything it cannot compute is skipped, so
+  hand-entered and imported values survive every run. The cron separates "no
+  branch" from "branch ran, no rows this month" — one is a missing implementation,
+  the other is a quiet month, and they used to look identical in the run log.
 - **K3 — cost and capacity.** `analysts.loaded_rate` and
   `contracted_weekly_hours` turn time entries into cost per ticket, utilisation,
   tickets per FTE, out-of-hours rate and CSAT.

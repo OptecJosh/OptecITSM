@@ -130,6 +130,6 @@ $translationNamespaces = ['common'];
         </div>
     </div>
 
-    <script src="kpi.js?v=1"></script>
+    <script src="kpi.js?v=2"></script>
 </body>
 </html>

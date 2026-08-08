@@ -1150,8 +1150,17 @@ async function loadEmails() {
 // ===== Phase 5: ad-hoc ticket filters =====
 // A compact filter panel over the ticket list. Fields map 1:1 onto the shared
 // server-side engine (includes/ticket_filter.php); the same shape is reused by
-// saved queues (5b). SLA-state filtering is intentionally omitted for now
-// (SLA is compute-on-read — no column to filter on yet).
+// saved queues (5b).
+
+// SLA snapshot states (Phase 8a) — the same static options the report builder
+// offers, so a state means the same thing in both places. 'na' is left out:
+// filtering for "not tracked" is niche. Values match ticket_sla_snapshot.<col>.
+const SLA_STATE_OPTS = [
+    { v: 'ok',          l: 'On track' },
+    { v: 'approaching', l: 'Approaching breach' },
+    { v: 'breached',    l: 'Breached' },
+    { v: 'met',         l: 'Met' },
+];
 
 function adHocFilterActiveCount() {
     let n = 0;
@@ -1204,6 +1213,18 @@ function renderFilterPanel() {
         return `<div class="tf-field"><div class="tf-field-label">${escapeHtml(label)}</div><div class="tf-options">${items}</div></div>`;
     };
 
+    // Same shape, but over a fixed option list rather than a lookup loaded from
+    // the server. Values are strings, so data-kind is 'str' — readFilterPanel
+    // uses that to decide whether to cast.
+    const staticGroup = (label, field, opts) => {
+        const selected = (adHocFilters[field] || []).map(String);
+        const items = opts.map(o => {
+            const checked = selected.includes(String(o.v)) ? 'checked' : '';
+            return `<label class="tf-opt"><input type="checkbox" data-field="${field}" data-kind="str" value="${escapeHtml(String(o.v))}" ${checked}> ${escapeHtml(o.l)}</label>`;
+        }).join('');
+        return `<div class="tf-field"><div class="tf-field-label">${escapeHtml(label)}</div><div class="tf-options">${items}</div></div>`;
+    };
+
     const kw = adHocFilters.keyword || '';
     const cf = adHocFilters.created_from || '';
     const ct = adHocFilters.created_to || '';
@@ -1248,6 +1269,8 @@ function renderFilterPanel() {
             ${group('Department', 'department_id', departments, 'id', 'name')}
             ${group('Tags', 'tag_id', ticketTagsAll, 'id', 'name')}
             ${customerGroup}
+            ${staticGroup('SLA response', 'sla_response_state', SLA_STATE_OPTS)}
+            ${staticGroup('SLA resolution', 'sla_resolution_state', SLA_STATE_OPTS)}
         </div>
         <div class="tf-actions">
             <div class="tf-save">

@@ -36,8 +36,14 @@ try {
     if ($isShared && !$isAdmin) throw new Exception('Only administrators can create shared queues');
 
     // Persist only recognised filter keys (defends the stored JSON against junk).
+    // Every key the filter panel can produce must appear here or the queue saves
+    // silently without it — `tag_id` and `watched_by` were offered by the panel
+    // but missing from this list, so those filters were being dropped on save.
+    // `watched_by` stores the 'me' sentinel, which get_emails.php resolves per
+    // viewer, so a shared "tickets I watch" queue works for whoever opens it.
     $allowed = ['status','priority_id','ticket_type_id','category_id','subcategory_id',
-                'tenant_id','origin_id','assignee_id','department_id','created_from','created_to','keyword'];
+                'tenant_id','origin_id','assignee_id','department_id','created_from','created_to','keyword',
+                'tag_id','watched_by','sla_response_state','sla_resolution_state'];
     $clean = [];
     foreach ($allowed as $k) { if (isset($filters[$k])) $clean[$k] = $filters[$k]; }
     $json = json_encode($clean);

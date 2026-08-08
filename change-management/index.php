@@ -24,14 +24,20 @@ $translationNamespaces = ['common', 'change-management'];
     <title>Service Desk - <?php echo htmlspecialchars(t('change-management.page.changes')); ?></title>
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/theme.css?v=22">
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/inbox.css?v=57">
-    <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/change-management.css?v=9">
+    <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/change-management.css?v=10">
     <script>window.translations = <?php echo json_encode(I18n::exportForJs($translationNamespaces), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <?php echo Tz::scriptTag(); ?>
     <script src="<?php echo BASE_URL; ?>assets/js/tz.js?v=1"></script>
     <script src="<?php echo BASE_URL; ?>assets/js/i18n.js?v=2"></script>
     <script src="<?php echo BASE_URL; ?>assets/js/tinymce/tinymce.min.js"></script>
 </head>
-<body data-analyst-id="<?php echo $_SESSION['analyst_id'] ?? ''; ?>">
+<?php
+/* The detail view offers Approve/Reject to the named approver, and to an admin
+   as the fallback for when that approver has left. The server enforces both;
+   this only decides whether the buttons are worth drawing. */
+$cmIsAdmin = isset($_SESSION['analyst_id']) && analystIsAdmin(connectToDatabase(), (int)$_SESSION['analyst_id']);
+?>
+<body data-analyst-id="<?php echo $_SESSION['analyst_id'] ?? ''; ?>" data-is-admin="<?php echo $cmIsAdmin ? '1' : '0'; ?>">
     <?php include __DIR__ . '/includes/header.php'; ?>
 
     <div class="changes-container">
@@ -527,6 +533,6 @@ $translationNamespaces = ['common', 'change-management'];
         window.openCreateOnLoad = true;
         <?php endif; ?>
     </script>
-    <script src="<?php echo BASE_URL; ?>assets/js/change-management.js?v=17"></script>
+    <script src="<?php echo BASE_URL; ?>assets/js/change-management.js?v=18"></script>
 </body>
 </html>

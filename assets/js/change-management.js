@@ -553,7 +553,7 @@ async function viewChange(id) {
         const data = await response.json();
 
         if (!data.success) {
-            showToast(window.t('change-management.toast.error_prefix', { message: data.error }), 'success');
+            showToast(window.t('change-management.toast.error_prefix', { message: data.error }), 'error');
             return;
         }
 
@@ -562,7 +562,7 @@ async function viewChange(id) {
         showView('detail');
     } catch (error) {
         console.error('Error loading change:', error);
-        showToast(window.t('change-management.toast.error_loading'), 'success');
+        showToast(window.t('change-management.toast.error_loading'), 'error');
     }
 }
 
@@ -640,6 +640,7 @@ function renderChangeDetail() {
                             </a>
                         </div>
                     </div>
+                    ${renderStageActions(c)}
                     <button class="btn btn-primary" onclick="editCurrentChange()">${window.t('change-management.detail.edit')}</button>
                     <button class="btn btn-danger" onclick="deleteCurrentChange()">${window.t('change-management.detail.delete')}</button>
                 </div>
@@ -1205,7 +1206,7 @@ async function postComment() {
             showToast(window.t('change-management.toast.comment_added'), 'success');
             loadActivityTimeline(currentChange.id);
         } else {
-            showToast(window.t('change-management.toast.error_prefix', { message: data.error }), 'success');
+            showToast(window.t('change-management.toast.error_prefix', { message: data.error }), 'error');
         }
     } catch (error) {
         showToast(window.t('change-management.toast.comment_error'), 'success');
@@ -1584,11 +1585,11 @@ async function saveChange() {
             await loadChanges();
             await viewChange(data.change_id);
         } else {
-            showToast(window.t('change-management.toast.error_prefix', { message: data.error }), 'success');
+            showToast(window.t('change-management.toast.error_prefix', { message: data.error }), 'error');
         }
     } catch (error) {
         console.error('Error saving change:', error);
-        showToast(window.t('change-management.toast.error_saving'), 'success');
+        showToast(window.t('change-management.toast.error_saving'), 'error');
     }
 }
 
@@ -1632,10 +1633,10 @@ async function confirmDelete(id) {
             showView('list');
             loadChanges();
         } else {
-            showToast(window.t('change-management.toast.error_prefix', { message: data.error }), 'success');
+            showToast(window.t('change-management.toast.error_prefix', { message: data.error }), 'error');
         }
     } catch (error) {
-        showToast(window.t('change-management.toast.error_deleting'), 'success');
+        showToast(window.t('change-management.toast.error_deleting'), 'error');
     }
 }
 
@@ -1759,7 +1760,7 @@ async function deleteAttachment(id) {
                 }
             }
         } else {
-            showToast(window.t('change-management.toast.error_prefix', { message: data.error }), 'success');
+            showToast(window.t('change-management.toast.error_prefix', { message: data.error }), 'error');
         }
     } catch (error) {
         showToast(window.t('change-management.toast.attachment_error'), 'success');
@@ -1926,6 +1927,82 @@ function renderCabMemberChips() {
     `).join('');
 }
 
+// ============ Stage + approval actions (Detail View) ============
+//
+// Moving a change along was only possible from a right-click menu on a list
+// card, or by opening the full editor and saving the whole form. Neither is
+// discoverable from the change you are actually looking at, which is where you
+// are standing when you decide it is ready for the next stage.
+//
+// Statuses are a flat lookup — there is no transition table and any status may
+// follow any other — so this offers the whole list in order rather than
+// inventing a state machine that the rest of the module would not enforce.
+
+function renderStageActions(c) {
+    let html = '';
+
+    // Approve / Reject for a named approver on a non-CAB change. CAB changes are
+    // decided by the vote panel further down the page; offering both would give
+    // two answers to the same question.
+    const currentAnalystId = parseInt(document.body.dataset.analystId) || 0;
+    const isApprover = parseInt(c.approver_id) === currentAnalystId;
+    const isAdmin = document.body.dataset.isAdmin === '1';
+    if (!parseInt(c.cab_required) && c.status === 'Pending Approval' && (isApprover || isAdmin)) {
+        html += `
+            <button class="btn cab-btn-approve" onclick="decideChangeApproval('Approve')">${window.t('change-management.cab.approve')}</button>
+            <button class="btn cab-btn-reject" onclick="decideChangeApproval('Reject')">${window.t('change-management.cab.reject')}</button>
+        `;
+    }
+
+    if (changeStatuses.length) {
+        const opts = changeStatuses.map(s =>
+            `<option value="${escapeHtml(s.name)}" ${s.name === c.status ? 'selected' : ''}>${escapeHtml(s.name)}</option>`
+        ).join('');
+        html += `
+            <select class="form-input change-stage-select" onchange="setChangeStatusFromDetail(this.value)"
+                    title="${window.t('change-management.detail.move_stage')}">${opts}</select>
+        `;
+    }
+    return html;
+}
+
+async function setChangeStatusFromDetail(name) {
+    if (!currentChange || !name || name === currentChange.status) return;
+    try {
+        const res = await fetch(API_BASE + 'save.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: currentChange.id, status: name })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Status change failed');
+        showToast(window.t('change-management.toast.status_set'), 'success');
+        viewChange(currentChange.id);
+        loadChanges();
+    } catch (e) {
+        showToast(e.message, 'error');
+        // Put the control back where the server still says the change is, so the
+        // dropdown never shows a stage the change is not actually in.
+        viewChange(currentChange.id);
+    }
+}
+
+async function decideChangeApproval(decision) {
+    if (!currentChange) return;
+    try {
+        const res = await fetch(API_BASE + 'decide_approval.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: currentChange.id, decision: decision })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Decision failed');
+        showToast(data.status, 'success');
+        viewChange(currentChange.id);
+        loadChanges();
+    } catch (e) {
+        showToast(e.message, 'error');
+    }
+}
+
 // ============ CAB Review Panel (Detail View) ============
 
 function renderCabReviewPanel(c) {
@@ -2016,7 +2093,7 @@ async function submitCabVote(vote) {
                 loadChanges();
             }
         } else {
-            showToast(window.t('change-management.toast.error_prefix', { message: data.error }), 'success');
+            showToast(window.t('change-management.toast.error_prefix', { message: data.error }), 'error');
         }
     } catch (error) {
         showToast(window.t('change-management.toast.vote_error'), 'success');

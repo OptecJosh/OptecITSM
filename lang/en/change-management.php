@@ -50,6 +50,7 @@ return [
 
     'detail' => [
         'back'      => 'Back',
+        'move_stage'     => 'Move this change to another stage',
         'share'     => 'Share',
         'copy_link' => 'Copy Link',
         'export_pdf' => 'Export as PDF',

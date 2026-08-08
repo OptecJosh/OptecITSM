@@ -2049,9 +2049,14 @@ function displayEmail(email, recordings) {
             <div id="notesContainer"></div>
         </div>
         </div><!-- /.rp-main -->
+        <div class="rp-rail-resizer" id="railResizer" title="Drag to resize"></div>
         <aside class="rp-rail" id="ticketRail"></aside>
         </div><!-- /.rp-layout -->
     ` + (isTrashed ? '</div>' : '');
+
+    // The reading pane is rebuilt from scratch on every ticket open, so the rail
+    // width has to be re-applied and the handle re-bound each time.
+    initRailResizer();
 
     // Isolate the just-rendered email body in a shadow root (see emailBodyHost).
     hydrateEmailBodies(readingPane);
@@ -6839,6 +6844,67 @@ async function emptyTrash() {
     } catch (e) { showToast('Empty trash failed: ' + e.message, 'error'); }
 }
 
+/* ---- Resizable properties rail ------------------------------------------
+   The rail was a hard 300px holding panels that were written when they ran the
+   full width of the pane, so anything with a date or a button on the right ran
+   off the edge. The panels now wrap instead of clipping, but how much room the
+   properties deserve against the conversation is a per-person judgement — some
+   people want the SLA detail open all day, others want the message wide. So it
+   drags, and the choice sticks.
+
+   Width lives in a CSS custom property on .rp-layout; the rail reads it via
+   var(--rail-w). Clamped in CSS by min/max-width on .rp-rail, and clamped here
+   too so the stored number can never be one the layout would refuse. */
+const RAIL_W_KEY = 'freeitsm.ticketRailWidth';
+const RAIL_W_MIN = 240;
+const RAIL_W_MAX = 640;
+
+function railClampWidth(px) {
+    return Math.max(RAIL_W_MIN, Math.min(RAIL_W_MAX, Math.round(px)));
+}
+
+function initRailResizer() {
+    const layout = document.querySelector('.rp-layout');
+    const handle = document.getElementById('railResizer');
+    if (!layout || !handle) return;
+
+    let stored = parseInt(localStorage.getItem(RAIL_W_KEY) || '', 10);
+    if (Number.isFinite(stored)) layout.style.setProperty('--rail-w', railClampWidth(stored) + 'px');
+
+    handle.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        const layoutRight = layout.getBoundingClientRect().right;
+        layout.classList.add('rail-resizing');
+        handle.classList.add('dragging');
+
+        // Width is measured from the layout's right edge to the cursor, so the
+        // rail tracks the pointer exactly rather than accumulating deltas —
+        // which drift the moment the pointer outruns a clamp.
+        const onMove = ev => layout.style.setProperty('--rail-w', railClampWidth(layoutRight - ev.clientX) + 'px');
+
+        const onUp = () => {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            layout.classList.remove('rail-resizing');
+            handle.classList.remove('dragging');
+            const finalW = parseInt(layout.style.getPropertyValue('--rail-w'), 10);
+            if (Number.isFinite(finalW)) {
+                try { localStorage.setItem(RAIL_W_KEY, String(finalW)); } catch (err) { /* private mode — width just won't persist */ }
+            }
+        };
+
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
+
+    // Double-click resets, so a rail dragged somewhere silly is recoverable
+    // without hunting through devtools for the stored value.
+    handle.addEventListener('dblclick', function () {
+        layout.style.removeProperty('--rail-w');
+        try { localStorage.removeItem(RAIL_W_KEY); } catch (err) { /* no-op */ }
+    });
+}
+
 // Outside click + Escape close the menus
 document.addEventListener('mousedown', function (e) {
     const menu = document.getElementById('ticketContextMenu');
@@ -6851,7 +6917,21 @@ document.addEventListener('keydown', function (e) {
 });
 // Right-clicking a different row should reopen, not stack
 window.addEventListener('blur', closeTicketContextMenu);
-window.addEventListener('scroll', closeTicketContextMenu, true);
+
+// Scrolling the page closes the menu on purpose: it is position:fixed and its
+// coordinates are set once from the cursor, so it would otherwise hang in the
+// viewport while the row it acts on scrolls away underneath it.
+//
+// This has to be a capture-phase listener because body is overflow:hidden here —
+// every scroll comes from an inner overflow-y:auto container and scroll events
+// don't bubble. Which is why it also caught scrolls from INSIDE the menu: the
+// submenus are max-height:320px with their own scrollbar, so scrolling a long
+// analyst list under "Assign to" closed the very menu you were reading. Those
+// scrolls move nothing the menu is anchored to, so ignore them.
+window.addEventListener('scroll', function (e) {
+    if (e.target instanceof Element && e.target.closest('.ticket-context-menu')) return;
+    closeTicketContextMenu();
+}, true);
 
 /* --- Context menu action: Link CMDB object --- */
 function openContextLinkCmdb() {

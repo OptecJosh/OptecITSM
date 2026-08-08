@@ -28,7 +28,7 @@ $translationNamespaces = ['common', 'service-status'];
     <script src="../assets/js/tz.js?v=1"></script>
     <script src="../assets/js/i18n.js?v=2"></script>
     <link rel="stylesheet" href="../assets/css/theme.css?v=22">
-    <link rel="stylesheet" href="../assets/css/inbox.css?v=56">
+    <link rel="stylesheet" href="../assets/css/inbox.css?v=57">
     <style>
         /* Pin the shared --accent to the module's emerald so modals, focus
            rings and the secondary button read on-brand. */

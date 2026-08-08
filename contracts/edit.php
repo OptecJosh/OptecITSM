@@ -29,7 +29,7 @@ $contract_id = $_GET['id'] ?? null;
     <script src="../assets/js/tz.js?v=1"></script>
     <script src="../assets/js/i18n.js?v=2"></script>
     <link rel="stylesheet" href="../assets/css/theme.css?v=22">
-    <link rel="stylesheet" href="../assets/css/inbox.css?v=56">
+    <link rel="stylesheet" href="../assets/css/inbox.css?v=57">
     <script src="../assets/js/tinymce/tinymce.min.js"></script>
     <style>
         /* Full-screen layout with sidebar - matches contracts dashboard */

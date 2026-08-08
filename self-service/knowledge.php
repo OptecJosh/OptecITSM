@@ -18,7 +18,7 @@ $translationNamespaces = ['common', 'self-service'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Knowledge Base</title>
-    <link rel="stylesheet" href="../assets/css/inbox.css?v=56">
+    <link rel="stylesheet" href="../assets/css/inbox.css?v=57">
     <style>
         body { overflow: auto; height: auto; background: #f5f5f5; }
         .portal-header { background: #0078d4; color: white; padding: 0 24px; height: 48px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,0.15); position: sticky; top: 0; z-index: 100; }

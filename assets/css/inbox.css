@@ -661,13 +661,43 @@ body {
     overflow-y: auto;
 }
 
+/* Width is a custom property so the drag handle can set it on .rp-layout and
+   both the rail and the handle stay in step. 300px was too narrow for panels
+   that were authored when these panels ran the full width of the pane. */
 .rp-rail {
-    flex: 0 0 300px;
-    width: 300px;
+    flex: 0 0 var(--rail-w, 320px);
+    width: var(--rail-w, 320px);
+    min-width: 240px;
+    max-width: 640px;
     border-left: 1px solid var(--border, #e0e0e0);
     background: var(--surface-2, #fafafa);
     overflow-y: auto;
     padding: var(--sp-3, 12px);
+}
+
+/* Drag handle between the conversation and the rail. Deliberately wider than it
+   looks — 6px of hit area, a 1px line's worth of colour on hover — because a
+   1px target is miserable to grab. */
+.rp-rail-resizer {
+    flex: 0 0 6px;
+    cursor: col-resize;
+    background: transparent;
+    transition: background var(--dur, 0.15s) var(--ease, ease);
+}
+.rp-rail-resizer:hover,
+.rp-rail-resizer.dragging {
+    background: var(--accent, #0078d4);
+    opacity: 0.35;
+}
+/* While dragging, the pointer leaves the 6px strip constantly — kill selection
+   and pointer events on the panes so the drag doesn't select the conversation. */
+.rp-layout.rail-resizing {
+    user-select: none;
+    cursor: col-resize;
+}
+.rp-layout.rail-resizing .rp-main,
+.rp-layout.rail-resizing .rp-rail {
+    pointer-events: none;
 }
 
 /* Below this the rail would squeeze the conversation rather than help it, so it
@@ -679,10 +709,14 @@ body {
     .rp-rail {
         flex: none;
         width: auto;
+        min-width: 0;
+        max-width: none;
         border-left: 0;
         border-top: 1px solid var(--border, #e0e0e0);
         overflow: visible;
     }
+    /* Stacked, so there is no vertical edge to drag. */
+    .rp-rail-resizer { display: none; }
 }
 
 /* ---- Panels behave differently once they are in the rail ----
@@ -788,6 +822,19 @@ body {
 .rp-rail .ticket-section-head { padding: 8px 10px; }
 .rp-rail .ticket-section-title { font-size: var(--fs-label, 11px); }
 .rp-rail .ticket-section-body { padding: 10px; }
+
+/* The section header was laid out for a full-width band and does not fit the
+   rail: the title and the actions both refuse to shrink, so the header ran past
+   the panel edge and .ticket-section's overflow:hidden cut it off — losing the
+   "+ Link object" button entirely and clipping the SLA summary to
+   "Response met · Resolution bre…".
+   Let it wrap, and give the summary its own line: the actions stay on the title
+   row where they read as belonging to the section, and the summary gets the
+   rail's full width instead of the ~80px left over beside a 21-character
+   uppercase title. */
+.rp-rail .ticket-section-head { flex-wrap: wrap; row-gap: 2px; }
+.rp-rail .ticket-section-actions { order: 1; margin-left: auto; }
+.rp-rail .ticket-section-summary { order: 2; flex: 1 1 100%; }
 
 /* Tags + watchers: one shared row in the MAIN column, next to the action bar.
    They are things you do to a ticket, not facts about it, so they belong beside
@@ -1790,8 +1837,15 @@ body.ticket-popout .ticket-toolbar {
     margin-bottom: 12px;
 }
 
+/* Wraps, and the inputs are allowed to shrink. An <input> is a replaced element,
+   so its default min-width:auto resolves to the intrinsic size of ~20 characters
+   — roughly 180px — and no amount of flex:1 will take it below that. In a 300px
+   rail the row needed ~347px, and the overflow was cut off by the section's
+   overflow:hidden rather than wrapping, which is what hid the end of
+   "What did you do?" and the Add button. */
 .time-entry-form {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     margin-bottom: 16px;
     align-items: center;
@@ -1799,6 +1853,8 @@ body.ticket-popout .ticket-toolbar {
 
 .time-entry-input-minutes {
     width: 96px;
+    min-width: 0;
+    flex: 0 1 96px;
     padding: 6px 10px;
     border: 1px solid var(--border, #ddd);
     border-radius: var(--r-sm, 4px);
@@ -1806,7 +1862,8 @@ body.ticket-popout .ticket-toolbar {
 }
 
 .time-entry-input-notes {
-    flex: 1;
+    flex: 1 1 140px;
+    min-width: 0;
     padding: 6px 10px;
     border: 1px solid var(--border, #ddd);
     border-radius: var(--r-sm, 4px);
@@ -1847,10 +1904,14 @@ body.ticket-popout .ticket-toolbar {
     border-radius: var(--r-sm, 4px);
 }
 
+/* Same story as the form: no wrap plus a floored first cell plus a date pinned
+   right with margin-left:auto came to ~296px of content in a 225px box, so the
+   date and the delete button were clipped off the end. */
 .time-entry-row {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 12px;
+    gap: 4px 12px;
     font-size: 13px;
     color: var(--text-muted, #555);
 }
@@ -1858,7 +1919,7 @@ body.ticket-popout .ticket-toolbar {
 .time-entry-spent {
     font-weight: 600;
     color: var(--success-accent, #16a34a);
-    min-width: 64px;
+    min-width: 48px;
 }
 
 .time-entry-analyst {
